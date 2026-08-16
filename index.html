@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Tomesh Movie</title>
 
 <style>
+
 body{
     margin:0;
     font-family:Arial,sans-serif;
@@ -17,6 +19,10 @@ header{
     background:#e50914;
     padding:20px;
     text-align:center;
+}
+
+header h1{
+    margin:0;
 }
 
 .search{
@@ -61,6 +67,11 @@ header{
     color:#ff4444;
 }
 
+.movie p{
+    color:#ddd;
+    line-height:1.6;
+}
+
 .movie a{
     display:inline-block;
     margin-top:15px;
@@ -92,6 +103,7 @@ footer{
     text-align:center;
     color:#aaa;
 }
+
 </style>
 </head>
 
@@ -133,7 +145,9 @@ Movie nahi mili.
 
 <p id="description"></p>
 
-<a id="trailer" href="#" target="_blank">
+<a id="trailer"
+   href="#"
+   target="_blank">
 ▶️ Official Trailer
 </a>
 
@@ -155,12 +169,10 @@ fetch("movies.json")
 
     movies = data;
 
-    console.log("Movies loaded:", movies.length);
-
 })
 .catch(error => {
 
-    console.log("movies.json error:", error);
+    console.log("movies.json load error:", error);
 
 });
 
@@ -181,45 +193,62 @@ function searchMovie(){
 
     if(!movie){
 
-        document.getElementById("result")
+        document
+        .getElementById("result")
         .style.display = "none";
 
-        document.getElementById("error")
+        document
+        .getElementById("error")
         .style.display = "block";
 
         return;
     }
 
-    document.getElementById("error")
+    document
+    .getElementById("error")
     .style.display = "none";
 
-    document.getElementById("result")
+    document
+    .getElementById("result")
     .style.display = "block";
 
-    document.getElementById("title")
-    .innerText = "🎬 " + movie.title;
+    document
+    .getElementById("title")
+    .innerText =
+    "🎬 " + movie.title;
 
-    document.getElementById("year")
-    .innerText = "📅 Year: " + movie.year;
+    document
+    .getElementById("year")
+    .innerText =
+    "📅 Year: " + movie.year;
 
-    document.getElementById("description")
-    .innerText = movie.description;
+    document
+    .getElementById("description")
+    .innerText =
+    movie.description;
 
-    document.getElementById("trailer")
-    .href = movie.trailer;
+    document
+    .getElementById("trailer")
+    .href =
+    movie.trailer;
 
 }
 
 
 document
 .getElementById("movieName")
-.addEventListener("keypress", function(event){
+.addEventListener(
+    "keypress",
+    function(event){
 
-    if(event.key === "Enter"){
-        searchMovie();
+        if(event.key === "Enter"){
+
+            searchMovie();
+
+        }
+
     }
-
-});
+);
 
 </script>
 
