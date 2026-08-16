@@ -1,170 +1,225 @@
-
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tomesh Movie</title>
 
-    <title>Tomesh Movie</title>
+<style>
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#111;
+    color:white;
+}
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #111;
-            color: white;
-        }
+header{
+    background:#e50914;
+    padding:20px;
+    text-align:center;
+}
 
-        header {
-            background: #e50914;
-            padding: 20px;
-            text-align: center;
-        }
+.search{
+    text-align:center;
+    padding:30px 15px;
+}
 
-        header h1 {
-            margin: 0;
-            font-size: 30px;
-        }
+.search input{
+    width:70%;
+    max-width:500px;
+    padding:14px;
+    border:0;
+    border-radius:6px;
+    font-size:16px;
+}
 
-        .search {
-            text-align: center;
-            padding: 30px 15px;
-        }
+.search button{
+    padding:14px 20px;
+    border:0;
+    border-radius:6px;
+    background:#e50914;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
 
-        .search input {
-            width: 70%;
-            max-width: 500px;
-            padding: 14px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-        }
+.container{
+    max-width:900px;
+    margin:auto;
+    padding:20px;
+}
 
-        .search button {
-            padding: 14px 20px;
-            border: none;
-            border-radius: 6px;
-            background: #e50914;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
+.movie{
+    display:none;
+    background:#222;
+    padding:25px;
+    border-radius:10px;
+    text-align:center;
+}
 
-        .container {
-            max-width: 1000px;
-            margin: auto;
-            padding: 20px;
-            text-align: center;
-        }
+.movie h2{
+    color:#ff4444;
+}
 
-        .movie {
-            background: #222;
-            padding: 25px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
+.movie a{
+    display:inline-block;
+    margin-top:15px;
+    padding:12px 20px;
+    background:#e50914;
+    color:white;
+    text-decoration:none;
+    border-radius:6px;
+}
 
-        .movie h2 {
-            color: #ff4444;
-        }
+.ad{
+    margin:25px 0;
+    padding:30px;
+    border:1px dashed #555;
+    text-align:center;
+    color:#aaa;
+}
 
-        .trailer {
-            display: inline-block;
-            margin-top: 15px;
-            padding: 12px 20px;
-            background: #e50914;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-        }
+#error{
+    display:none;
+    text-align:center;
+    color:#ff7777;
+}
 
-        .ad {
-            margin: 30px 0;
-            padding: 30px;
-            border: 1px dashed #555;
-            color: #aaa;
-        }
-
-        footer {
-            margin-top: 50px;
-            padding: 20px;
-            background: #222;
-            text-align: center;
-            color: #aaa;
-        }
-    </style>
+footer{
+    margin-top:50px;
+    padding:20px;
+    background:#222;
+    text-align:center;
+    color:#aaa;
+}
+</style>
 </head>
 
 <body>
 
 <header>
-    <h1>🎬 Tomesh Movie</h1>
+<h1>🎬 Tomesh Movie</h1>
 </header>
 
 <div class="search">
 
-    <input
-        type="text"
-        id="movie"
-        placeholder="Movie ka naam likho..."
-    >
+<input
+id="movieName"
+type="text"
+placeholder="Movie ka naam likho..."
+>
 
-    <button onclick="searchMovie()">
-        🔎 Search
-    </button>
+<button onclick="searchMovie()">
+🔎 Search
+</button>
 
 </div>
 
 <div class="container">
 
-    <div class="ad">
-        📢 Advertisement Space
-    </div>
+<div class="ad">
+📢 Advertisement Space
+</div>
 
-    <div class="movie">
+<div id="error">
+Movie nahi mili.
+</div>
 
-        <h2>🎬 Movie Information</h2>
+<div id="result" class="movie">
 
-        <p>
-            Movie ka naam search box me likho.
-        </p>
+<h2 id="title"></h2>
 
-        <a
-            class="trailer"
-            href="https://www.youtube.com/"
-            target="_blank"
-        >
-            ▶️ Official Trailer
-        </a>
+<p id="year"></p>
 
-    </div>
+<p id="description"></p>
+
+<a id="trailer" href="#" target="_blank">
+▶️ Official Trailer
+</a>
+
+</div>
 
 </div>
 
 <footer>
-    © 2026 Tomesh Movie
+© 2026 Tomesh Movie
 </footer>
 
 <script>
 
-function searchMovie() {
+let movies = [];
 
-    let movie =
-        document.getElementById("movie").value;
+fetch("movies.json")
+.then(response => response.json())
+.then(data => {
 
-    if (movie.trim() === "") {
+    movies = data;
 
-        alert("Movie ka naam likho!");
+    console.log("Movies loaded:", movies.length);
+
+})
+.catch(error => {
+
+    console.log("movies.json error:", error);
+
+});
+
+
+function searchMovie(){
+
+    const name =
+        document
+        .getElementById("movieName")
+        .value
+        .toLowerCase()
+        .trim();
+
+    const movie =
+        movies.find(
+            m => m.title.toLowerCase() === name
+        );
+
+    if(!movie){
+
+        document.getElementById("result")
+        .style.display = "none";
+
+        document.getElementById("error")
+        .style.display = "block";
 
         return;
     }
 
-    let url =
-        "https://www.google.com/search?q=" +
-        encodeURIComponent(movie + " official trailer");
+    document.getElementById("error")
+    .style.display = "none";
 
-    window.open(url, "_blank");
+    document.getElementById("result")
+    .style.display = "block";
+
+    document.getElementById("title")
+    .innerText = "🎬 " + movie.title;
+
+    document.getElementById("year")
+    .innerText = "📅 Year: " + movie.year;
+
+    document.getElementById("description")
+    .innerText = movie.description;
+
+    document.getElementById("trailer")
+    .href = movie.trailer;
+
 }
+
+
+document
+.getElementById("movieName")
+.addEventListener("keypress", function(event){
+
+    if(event.key === "Enter"){
+        searchMovie();
+    }
+
+});
 
 </script>
 
