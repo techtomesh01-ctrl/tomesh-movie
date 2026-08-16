@@ -3,34 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Tomesh Movie</title>
 
 <style>
-
 body{
     margin:0;
     font-family:Arial,sans-serif;
     background:#111;
     color:white;
 }
-
 header{
     background:#e50914;
     padding:20px;
     text-align:center;
 }
-
-header h1{
-    margin:0;
-}
-
 .search{
     text-align:center;
     padding:30px 15px;
 }
-
-.search input{
+input{
     width:70%;
     max-width:500px;
     padding:14px;
@@ -38,8 +29,7 @@ header h1{
     border-radius:6px;
     font-size:16px;
 }
-
-.search button{
+button{
     padding:14px 20px;
     border:0;
     border-radius:6px;
@@ -48,13 +38,11 @@ header h1{
     font-weight:bold;
     cursor:pointer;
 }
-
 .container{
     max-width:900px;
     margin:auto;
     padding:20px;
 }
-
 .movie{
     display:none;
     background:#222;
@@ -62,16 +50,9 @@ header h1{
     border-radius:10px;
     text-align:center;
 }
-
 .movie h2{
     color:#ff4444;
 }
-
-.movie p{
-    color:#ddd;
-    line-height:1.6;
-}
-
 .movie a{
     display:inline-block;
     margin-top:15px;
@@ -81,7 +62,6 @@ header h1{
     text-decoration:none;
     border-radius:6px;
 }
-
 .ad{
     margin:25px 0;
     padding:30px;
@@ -89,21 +69,11 @@ header h1{
     text-align:center;
     color:#aaa;
 }
-
 #error{
     display:none;
     text-align:center;
     color:#ff7777;
 }
-
-footer{
-    margin-top:50px;
-    padding:20px;
-    background:#222;
-    text-align:center;
-    color:#aaa;
-}
-
 </style>
 </head>
 
@@ -115,11 +85,9 @@ footer{
 
 <div class="search">
 
-<input
-id="movieName"
-type="text"
-placeholder="Movie ka naam likho..."
->
+<input id="movieName"
+       type="text"
+       placeholder="Movie ka naam likho...">
 
 <button onclick="searchMovie()">
 🔎 Search
@@ -155,100 +123,94 @@ Movie nahi mili.
 
 </div>
 
-<footer>
-© 2026 Tomesh Movie
-</footer>
-
 <script>
 
-let movies = [];
+const movies = {
 
-fetch("movies.json")
-.then(response => response.json())
-.then(data => {
+"pushpa 2":{
+title:"Pushpa 2",
+year:"2024",
+description:"Pushpa 2 movie information.",
+trailer:"https://www.youtube.com/watch?v=1kVK0MZlbI4"
+},
 
-    movies = data;
+"kgf 2":{
+title:"KGF Chapter 2",
+year:"2022",
+description:"KGF Chapter 2 movie information.",
+trailer:"https://www.youtube.com/results?search_query=KGF+Chapter+2+official+trailer"
+},
 
-})
-.catch(error => {
+"jawan":{
+title:"Jawan",
+year:"2023",
+description:"Jawan movie information.",
+trailer:"https://www.youtube.com/results?search_query=Jawan+official+trailer"
+},
 
-    console.log("movies.json load error:", error);
+"animal":{
+title:"Animal",
+year:"2023",
+description:"Animal movie information.",
+trailer:"https://www.youtube.com/results?search_query=Animal+official+trailer"
+},
 
-});
+"rrr":{
+title:"RRR",
+year:"2022",
+description:"RRR movie information.",
+trailer:"https://www.youtube.com/results?search_query=RRR+official+trailer"
+},
 
+"baahubali 2":{
+title:"Baahubali 2",
+year:"2017",
+description:"Baahubali 2 movie information.",
+trailer:"https://www.youtube.com/results?search_query=Baahubali+2+official+trailer"
+}
+
+};
 
 function searchMovie(){
 
-    const name =
-        document
-        .getElementById("movieName")
-        .value
-        .toLowerCase()
-        .trim();
+const name =
+document.getElementById("movieName")
+.value
+.toLowerCase()
+.trim();
 
-    const movie =
-        movies.find(
-            m => m.title.toLowerCase() === name
-        );
+const movie = movies[name];
 
-    if(!movie){
+if(!movie){
 
-        document
-        .getElementById("result")
-        .style.display = "none";
+document.getElementById("result")
+.style.display="none";
 
-        document
-        .getElementById("error")
-        .style.display = "block";
+document.getElementById("error")
+.style.display="block";
 
-        return;
-    }
-
-    document
-    .getElementById("error")
-    .style.display = "none";
-
-    document
-    .getElementById("result")
-    .style.display = "block";
-
-    document
-    .getElementById("title")
-    .innerText =
-    "🎬 " + movie.title;
-
-    document
-    .getElementById("year")
-    .innerText =
-    "📅 Year: " + movie.year;
-
-    document
-    .getElementById("description")
-    .innerText =
-    movie.description;
-
-    document
-    .getElementById("trailer")
-    .href =
-    movie.trailer;
-
+return;
 }
 
+document.getElementById("error")
+.style.display="none";
 
-document
-.getElementById("movieName")
-.addEventListener(
-    "keypress",
-    function(event){
+document.getElementById("result")
+.style.display="block";
 
-        if(event.key === "Enter"){
+document.getElementById("title")
+.innerText="🎬 "+movie.title;
 
-            searchMovie();
+document.getElementById("year")
+.innerText="📅 Year: "+movie.year;
 
-        }
+document.getElementById("description")
+.innerText=movie.description;
 
-    }
-);
+document.getElementById("trailer")
+.href=movie.trailer;
+
+}
 
 </script>
 
