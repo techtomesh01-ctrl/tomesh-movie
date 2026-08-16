@@ -1,15 +1,172 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="hi">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Tomesh Movie</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+        }
+
+        header {
+            background: #e50914;
+            padding: 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 30px;
+        }
+
+        .search {
+            text-align: center;
+            padding: 30px 15px;
+        }
+
+        .search input {
+            width: 70%;
+            max-width: 500px;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .search button {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #e50914;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .movie {
+            background: #222;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .movie h2 {
+            color: #ff4444;
+        }
+
+        .trailer {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #e50914;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+
+        .ad {
+            margin: 30px 0;
+            padding: 30px;
+            border: 1px dashed #555;
+            color: #aaa;
+        }
+
+        footer {
+            margin-top: 50px;
+            padding: 20px;
+            background: #222;
+            text-align: center;
+            color: #aaa;
+        }
+    </style>
 </head>
 
 <body>
 
-<h1>🎬 Tomesh Movie</h1>
+<header>
+    <h1>🎬 Tomesh Movie</h1>
+</header>
 
-<p>Welcome to Tomesh Movie Website</p>
+<div class="search">
+
+    <input
+        type="text"
+        id="movie"
+        placeholder="Movie ka naam likho..."
+    >
+
+    <button onclick="searchMovie()">
+        🔎 Search
+    </button>
+
+</div>
+
+<div class="container">
+
+    <div class="ad">
+        📢 Advertisement Space
+    </div>
+
+    <div class="movie">
+
+        <h2>🎬 Movie Information</h2>
+
+        <p>
+            Movie ka naam search box me likho.
+        </p>
+
+        <a
+            class="trailer"
+            href="https://www.youtube.com/"
+            target="_blank"
+        >
+            ▶️ Official Trailer
+        </a>
+
+    </div>
+
+</div>
+
+<footer>
+    © 2026 Tomesh Movie
+</footer>
+
+<script>
+
+function searchMovie() {
+
+    let movie =
+        document.getElementById("movie").value;
+
+    if (movie.trim() === "") {
+
+        alert("Movie ka naam likho!");
+
+        return;
+    }
+
+    let url =
+        "https://www.google.com/search?q=" +
+        encodeURIComponent(movie + " official trailer");
+
+    window.open(url, "_blank");
+}
+
+</script>
 
 </body>
 </html>
