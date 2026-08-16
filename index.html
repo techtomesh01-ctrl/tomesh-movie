@@ -12,15 +12,18 @@ body{
     background:#111;
     color:white;
 }
+
 header{
     background:#e50914;
-    padding:20px;
+    padding:22px;
     text-align:center;
 }
+
 .search{
     text-align:center;
     padding:30px 15px;
 }
+
 input{
     width:70%;
     max-width:500px;
@@ -29,8 +32,10 @@ input{
     border-radius:6px;
     font-size:16px;
 }
+
 button{
     padding:14px 20px;
+    margin-left:5px;
     border:0;
     border-radius:6px;
     background:#e50914;
@@ -38,42 +43,59 @@ button{
     font-weight:bold;
     cursor:pointer;
 }
+
 .container{
     max-width:900px;
     margin:auto;
     padding:20px;
 }
+
 .movie{
     display:none;
     background:#222;
     padding:25px;
-    border-radius:10px;
+    border-radius:12px;
     text-align:center;
 }
+
+.poster{
+    width:250px;
+    max-width:90%;
+    border-radius:10px;
+    margin-bottom:20px;
+}
+
 .movie h2{
     color:#ff4444;
 }
-.movie a{
+
+.movie p{
+    color:#ddd;
+    line-height:1.6;
+}
+
+.rating{
+    font-size:20px;
+    color:#ffd700;
+}
+
+.trailer{
     display:inline-block;
     margin-top:15px;
-    padding:12px 20px;
+    padding:13px 22px;
     background:#e50914;
     color:white;
     text-decoration:none;
     border-radius:6px;
+    font-weight:bold;
 }
-.ad{
-    margin:25px 0;
-    padding:30px;
-    border:1px dashed #555;
-    text-align:center;
-    color:#aaa;
-}
+
 #error{
     display:none;
     text-align:center;
     color:#ff7777;
 }
+
 </style>
 </head>
 
@@ -85,9 +107,11 @@ button{
 
 <div class="search">
 
-<input id="movieName"
-       type="text"
-       placeholder="Movie ka naam likho...">
+<input
+id="movieName"
+type="text"
+placeholder="Movie ka naam likho..."
+>
 
 <button onclick="searchMovie()">
 🔎 Search
@@ -97,25 +121,28 @@ button{
 
 <div class="container">
 
-<div class="ad">
-📢 Advertisement Space
-</div>
-
 <div id="error">
-Movie nahi mili.
+❌ Movie nahi mili.
 </div>
 
 <div id="result" class="movie">
+
+<img id="poster" class="poster" src="" alt="Movie Poster">
 
 <h2 id="title"></h2>
 
 <p id="year"></p>
 
+<p class="rating" id="rating"></p>
+
 <p id="description"></p>
 
-<a id="trailer"
-   href="#"
-   target="_blank">
+<a
+id="trailer"
+class="trailer"
+target="_blank"
+rel="noopener noreferrer"
+>
 ▶️ Official Trailer
 </a>
 
@@ -127,87 +154,81 @@ Movie nahi mili.
 
 const movies = {
 
-"pushpa 2":{
-title:"Pushpa 2",
+"pushpa 2": {
+
+title:"Pushpa 2: The Rule",
+
 year:"2024",
-description:"Pushpa 2 movie information.",
-trailer:"https://www.youtube.com/watch?v=1kVK0MZlbI4"
-},
 
-"kgf 2":{
-title:"KGF Chapter 2",
-year:"2022",
-description:"KGF Chapter 2 movie information.",
-trailer:"https://www.youtube.com/results?search_query=KGF+Chapter+2+official+trailer"
-},
+rating:"⭐ Rating: 6.1/10",
 
-"jawan":{
-title:"Jawan",
-year:"2023",
-description:"Jawan movie information.",
-trailer:"https://www.youtube.com/results?search_query=Jawan+official+trailer"
-},
+description:
+"Pushpa 2: The Rule is a 2024 Indian Telugu-language action drama film directed by Sukumar, starring Allu Arjun, Rashmika Mandanna and Fahadh Faasil.",
 
-"animal":{
-title:"Animal",
-year:"2023",
-description:"Animal movie information.",
-trailer:"https://www.youtube.com/results?search_query=Animal+official+trailer"
-},
+poster:
+"https://image.tmdb.org/t/p/w500/1m1r6YjN4YbKQvQKfK6bJ6X2Z0.jpg",
 
-"rrr":{
-title:"RRR",
-year:"2022",
-description:"RRR movie information.",
-trailer:"https://www.youtube.com/results?search_query=RRR+official+trailer"
-},
+trailer:
+"https://www.youtube.com/watch?v=1kVK0MZlbI4"
 
-"baahubali 2":{
-title:"Baahubali 2",
-year:"2017",
-description:"Baahubali 2 movie information.",
-trailer:"https://www.youtube.com/results?search_query=Baahubali+2+official+trailer"
 }
 
 };
 
+
 function searchMovie(){
 
 const name =
-document.getElementById("movieName")
+document
+.getElementById("movieName")
 .value
 .toLowerCase()
 .trim();
 
 const movie = movies[name];
 
+const result =
+document.getElementById("result");
+
+const error =
+document.getElementById("error");
+
 if(!movie){
 
-document.getElementById("result")
-.style.display="none";
+result.style.display="none";
 
-document.getElementById("error")
-.style.display="block";
+error.style.display="block";
 
 return;
+
 }
 
-document.getElementById("error")
-.style.display="none";
+error.style.display="none";
 
-document.getElementById("result")
-.style.display="block";
+result.style.display="block";
 
-document.getElementById("title")
+document
+.getElementById("poster")
+.src=movie.poster;
+
+document
+.getElementById("title")
 .innerText="🎬 "+movie.title;
 
-document.getElementById("year")
+document
+.getElementById("year")
 .innerText="📅 Year: "+movie.year;
 
-document.getElementById("description")
+document
+.getElementById("rating")
+.innerText=movie.rating;
+
+document
+.getElementById("description")
 .innerText=movie.description;
 
-document.getElementById("trailer")
+document
+.getElementById("trailer")
 .href=movie.trailer;
 
 }
