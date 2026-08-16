@@ -16,5 +16,23 @@
     "year": 2023,
     "description": "Jawan movie information.",
     "trailer": "https://www.youtube.com/results?search_query=Jawan+official+trailer"
+  },
+  {
+    "title": "Animal",
+    "year": 2023,
+    "description": "Animal movie information.",
+    "trailer": "https://www.youtube.com/results?search_query=Animal+official+trailer"
+  },
+  {
+    "title": "RRR",
+    "year": 2022,
+    "description": "RRR movie information.",
+    "trailer": "https://www.youtube.com/results?search_query=RRR+official+trailer"
+  },
+  {
+    "title": "Baahubali 2",
+    "year": 2017,
+    "description": "Baahubali 2 movie information.",
+    "trailer": "https://www.youtube.com/results?search_query=Baahubali+2+official+trailer"
   }
 ]
