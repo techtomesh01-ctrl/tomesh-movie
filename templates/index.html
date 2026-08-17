@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}Tomesh Movies{% endblock %}
+{% block content %}
+<div class="ad">{{ ads.ad_top|safe }}</div>
+<section class="hero"><h1>Tomesh Movies</h1><p>अपनी और licensed movies के लिए movie portal</p></section>
+<div class="cats"><a href="{{url_for('home')}}">All</a>{% for c in categories %}<a href="{{url_for('home',category=c)}}">{{c}}</a>{% endfor %}</div>
+<h2>Latest Movies</h2>
+<div class="grid">
+{% for m in movies %}
+<article class="card">
+{% if m.poster %}<img src="{{url_for('poster',name=m.poster)}}" alt="{{m.title}}">{% else %}<div class="noposter">🎬</div>{% endif %}
+<div class="pad"><h3>{{m.title}}</h3><small>{{m.category}} · {{m.views}} views</small><a class="btn" href="{{url_for('movie',movie_id=m.id)}}">▶ Watch</a></div>
+</article>
+{% else %}<p>अभी कोई movie नहीं है। Admin से जोड़ें।</p>{% endfor %}
+</div>
+{% endblock %}
