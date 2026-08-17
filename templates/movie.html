@@ -1,12 +1,491 @@
-{% extends "base.html" %}{% block title %}{{m.title}} - Tomesh Movies{% endblock %}
-{% block content %}
-<div class="ad">{{ ads.ad_player|safe }}</div>
-<a href="{{url_for('home')}}">← Back</a>
-<h1>{{m.title}}</h1>
-<video class="player" controls preload="metadata" poster="{% if m.poster %}{{url_for('poster',name=m.poster)}}{% endif %}">
-<source src="{{url_for('video',name=m.video)}}" type="video/mp4">
-आपका browser video नहीं चला सकता।
-</video>
-<div class="ad">{{ ads.ad_bottom|safe }}</div>
-<h3>{{m.category}}</h3><p>{{m.description}}</p>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ m["title"] }} - Tomesh Movies</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #0b0b0f;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+        }
+
+        a {
+            color: white;
+            text-decoration: none;
+        }
+
+        /* HEADER */
+
+        header {
+            background: #111118;
+            border-bottom: 1px solid #292933;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header {
+            max-width: 1200px;
+            margin: auto;
+            padding: 15px 20px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 23px;
+            font-weight: bold;
+        }
+
+        .search {
+            display: flex;
+            gap: 8px;
+            width: 400px;
+            max-width: 100%;
+        }
+
+        .search input {
+            flex: 1;
+            padding: 11px;
+
+            border: 1px solid #333;
+            border-radius: 8px;
+
+            background: #1a1a22;
+            color: white;
+        }
+
+        .search button {
+            padding: 11px 15px;
+
+            border: none;
+            border-radius: 8px;
+
+            background: #e50914;
+            color: white;
+
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* MAIN */
+
+        main {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        /* AD */
+
+        .ad {
+            margin: 15px 0;
+            padding: 15px;
+
+            min-height: 45px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            background: #15151c;
+            border: 1px dashed #333;
+
+            color: #888;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        /* BACK */
+
+        .back {
+            display: inline-block;
+
+            margin: 10px 0 20px;
+
+            padding: 10px 15px;
+
+            background: #1c1c25;
+            border: 1px solid #333;
+
+            border-radius: 8px;
+        }
+
+        /* VIDEO */
+
+        .video-box {
+            width: 100%;
+
+            background: black;
+
+            border-radius: 12px;
+            overflow: hidden;
+
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        video {
+            width: 100%;
+            display: block;
+            background: black;
+            max-height: 700px;
+        }
+
+        /* MOVIE INFO */
+
+        .movie-info {
+            padding: 25px 0;
+        }
+
+        h1 {
+            margin: 0 0 12px;
+
+            font-size: clamp(28px, 5vw, 46px);
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+
+            margin-bottom: 20px;
+        }
+
+        .tag {
+            padding: 7px 12px;
+
+            background: #20202a;
+            border: 1px solid #363640;
+
+            border-radius: 20px;
+
+            color: #ddd;
+
+            font-size: 14px;
+        }
+
+        .description {
+            max-width: 850px;
+
+            color: #c8c8ce;
+
+            line-height: 1.7;
+
+            font-size: 16px;
+        }
+
+        /* BUTTONS */
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+
+            margin-top: 22px;
+        }
+
+        .button {
+            padding: 12px 20px;
+
+            border: none;
+            border-radius: 8px;
+
+            font-weight: bold;
+            cursor: pointer;
+
+            font-size: 15px;
+        }
+
+        .watch {
+            background: #e50914;
+            color: white;
+        }
+
+        .fullscreen {
+            background: #24242e;
+            color: white;
+            border: 1px solid #3a3a45;
+        }
+
+        /* FOOTER */
+
+        footer {
+            margin-top: 40px;
+
+            padding: 25px 20px;
+
+            border-top: 1px solid #292933;
+
+            text-align: center;
+
+            color: #888;
+        }
+
+        /* MOBILE */
+
+        @media (max-width: 700px) {
+
+            .header {
+                flex-direction: column;
+                padding: 12px;
+            }
+
+            .logo {
+                text-align: center;
+            }
+
+            .search {
+                width: 100%;
+            }
+
+            main {
+                padding: 12px;
+            }
+
+            .video-box {
+                border-radius: 8px;
+            }
+
+            video {
+                max-height: 70vh;
+            }
+
+            .buttons {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+
+    <header>
+
+        <div class="header">
+
+            <a href="{{ url_for('home') }}" class="logo">
+                🎬 Tomesh Movies
+            </a>
+
+            <form
+                class="search"
+                action="{{ url_for('home') }}"
+                method="GET"
+            >
+
+                <input
+                    type="search"
+                    name="q"
+                    placeholder="Search movies..."
+                >
+
+                <button type="submit">
+                    Search
+                </button>
+
+            </form>
+
+        </div>
+
+    </header>
+
+
+    <!-- MAIN -->
+
+    <main>
+
+        <!-- TOP AD -->
+
+        {% if ads and ads.get("ad_top") %}
+            {{ ads.get("ad_top") | safe }}
+        {% endif %}
+
+
+        <!-- BACK BUTTON -->
+
+        <a
+            href="{{ url_for('home') }}"
+            class="back"
+        >
+            ← Back
+        </a>
+
+
+        <!-- VIDEO PLAYER -->
+
+        <div class="video-box">
+
+            <video
+                id="moviePlayer"
+                controls
+                preload="metadata"
+                playsinline
+                poster="{% if m['poster'] %}{{ url_for('poster', name=m['poster']) }}{% endif %}"
+            >
+
+                <source
+                    src="{{ url_for('video', name=m['video']) }}"
+                    type="video/mp4"
+                >
+
+                आपका browser video playback support नहीं करता।
+
+            </video>
+
+        </div>
+
+
+        <!-- PLAYER AD -->
+
+        {% if ads and ads.get("ad_player") %}
+            {{ ads.get("ad_player") | safe }}
+        {% endif %}
+
+
+        <!-- MOVIE DETAILS -->
+
+        <div class="movie-info">
+
+            <h1>
+                {{ m["title"] }}
+            </h1>
+
+
+            <div class="tags">
+
+                {% if m["category"] %}
+
+                    <span class="tag">
+                        🎭 {{ m["category"] }}
+                    </span>
+
+                {% endif %}
+
+
+                {% if m["views"] is not none %}
+
+                    <span class="tag">
+                        👁️ {{ m["views"] }} views
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+
+            {% if m["description"] %}
+
+                <div class="description">
+                    {{ m["description"] }}
+                </div>
+
+            {% endif %}
+
+
+            <div class="buttons">
+
+                <button
+                    class="button watch"
+                    onclick="playMovie()"
+                >
+                    ▶ Watch Movie
+                </button>
+
+
+                <button
+                    class="button fullscreen"
+                    onclick="fullscreenMovie()"
+                >
+                    ⛶ Fullscreen
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- BOTTOM AD -->
+
+        {% if ads and ads.get("ad_bottom") %}
+            {{ ads.get("ad_bottom") | safe }}
+        {% endif %}
+
+    </main>
+
+
+    <!-- FOOTER -->
+
+    <footer>
+
+        © Tomesh Movies
+
+    </footer>
+
+
+    <!-- JAVASCRIPT -->
+
+    <script>
+
+        const player =
+            document.getElementById("moviePlayer");
+
+
+        function playMovie() {
+
+            if (!player) {
+                return;
+            }
+
+            player.play().catch(function() {
+
+                player.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                });
+
+            });
+
+        }
+
+
+        function fullscreenMovie() {
+
+            if (!player) {
+                return;
+            }
+
+            if (player.requestFullscreen) {
+
+                player.requestFullscreen();
+
+            } else if (player.webkitEnterFullscreen) {
+
+                player.webkitEnterFullscreen();
+
+            }
+
+        }
+
+    </script>
+
+</body>
+</html>
