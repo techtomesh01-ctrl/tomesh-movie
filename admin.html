@@ -1,23 +1,493 @@
-{% extends "base.html" %}{% block title %}Admin Panel{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}
+Admin Panel
+{% endblock %}
+
 {% block content %}
-<div class="adminhead"><h1>Admin Panel</h1><a href="{{url_for('logout')}}">Logout</a></div>
-<section class="panel"><h2>➕ Add Movie</h2>
-<form method="post" action="{{url_for('add_movie')}}" enctype="multipart/form-data">
-<input name="title" placeholder="Movie name" required>
-<input name="category" placeholder="Category">
-<input name="poster" type="file" accept=".jpg,.jpeg,.png,.webp">
-<input name="video" type="file" accept=".mp4,.webm,.mov" required>
-<textarea name="description" placeholder="Description"></textarea>
-<button>Publish Movie</button>
-</form></section>
-<section class="panel"><h2>📢 Ads Slots</h2>
-<p>अपने ad network का approved HTML/ad code यहाँ लगाएँ।</p>
-<form method="post" action="{{url_for('save_ads')}}">
-<label>Top</label><textarea name="ad_top">{{ads.ad_top}}</textarea>
-<label>Player</label><textarea name="ad_player">{{ads.ad_player}}</textarea>
-<label>Bottom</label><textarea name="ad_bottom">{{ads.ad_bottom}}</textarea>
-<button>Save Ads</button>
-</form></section>
-<section class="panel"><h2>🎬 Movies</h2>
-<table><tr><th>Title</th><th>Views</th><th>Action</th></tr>{% for m in movies %}<tr><td>{{m.title}}</td><td>{{m.views}}</td><td><form method="post" action="{{url_for('delete_movie',movie_id=m.id)}}" onsubmit="return confirm('Delete?')"><button class="danger">Delete</button></form></td></tr>{% endfor %}</table></section>
+
+<div class="adminhead">
+    <h1>Admin Panel</h1>
+    <a href="{{ url_for('logout') }}">Logout</a>
+</div>
+
+
+<!-- ADD MOVIE -->
+
+<section class="panel">
+
+    <h2>➕ Add Movie</h2>
+
+    <form
+        id="movieForm"
+        method="post"
+        action="{{ url_for('add_movie') }}"
+        enctype="multipart/form-data"
+    >
+
+        <input
+            name="title"
+            placeholder="Movie name"
+            required
+        >
+
+        <input
+            name="category"
+            placeholder="Category"
+        >
+
+        <input
+            name="poster"
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp"
+        >
+
+        <input
+            id="videoFile"
+            name="video"
+            type="file"
+            accept=".mp4,.webm,.mov"
+            required
+        >
+
+        <textarea
+            name="description"
+            placeholder="Description"
+        ></textarea>
+
+
+        <!-- FILE INFO -->
+
+        <div id="fileInfo" style="
+            display:none;
+            margin:15px 0;
+            padding:12px;
+            background:#15151c;
+            border-radius:8px;
+        ">
+        </div>
+
+
+        <!-- PROGRESS -->
+
+        <div
+            id="uploadBox"
+            style="
+                display:none;
+                margin:15px 0;
+            "
+        >
+
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                margin-bottom:8px;
+            ">
+
+                <span>
+                    Uploading...
+                </span>
+
+                <strong id="uploadPercent">
+                    0%
+                </strong>
+
+            </div>
+
+
+            <div style="
+                width:100%;
+                height:14px;
+                background:#292933;
+                border-radius:20px;
+                overflow:hidden;
+            ">
+
+                <div
+                    id="progressBar"
+                    style="
+                        width:0%;
+                        height:100%;
+                        background:#e50914;
+                        transition:width .2s;
+                    "
+                ></div>
+
+            </div>
+
+
+            <p
+                id="uploadStatus"
+                style="
+                    color:#aaa;
+                    margin-top:8px;
+                "
+            >
+                Upload शुरू हो रहा है...
+            </p>
+
+        </div>
+
+
+        <button
+            id="publishButton"
+            type="submit"
+        >
+            Publish Movie
+        </button>
+
+    </form>
+
+</section>
+
+
+
+<!-- ADS -->
+
+<section class="panel">
+
+    <h2>📢 Ads Slots</h2>
+
+    <p>
+        अपने approved ad network का HTML/ad code यहाँ लगाएँ।
+    </p>
+
+
+    <form
+        method="post"
+        action="{{ url_for('save_ads') }}"
+    >
+
+        <label>
+            Top
+        </label>
+
+        <textarea name="ad_top">{{ ads.ad_top }}</textarea>
+
+
+        <label>
+            Player
+        </label>
+
+        <textarea name="ad_player">{{ ads.ad_player }}</textarea>
+
+
+        <label>
+            Bottom
+        </label>
+
+        <textarea name="ad_bottom">{{ ads.ad_bottom }}</textarea>
+
+
+        <button type="submit">
+            Save Ads
+        </button>
+
+    </form>
+
+</section>
+
+
+
+<!-- MOVIES -->
+
+<section class="panel">
+
+    <h2>🎬 Movies</h2>
+
+
+    <table>
+
+        <tr>
+            <th>Title</th>
+            <th>Views</th>
+            <th>Action</th>
+        </tr>
+
+
+        {% for m in movies %}
+
+        <tr>
+
+            <td>
+                {{ m.title }}
+            </td>
+
+            <td>
+                {{ m.views }}
+            </td>
+
+            <td>
+
+                <form
+                    method="post"
+                    action="{{ url_for('delete_movie', movie_id=m.id) }}"
+                    onsubmit="return confirm('Delete this movie?')"
+                >
+
+                    <button
+                        class="danger"
+                        type="submit"
+                    >
+                        Delete
+                    </button>
+
+                </form>
+
+            </td>
+
+        </tr>
+
+        {% else %}
+
+        <tr>
+
+            <td colspan="3">
+                अभी कोई movie नहीं है।
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+</section>
+
+
+
+<script>
+
+const movieForm =
+    document.getElementById("movieForm");
+
+const videoFile =
+    document.getElementById("videoFile");
+
+const fileInfo =
+    document.getElementById("fileInfo");
+
+const uploadBox =
+    document.getElementById("uploadBox");
+
+const progressBar =
+    document.getElementById("progressBar");
+
+const uploadPercent =
+    document.getElementById("uploadPercent");
+
+const uploadStatus =
+    document.getElementById("uploadStatus");
+
+const publishButton =
+    document.getElementById("publishButton");
+
+
+
+/* FILE SELECTED */
+
+videoFile.addEventListener("change", function () {
+
+    const file = this.files[0];
+
+    if (!file) {
+        fileInfo.style.display = "none";
+        return;
+    }
+
+
+    const sizeGB =
+        file.size / (1024 * 1024 * 1024);
+
+    const sizeMB =
+        file.size / (1024 * 1024);
+
+
+    let sizeText;
+
+    if (sizeGB >= 1) {
+
+        sizeText =
+            sizeGB.toFixed(2) + " GB";
+
+    } else {
+
+        sizeText =
+            sizeMB.toFixed(1) + " MB";
+
+    }
+
+
+    fileInfo.innerHTML =
+        "🎬 <strong>" +
+        file.name +
+        "</strong><br>" +
+        "📦 Size: " +
+        sizeText;
+
+
+    fileInfo.style.display = "block";
+
+});
+
+
+
+/* UPLOAD */
+
+movieForm.addEventListener("submit", function (event) {
+
+    event.preventDefault();
+
+
+    const file =
+        videoFile.files[0];
+
+
+    if (!file) {
+
+        alert("पहले video select करें।");
+
+        return;
+
+    }
+
+
+    const formData =
+        new FormData(movieForm);
+
+
+    const xhr =
+        new XMLHttpRequest();
+
+
+    uploadBox.style.display =
+        "block";
+
+
+    publishButton.disabled =
+        true;
+
+
+    publishButton.innerText =
+        "Uploading...";
+
+
+    xhr.open(
+        "POST",
+        movieForm.action,
+        true
+    );
+
+
+    /* PROGRESS */
+
+    xhr.upload.addEventListener(
+        "progress",
+        function (event) {
+
+            if (!event.lengthComputable) {
+                return;
+            }
+
+
+            const percent =
+                Math.round(
+                    (event.loaded / event.total) * 100
+                );
+
+
+            progressBar.style.width =
+                percent + "%";
+
+
+            uploadPercent.innerText =
+                percent + "%";
+
+
+            uploadStatus.innerText =
+                "Video upload हो रही है... " +
+                percent +
+                "%";
+
+
+        }
+    );
+
+
+    /* SUCCESS */
+
+    xhr.addEventListener(
+        "load",
+        function () {
+
+            if (
+                xhr.status >= 200 &&
+                xhr.status < 400
+            ) {
+
+                progressBar.style.width =
+                    "100%";
+
+                uploadPercent.innerText =
+                    "100%";
+
+                uploadStatus.innerText =
+                    "✅ Upload पूरा हो गया।";
+
+
+                setTimeout(function () {
+
+                    window.location.href =
+                        xhr.responseURL ||
+                        movieForm.action;
+
+                }, 800);
+
+
+            } else {
+
+                uploadStatus.innerText =
+                    "❌ Upload failed. Server error: " +
+                    xhr.status;
+
+                publishButton.disabled =
+                    false;
+
+                publishButton.innerText =
+                    "Publish Movie";
+
+            }
+
+        }
+    );
+
+
+    /* ERROR */
+
+    xhr.addEventListener(
+        "error",
+        function () {
+
+            uploadStatus.innerText =
+                "❌ Network error. Upload पूरा नहीं हुआ।";
+
+
+            publishButton.disabled =
+                false;
+
+            publishButton.innerText =
+                "Publish Movie";
+
+        }
+    );
+
+
+    /* START */
+
+    xhr.send(formData);
+
+});
+
+</script>
+
 {% endblock %}
