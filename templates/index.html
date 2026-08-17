@@ -1,15 +1,933 @@
-{% extends "base.html" %}{% block title %}Tomesh Movies{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}
+Tomesh Movies - Watch Movies
+{% endblock %}
+
 {% block content %}
-<div class="ad">{{ ads.ad_top|safe }}</div>
-<section class="hero"><h1>Tomesh Movies</h1><p>अपनी और licensed movies के लिए movie portal</p></section>
-<div class="cats"><a href="{{url_for('home')}}">All</a>{% for c in categories %}<a href="{{url_for('home',category=c)}}">{{c}}</a>{% endfor %}</div>
-<h2>Latest Movies</h2>
-<div class="grid">
-{% for m in movies %}
-<article class="card">
-{% if m.poster %}<img src="{{url_for('poster',name=m.poster)}}" alt="{{m.title}}">{% else %}<div class="noposter">🎬</div>{% endif %}
-<div class="pad"><h3>{{m.title}}</h3><small>{{m.category}} · {{m.views}} views</small><a class="btn" href="{{url_for('movie',movie_id=m.id)}}">▶ Watch</a></div>
-</article>
-{% else %}<p>अभी कोई movie नहीं है। Admin से जोड़ें।</p>{% endfor %}
+
+<!-- TOP AD -->
+<div class="ad">
+    {{ ads.ad_top|safe }}
 </div>
+
+
+<!-- HERO / HEADER -->
+
+<section class="hero">
+
+    <div class="hero-content">
+
+        <div class="brand">
+            🎬 TOMESH MOVIES
+        </div>
+
+        <h1>
+            आपकी पसंदीदा Movies
+        </h1>
+
+        <p>
+            अपनी और licensed movies को आसानी से देखें।
+        </p>
+
+
+        <!-- SEARCH -->
+
+        <form
+            class="search-form"
+            method="get"
+            action="{{ url_for('home') }}"
+        >
+
+            <input
+                type="search"
+                name="q"
+                value="{{ q }}"
+                placeholder="🔍 Movie का नाम खोजें..."
+                autocomplete="off"
+            >
+
+            <button type="submit">
+                Search
+            </button>
+
+        </form>
+
+    </div>
+
+</section>
+
+
+
+<!-- CATEGORIES -->
+
+<section class="category-section">
+
+    <h2>Categories</h2>
+
+    <div class="categories">
+
+        <a
+            href="{{ url_for('home') }}"
+            class="category {% if not category %}active{% endif %}"
+        >
+            All
+        </a>
+
+
+        {% for cat in categories %}
+
+        <a
+            href="{{ url_for('home', category=cat) }}"
+            class="category {% if category == cat %}active{% endif %}"
+        >
+            {{ cat }}
+        </a>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
+
+
+<!-- MOVIES -->
+
+<section class="movies-section">
+
+    <div class="section-title">
+
+        <h2>
+            🎬
+            {% if q %}
+                Search Results
+            {% elif category %}
+                {{ category }}
+            {% else %}
+                Latest Movies
+            {% endif %}
+        </h2>
+
+        <span>
+            {{ movies|length }} Movies
+        </span>
+
+    </div>
+
+
+    {% if movies %}
+
+    <div class="movie-grid">
+
+        {% for m in movies %}
+
+        <article class="movie-card">
+
+
+            <!-- POSTER -->
+
+            <a
+                href="{{ url_for('movie', movie_id=m.id) }}"
+                class="poster-link"
+            >
+
+                {% if m.poster %}
+
+                <img
+                    src="{{ url_for('poster', name=m.poster) }}"
+                    alt="{{ m.title }}"
+                    loading="lazy"
+                >
+
+                {% else %}
+
+                <div class="no-poster">
+                    🎬
+                </div>
+
+                {% endif %}
+
+
+                <div class="play-overlay">
+                    ▶
+                </div>
+
+            </a>
+
+
+
+            <!-- MOVIE INFO -->
+
+            <div class="movie-info">
+
+                <h3>
+                    {{ m.title }}
+                </h3>
+
+
+                {% if m.category %}
+
+                <div class="movie-category">
+                    {{ m.category }}
+                </div>
+
+                {% endif %}
+
+
+                <div class="movie-meta">
+
+                    <span>
+                        👁️ {{ m.views }}
+                    </span>
+
+                    <span>
+                        🎬 Movie
+                    </span>
+
+                </div>
+
+
+                <a
+                    href="{{ url_for('movie', movie_id=m.id) }}"
+                    class="watch-btn"
+                >
+                    ▶ Watch Now
+                </a>
+
+            </div>
+
+        </article>
+
+        {% endfor %}
+
+    </div>
+
+
+    {% else %}
+
+    <!-- EMPTY -->
+
+    <div class="empty">
+
+        <div class="empty-icon">
+            🎬
+        </div>
+
+        <h2>
+            अभी कोई movie नहीं है
+        </h2>
+
+        <p>
+            Admin Panel से movie जोड़ें।
+        </p>
+
+        {% if q or category %}
+
+        <a
+            href="{{ url_for('home') }}"
+            class="watch-btn"
+        >
+            सभी Movies देखें
+        </a>
+
+        {% endif %}
+
+    </div>
+
+    {% endif %}
+
+</section>
+
+
+
+<!-- BOTTOM AD -->
+
+<div class="ad">
+    {{ ads.ad_bottom|safe }}
+</div>
+
+
+
+<style>
+
+/* =========================
+   GENERAL
+========================= */
+
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+    margin: 0;
+    background:
+        radial-gradient(
+            circle at top,
+            #24242d 0%,
+            #101014 45%,
+            #08080b 100%
+        );
+    color: #ffffff;
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+}
+
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+
+
+/* =========================
+   AD
+========================= */
+
+.ad {
+    width: 100%;
+    margin: 15px 0;
+    text-align: center;
+}
+
+
+
+/* =========================
+   HERO
+========================= */
+
+.hero {
+    position: relative;
+
+    min-height: 330px;
+
+    display: flex;
+    align-items: center;
+
+    margin: 20px 0 35px;
+
+    padding: 50px 30px;
+
+    border-radius: 22px;
+
+    overflow: hidden;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(229, 9, 20, 0.25),
+            rgba(15, 15, 20, 0.95)
+        );
+}
+
+
+.hero::before {
+    content: "";
+
+    position: absolute;
+
+    width: 300px;
+    height: 300px;
+
+    right: -80px;
+    top: -80px;
+
+    background: #e50914;
+
+    filter: blur(120px);
+
+    opacity: 0.25;
+}
+
+
+.hero-content {
+    position: relative;
+
+    max-width: 750px;
+}
+
+
+.brand {
+    display: inline-block;
+
+    padding: 8px 14px;
+
+    margin-bottom: 15px;
+
+    border-radius: 20px;
+
+    background: rgba(255,255,255,0.08);
+
+    font-size: 14px;
+    font-weight: bold;
+
+    letter-spacing: 1px;
+}
+
+
+.hero h1 {
+    margin: 0 0 12px;
+
+    font-size: clamp(
+        32px,
+        6vw,
+        62px
+    );
+
+    line-height: 1.05;
+}
+
+
+.hero p {
+    margin: 0 0 25px;
+
+    color: #bcbcc5;
+
+    font-size: 17px;
+}
+
+
+
+/* =========================
+   SEARCH
+========================= */
+
+.search-form {
+    display: flex;
+
+    width: 100%;
+
+    max-width: 620px;
+
+    gap: 10px;
+}
+
+
+.search-form input {
+    flex: 1;
+
+    min-width: 0;
+
+    padding: 15px 18px;
+
+    border: 1px solid #33333d;
+
+    border-radius: 12px;
+
+    outline: none;
+
+    background: #17171d;
+
+    color: white;
+
+    font-size: 16px;
+}
+
+
+.search-form input::placeholder {
+    color: #888893;
+}
+
+
+.search-form input:focus {
+    border-color: #e50914;
+}
+
+
+.search-form button {
+    padding: 0 25px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: #e50914;
+
+    color: white;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    font-size: 15px;
+}
+
+
+.search-form button:hover {
+    background: #b80710;
+}
+
+
+
+/* =========================
+   CATEGORIES
+========================= */
+
+.category-section {
+    margin-bottom: 30px;
+}
+
+
+.category-section h2 {
+    margin-bottom: 15px;
+}
+
+
+.categories {
+    display: flex;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+}
+
+
+.category {
+    padding: 9px 17px;
+
+    border: 1px solid #303039;
+
+    border-radius: 30px;
+
+    background: #17171d;
+
+    color: #c8c8d0;
+
+    transition: 0.2s;
+}
+
+
+.category:hover {
+    border-color: #e50914;
+
+    color: white;
+}
+
+
+.category.active {
+    background: #e50914;
+
+    border-color: #e50914;
+
+    color: white;
+
+    font-weight: bold;
+}
+
+
+
+/* =========================
+   MOVIES SECTION
+========================= */
+
+.movies-section {
+    margin-top: 25px;
+}
+
+
+.section-title {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin-bottom: 20px;
+}
+
+
+.section-title h2 {
+    margin: 0;
+
+    font-size: 25px;
+}
+
+
+.section-title span {
+    color: #888893;
+
+    font-size: 14px;
+}
+
+
+
+/* =========================
+   MOVIE GRID
+========================= */
+
+.movie-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fill,
+            minmax(190px, 1fr)
+        );
+
+    gap: 20px;
+}
+
+
+
+/* =========================
+   MOVIE CARD
+========================= */
+
+.movie-card {
+    overflow: hidden;
+
+    border: 1px solid #292932;
+
+    border-radius: 16px;
+
+    background: #15151b;
+
+    transition:
+        transform 0.25s,
+        border-color 0.25s,
+        box-shadow 0.25s;
+}
+
+
+.movie-card:hover {
+    transform: translateY(-6px);
+
+    border-color: #e50914;
+
+    box-shadow:
+        0 15px 40px
+        rgba(0,0,0,0.45);
+}
+
+
+
+/* =========================
+   POSTER
+========================= */
+
+.poster-link {
+    position: relative;
+
+    display: block;
+
+    aspect-ratio: 2 / 3;
+
+    overflow: hidden;
+
+    background: #222229;
+}
+
+
+.poster-link img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+
+    transition: transform 0.35s;
+}
+
+
+.movie-card:hover .poster-link img {
+    transform: scale(1.06);
+}
+
+
+.no-poster {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    font-size: 55px;
+
+    color: #777;
+}
+
+
+
+/* =========================
+   PLAY OVERLAY
+========================= */
+
+.play-overlay {
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    transform:
+        translate(-50%, -50%)
+        scale(0.8);
+
+    width: 58px;
+    height: 58px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #e50914;
+
+    color: white;
+
+    font-size: 24px;
+
+    opacity: 0;
+
+    transition: 0.25s;
+
+    box-shadow:
+        0 8px 25px
+        rgba(0,0,0,0.5);
+}
+
+
+.movie-card:hover .play-overlay {
+    opacity: 1;
+
+    transform:
+        translate(-50%, -50%)
+        scale(1);
+}
+
+
+
+/* =========================
+   MOVIE INFO
+========================= */
+
+.movie-info {
+    padding: 15px;
+}
+
+
+.movie-info h3 {
+    margin: 0 0 8px;
+
+    font-size: 17px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+
+.movie-category {
+    display: inline-block;
+
+    margin-bottom: 10px;
+
+    padding: 4px 9px;
+
+    border-radius: 5px;
+
+    background: #27272f;
+
+    color: #bbb;
+
+    font-size: 12px;
+}
+
+
+.movie-meta {
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+    margin-bottom: 13px;
+
+    color: #888893;
+
+    font-size: 12px;
+}
+
+
+.watch-btn {
+    display: block;
+
+    width: 100%;
+
+    padding: 10px;
+
+    text-align: center;
+
+    border-radius: 9px;
+
+    background: #e50914;
+
+    color: white;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    transition: 0.2s;
+}
+
+
+.watch-btn:hover {
+    background: #b80710;
+}
+
+
+
+/* =========================
+   EMPTY
+========================= */
+
+.empty {
+    padding: 70px 20px;
+
+    text-align: center;
+
+    border: 1px dashed #34343d;
+
+    border-radius: 18px;
+
+    background: #111116;
+}
+
+
+.empty-icon {
+    font-size: 55px;
+
+    margin-bottom: 15px;
+}
+
+
+.empty h2 {
+    margin: 0 0 10px;
+}
+
+
+.empty p {
+    color: #888893;
+
+    margin-bottom: 25px;
+}
+
+
+.empty .watch-btn {
+    display: inline-block;
+
+    width: auto;
+
+    padding: 12px 20px;
+}
+
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 700px) {
+
+    .hero {
+        min-height: 300px;
+
+        padding: 35px 20px;
+
+        border-radius: 16px;
+    }
+
+
+    .hero h1 {
+        font-size: 36px;
+    }
+
+
+    .hero p {
+        font-size: 15px;
+    }
+
+
+    .search-form {
+        flex-direction: column;
+    }
+
+
+    .search-form button {
+        min-height: 48px;
+    }
+
+
+    .movie-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+        gap: 12px;
+    }
+
+
+    .movie-info {
+        padding: 10px;
+    }
+
+
+    .movie-info h3 {
+        font-size: 14px;
+    }
+
+
+    .movie-meta {
+        flex-direction: column;
+
+        gap: 4px;
+    }
+
+
+    .watch-btn {
+        font-size: 12px;
+
+        padding: 9px 5px;
+    }
+
+
+    .play-overlay {
+        width: 48px;
+        height: 48px;
+
+        font-size: 19px;
+    }
+
+}
+
+
+@media (max-width: 380px) {
+
+    .movie-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+}
+
+</style>
+
 {% endblock %}
