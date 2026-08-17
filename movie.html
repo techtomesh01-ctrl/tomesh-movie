@@ -1,12 +1,37 @@
-{% extends "base.html" %}{% block title %}{{m.title}} - Tomesh Movies{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}
+{{ m.title }} - Tomesh Movies
+{% endblock %}
+
 {% block content %}
-<div class="ad">{{ ads.ad_player|safe }}</div>
-<a href="{{url_for('home')}}">← Back</a>
-<h1>{{m.title}}</h1>
-<video class="player" controls preload="metadata" poster="{% if m.poster %}{{url_for('poster',name=m.poster)}}{% endif %}">
-<source src="{{url_for('video',name=m.video)}}" type="video/mp4">
-आपका browser video नहीं चला सकता।
+
+<div class="ad">
+    {{ ads.ad_player|safe }}
+</div>
+
+<a href="{{ url_for('home') }}">← Back</a>
+
+<h1>{{ m.title }}</h1>
+
+<video
+    class="player"
+    controls
+    preload="metadata"
+    playsinline
+    poster="{% if m.poster %}{{ url_for('poster', name=m.poster) }}{% endif %}"
+>
+    <source src="{{ url_for('video', name=m.video) }}">
+
+    आपका browser video नहीं चला सकता।
 </video>
-<div class="ad">{{ ads.ad_bottom|safe }}</div>
-<h3>{{m.category}}</h3><p>{{m.description}}</p>
+
+<div class="ad">
+    {{ ads.ad_bottom|safe }}
+</div>
+
+<h3>{{ m.category }}</h3>
+
+<p>{{ m.description }}</p>
+
 {% endblock %}
