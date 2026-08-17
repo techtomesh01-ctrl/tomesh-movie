@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<div class="adminhead"><h1>Admin Panel</h1><a href="{{url_for('logout')}}">Logout</a></div>
+<section class="panel"><h2>➕ Add Movie</h2>
+<form method="post" action="{{url_for('add_movie')}}" enctype="multipart/form-data">
+<input name="title" placeholder="Movie name" required>
+<input name="category" placeholder="Category">
+<input name="poster" type="file" accept=".jpg,.jpeg,.png,.webp">
+<input name="video" type="file" accept=".mp4,.webm,.mov" required>
+<textarea name="description" placeholder="Description"></textarea>
+<button>Publish Movie</button>
+</form></section>
+<section class="panel"><h2>📢 Ads Slots</h2>
+<p>अपने ad network का approved HTML/ad code यहाँ लगाएँ।</p>
+<form method="post" action="{{url_for('save_ads')}}">
+<label>Top</label><textarea name="ad_top">{{ads.ad_top}}</textarea>
+<label>Player</label><textarea name="ad_player">{{ads.ad_player}}</textarea>
+<label>Bottom</label><textarea name="ad_bottom">{{ads.ad_bottom}}</textarea>
+<button>Save Ads</button>
+</form></section>
+<section class="panel"><h2>🎬 Movies</h2>
+<table><tr><th>Title</th><th>Views</th><th>Action</th></tr>{% for m in movies %}<tr><td>{{m.title}}</td><td>{{m.views}}</td><td><form method="post" action="{{url_for('delete_movie',movie_id=m.id)}}" onsubmit="return confirm('Delete?')"><button class="danger">Delete</button></form></td></tr>{% endfor %}</table></section>
+{% endblock %}

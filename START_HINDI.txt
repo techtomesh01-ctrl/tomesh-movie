@@ -1,0 +1,25 @@
+TOMESH MOVIES - READY TO RUN
+
+1) PC में Python 3.11+ install करें.
+2) इस folder को खोलकर address bar में cmd लिखें और Enter करें.
+3) चलाएँ:
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+4) Admin password बदलें:
+   set ADMIN_PASSWORD=अपना-मजबूत-पासवर्ड
+   python app.py
+5) Browser में खोलें:
+   http://127.0.0.1:5000
+6) Admin:
+   http://127.0.0.1:5000/login
+   Username: admin
+   Password: वही जो ADMIN_PASSWORD में रखा है.
+
+Movie जोड़ने के लिए Admin Panel में poster और video upload करें.
+Ads section में अपने approved ad network का code डालें.
+
+IMPORTANT:
+- केवल अपनी या licensed/public-domain movies upload करें.
+- यह starter/demo project है; production पर लगाने से पहले HTTPS, strong secret, upload limits, storage/CDN, backups और production WSGI server सेट करें.
+- बड़ी movies के लिए local Flask upload की जगह object storage/CDN बेहतर रहेगा.
