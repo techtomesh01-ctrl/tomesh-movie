@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block title %}Tomesh Movies{% endblock %}
 {% block content %}
 <div class="ad">{{ ads.ad_top|safe }}</div>
-<section class="hero"><h1>Tomesh Movies</h1><p>अपनी और licensed movies के लिए movie portal</p></section>
+<section class="hero"><h1>Tomesh Movies</h1><p>अपनी पसंदीदा Movies को आसानी से देखें।</p></section>
 <div class="cats"><a href="{{url_for('home')}}">All</a>{% for c in categories %}<a href="{{url_for('home',category=c)}}">{{c}}</a>{% endfor %}</div>
 <h2>Latest Movies</h2>
 <div class="grid">
