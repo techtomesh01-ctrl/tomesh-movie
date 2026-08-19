@@ -11,9 +11,7 @@ Tomesh Movies - Watch Movies
     {{ ads.ad_top|safe }}
 </div>
 
-
 <!-- HERO / HEADER -->
-
 <section class="hero">
 
     <div class="hero-content">
@@ -27,12 +25,10 @@ Tomesh Movies - Watch Movies
         </h1>
 
         <p>
-            अपनी और licensed movies को आसानी से देखें।
+            अपनी पसंदीदा Movies को आसानी से देखें।
         </p>
 
-
         <!-- SEARCH -->
-
         <form
             class="search-form"
             method="get"
@@ -57,10 +53,7 @@ Tomesh Movies - Watch Movies
 
 </section>
 
-
-
 <!-- CATEGORIES -->
-
 <section class="category-section">
 
     <h2>Categories</h2>
@@ -73,7 +66,6 @@ Tomesh Movies - Watch Movies
         >
             All
         </a>
-
 
         {% for cat in categories %}
 
@@ -90,10 +82,7 @@ Tomesh Movies - Watch Movies
 
 </section>
 
-
-
 <!-- MOVIES -->
-
 <section class="movies-section">
 
     <div class="section-title">
@@ -115,7 +104,6 @@ Tomesh Movies - Watch Movies
 
     </div>
 
-
     {% if movies %}
 
     <div class="movie-grid">
@@ -124,9 +112,7 @@ Tomesh Movies - Watch Movies
 
         <article class="movie-card">
 
-
             <!-- POSTER -->
-
             <a
                 href="{{ url_for('movie', movie_id=m.id) }}"
                 class="poster-link"
@@ -148,23 +134,18 @@ Tomesh Movies - Watch Movies
 
                 {% endif %}
 
-
                 <div class="play-overlay">
                     ▶
                 </div>
 
             </a>
 
-
-
             <!-- MOVIE INFO -->
-
             <div class="movie-info">
 
                 <h3>
                     {{ m.title }}
                 </h3>
-
 
                 {% if m.category %}
 
@@ -173,7 +154,6 @@ Tomesh Movies - Watch Movies
                 </div>
 
                 {% endif %}
-
 
                 <div class="movie-meta">
 
@@ -186,7 +166,6 @@ Tomesh Movies - Watch Movies
                     </span>
 
                 </div>
-
 
                 <a
                     href="{{ url_for('movie', movie_id=m.id) }}"
@@ -203,11 +182,9 @@ Tomesh Movies - Watch Movies
 
     </div>
 
-
     {% else %}
 
     <!-- EMPTY -->
-
     <div class="empty">
 
         <div class="empty-icon">
@@ -239,15 +216,10 @@ Tomesh Movies - Watch Movies
 
 </section>
 
-
-
 <!-- BOTTOM AD -->
-
 <div class="ad">
     {{ ads.ad_bottom|safe }}
 </div>
-
-
 
 <style>
 
@@ -258,7 +230,6 @@ Tomesh Movies - Watch Movies
 * {
     box-sizing: border-box;
 }
-
 
 body {
     margin: 0;
@@ -276,13 +247,10 @@ body {
         sans-serif;
 }
 
-
 a {
     text-decoration: none;
     color: inherit;
 }
-
-
 
 /* =========================
    AD
@@ -294,26 +262,18 @@ a {
     text-align: center;
 }
 
-
-
 /* =========================
    HERO
 ========================= */
 
 .hero {
     position: relative;
-
     min-height: 330px;
-
     display: flex;
     align-items: center;
-
     margin: 20px 0 35px;
-
     padding: 50px 30px;
-
     border-radius: 22px;
-
     overflow: hidden;
 
     background:
@@ -323,7 +283,6 @@ a {
             rgba(15, 15, 20, 0.95)
         );
 }
-
 
 .hero::before {
     content: "";
@@ -343,13 +302,10 @@ a {
     opacity: 0.25;
 }
 
-
 .hero-content {
     position: relative;
-
     max-width: 750px;
 }
-
 
 .brand {
     display: inline-block;
@@ -368,7 +324,6 @@ a {
     letter-spacing: 1px;
 }
 
-
 .hero h1 {
     margin: 0 0 12px;
 
@@ -381,7 +336,6 @@ a {
     line-height: 1.05;
 }
 
-
 .hero p {
     margin: 0 0 25px;
 
@@ -389,8 +343,6 @@ a {
 
     font-size: 17px;
 }
-
-
 
 /* =========================
    SEARCH
@@ -405,7 +357,6 @@ a {
 
     gap: 10px;
 }
-
 
 .search-form input {
     flex: 1;
@@ -427,16 +378,13 @@ a {
     font-size: 16px;
 }
 
-
 .search-form input::placeholder {
     color: #888893;
 }
 
-
 .search-form input:focus {
     border-color: #e50914;
 }
-
 
 .search-form button {
     padding: 0 25px;
@@ -456,12 +404,9 @@ a {
     font-size: 15px;
 }
 
-
 .search-form button:hover {
     background: #b80710;
 }
-
-
 
 /* =========================
    CATEGORIES
@@ -471,11 +416,9 @@ a {
     margin-bottom: 30px;
 }
 
-
 .category-section h2 {
     margin-bottom: 15px;
 }
-
 
 .categories {
     display: flex;
@@ -484,7 +427,6 @@ a {
 
     flex-wrap: wrap;
 }
-
 
 .category {
     padding: 9px 17px;
@@ -500,13 +442,11 @@ a {
     transition: 0.2s;
 }
 
-
 .category:hover {
     border-color: #e50914;
 
     color: white;
 }
-
 
 .category.active {
     background: #e50914;
@@ -518,8 +458,6 @@ a {
     font-weight: bold;
 }
 
-
-
 /* =========================
    MOVIES SECTION
 ========================= */
@@ -527,7 +465,6 @@ a {
 .movies-section {
     margin-top: 25px;
 }
-
 
 .section-title {
     display: flex;
@@ -541,21 +478,17 @@ a {
     margin-bottom: 20px;
 }
 
-
 .section-title h2 {
     margin: 0;
 
     font-size: 25px;
 }
 
-
 .section-title span {
     color: #888893;
 
     font-size: 14px;
 }
-
-
 
 /* =========================
    MOVIE GRID
@@ -572,8 +505,6 @@ a {
 
     gap: 20px;
 }
-
-
 
 /* =========================
    MOVIE CARD
@@ -594,7 +525,6 @@ a {
         box-shadow 0.25s;
 }
 
-
 .movie-card:hover {
     transform: translateY(-6px);
 
@@ -604,8 +534,6 @@ a {
         0 15px 40px
         rgba(0,0,0,0.45);
 }
-
-
 
 /* =========================
    POSTER
@@ -623,7 +551,6 @@ a {
     background: #222229;
 }
 
-
 .poster-link img {
     width: 100%;
     height: 100%;
@@ -635,11 +562,9 @@ a {
     transition: transform 0.35s;
 }
 
-
 .movie-card:hover .poster-link img {
     transform: scale(1.06);
 }
-
 
 .no-poster {
     width: 100%;
@@ -654,8 +579,6 @@ a {
 
     color: #777;
 }
-
-
 
 /* =========================
    PLAY OVERLAY
@@ -696,7 +619,6 @@ a {
         rgba(0,0,0,0.5);
 }
 
-
 .movie-card:hover .play-overlay {
     opacity: 1;
 
@@ -705,8 +627,6 @@ a {
         scale(1);
 }
 
-
-
 /* =========================
    MOVIE INFO
 ========================= */
@@ -714,7 +634,6 @@ a {
 .movie-info {
     padding: 15px;
 }
-
 
 .movie-info h3 {
     margin: 0 0 8px;
@@ -727,7 +646,6 @@ a {
 
     text-overflow: ellipsis;
 }
-
 
 .movie-category {
     display: inline-block;
@@ -745,7 +663,6 @@ a {
     font-size: 12px;
 }
 
-
 .movie-meta {
     display: flex;
 
@@ -759,7 +676,6 @@ a {
 
     font-size: 12px;
 }
-
 
 .watch-btn {
     display: block;
@@ -783,12 +699,9 @@ a {
     transition: 0.2s;
 }
 
-
 .watch-btn:hover {
     background: #b80710;
 }
-
-
 
 /* =========================
    EMPTY
@@ -806,25 +719,21 @@ a {
     background: #111116;
 }
 
-
 .empty-icon {
     font-size: 55px;
 
     margin-bottom: 15px;
 }
 
-
 .empty h2 {
     margin: 0 0 10px;
 }
-
 
 .empty p {
     color: #888893;
 
     margin-bottom: 25px;
 }
-
 
 .empty .watch-btn {
     display: inline-block;
@@ -833,8 +742,6 @@ a {
 
     padding: 12px 20px;
 }
-
-
 
 /* =========================
    MOBILE
@@ -850,26 +757,21 @@ a {
         border-radius: 16px;
     }
 
-
     .hero h1 {
         font-size: 36px;
     }
-
 
     .hero p {
         font-size: 15px;
     }
 
-
     .search-form {
         flex-direction: column;
     }
 
-
     .search-form button {
         min-height: 48px;
     }
-
 
     .movie-grid {
         grid-template-columns:
@@ -881,16 +783,13 @@ a {
         gap: 12px;
     }
 
-
     .movie-info {
         padding: 10px;
     }
 
-
     .movie-info h3 {
         font-size: 14px;
     }
-
 
     .movie-meta {
         flex-direction: column;
@@ -898,13 +797,11 @@ a {
         gap: 4px;
     }
 
-
     .watch-btn {
         font-size: 12px;
 
         padding: 9px 5px;
     }
-
 
     .play-overlay {
         width: 48px;
@@ -914,7 +811,6 @@ a {
     }
 
 }
-
 
 @media (max-width: 380px) {
 
