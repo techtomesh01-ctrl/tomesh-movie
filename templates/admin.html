@@ -1,23 +1,412 @@
-{% extends "base.html" %}{% block title %}Admin Panel{% endblock %}
-{% block content %}
-<div class="adminhead"><h1>Admin Panel</h1><a href="{{url_for('logout')}}">Logout</a></div>
-<section class="panel"><h2>➕ Add Movie</h2>
-<form method="post" action="{{url_for('add_movie')}}" enctype="multipart/form-data">
-<input name="title" placeholder="Movie name" required>
-<input name="category" placeholder="Category">
-<input name="poster" type="file" accept=".jpg,.jpeg,.png,.webp">
-<input name="video" type="file" accept=".mp4,.webm,.mov" required>
-<textarea name="description" placeholder="Description"></textarea>
-<button>Publish Movie</button>
-</form></section>
-<section class="panel"><h2>📢 Ads Slots</h2>
-<p>अपने ad network का approved HTML/ad code यहाँ लगाएँ।</p>
-<form method="post" action="{{url_for('save_ads')}}">
-<label>Top</label><textarea name="ad_top">{{ads.ad_top}}</textarea>
-<label>Player</label><textarea name="ad_player">{{ads.ad_player}}</textarea>
-<label>Bottom</label><textarea name="ad_bottom">{{ads.ad_bottom}}</textarea>
-<button>Save Ads</button>
-</form></section>
-<section class="panel"><h2>🎬 Movies</h2>
-<table><tr><th>Title</th><th>Views</th><th>Action</th></tr>{% for m in movies %}<tr><td>{{m.title}}</td><td>{{m.views}}</td><td><form method="post" action="{{url_for('delete_movie',movie_id=m.id)}}" onsubmit="return confirm('Delete?')"><button class="danger">Delete</button></form></td></tr>{% endfor %}</table></section>
-{% endblock %}
+<!doctype html>
+<html lang="hi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Admin Panel - Tomesh Movies</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #0b0f19;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid #252b38;
+        }
+
+        header a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 22px;
+        }
+
+        .logout {
+            background: #e50914;
+            padding: 10px 16px;
+            border-radius: 8px;
+        }
+
+        h1 {
+            margin-top: 30px;
+        }
+
+        .card {
+            background: #131925;
+            border: 1px solid #252b38;
+            border-radius: 14px;
+            padding: 22px;
+            margin: 20px 0;
+        }
+
+        label {
+            display: block;
+            margin: 15px 0 7px;
+            font-weight: bold;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 13px;
+            border-radius: 8px;
+            border: 1px solid #343b4b;
+            background: #0d121d;
+            color: white;
+            font-size: 15px;
+        }
+
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+        }
+
+        .publish {
+            margin-top: 20px;
+            width: 100%;
+            padding: 14px;
+            border: 0;
+            border-radius: 9px;
+            background: #e50914;
+            color: white;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .publish:hover {
+            background: #b80710;
+        }
+
+        .ad-box {
+            background: #0d121d;
+            border: 1px solid #343b4b;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .movie {
+            border-top: 1px solid #2b3240;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .movie-title {
+            font-weight: bold;
+            font-size: 17px;
+        }
+
+        .delete {
+            background: #dc2626;
+            border: 0;
+            color: white;
+            padding: 9px 14px;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        .flash {
+            background: #14532d;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .hint {
+            color: #9ca3af;
+            font-size: 13px;
+            margin-top: 6px;
+        }
+
+        @media (max-width: 600px) {
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .movie {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div class="container">
+        <div class="topbar">
+
+            <a href="{{ url_for('home') }}" class="logo">
+                🎬 Tomesh Movies
+            </a>
+
+            <a href="{{ url_for('logout') }}" class="logout">
+                Logout
+            </a>
+
+        </div>
+    </div>
+</header>
+
+<main class="container">
+
+    <h1>⚙️ Admin Panel</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+
+    <!-- ================================================= -->
+    <!-- ADD MOVIE -->
+    <!-- ================================================= -->
+
+    <section class="card">
+
+        <h2>➕ Add Movie</h2>
+
+        <form
+            action="{{ url_for('add_movie') }}"
+            method="POST"
+            enctype="multipart/form-data"
+        >
+
+            <label for="title">
+                Movie Title *
+            </label>
+
+            <input
+                type="text"
+                id="title"
+                name="title"
+                placeholder="जैसे: Devdas (1935)"
+                required
+            >
+
+
+            <label for="category">
+                Category
+            </label>
+
+            <input
+                type="text"
+                id="category"
+                name="category"
+                placeholder="जैसे: Hindi, Drama, Classic"
+            >
+
+
+            <label for="description">
+                Movie Description
+            </label>
+
+            <textarea
+                id="description"
+                name="description"
+                placeholder="Movie के बारे में अपनी original जानकारी लिखें..."
+            ></textarea>
+
+
+            <label for="poster">
+                🖼️ Poster
+            </label>
+
+            <input
+                type="file"
+                id="poster"
+                name="poster"
+                accept=".jpg,.jpeg,.png,.webp"
+            >
+
+            <div class="hint">
+                JPG, JPEG, PNG या WEBP
+            </div>
+
+
+            <label for="video">
+                🎬 Movie Video *
+            </label>
+
+            <input
+                type="file"
+                id="video"
+                name="video"
+                accept=".mp4,.webm,.mov"
+                required
+            >
+
+            <div class="hint">
+                MP4, WebM या MOV
+            </div>
+
+
+            <button
+                type="submit"
+                class="publish"
+            >
+                🚀 Publish Movie
+            </button>
+
+        </form>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- ADS -->
+    <!-- ================================================= -->
+
+    <section class="card">
+
+        <h2>📢 Ads Slots</h2>
+
+        <p>
+            अपने ad network का approved HTML/ad code यहाँ लगाएँ।
+        </p>
+
+        <form
+            action="{{ url_for('save_ads') }}"
+            method="POST"
+        >
+
+            <label>
+                Top Ad
+            </label>
+
+            <textarea
+                name="ad_top"
+                placeholder="Top ad code"
+            >{{ ads.get('ad_top', '') }}</textarea>
+
+
+            <label>
+                Player Ad
+            </label>
+
+            <textarea
+                name="ad_player"
+                placeholder="Player ad code"
+            >{{ ads.get('ad_player', '') }}</textarea>
+
+
+            <label>
+                Bottom Ad
+            </label>
+
+            <textarea
+                name="ad_bottom"
+                placeholder="Bottom ad code"
+            >{{ ads.get('ad_bottom', '') }}</textarea>
+
+
+            <button
+                type="submit"
+                class="publish"
+            >
+                💾 Save Ads
+            </button>
+
+        </form>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- MOVIES -->
+    <!-- ================================================= -->
+
+    <section class="card">
+
+        <h2>🎬 Movies</h2>
+
+        {% if movies %}
+
+            {% for m in movies %}
+
+                <div class="movie">
+
+                    <div>
+                        <div class="movie-title">
+                            🎬 {{ m['title'] }}
+                        </div>
+
+                        <div class="hint">
+                            Category: {{ m['category'] or 'None' }}
+                            |
+                            Views: {{ m['views'] }}
+                        </div>
+                    </div>
+
+                    <form
+                        action="{{ url_for('delete_movie', movie_id=m['id']) }}"
+                        method="POST"
+                        onsubmit="return confirm('क्या आप इस movie को delete करना चाहते हैं?');"
+                    >
+                        <button
+                            type="submit"
+                            class="delete"
+                        >
+                            Delete
+                        </button>
+                    </form>
+
+                </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <p>
+                अभी कोई movie नहीं है।
+            </p>
+
+        {% endif %}
+
+    </section>
+
+</main>
+
+</body>
+</html>
