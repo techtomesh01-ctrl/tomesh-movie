@@ -74,69 +74,77 @@ def db():
 def init_db():
 
     con = db()
-
     cur = con.cursor()
 
-    # -----------------------------------------------------
-    # Movies
-    # -----------------------------------------------------
+    try:
 
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS movies (
-            id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            category TEXT DEFAULT '',
-            description TEXT DEFAULT '',
-            poster TEXT DEFAULT '',
-            video TEXT DEFAULT '',
-            poster_url TEXT DEFAULT '',
-            video_url TEXT DEFAULT '',
-            views INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-
-    # -----------------------------------------------------
-    # Settings
-    # -----------------------------------------------------
-
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT DEFAULT ''
-        )
-        """
-    )
-
-    # -----------------------------------------------------
-    # Default ads
-    # -----------------------------------------------------
-
-    default_settings = {
-        "ad_top": "",
-        "ad_player": "",
-        "ad_bottom": "",
-    }
-
-    for key, value in default_settings.items():
+        # -------------------------------------------------
+        # Movies
+        # -------------------------------------------------
 
         cur.execute(
             """
-            INSERT INTO settings(key, value)
-            VALUES (%s, %s)
-            ON CONFLICT(key)
-            DO NOTHING
-            """,
-            (key, value)
+            CREATE TABLE IF NOT EXISTS movies (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                category TEXT DEFAULT '',
+                description TEXT DEFAULT '',
+                poster TEXT DEFAULT '',
+                video TEXT DEFAULT '',
+                poster_url TEXT DEFAULT '',
+                video_url TEXT DEFAULT '',
+                views INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
         )
 
-    con.commit()
+        # -------------------------------------------------
+        # Settings
+        # -------------------------------------------------
 
-    cur.close()
-    con.close()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT DEFAULT ''
+            )
+            """
+        )
+
+        # -------------------------------------------------
+        # Default Ads
+        # -------------------------------------------------
+
+        default_settings = {
+            "ad_top": "",
+            "ad_player": "",
+            "ad_bottom": "",
+        }
+
+        for key, value in default_settings.items():
+
+            cur.execute(
+                """
+                INSERT INTO settings(key, value)
+                VALUES (%s, %s)
+                ON CONFLICT(key)
+                DO NOTHING
+                """,
+                (key, value)
+            )
+
+        con.commit()
+
+    except Exception:
+
+        con.rollback()
+        raise
+
+    finally:
+
+        cur.close()
+        con.close()
 
 
 # =========================================================
@@ -146,25 +154,28 @@ def init_db():
 def get_settings():
 
     con = db()
-
     cur = con.cursor()
 
-    cur.execute(
-        """
-        SELECT key, value
-        FROM settings
-        """
-    )
+    try:
 
-    rows = cur.fetchall()
+        cur.execute(
+            """
+            SELECT key, value
+            FROM settings
+            """
+        )
 
-    cur.close()
-    con.close()
+        rows = cur.fetchall()
 
-    return {
-        row["key"]: row["value"]
-        for row in rows
-    }
+        return {
+            row["key"]: row["value"]
+            for row in rows
+        }
+
+    finally:
+
+        cur.close()
+        con.close()
 
 
 # =========================================================
@@ -174,8 +185,17 @@ def get_settings():
 @app.context_processor
 def inject():
 
+    try:
+        ads = get_settings()
+    except Exception:
+        ads = {
+            "ad_top": "",
+            "ad_player": "",
+            "ad_bottom": "",
+        }
+
     return {
-        "ads": get_settings()
+        "ads": ads
     }
 
 
@@ -239,68 +259,75 @@ def home():
     ).strip()
 
     con = db()
-
     cur = con.cursor()
 
-    if q:
+    try:
+
+        if q:
+
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE title ILIKE %s
+                ORDER BY id DESC
+                """,
+                (f"%{q}%",)
+            )
+
+        elif category:
+
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE category = %s
+                ORDER BY id DESC
+                """,
+                (category,)
+            )
+
+        else:
+
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                ORDER BY id DESC
+                """
+            )
+
+        movies = cur.fetchall()
+
+        # -------------------------------------------------
+        # Categories
+        # -------------------------------------------------
 
         cur.execute(
             """
-            SELECT *
+            SELECT DISTINCT category
             FROM movies
-            WHERE title ILIKE %s
-            ORDER BY id DESC
-            """,
-            (f"%{q}%",)
-        )
-
-    elif category:
-
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            WHERE category = %s
-            ORDER BY id DESC
-            """,
-            (category,)
-        )
-
-    else:
-
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            ORDER BY id DESC
+            WHERE category <> ''
+            ORDER BY category
             """
         )
 
-    movies = cur.fetchall()
+        cats = cur.fetchall()
 
-    # Categories
+        categories = [
+            c["category"]
+            for c in cats
+        ]
 
-    cur.execute(
-        """
-        SELECT DISTINCT category
-        FROM movies
-        WHERE category <> ''
-        ORDER BY category
-        """
-    )
+    finally:
 
-    cats = cur.fetchall()
-
-    cur.close()
-    con.close()
+        cur.close()
+        con.close()
 
     return render_template(
         "index.html",
         movies=movies,
-        categories=[
-            c["category"]
-            for c in cats
-        ],
+        categories=categories,
         q=q,
         category=category
     )
@@ -314,42 +341,44 @@ def home():
 def movie(movie_id):
 
     con = db()
-
     cur = con.cursor()
 
-    cur.execute(
-        """
-        SELECT *
-        FROM movies
-        WHERE id = %s
-        """,
-        (movie_id,)
-    )
+    try:
 
-    movie_data = cur.fetchone()
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
 
-    if not movie_data:
+        movie_data = cur.fetchone()
+
+        if not movie_data:
+
+            abort(404)
+
+        # -------------------------------------------------
+        # Increase Views
+        # -------------------------------------------------
+
+        cur.execute(
+            """
+            UPDATE movies
+            SET views = views + 1
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
+
+        con.commit()
+
+    finally:
 
         cur.close()
         con.close()
-
-        abort(404)
-
-    # Increase views
-
-    cur.execute(
-        """
-        UPDATE movies
-        SET views = views + 1
-        WHERE id = %s
-        """,
-        (movie_id,)
-    )
-
-    con.commit()
-
-    cur.close()
-    con.close()
 
     return render_template(
         "movie.html",
@@ -429,21 +458,24 @@ def logout():
 def admin():
 
     con = db()
-
     cur = con.cursor()
 
-    cur.execute(
-        """
-        SELECT *
-        FROM movies
-        ORDER BY id DESC
-        """
-    )
+    try:
 
-    movies = cur.fetchall()
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            ORDER BY id DESC
+            """
+        )
 
-    cur.close()
-    con.close()
+        movies = cur.fetchall()
+
+    finally:
+
+        cur.close()
+        con.close()
 
     return render_template(
         "admin.html",
@@ -539,14 +571,9 @@ def add_movie():
 
     # -----------------------------------------------------
     # Local filename information
-    #
-    # IMPORTANT:
-    # Render Free filesystem is NOT permanent.
-    # Therefore external URLs are recommended.
     # -----------------------------------------------------
 
     poster_name = ""
-
     video_name = ""
 
     if (
@@ -568,7 +595,7 @@ def add_movie():
         )
 
     # -----------------------------------------------------
-    # If local files are supplied, warn user
+    # Render Free warning
     # -----------------------------------------------------
 
     if video_file and video_file.filename:
@@ -584,49 +611,57 @@ def add_movie():
     # -----------------------------------------------------
 
     con = db()
-
     cur = con.cursor()
 
-    cur.execute(
-        """
-        INSERT INTO movies
-        (
-            title,
-            category,
-            description,
-            poster,
-            video,
-            poster_url,
-            video_url
-        )
-        VALUES (
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s
-        )
-        RETURNING id
-        """,
-        (
-            title,
-            category,
-            description,
-            poster_name,
-            video_name,
-            poster_url,
-            video_url
-        )
-    )
+    try:
 
-    movie_id = cur.fetchone()["id"]
+        cur.execute(
+            """
+            INSERT INTO movies
+            (
+                title,
+                category,
+                description,
+                poster,
+                video,
+                poster_url,
+                video_url
+            )
+            VALUES (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+            RETURNING id
+            """,
+            (
+                title,
+                category,
+                description,
+                poster_name,
+                video_name,
+                poster_url,
+                video_url
+            )
+        )
 
-    con.commit()
+        movie_id = cur.fetchone()["id"]
 
-    cur.close()
-    con.close()
+        con.commit()
+
+    except Exception:
+
+        con.rollback()
+        raise
+
+    finally:
+
+        cur.close()
+        con.close()
 
     flash(
         f"Movie publish हो गई. ID: {movie_id}"
@@ -649,21 +684,29 @@ def add_movie():
 def delete_movie(movie_id):
 
     con = db()
-
     cur = con.cursor()
 
-    cur.execute(
-        """
-        DELETE FROM movies
-        WHERE id = %s
-        """,
-        (movie_id,)
-    )
+    try:
 
-    con.commit()
+        cur.execute(
+            """
+            DELETE FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
 
-    cur.close()
-    con.close()
+        con.commit()
+
+    except Exception:
+
+        con.rollback()
+        raise
+
+    finally:
+
+        cur.close()
+        con.close()
 
     flash(
         "Movie delete हो गई."
@@ -686,38 +729,46 @@ def delete_movie(movie_id):
 def save_ads():
 
     con = db()
-
     cur = con.cursor()
 
-    for key in (
-        "ad_top",
-        "ad_player",
-        "ad_bottom"
-    ):
+    try:
 
-        value = request.form.get(
-            key,
-            ""
-        )
+        for key in (
+            "ad_top",
+            "ad_player",
+            "ad_bottom"
+        ):
 
-        cur.execute(
-            """
-            INSERT INTO settings(key, value)
-            VALUES (%s, %s)
-            ON CONFLICT(key)
-            DO UPDATE SET
-                value = EXCLUDED.value
-            """,
-            (
+            value = request.form.get(
                 key,
-                value
+                ""
             )
-        )
 
-    con.commit()
+            cur.execute(
+                """
+                INSERT INTO settings(key, value)
+                VALUES (%s, %s)
+                ON CONFLICT(key)
+                DO UPDATE SET
+                    value = EXCLUDED.value
+                """,
+                (
+                    key,
+                    value
+                )
+            )
 
-    cur.close()
-    con.close()
+        con.commit()
+
+    except Exception:
+
+        con.rollback()
+        raise
+
+    finally:
+
+        cur.close()
+        con.close()
 
     flash(
         "Ads settings saved."
@@ -738,7 +789,6 @@ def health():
     try:
 
         con = db()
-
         cur = con.cursor()
 
         cur.execute(
@@ -765,12 +815,29 @@ def health():
 
 
 # =========================================================
+# DATABASE INITIALIZATION
+# =========================================================
+# IMPORTANT:
+# Render/Gunicorn पर भी tables automatically बनें.
+# =========================================================
+
+try:
+
+    init_db()
+
+except Exception as e:
+
+    print(
+        "DATABASE INITIALIZATION ERROR:",
+        e
+    )
+
+
+# =========================================================
 # START
 # =========================================================
 
 if __name__ == "__main__":
-
-    init_db()
 
     app.run(
         host="0.0.0.0",
@@ -780,5 +847,5 @@ if __name__ == "__main__":
                 5000
             )
         ),
-        debug=True
+        debug=False
     )
