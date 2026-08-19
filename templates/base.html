@@ -1,16 +1,13 @@
+```html
 <!doctype html>
 <html lang="hi">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>
-        {% block title %}Tomesh Movies{% endblock %}
-    </title>
+    <title>{% block title %}Tomesh Movies{% endblock %}</title>
 
-    <meta name="description"
-          content="Tomesh Movies - Movies portal">
+    <meta name="description" content="Tomesh Movies - Movies portal">
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
@@ -18,7 +15,8 @@
     <!-- Google AdSense -->
     <script async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8697157365303435"
-        crossorigin="anonymous"></script>
+        crossorigin="anonymous">
+    </script>
 
     {% block head %}{% endblock %}
 </head>
@@ -29,12 +27,9 @@
     <div class="header-inner">
 
         <!-- LOGO -->
-        <a class="logo"
-           href="{{ url_for('home') }}">
+        <a class="logo" href="{{ url_for('home') }}">
             🎬
-            <span>
-                Tomesh Movies
-            </span>
+            <span>Tomesh Movies</span>
         </a>
 
         <!-- SEARCH -->
@@ -47,12 +42,9 @@
                 name="q"
                 value="{{ q|default('') }}"
                 placeholder="Movie खोजें..."
-                autocomplete="off"
-            >
+                autocomplete="off">
 
-            <button type="submit">
-                🔍
-            </button>
+            <button type="submit">🔍</button>
         </form>
 
         <!-- ADMIN -->
@@ -89,9 +81,7 @@
 
     <div class="footer-logo">
         🎬
-        <strong>
-            Tomesh Movies
-        </strong>
+        <strong>Tomesh Movies</strong>
     </div>
 
     <p>
@@ -106,3 +96,4 @@
 
 </body>
 </html>
+```
