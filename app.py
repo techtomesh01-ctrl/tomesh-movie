@@ -14,6 +14,7 @@ from flask import (
     send_from_directory,
     abort,
 )
+
 from werkzeug.utils import secure_filename
 
 
@@ -81,8 +82,15 @@ ALLOWED_VIDEOS = {
 # CREATE UPLOAD DIRECTORIES
 # =========================================================
 
-os.makedirs(POSTER_DIR, exist_ok=True)
-os.makedirs(VIDEO_DIR, exist_ok=True)
+os.makedirs(
+    POSTER_DIR,
+    exist_ok=True
+)
+
+os.makedirs(
+    VIDEO_DIR,
+    exist_ok=True
+)
 
 
 # =========================================================
@@ -100,10 +108,12 @@ def db():
 # =========================================================
 
 def init_db():
+
     con = db()
 
     # Movies table
-    con.execute("""
+    con.execute(
+        """
         CREATE TABLE IF NOT EXISTS movies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -114,15 +124,18 @@ def init_db():
             views INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    """)
+        """
+    )
 
     # Settings table
-    con.execute("""
+    con.execute(
+        """
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT DEFAULT ''
         )
-    """)
+        """
+    )
 
     # Default ad settings
     default_settings = {
@@ -132,6 +145,7 @@ def init_db():
     }
 
     for key, value in default_settings.items():
+
         con.execute(
             """
             INSERT OR IGNORE INTO settings(key, value)
@@ -145,8 +159,7 @@ def init_db():
 
 
 # =========================================================
-# IMPORTANT:
-# Run database initialization when Gunicorn starts.
+# INITIALIZE DATABASE
 # =========================================================
 
 init_db()
@@ -157,6 +170,7 @@ init_db()
 # =========================================================
 
 def ext_ok(name, allowed):
+
     return (
         "." in name
         and name.rsplit(".", 1)[1].lower() in allowed
@@ -168,10 +182,14 @@ def ext_ok(name, allowed):
 # =========================================================
 
 def admin_required(f):
+
     @wraps(f)
     def wrapper(*args, **kwargs):
+
         if not session.get("admin"):
-            return redirect(url_for("login"))
+            return redirect(
+                url_for("login")
+            )
 
         return f(*args, **kwargs)
 
@@ -183,6 +201,7 @@ def admin_required(f):
 # =========================================================
 
 def settings():
+
     con = db()
 
     rows = con.execute(
@@ -203,9 +222,31 @@ def settings():
 
 @app.context_processor
 def inject():
+
     return {
         "ads": settings()
     }
+
+
+# =========================================================
+# GOOGLE ADSENSE ADS.TXT
+# =========================================================
+
+@app.route("/ads.txt")
+def ads_txt():
+
+    content = (
+        "google.com, pub-8697157365303435, DIRECT, "
+        "f08c47fec0942fa0\n"
+    )
+
+    return (
+        content,
+        200,
+        {
+            "Content-Type": "text/plain; charset=utf-8"
+        }
+    )
 
 
 # =========================================================
@@ -303,7 +344,9 @@ def movie(movie_id):
     ).fetchone()
 
     if not movie_data:
+
         con.close()
+
         abort(404)
 
     # Increase views
@@ -475,7 +518,6 @@ def add_movie():
         "video"
     )
 
-
     # -----------------------------------------------------
     # Required fields
     # -----------------------------------------------------
@@ -493,7 +535,6 @@ def add_movie():
         return redirect(
             url_for("admin")
         )
-
 
     # -----------------------------------------------------
     # Poster validation
@@ -516,7 +557,6 @@ def add_movie():
             url_for("admin")
         )
 
-
     # -----------------------------------------------------
     # Video validation
     # -----------------------------------------------------
@@ -533,7 +573,6 @@ def add_movie():
         return redirect(
             url_for("admin")
         )
-
 
     # -----------------------------------------------------
     # Secure video filename
@@ -553,7 +592,6 @@ def add_movie():
             url_for("admin")
         )
 
-
     # -----------------------------------------------------
     # Save video
     # -----------------------------------------------------
@@ -566,7 +604,6 @@ def add_movie():
     video_file.save(
         video_path
     )
-
 
     # -----------------------------------------------------
     # Save poster
@@ -593,7 +630,6 @@ def add_movie():
             poster_file.save(
                 poster_path
             )
-
 
     # -----------------------------------------------------
     # Save movie in database
@@ -624,7 +660,6 @@ def add_movie():
 
     con.commit()
     con.close()
-
 
     flash(
         "Movie publish हो गई."
@@ -657,7 +692,6 @@ def delete_movie(movie_id):
         (movie_id,),
     ).fetchone()
 
-
     if movie_data:
 
         files_to_delete = [
@@ -670,7 +704,6 @@ def delete_movie(movie_id):
                 movie_data["poster"]
             ),
         ]
-
 
         for directory, name in files_to_delete:
 
@@ -689,7 +722,6 @@ def delete_movie(movie_id):
                         file_path
                     )
 
-
         con.execute(
             """
             DELETE FROM movies
@@ -699,7 +731,6 @@ def delete_movie(movie_id):
         )
 
         con.commit()
-
 
     con.close()
 
@@ -756,7 +787,7 @@ def save_ads():
 
 
 # =========================================================
-# LOCAL DEVELOPMENT
+# LOCAL DEVELOPMENT / RENDER
 # =========================================================
 
 if __name__ == "__main__":
