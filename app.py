@@ -15,7 +15,6 @@ from flask import (
     flash,
     abort,
     Response,
-    send_from_directory,
 )
 
 from werkzeug.utils import secure_filename
@@ -33,32 +32,6 @@ app.secret_key = os.environ.get(
 )
 
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024
-
-
-# =========================================================
-# PATHS
-# =========================================================
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-UPLOAD_ROOT = os.path.join(
-    BASE_DIR,
-    "uploads"
-)
-
-POSTER_ROOT = os.path.join(
-    UPLOAD_ROOT,
-    "posters"
-)
-
-VIDEO_ROOT = os.path.join(
-    UPLOAD_ROOT,
-    "videos"
-)
-
-
-os.makedirs(POSTER_ROOT, exist_ok=True)
-os.makedirs(VIDEO_ROOT, exist_ok=True)
 
 
 # =========================================================
@@ -101,90 +74,82 @@ def db():
 
 def init_db():
 
-    conn = db()
+    con = db()
 
     try:
 
-        cur = conn.cursor()
+        cur = con.cursor()
 
         # -------------------------------------------------
-        # MOVIES
+        # Movies
         # -------------------------------------------------
 
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE IF NOT EXISTS movies (
                 id SERIAL PRIMARY KEY,
                 title TEXT NOT NULL,
-                category TEXT DEFAULT 'Other',
+                category TEXT DEFAULT '',
                 description TEXT DEFAULT '',
                 poster TEXT DEFAULT '',
-                video TEXT DEFAULT '',
-                poster_url TEXT DEFAULT '',
-                video_url TEXT DEFAULT '',
+                video TEXT NOT NULL,
                 views INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+            """
+        )
 
         # -------------------------------------------------
-        # Existing database compatibility
+        # Settings
         # -------------------------------------------------
 
-        cur.execute("""
-            ALTER TABLE movies
-            ADD COLUMN IF NOT EXISTS poster_url TEXT DEFAULT ''
-        """)
-
-        cur.execute("""
-            ALTER TABLE movies
-            ADD COLUMN IF NOT EXISTS video_url TEXT DEFAULT ''
-        """)
-
-        # -------------------------------------------------
-        # SETTINGS
-        # -------------------------------------------------
-
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT DEFAULT ''
             )
-        """)
+            """
+        )
 
         # -------------------------------------------------
-        # DEFAULT ADS
+        # Default ads
         # -------------------------------------------------
 
-        for key in (
-            "ad_top",
-            "ad_player",
-            "ad_bottom",
-        ):
+        defaults = {
+            "ad_top": "",
+            "ad_player": "",
+            "ad_bottom": "",
+        }
 
-            cur.execute("""
-                INSERT INTO settings (key, value)
+        for key, value in defaults.items():
+
+            cur.execute(
+                """
+                INSERT INTO settings(key, value)
                 VALUES (%s, %s)
-                ON CONFLICT (key) DO NOTHING
-            """, (
-                key,
-                "",
-            ))
+                ON CONFLICT(key) DO NOTHING
+                """,
+                (
+                    key,
+                    value
+                )
+            )
 
-        conn.commit()
+        con.commit()
 
     finally:
-        conn.close()
+
+        con.close()
 
 
 # =========================================================
-# INITIALIZE DATABASE
+# SAFE DATABASE INIT
 # =========================================================
 
 try:
 
     init_db()
-
-    print("Database initialized successfully.")
 
 except Exception as e:
 
@@ -195,12 +160,67 @@ except Exception as e:
 
 
 # =========================================================
-# ADMIN DECORATOR
+# SETTINGS
 # =========================================================
 
-def admin_required(func):
+def get_settings():
 
-    @wraps(func)
+    con = db()
+
+    try:
+
+        cur = con.cursor()
+
+        cur.execute(
+            """
+            SELECT key, value
+            FROM settings
+            """
+        )
+
+        rows = cur.fetchall()
+
+        return {
+            row["key"]: row["value"]
+            for row in rows
+        }
+
+    finally:
+
+        con.close()
+
+
+# =========================================================
+# TEMPLATE DATA
+# =========================================================
+
+@app.context_processor
+def inject_global_data():
+
+    try:
+
+        ads = get_settings()
+
+    except Exception:
+
+        ads = {
+            "ad_top": "",
+            "ad_player": "",
+            "ad_bottom": "",
+        }
+
+    return {
+        "ads": ads
+    }
+
+
+# =========================================================
+# ADMIN CHECK
+# =========================================================
+
+def admin_required(f):
+
+    @wraps(f)
     def wrapper(*args, **kwargs):
 
         if not session.get("admin"):
@@ -209,49 +229,12 @@ def admin_required(func):
                 url_for("login")
             )
 
-        return func(
+        return f(
             *args,
             **kwargs
         )
 
     return wrapper
-
-
-# =========================================================
-# ALLOWED FILE TYPES
-# =========================================================
-
-ALLOWED_POSTERS = {
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
-}
-
-ALLOWED_VIDEOS = {
-    "mp4",
-    "webm",
-    "mov",
-}
-
-
-def allowed_file(
-    filename,
-    extensions
-):
-
-    if not filename:
-        return False
-
-    if "." not in filename:
-        return False
-
-    extension = filename.rsplit(
-        ".",
-        1
-    )[1].lower()
-
-    return extension in extensions
 
 
 # =========================================================
@@ -271,109 +254,98 @@ def home():
         ""
     ).strip()
 
-    conn = db()
+    con = db()
 
     try:
 
-        cur = conn.cursor()
+        cur = con.cursor()
 
         # -------------------------------------------------
-        # SEARCH + CATEGORY
+        # Search
         # -------------------------------------------------
 
-        if q and category:
+        if q:
 
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT *
                 FROM movies
-                WHERE
-                    (
-                        title ILIKE %s
-                        OR description ILIKE %s
-                    )
-                    AND category = %s
-                ORDER BY created_at DESC
-            """, (
-                f"%{q}%",
-                f"%{q}%",
-                category,
-            ))
+                WHERE title ILIKE %s
+                   OR category ILIKE %s
+                ORDER BY id DESC
+                """,
+                (
+                    f"%{q}%",
+                    f"%{q}%"
+                )
+            )
 
         # -------------------------------------------------
-        # SEARCH ONLY
-        # -------------------------------------------------
-
-        elif q:
-
-            cur.execute("""
-                SELECT *
-                FROM movies
-                WHERE
-                    title ILIKE %s
-                    OR description ILIKE %s
-                ORDER BY created_at DESC
-            """, (
-                f"%{q}%",
-                f"%{q}%",
-            ))
-
-        # -------------------------------------------------
-        # CATEGORY ONLY
+        # Category
         # -------------------------------------------------
 
         elif category:
 
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT *
                 FROM movies
                 WHERE category = %s
-                ORDER BY created_at DESC
-            """, (
-                category,
-            ))
+                ORDER BY id DESC
+                """,
+                (
+                    category,
+                )
+            )
 
         # -------------------------------------------------
-        # ALL
+        # All
         # -------------------------------------------------
 
         else:
 
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT *
                 FROM movies
-                ORDER BY created_at DESC
-            """)
+                ORDER BY id DESC
+                """
+            )
 
         movies = cur.fetchall()
 
         # -------------------------------------------------
-        # CATEGORIES
+        # Categories
         # -------------------------------------------------
 
-        cur.execute("""
+        cur.execute(
+            """
             SELECT DISTINCT category
             FROM movies
             WHERE category IS NOT NULL
-            AND category <> ''
+              AND category <> ''
             ORDER BY category
-        """)
+            """
+        )
+
+        rows = cur.fetchall()
 
         categories = [
             row["category"]
-            for row in cur.fetchall()
+            for row in rows
         ]
+
+        return render_template(
+            "index.html",
+            movies=movies,
+            categories=categories,
+            q=q,
+            category=category
+        )
 
     finally:
 
-        conn.close()
-
-    return render_template(
-        "index.html",
-        movies=movies,
-        categories=categories,
-        q=q,
-        category=category,
-    )
+        con.close()
 
 
 # =========================================================
@@ -383,75 +355,59 @@ def home():
 @app.route("/movie/<int:movie_id>")
 def movie(movie_id):
 
-    conn = db()
+    con = db()
 
     try:
 
-        cur = conn.cursor()
+        cur = con.cursor()
 
-        cur.execute("""
+        cur.execute(
+            """
             SELECT *
             FROM movies
             WHERE id = %s
-        """, (
-            movie_id,
-        ))
+            """,
+            (
+                movie_id,
+            )
+        )
 
-        m = cur.fetchone()
+        movie_data = cur.fetchone()
 
-        if not m:
+        if not movie_data:
 
             abort(404)
 
         # -------------------------------------------------
-        # VIEW COUNT
+        # Increase views
         # -------------------------------------------------
 
-        cur.execute("""
+        cur.execute(
+            """
             UPDATE movies
-            SET views = COALESCE(views, 0) + 1
+            SET views = views + 1
             WHERE id = %s
-        """, (
-            movie_id,
-        ))
-
-        conn.commit()
-
-        m["views"] = (
-            m.get("views") or 0
-        ) + 1
-
-        # -------------------------------------------------
-        # ADS
-        # -------------------------------------------------
-
-        cur.execute("""
-            SELECT key, value
-            FROM settings
-            WHERE key IN (
-                'ad_top',
-                'ad_player',
-                'ad_bottom'
+            """,
+            (
+                movie_id,
             )
-        """)
+        )
 
-        ads = {}
+        con.commit()
 
-        for row in cur.fetchall():
+        # Refresh movie data
+        movie_data["views"] = (
+            movie_data["views"] + 1
+        )
 
-            ads[row["key"]] = (
-                row["value"] or ""
-            )
+        return render_template(
+            "movie.html",
+            m=movie_data
+        )
 
     finally:
 
-        conn.close()
-
-    return render_template(
-        "movie.html",
-        m=m,
-        ads=ads,
-    )
+        con.close()
 
 
 # =========================================================
@@ -465,39 +421,19 @@ def poster(name):
 
         abort(404)
 
-    # -----------------------------------------------------
-    # External URL
-    # -----------------------------------------------------
+    # Only return a safe relative filename
+    safe_name = os.path.basename(name)
 
-    if (
-        name.startswith("http://")
-        or name.startswith("https://")
-    ):
-
-        return redirect(name)
-
-    # -----------------------------------------------------
-    # Local file
-    # -----------------------------------------------------
-
-    filename = secure_filename(name)
-
-    if not filename:
+    # Render can use external URL directly if you store one.
+    if safe_name.startswith("http"):
 
         abort(404)
 
-    file_path = os.path.join(
-        POSTER_ROOT,
-        filename
-    )
-
-    if not os.path.isfile(file_path):
-
-        abort(404)
-
-    return send_from_directory(
-        POSTER_ROOT,
-        filename
+    # Local upload support.
+    # NOTE: Render Free filesystem is temporary.
+    return Response(
+        "Poster file storage is not configured.",
+        status=404
     )
 
 
@@ -513,38 +449,20 @@ def video(name):
         abort(404)
 
     # -----------------------------------------------------
-    # External URL
+    # IMPORTANT
+    # -----------------------------------------------------
+    # For Render Free, local uploaded videos are NOT
+    # permanent.
+    #
+    # This route is kept so old templates do not crash.
+    #
+    # If video contains a full external URL, movie.html
+    # should use that URL directly.
     # -----------------------------------------------------
 
-    if (
-        name.startswith("http://")
-        or name.startswith("https://")
-    ):
-
-        return redirect(name)
-
-    # -----------------------------------------------------
-    # Local file
-    # -----------------------------------------------------
-
-    filename = secure_filename(name)
-
-    if not filename:
-
-        abort(404)
-
-    file_path = os.path.join(
-        VIDEO_ROOT,
-        filename
-    )
-
-    if not os.path.isfile(file_path):
-
-        abort(404)
-
-    return send_from_directory(
-        VIDEO_ROOT,
-        filename
+    return Response(
+        "Video file is not available from permanent storage.",
+        status=404
     )
 
 
@@ -557,12 +475,6 @@ def video(name):
     methods=["GET", "POST"]
 )
 def login():
-
-    if session.get("admin"):
-
-        return redirect(
-            url_for("admin")
-        )
 
     if request.method == "POST":
 
@@ -577,15 +489,18 @@ def login():
         )
 
         if (
-            username == ADMIN_USER
-            and password == ADMIN_PASSWORD
+            secrets.compare_digest(
+                username,
+                ADMIN_USER
+            )
+            and
+            secrets.compare_digest(
+                password,
+                ADMIN_PASSWORD
+            )
         ):
 
             session["admin"] = True
-
-            flash(
-                "Login successful."
-            )
 
             return redirect(
                 url_for("admin")
@@ -609,64 +524,43 @@ def logout():
 
     session.clear()
 
-    flash(
-        "Logout successful."
-    )
-
     return redirect(
         url_for("home")
     )
 
 
 # =========================================================
-# ADMIN PANEL
+# ADMIN
 # =========================================================
 
 @app.route("/admin")
 @admin_required
 def admin():
 
-    conn = db()
+    con = db()
 
     try:
 
-        cur = conn.cursor()
+        cur = con.cursor()
 
-        cur.execute("""
+        cur.execute(
+            """
             SELECT *
             FROM movies
-            ORDER BY created_at DESC
-        """)
+            ORDER BY id DESC
+            """
+        )
 
         movies = cur.fetchall()
 
-        cur.execute("""
-            SELECT key, value
-            FROM settings
-            WHERE key IN (
-                'ad_top',
-                'ad_player',
-                'ad_bottom'
-            )
-        """)
-
-        ads = {}
-
-        for row in cur.fetchall():
-
-            ads[row["key"]] = (
-                row["value"] or ""
-            )
+        return render_template(
+            "admin.html",
+            movies=movies
+        )
 
     finally:
 
-        conn.close()
-
-    return render_template(
-        "admin.html",
-        movies=movies,
-        ads=ads,
-    )
+        con.close()
 
 
 # =========================================================
@@ -687,11 +581,22 @@ def add_movie():
 
     category = request.form.get(
         "category",
-        "Other"
+        ""
     ).strip()
 
     description = request.form.get(
         "description",
+        ""
+    ).strip()
+
+    # -----------------------------------------------------
+    # NEW SYSTEM
+    # -----------------------------------------------------
+    # Permanent video URL is preferred on Render.
+    # -----------------------------------------------------
+
+    video_url = request.form.get(
+        "video_url",
         ""
     ).strip()
 
@@ -700,10 +605,9 @@ def add_movie():
         ""
     ).strip()
 
-    video_url = request.form.get(
-        "video_url",
-        ""
-    ).strip()
+    # -----------------------------------------------------
+    # Optional old file fields
+    # -----------------------------------------------------
 
     poster_file = request.files.get(
         "poster"
@@ -714,7 +618,7 @@ def add_movie():
     )
 
     # -----------------------------------------------------
-    # TITLE
+    # Required
     # -----------------------------------------------------
 
     if not title:
@@ -728,95 +632,40 @@ def add_movie():
         )
 
     # -----------------------------------------------------
-    # POSTER
+    # Prefer URL
     # -----------------------------------------------------
 
-    poster = ""
+    if not video_url:
 
-    if poster_url:
+        if not video_file or not video_file.filename:
 
-        poster = poster_url
+            flash(
+                "Video URL या video file देना जरूरी है."
+            )
 
-    elif (
-        poster_file
+            return redirect(
+                url_for("admin")
+            )
+
+    # -----------------------------------------------------
+    # Poster URL
+    # -----------------------------------------------------
+
+    poster = poster_url
+
+    # -----------------------------------------------------
+    # If poster file was uploaded
+    # -----------------------------------------------------
+
+    if (
+        not poster
+        and poster_file
         and poster_file.filename
     ):
 
-        if not allowed_file(
-            poster_file.filename,
-            ALLOWED_POSTERS
-        ):
-
-            flash(
-                "Poster केवल JPG, JPEG, PNG या WEBP होना चाहिए."
-            )
-
-            return redirect(
-                url_for("admin")
-            )
-
-        filename = secure_filename(
-            poster_file.filename
-        )
-
-        poster_file.save(
-            os.path.join(
-                POSTER_ROOT,
-                filename
-            )
-        )
-
-        poster = filename
-
-    # -----------------------------------------------------
-    # VIDEO
-    # -----------------------------------------------------
-
-    video = ""
-
-    if video_url:
-
-        video = video_url
-
-    elif (
-        video_file
-        and video_file.filename
-    ):
-
-        if not allowed_file(
-            video_file.filename,
-            ALLOWED_VIDEOS
-        ):
-
-            flash(
-                "Video केवल MP4, WebM या MOV होना चाहिए."
-            )
-
-            return redirect(
-                url_for("admin")
-            )
-
-        filename = secure_filename(
-            video_file.filename
-        )
-
-        video_file.save(
-            os.path.join(
-                VIDEO_ROOT,
-                filename
-            )
-        )
-
-        video = filename
-
-    # -----------------------------------------------------
-    # VIDEO REQUIRED
-    # -----------------------------------------------------
-
-    if not video:
-
+        # We cannot promise permanent storage on Render.
         flash(
-            "Video URL या Video file देना जरूरी है."
+            "Render पर permanent poster के लिए Poster URL इस्तेमाल करें."
         )
 
         return redirect(
@@ -824,58 +673,83 @@ def add_movie():
         )
 
     # -----------------------------------------------------
-    # DATABASE
+    # If video URL supplied
     # -----------------------------------------------------
 
-    conn = db()
+    video = video_url
+
+    # -----------------------------------------------------
+    # Old file upload fallback
+    # -----------------------------------------------------
+
+    if not video:
+
+        flash(
+            "Render पर permanent movie के लिए Video URL इस्तेमाल करें."
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    # -----------------------------------------------------
+    # Save database
+    # -----------------------------------------------------
+
+    con = db()
 
     try:
 
-        cur = conn.cursor()
+        cur = con.cursor()
 
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO movies
             (
                 title,
                 category,
                 description,
                 poster,
-                video,
-                poster_url,
-                video_url
+                video
             )
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-            )
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING id
-        """, (
-            title,
-            category or "Other",
-            description,
-            poster,
-            video,
-            poster_url,
-            video_url,
-        ))
+            """,
+            (
+                title,
+                category,
+                description,
+                poster,
+                video
+            )
+        )
 
-        movie_id = cur.fetchone()["id"]
+        row = cur.fetchone()
 
-        conn.commit()
+        con.commit()
+
+        movie_id = row["id"]
+
+        flash(
+            f"Movie publish हो गई. ID: {movie_id}"
+        )
+
+    except Exception as e:
+
+        con.rollback()
+
+        app.logger.exception(
+            "Movie insert failed: %s",
+            e
+        )
+
+        flash(
+            "Movie database में save नहीं हो पाई."
+        )
 
     finally:
 
-        conn.close()
-
-    flash(
-        f"Movie publish हो गई. ID: {movie_id}"
-    )
+        con.close()
 
     return redirect(
         url_for("admin")
@@ -888,125 +762,49 @@ def add_movie():
 
 @app.route(
     "/admin/delete/<int:movie_id>",
-    methods=["GET", "POST"]
+    methods=["POST"]
 )
 @admin_required
 def delete_movie(movie_id):
 
-    conn = db()
+    con = db()
 
     try:
 
-        cur = conn.cursor()
+        cur = con.cursor()
 
-        cur.execute("""
-            SELECT poster, video
-            FROM movies
-            WHERE id = %s
-        """, (
-            movie_id,
-        ))
-
-        movie_data = cur.fetchone()
-
-        if not movie_data:
-
-            flash(
-                "Movie नहीं मिली."
-            )
-
-            return redirect(
-                url_for("admin")
-            )
-
-        cur.execute("""
+        cur.execute(
+            """
             DELETE FROM movies
             WHERE id = %s
-        """, (
-            movie_id,
-        ))
+            """,
+            (
+                movie_id,
+            )
+        )
 
-        conn.commit()
+        con.commit()
+
+        flash(
+            "Movie delete हो गई."
+        )
+
+    except Exception as e:
+
+        con.rollback()
+
+        app.logger.exception(
+            "Delete failed: %s",
+            e
+        )
+
+        flash(
+            "Movie delete नहीं हो पाई."
+        )
 
     finally:
 
-        conn.close()
-
-    # -----------------------------------------------------
-    # DELETE LOCAL POSTER
-    # -----------------------------------------------------
-
-    poster_name = (
-        movie_data.get("poster")
-        or ""
-    )
-
-    if poster_name and not (
-        poster_name.startswith("http://")
-        or poster_name.startswith("https://")
-    ):
-
-        filename = secure_filename(
-            poster_name
-        )
-
-        path = os.path.join(
-            POSTER_ROOT,
-            filename
-        )
-
-        try:
-
-            if os.path.isfile(path):
-
-                os.remove(path)
-
-        except Exception as e:
-
-            print(
-                "Poster delete error:",
-                e
-            )
-
-    # -----------------------------------------------------
-    # DELETE LOCAL VIDEO
-    # -----------------------------------------------------
-
-    video_name = (
-        movie_data.get("video")
-        or ""
-    )
-
-    if video_name and not (
-        video_name.startswith("http://")
-        or video_name.startswith("https://")
-    ):
-
-        filename = secure_filename(
-            video_name
-        )
-
-        path = os.path.join(
-            VIDEO_ROOT,
-            filename
-        )
-
-        try:
-
-            if os.path.isfile(path):
-
-                os.remove(path)
-
-        except Exception as e:
-
-            print(
-                "Video delete error:",
-                e
-            )
-
-    flash(
-        "Movie delete हो गई."
-    )
+        con.close()
 
     return redirect(
         url_for("admin")
@@ -1024,55 +822,114 @@ def delete_movie(movie_id):
 @admin_required
 def save_ads():
 
-    ad_top = request.form.get(
-        "ad_top",
-        ""
-    )
-
-    ad_player = request.form.get(
-        "ad_player",
-        ""
-    )
-
-    ad_bottom = request.form.get(
-        "ad_bottom",
-        ""
-    )
-
-    conn = db()
+    con = db()
 
     try:
 
-        cur = conn.cursor()
+        cur = con.cursor()
 
-        ads = {
-            "ad_top": ad_top,
-            "ad_player": ad_player,
-            "ad_bottom": ad_bottom,
-        }
+        for key in (
+            "ad_top",
+            "ad_player",
+            "ad_bottom"
+        ):
 
-        for key, value in ads.items():
-
-            cur.execute("""
-                INSERT INTO settings
-                (key, value)
-                VALUES (%s, %s)
-                ON CONFLICT (key)
-                DO UPDATE SET
-                    value = EXCLUDED.value
-            """, (
+            value = request.form.get(
                 key,
-                value,
-            ))
+                ""
+            )
 
-        conn.commit()
+            cur.execute(
+                """
+                INSERT INTO settings(key, value)
+                VALUES (%s, %s)
+                ON CONFLICT(key)
+                DO UPDATE SET value = EXCLUDED.value
+                """,
+                (
+                    key,
+                    value
+                )
+            )
+
+        con.commit()
+
+        flash(
+            "Ads settings saved."
+        )
+
+    except Exception as e:
+
+        con.rollback()
+
+        app.logger.exception(
+            "Ads save failed: %s",
+            e
+        )
+
+        flash(
+            "Ads settings save नहीं हुई."
+        )
 
     finally:
 
-        conn.close()
+        con.close()
+
+    return redirect(
+        url_for("admin")
+    )
+
+
+# =========================================================
+# HEALTH CHECK
+# =========================================================
+
+@app.route("/health")
+def health():
+
+    try:
+
+        con = db()
+
+        cur = con.cursor()
+
+        cur.execute(
+            "SELECT 1"
+        )
+
+        cur.fetchone()
+
+        con.close()
+
+        return "OK", 200
+
+    except Exception as e:
+
+        app.logger.exception(
+            "Health check failed: %s",
+            e
+        )
+
+        return "Database error", 500
+
+
+# =========================================================
+# ERROR HANDLERS
+# =========================================================
+
+@app.errorhandler(404)
+def not_found(error):
+
+    return render_template(
+        "base.html"
+    ), 404
+
+
+@app.errorhandler(413)
+def too_large(error):
 
     flash(
-        "Ads settings save हो गई."
+        "File बहुत बड़ी है. Render पर Video URL इस्तेमाल करें."
     )
 
     return redirect(
@@ -1087,105 +944,14 @@ def save_ads():
 @app.route("/ads.txt")
 def ads_txt():
 
-    content = (
-        "google.com, "
-        "pub-8697157365303435, "
-        "DIRECT, "
-        "f08c47fec0942fa0"
-    )
-
     return Response(
-        content + "\n",
+        "google.com, pub-8697157365303435, DIRECT, f08c47fec0942fa0\n",
         mimetype="text/plain"
     )
 
 
 # =========================================================
-# HEALTH CHECK
-# =========================================================
-
-@app.route("/health")
-def health():
-
-    try:
-
-        conn = db()
-
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT 1"
-        )
-
-        cur.fetchone()
-
-        conn.close()
-
-        return "OK - Database Connected", 200
-
-    except Exception as e:
-
-        print(
-            "Health check error:",
-            e
-        )
-
-        return (
-            "Database Error: "
-            + str(e),
-            500
-        )
-
-
-# =========================================================
-# 404
-# =========================================================
-
-@app.errorhandler(404)
-def not_found(error):
-
-    return (
-        "Page not found",
-        404
-    )
-
-
-# =========================================================
-# 413
-# =========================================================
-
-@app.errorhandler(413)
-def too_large(error):
-
-    flash(
-        "File बहुत बड़ी है. Maximum size 2GB है."
-    )
-
-    return redirect(
-        url_for("admin")
-    )
-
-
-# =========================================================
-# 500
-# =========================================================
-
-@app.errorhandler(500)
-def internal_error(error):
-
-    print(
-        "INTERNAL SERVER ERROR:",
-        error
-    )
-
-    return (
-        "Internal Server Error",
-        500
-    )
-
-
-# =========================================================
-# START LOCAL SERVER
+# START
 # =========================================================
 
 if __name__ == "__main__":
