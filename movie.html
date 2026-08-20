@@ -8,65 +8,43 @@
 
 <div class="movie-page">
 
-    <!-- BACK BUTTON -->
     <a class="back-btn" href="{{ url_for('home') }}">
         ← Back to Movies
     </a>
 
-
-    <!-- TOP AD -->
-    {% if ads and ads.get('ad_top') %}
-        <div class="ad-slot top-ad">
-            {{ ads.get('ad_top')|safe }}
-        </div>
-    {% endif %}
-
-
-    <!-- MOVIE PLAYER -->
     <div class="player-box">
+
+        {% if m.video %}
 
         <video
             class="movie-player"
             controls
             preload="metadata"
             playsinline
-            {% if m.poster_url %}
-                poster="{{ m.poster_url }}"
-            {% elif m.poster %}
-                poster="{{ url_for('poster', name=m.poster) }}"
+            {% if m.poster %}
+            poster="{{ m.poster }}"
             {% endif %}
         >
 
-            {% if m.video_url %}
-
-                <source
-                    src="{{ m.video_url }}"
-                >
-
-            {% elif m.video %}
-
-                <source
-                    src="{{ url_for('video', name=m.video) }}"
-                >
-
-            {% endif %}
+            <source
+                src="{{ m.video }}"
+                type="video/mp4"
+            >
 
             आपका browser video नहीं चला सकता।
 
         </video>
 
+        {% else %}
+
+        <div class="no-video">
+            Video उपलब्ध नहीं है।
+        </div>
+
+        {% endif %}
+
     </div>
 
-
-    <!-- PLAYER AD -->
-    {% if ads and ads.get('ad_player') %}
-        <div class="ad-slot player-ad">
-            {{ ads.get('ad_player')|safe }}
-        </div>
-    {% endif %}
-
-
-    <!-- MOVIE DETAILS -->
     <div class="movie-details">
 
         <div class="movie-title-row">
@@ -77,71 +55,35 @@
 
         </div>
 
-
-        <!-- CATEGORY -->
         {% if m.category %}
 
-            <div class="movie-category">
-                🎬 {{ m.category }}
-            </div>
+        <div class="movie-category">
+            {{ m.category }}
+        </div>
 
         {% endif %}
 
-
-        <!-- VIEWS -->
         <div class="movie-meta">
 
-            👁️
-            {{ m.views or 0 }}
-            Views
+            👁️ {{ m.views }} Views
 
         </div>
 
-
-        <!-- DESCRIPTION -->
         {% if m.description %}
 
-            <div class="movie-description">
+        <div class="movie-description">
 
-                <h2>
-                    About this Movie
-                </h2>
+            <h2>About Movie</h2>
 
-                <p>
-                    {{ m.description }}
-                </p>
+            <p>
+                {{ m.description }}
+            </p>
 
-            </div>
-
-        {% endif %}
-
-
-        <!-- VIDEO URL INFO -->
-        {% if m.video_url %}
-
-            <div class="video-source">
-
-                <span>
-                    ▶️ Video source available
-                </span>
-
-            </div>
+        </div>
 
         {% endif %}
 
     </div>
-
-
-    <!-- BOTTOM AD -->
-    {% if ads and ads.get('ad_bottom') %}
-
-        <div class="ad-slot bottom-ad">
-
-            {{ ads.get('ad_bottom')|safe }}
-
-        </div>
-
-    {% endif %}
 
 </div>
 
