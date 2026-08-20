@@ -78,6 +78,7 @@ def init_db():
 
     try:
 
+        # Main movies table
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS movies (
@@ -95,6 +96,50 @@ def init_db():
             """
         )
 
+        # -------------------------------------------------
+        # Existing database compatibility
+        # -------------------------------------------------
+
+        columns = [
+            ("category", "TEXT DEFAULT ''"),
+            ("description", "TEXT DEFAULT ''"),
+            ("poster", "TEXT DEFAULT ''"),
+            ("video", "TEXT DEFAULT ''"),
+            ("poster_url", "TEXT DEFAULT ''"),
+            ("video_url", "TEXT DEFAULT ''"),
+            ("views", "INTEGER DEFAULT 0"),
+            (
+                "created_at",
+                "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+            ),
+        ]
+
+        for column_name, column_type in columns:
+
+            cur.execute(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'movies'
+                AND column_name = %s
+                """,
+                (column_name,)
+            )
+
+            exists = cur.fetchone()
+
+            if not exists:
+                cur.execute(
+                    f"""
+                    ALTER TABLE movies
+                    ADD COLUMN {column_name} {column_type}
+                    """
+                )
+
+        # -------------------------------------------------
+        # Settings table
+        # -------------------------------------------------
+
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS settings (
@@ -103,6 +148,10 @@ def init_db():
             )
             """
         )
+
+        # -------------------------------------------------
+        # Default ad settings
+        # -------------------------------------------------
 
         default_settings = {
             "ad_top": "",
@@ -134,13 +183,18 @@ def init_db():
 
 
 # =========================================================
-# INITIALIZE DATABASE ON RENDER / GUNICORN
+# DATABASE STARTUP
 # =========================================================
 
 try:
     init_db()
+    print("DATABASE INITIALIZED SUCCESSFULLY")
+
 except Exception as e:
-    print("DATABASE INITIALIZATION ERROR:", e)
+    print(
+        "DATABASE INITIALIZATION ERROR:",
+        repr(e)
+    )
 
 
 # =========================================================
@@ -181,8 +235,11 @@ def get_settings():
 def inject():
 
     try:
+
         ads = get_settings()
+
     except Exception:
+
         ads = {
             "ad_top": "",
             "ad_player": "",
@@ -226,6 +283,7 @@ def admin_required(f):
     def wrapper(*args, **kwargs):
 
         if not session.get("admin"):
+
             return redirect(
                 url_for("login")
             )
@@ -318,8 +376,39 @@ def home():
         )
 
     finally:
+
         cur.close()
         con.close()
+
+
+# =========================================================
+# POSTER ROUTE
+# =========================================================
+#
+# Important:
+# The old index.html was calling:
+#
+# url_for("poster", name=m.poster)
+#
+# but this route did not exist.
+#
+# This route prevents BuildError.
+#
+# URL posters are preferred on Render.
+# =========================================================
+
+@app.route("/poster/<path:name>")
+def poster(name):
+
+    # Local uploaded posters are not permanent on
+    # Render Free instances.
+    #
+    # If an old movie contains a local poster filename,
+    # there is no permanent local file available here.
+    #
+    # Return 404 instead of crashing the homepage.
+
+    abort(404)
 
 
 # =========================================================
@@ -351,7 +440,7 @@ def movie(movie_id):
         cur.execute(
             """
             UPDATE movies
-            SET views = views + 1
+            SET views = COALESCE(views, 0) + 1
             WHERE id = %s
             """,
             (movie_id,)
@@ -365,6 +454,7 @@ def movie(movie_id):
         )
 
     finally:
+
         cur.close()
         con.close()
 
@@ -461,6 +551,7 @@ def admin():
         )
 
     finally:
+
         cur.close()
         con.close()
 
@@ -509,6 +600,10 @@ def add_movie():
         "video"
     )
 
+    # -----------------------------------------------------
+    # Validate title
+    # -----------------------------------------------------
+
     if not title:
 
         flash(
@@ -519,6 +614,10 @@ def add_movie():
             url_for("admin")
         )
 
+    # -----------------------------------------------------
+    # Video URL OR video file
+    # -----------------------------------------------------
+
     if (
         not video_url
         and (
@@ -528,16 +627,18 @@ def add_movie():
     ):
 
         flash(
-            "Movie video file देना जरूरी है."
+            "Movie video URL या video file देना जरूरी है."
         )
 
         return redirect(
             url_for("admin")
         )
 
-    poster_name = ""
+    # -----------------------------------------------------
+    # Poster filename
+    # -----------------------------------------------------
 
-    video_name = ""
+    poster_name = ""
 
     if (
         poster_file
@@ -548,6 +649,12 @@ def add_movie():
             poster_file.filename
         )
 
+    # -----------------------------------------------------
+    # Video filename
+    # -----------------------------------------------------
+
+    video_name = ""
+
     if (
         video_file
         and video_file.filename
@@ -556,6 +663,10 @@ def add_movie():
         video_name = secure_filename(
             video_file.filename
         )
+
+    # -----------------------------------------------------
+    # Database
+    # -----------------------------------------------------
 
     con = db()
     cur = con.cursor()
@@ -615,7 +726,7 @@ def add_movie():
         )
 
         flash(
-            "Movie publish नहीं हुई. Logs में error देखें."
+            "Movie publish नहीं हुई. Render logs देखें."
         )
 
     finally:
@@ -656,6 +767,19 @@ def delete_movie(movie_id):
 
         flash(
             "Movie delete हो गई."
+        )
+
+    except Exception as e:
+
+        con.rollback()
+
+        print(
+            "DELETE MOVIE ERROR:",
+            repr(e)
+        )
+
+        flash(
+            "Movie delete नहीं हुई."
         )
 
     finally:
@@ -715,6 +839,19 @@ def save_ads():
             "Ads settings saved."
         )
 
+    except Exception as e:
+
+        con.rollback()
+
+        print(
+            "SAVE ADS ERROR:",
+            repr(e)
+        )
+
+        flash(
+            "Ads settings save नहीं हुई."
+        )
+
     finally:
 
         cur.close()
@@ -755,6 +892,11 @@ def health():
 
     except Exception as e:
 
+        print(
+            "HEALTH ERROR:",
+            repr(e)
+        )
+
         return {
             "status": "error",
             "database": "not connected",
@@ -778,4 +920,3 @@ if __name__ == "__main__":
         ),
         debug=False
     )
-```
