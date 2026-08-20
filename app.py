@@ -1,3 +1,4 @@
+```python
 import os
 import secrets
 from functools import wraps
@@ -78,10 +79,6 @@ def init_db():
 
     try:
 
-        # -------------------------------------------------
-        # Movies
-        # -------------------------------------------------
-
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS movies (
@@ -99,10 +96,6 @@ def init_db():
             """
         )
 
-        # -------------------------------------------------
-        # Settings
-        # -------------------------------------------------
-
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS settings (
@@ -111,10 +104,6 @@ def init_db():
             )
             """
         )
-
-        # -------------------------------------------------
-        # Default Ads
-        # -------------------------------------------------
 
         default_settings = {
             "ad_top": "",
@@ -137,14 +126,22 @@ def init_db():
         con.commit()
 
     except Exception:
-
         con.rollback()
         raise
 
     finally:
-
         cur.close()
         con.close()
+
+
+# =========================================================
+# INITIALIZE DATABASE ON RENDER / GUNICORN
+# =========================================================
+
+try:
+    init_db()
+except Exception as e:
+    print("DATABASE INITIALIZATION ERROR:", e)
 
 
 # =========================================================
@@ -173,7 +170,6 @@ def get_settings():
         }
 
     finally:
-
         cur.close()
         con.close()
 
@@ -231,7 +227,6 @@ def admin_required(f):
     def wrapper(*args, **kwargs):
 
         if not session.get("admin"):
-
             return redirect(
                 url_for("login")
             )
@@ -299,10 +294,6 @@ def home():
 
         movies = cur.fetchall()
 
-        # -------------------------------------------------
-        # Categories
-        # -------------------------------------------------
-
         cur.execute(
             """
             SELECT DISTINCT category
@@ -319,18 +310,17 @@ def home():
             for c in cats
         ]
 
-    finally:
+        return render_template(
+            "index.html",
+            movies=movies,
+            categories=categories,
+            q=q,
+            category=category
+        )
 
+    finally:
         cur.close()
         con.close()
-
-    return render_template(
-        "index.html",
-        movies=movies,
-        categories=categories,
-        q=q,
-        category=category
-    )
 
 
 # =========================================================
@@ -357,12 +347,7 @@ def movie(movie_id):
         movie_data = cur.fetchone()
 
         if not movie_data:
-
             abort(404)
-
-        # -------------------------------------------------
-        # Increase Views
-        # -------------------------------------------------
 
         cur.execute(
             """
@@ -375,15 +360,14 @@ def movie(movie_id):
 
         con.commit()
 
-    finally:
+        return render_template(
+            "movie.html",
+            m=movie_data
+        )
 
+    finally:
         cur.close()
         con.close()
-
-    return render_template(
-        "movie.html",
-        m=movie_data
-    )
 
 
 # =========================================================
@@ -472,15 +456,14 @@ def admin():
 
         movies = cur.fetchall()
 
-    finally:
+        return render_template(
+            "admin.html",
+            movies=movies
+        )
 
+    finally:
         cur.close()
         con.close()
-
-    return render_template(
-        "admin.html",
-        movies=movies
-    )
 
 
 # =========================================================
@@ -509,10 +492,6 @@ def add_movie():
         ""
     ).strip()
 
-    # -----------------------------------------------------
-    # External URLs
-    # -----------------------------------------------------
-
     poster_url = request.form.get(
         "poster_url",
         ""
@@ -523,10 +502,6 @@ def add_movie():
         ""
     ).strip()
 
-    # -----------------------------------------------------
-    # Old file fields
-    # -----------------------------------------------------
-
     poster_file = request.files.get(
         "poster"
     )
@@ -534,10 +509,6 @@ def add_movie():
     video_file = request.files.get(
         "video"
     )
-
-    # -----------------------------------------------------
-    # Required
-    # -----------------------------------------------------
 
     if not title:
 
@@ -549,10 +520,6 @@ def add_movie():
             url_for("admin")
         )
 
-    # -----------------------------------------------------
-    # At least one video source
-    # -----------------------------------------------------
-
     if (
         not video_url
         and (
@@ -562,18 +529,15 @@ def add_movie():
     ):
 
         flash(
-            "Video URL या video file देना जरूरी है."
+            "Movie video file देना जरूरी है."
         )
 
         return redirect(
             url_for("admin")
         )
 
-    # -----------------------------------------------------
-    # Local filename information
-    # -----------------------------------------------------
-
     poster_name = ""
+
     video_name = ""
 
     if (
@@ -594,22 +558,6 @@ def add_movie():
             video_file.filename
         )
 
-    # -----------------------------------------------------
-    # Render Free warning
-    # -----------------------------------------------------
-
-    if video_file and video_file.filename:
-
-        flash(
-            "ध्यान दें: Render Free पर local uploaded "
-            "video permanent नहीं है। Permanent movie के "
-            "लिए Video URL इस्तेमाल करें."
-        )
-
-    # -----------------------------------------------------
-    # Database
-    # -----------------------------------------------------
-
     con = db()
     cur = con.cursor()
 
@@ -627,7 +575,8 @@ def add_movie():
                 poster_url,
                 video_url
             )
-            VALUES (
+            VALUES
+            (
                 %s,
                 %s,
                 %s,
@@ -653,19 +602,27 @@ def add_movie():
 
         con.commit()
 
-    except Exception:
+        flash(
+            f"Movie publish हो गई. ID: {movie_id}"
+        )
+
+    except Exception as e:
 
         con.rollback()
-        raise
+
+        print(
+            "ADD MOVIE ERROR:",
+            repr(e)
+        )
+
+        flash(
+            "Movie publish नहीं हुई. Logs में error देखें."
+        )
 
     finally:
 
         cur.close()
         con.close()
-
-    flash(
-        f"Movie publish हो गई. ID: {movie_id}"
-    )
 
     return redirect(
         url_for("admin")
@@ -698,19 +655,14 @@ def delete_movie(movie_id):
 
         con.commit()
 
-    except Exception:
-
-        con.rollback()
-        raise
+        flash(
+            "Movie delete हो गई."
+        )
 
     finally:
 
         cur.close()
         con.close()
-
-    flash(
-        "Movie delete हो गई."
-    )
 
     return redirect(
         url_for("admin")
@@ -760,19 +712,14 @@ def save_ads():
 
         con.commit()
 
-    except Exception:
-
-        con.rollback()
-        raise
+        flash(
+            "Ads settings saved."
+        )
 
     finally:
 
         cur.close()
         con.close()
-
-    flash(
-        "Ads settings saved."
-    )
 
     return redirect(
         url_for("admin")
@@ -787,6 +734,8 @@ def save_ads():
 def health():
 
     try:
+
+        init_db()
 
         con = db()
         cur = con.cursor()
@@ -815,25 +764,6 @@ def health():
 
 
 # =========================================================
-# DATABASE INITIALIZATION
-# =========================================================
-# IMPORTANT:
-# Render/Gunicorn पर भी tables automatically बनें.
-# =========================================================
-
-try:
-
-    init_db()
-
-except Exception as e:
-
-    print(
-        "DATABASE INITIALIZATION ERROR:",
-        e
-    )
-
-
-# =========================================================
 # START
 # =========================================================
 
@@ -849,3 +779,4 @@ if __name__ == "__main__":
         ),
         debug=False
     )
+```
