@@ -2,7 +2,6 @@ import os
 import secrets
 from functools import wraps
 
-import boto3
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -16,6 +15,7 @@ from flask import (
     flash,
     abort,
     Response,
+    send_from_directory,
 )
 
 from werkzeug.utils import secure_filename
@@ -32,9 +32,7 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-app.config["MAX_CONTENT_LENGTH"] = (
-    2 * 1024 * 1024 * 1024
-)
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024
 
 
 # =========================================================
@@ -56,208 +54,80 @@ ADMIN_PASSWORD = os.environ.get(
 # DATABASE
 # =========================================================
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    ""
+).strip()
 
 
 class DB:
     """
-    psycopg2 connection wrapper.
+    PostgreSQL connection wrapper.
 
-    इससे पुराने code में con.execute(...)
-    भी काम करेगा।
+    इससे पुराने code में:
+        con.execute(...)
+        con.commit()
+        con.rollback()
+        con.close()
+
+    सीधे काम करेंगे।
     """
 
-    def __init__(self, connection):
-        self.connection = connection
-        self.cursor = connection.cursor(
-            cursor_factory=RealDictCursor
+    def __init__(self, url):
+
+        if not url:
+            raise RuntimeError(
+                "DATABASE_URL environment variable is missing."
+            )
+
+        if not (
+            url.startswith("postgresql://")
+            or url.startswith("postgres://")
+        ):
+            raise RuntimeError(
+                "DATABASE_URL गलत है. Render में पूरा PostgreSQL URL डालें."
+            )
+
+        self.con = psycopg2.connect(
+            url,
+            cursor_factory=RealDictCursor,
+            connect_timeout=10
         )
 
-    def execute(self, *args, **kwargs):
-        return self.cursor.execute(
-            *args,
-            **kwargs
-        )
+    def execute(self, query, params=None):
+
+        cursor = self.con.cursor()
+
+        if params is None:
+            cursor.execute(query)
+        else:
+            cursor.execute(
+                query,
+                params
+            )
+
+        return cursor
 
     def commit(self):
-        return self.connection.commit()
+
+        self.con.commit()
 
     def rollback(self):
-        return self.connection.rollback()
+
+        self.con.rollback()
 
     def close(self):
-        try:
-            self.cursor.close()
-        except Exception:
-            pass
 
-        try:
-            self.connection.close()
-        except Exception:
-            pass
+        self.con.close()
 
 
 def db():
-    if not DATABASE_URL:
-        raise RuntimeError(
-            "DATABASE_URL environment variable is missing."
-        )
 
-    connection = psycopg2.connect(
-        DATABASE_URL
-    )
-
-    return DB(connection)
+    return DB(DATABASE_URL)
 
 
 # =========================================================
-# CLOUDFLARE R2
-# =========================================================
-
-R2_ENDPOINT = os.environ.get(
-    "R2_ENDPOINT",
-    ""
-).strip()
-
-R2_ACCESS_KEY_ID = os.environ.get(
-    "R2_ACCESS_KEY_ID",
-    ""
-).strip()
-
-R2_SECRET_ACCESS_KEY = os.environ.get(
-    "R2_SECRET_ACCESS_KEY",
-    ""
-).strip()
-
-R2_BUCKET_NAME = os.environ.get(
-    "R2_BUCKET_NAME",
-    ""
-).strip()
-
-R2_PUBLIC_URL = os.environ.get(
-    "R2_PUBLIC_URL",
-    ""
-).strip().rstrip("/")
-
-
-def r2_enabled():
-    return all([
-        R2_ENDPOINT,
-        R2_ACCESS_KEY_ID,
-        R2_SECRET_ACCESS_KEY,
-        R2_BUCKET_NAME,
-    ])
-
-
-def get_r2():
-
-    if not r2_enabled():
-        raise RuntimeError(
-            "R2 environment variables are missing."
-        )
-
-    return boto3.client(
-        "s3",
-        endpoint_url=R2_ENDPOINT,
-        aws_access_key_id=R2_ACCESS_KEY_ID,
-        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-        region_name="auto",
-    )
-
-
-def r2_upload(file_storage, folder):
-
-    if not file_storage:
-        return ""
-
-    if not file_storage.filename:
-        return ""
-
-    filename = secure_filename(
-        file_storage.filename
-    )
-
-    if not filename:
-        raise RuntimeError(
-            "Invalid filename."
-        )
-
-    base, ext = os.path.splitext(
-        filename
-    )
-
-    key = (
-        folder.rstrip("/")
-        + "/"
-        + base
-        + "_"
-        + secrets.token_hex(8)
-        + ext.lower()
-    )
-
-    client = get_r2()
-
-    file_storage.stream.seek(0)
-
-    content_type = (
-        file_storage.mimetype
-        or "application/octet-stream"
-    )
-
-    client.upload_fileobj(
-        file_storage.stream,
-        R2_BUCKET_NAME,
-        key,
-        ExtraArgs={
-            "ContentType": content_type
-        }
-    )
-
-    return key
-
-
-def r2_delete(key):
-
-    if not key:
-        return
-
-    if not r2_enabled():
-        return
-
-    try:
-
-        client = get_r2()
-
-        client.delete_object(
-            Bucket=R2_BUCKET_NAME,
-            Key=key
-        )
-
-    except Exception as e:
-
-        app.logger.exception(
-            "R2 delete failed: %s",
-            e
-        )
-
-
-def r2_url(key):
-
-    if not key:
-        return ""
-
-    if not R2_PUBLIC_URL:
-        return ""
-
-    return (
-        R2_PUBLIC_URL.rstrip("/")
-        + "/"
-        + key.lstrip("/")
-    )
-
-
-# =========================================================
-# LOCAL UPLOAD DIRECTORIES
+# UPLOAD DIRECTORIES
 # =========================================================
 
 BASE = os.path.dirname(
@@ -309,7 +179,7 @@ ALLOWED_VIDEOS = {
 
 
 # =========================================================
-# FILE EXTENSION CHECK
+# FILE CHECK
 # =========================================================
 
 def ext_ok(filename, allowed):
@@ -338,6 +208,7 @@ def admin_required(function):
     def wrapper(*args, **kwargs):
 
         if not session.get("admin"):
+
             return redirect(
                 url_for("login")
             )
@@ -542,17 +413,6 @@ def home():
             for row in cats
         ]
 
-        # R2 URL add करें
-        for movie_data in movies:
-
-            movie_data["poster_url"] = r2_url(
-                movie_data.get("poster", "")
-            )
-
-            movie_data["video_url"] = r2_url(
-                movie_data.get("video", "")
-            )
-
         return render_template(
             "index.html",
             movies=movies,
@@ -570,9 +430,7 @@ def home():
 # MOVIE PAGE
 # =========================================================
 
-@app.route(
-    "/movie/<int:movie_id>"
-)
+@app.route("/movie/<int:movie_id>")
 def movie(movie_id):
 
     con = db()
@@ -606,14 +464,6 @@ def movie(movie_id):
 
         con.commit()
 
-        movie_data["poster_url"] = r2_url(
-            movie_data.get("poster", "")
-        )
-
-        movie_data["video_url"] = r2_url(
-            movie_data.get("video", "")
-        )
-
         return render_template(
             "movie.html",
             m=movie_data
@@ -625,71 +475,24 @@ def movie(movie_id):
 
 
 # =========================================================
-# LEGACY LOCAL POSTER ROUTE
+# POSTER ROUTE
 # =========================================================
 
-@app.route(
-    "/poster/<path:name>"
-)
+@app.route("/poster/<path:name>")
 def poster(name):
 
-    return redirect(
-        r2_url(name)
-        or url_for(
-            "local_poster",
-            name=name
-        )
-    )
-
-
-@app.route(
-    "/local-poster/<path:name>"
-)
-def local_poster(name):
-
-    return send_local_file(
+    return send_from_directory(
         POSTER_DIR,
         name
     )
 
 
 # =========================================================
-# LOCAL FILE HELPER
+# VIDEO ROUTE
 # =========================================================
 
-def send_local_file(directory, name):
-
-    from flask import send_from_directory
-
-    return send_from_directory(
-        directory,
-        name
-    )
-
-
-# =========================================================
-# LEGACY LOCAL VIDEO ROUTE
-# =========================================================
-
-@app.route(
-    "/video/<path:name>"
-)
+@app.route("/video/<path:name>")
 def video(name):
-
-    r2 = r2_url(name)
-
-    if r2:
-        return redirect(r2)
-
-    return send_local_video(name)
-
-
-@app.route(
-    "/local-video/<path:name>"
-)
-def send_local_video(name):
-
-    from flask import send_from_directory
 
     return send_from_directory(
         VIDEO_DIR,
@@ -719,7 +522,7 @@ def ads_txt():
 
 
 # =========================================================
-# HEALTH
+# HEALTH CHECK
 # =========================================================
 
 @app.route("/health")
@@ -744,10 +547,7 @@ def health():
             e
         )
 
-        return (
-            "Database error",
-            500
-        )
+        return "Database error", 500
 
     finally:
 
@@ -839,16 +639,6 @@ def admin():
         ).fetchall()
 
         ads = get_settings()
-
-        for movie_data in movies:
-
-            movie_data["poster_url"] = r2_url(
-                movie_data.get("poster", "")
-            )
-
-            movie_data["video_url"] = r2_url(
-                movie_data.get("video", "")
-            )
 
         return render_template(
             "admin.html",
@@ -948,85 +738,153 @@ def add_movie():
             url_for("admin")
         )
 
-    uploaded_video = ""
-    uploaded_poster = ""
+    safe_video = secure_filename(
+        video_file.filename
+    )
+
+    if not safe_video:
+
+        flash(
+            "Video filename invalid है."
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    video_base, video_ext = os.path.splitext(
+        safe_video
+    )
+
+    safe_video = (
+        video_base
+        + "_"
+        + secrets.token_hex(8)
+        + video_ext.lower()
+    )
+
+    video_path = os.path.join(
+        VIDEO_DIR,
+        safe_video
+    )
 
     try:
 
-        # =================================================
-        # R2 UPLOAD
-        # =================================================
+        video_file.save(
+            video_path
+        )
 
-        if not r2_enabled():
+    except Exception as e:
+
+        app.logger.exception(
+            "Video upload failed: %s",
+            e
+        )
+
+        flash(
+            "Video upload failed."
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    poster_name = ""
+
+    if (
+        poster_file
+        and poster_file.filename
+    ):
+
+        safe_poster = secure_filename(
+            poster_file.filename
+        )
+
+        if not safe_poster:
+
+            if os.path.exists(video_path):
+                os.remove(video_path)
 
             flash(
-                "R2 configuration missing है."
+                "Poster filename invalid है."
             )
 
             return redirect(
                 url_for("admin")
             )
 
-        uploaded_video = r2_upload(
-            video_file,
-            "videos"
+        poster_base, poster_ext = os.path.splitext(
+            safe_poster
         )
 
-        if (
-            poster_file
-            and poster_file.filename
-        ):
+        poster_name = (
+            poster_base
+            + "_"
+            + secrets.token_hex(8)
+            + poster_ext.lower()
+        )
 
-            uploaded_poster = r2_upload(
-                poster_file,
-                "posters"
-            )
-
-        # =================================================
-        # DATABASE
-        # =================================================
-
-        con = db()
+        poster_path = os.path.join(
+            POSTER_DIR,
+            poster_name
+        )
 
         try:
 
-            row = con.execute(
-                """
-                INSERT INTO movies
-                (
-                    title,
-                    category,
-                    description,
-                    poster,
-                    video,
-                    views
-                )
-                VALUES (
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    0
-                )
-                RETURNING id
-                """,
-                (
-                    title,
-                    category,
-                    description,
-                    uploaded_poster,
-                    uploaded_video,
-                )
-            ).fetchone()
+            poster_file.save(
+                poster_path
+            )
 
-            con.commit()
+        except Exception as e:
 
-            movie_id = row["id"]
+            app.logger.exception(
+                "Poster upload failed: %s",
+                e
+            )
 
-        finally:
+            if os.path.exists(video_path):
+                os.remove(video_path)
 
-            con.close()
+            flash(
+                "Poster upload failed."
+            )
+
+            return redirect(
+                url_for("admin")
+            )
+
+    con = None
+
+    try:
+
+        con = db()
+
+        row = con.execute(
+            """
+            INSERT INTO movies
+            (
+                title,
+                category,
+                description,
+                poster,
+                video,
+                views
+            )
+            VALUES (%s, %s, %s, %s, %s, 0)
+            RETURNING id
+            """,
+            (
+                title,
+                category,
+                description,
+                poster_name,
+                safe_video,
+            )
+        ).fetchone()
+
+        con.commit()
+
+        movie_id = row["id"]
 
         flash(
             f"Movie publish हो गई. ID: {movie_id}"
@@ -1034,24 +892,35 @@ def add_movie():
 
     except Exception as e:
 
+        if con:
+            con.rollback()
+
         app.logger.exception(
-            "Movie upload failed: %s",
+            "Movie database insert failed: %s",
             e
         )
 
-        if uploaded_video:
-            r2_delete(
-                uploaded_video
+        if os.path.exists(video_path):
+            os.remove(video_path)
+
+        if poster_name:
+
+            poster_path = os.path.join(
+                POSTER_DIR,
+                poster_name
             )
 
-        if uploaded_poster:
-            r2_delete(
-                uploaded_poster
-            )
+            if os.path.exists(poster_path):
+                os.remove(poster_path)
 
         flash(
-            "Movie upload नहीं हो पाई."
+            "Movie database में save नहीं हो पाई."
         )
+
+    finally:
+
+        if con:
+            con.close()
 
     return redirect(
         url_for("admin")
@@ -1115,14 +984,32 @@ def delete_movie(movie_id):
         con.commit()
 
         if video_name:
-            r2_delete(
-                video_name
+
+            video_path = os.path.join(
+                VIDEO_DIR,
+                os.path.basename(video_name)
             )
 
+            if os.path.isfile(video_path):
+
+                try:
+                    os.remove(video_path)
+                except Exception:
+                    pass
+
         if poster_name:
-            r2_delete(
-                poster_name
+
+            poster_path = os.path.join(
+                POSTER_DIR,
+                os.path.basename(poster_name)
             )
+
+            if os.path.isfile(poster_path):
+
+                try:
+                    os.remove(poster_path)
+                except Exception:
+                    pass
 
         flash(
             "Movie delete हो गई."
@@ -1178,17 +1065,10 @@ def save_ads():
 
             con.execute(
                 """
-                INSERT INTO settings(
-                    key,
-                    value
-                )
-                VALUES (
-                    %s,
-                    %s
-                )
+                INSERT INTO settings(key, value)
+                VALUES (%s, %s)
                 ON CONFLICT(key)
-                DO UPDATE SET
-                    value = EXCLUDED.value
+                DO UPDATE SET value = EXCLUDED.value
                 """,
                 (
                     key,
@@ -1260,10 +1140,6 @@ try:
 
     init_db()
 
-    app.logger.info(
-        "Database initialization successful."
-    )
-
 except Exception as e:
 
     app.logger.exception(
@@ -1273,7 +1149,7 @@ except Exception as e:
 
 
 # =========================================================
-# START
+# LOCAL RUN
 # =========================================================
 
 if __name__ == "__main__":
