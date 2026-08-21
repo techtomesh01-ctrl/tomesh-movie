@@ -1,9 +1,11 @@
+```python
 import os
 import secrets
 from functools import wraps
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -61,7 +63,6 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 def db():
-
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL environment variable is missing."
@@ -78,7 +79,8 @@ def db():
 # =========================================================
 
 R2_ACCOUNT_ID = os.environ.get(
-    "R2_ACCOUNT_ID"
+    "R2_ACCOUNT_ID",
+    ""
 )
 
 R2_BUCKET = os.environ.get(
@@ -86,16 +88,19 @@ R2_BUCKET = os.environ.get(
     "tomesh-movies"
 )
 
+R2_ENDPOINT = os.environ.get(
+    "R2_ENDPOINT",
+    ""
+)
+
 R2_ACCESS_KEY_ID = os.environ.get(
-    "R2_ACCESS_KEY_ID"
+    "R2_ACCESS_KEY_ID",
+    ""
 )
 
 R2_SECRET_ACCESS_KEY = os.environ.get(
-    "R2_SECRET_ACCESS_KEY"
-)
-
-R2_ENDPOINT = os.environ.get(
-    "R2_ENDPOINT"
+    "R2_SECRET_ACCESS_KEY",
+    ""
 )
 
 R2_PUBLIC_URL = os.environ.get(
@@ -106,19 +111,19 @@ R2_PUBLIC_URL = os.environ.get(
 
 def r2_client():
 
+    if not R2_ENDPOINT:
+        raise RuntimeError(
+            "R2_ENDPOINT environment variable is missing."
+        )
+
     if not R2_ACCESS_KEY_ID:
         raise RuntimeError(
-            "R2_ACCESS_KEY_ID is missing."
+            "R2_ACCESS_KEY_ID environment variable is missing."
         )
 
     if not R2_SECRET_ACCESS_KEY:
         raise RuntimeError(
-            "R2_SECRET_ACCESS_KEY is missing."
-        )
-
-    if not R2_ENDPOINT:
-        raise RuntimeError(
-            "R2_ENDPOINT is missing."
+            "R2_SECRET_ACCESS_KEY environment variable is missing."
         )
 
     return boto3.client(
@@ -130,18 +135,54 @@ def r2_client():
     )
 
 
-def r2_url(object_key):
+def r2_url(key):
 
     if not R2_PUBLIC_URL:
         raise RuntimeError(
-            "R2_PUBLIC_URL is missing."
+            "R2_PUBLIC_URL environment variable is missing."
         )
 
-    return (
-        R2_PUBLIC_URL.rstrip("/")
-        + "/"
-        + object_key.lstrip("/")
+    return f"{R2_PUBLIC_URL}/{key}"
+
+
+def upload_to_r2(file_object, key, content_type):
+
+    client = r2_client()
+
+    file_object.stream.seek(0)
+
+    client.upload_fileobj(
+        file_object.stream,
+        R2_BUCKET,
+        key,
+        ExtraArgs={
+            "ContentType": content_type
+        }
     )
+
+    return r2_url(key)
+
+
+def delete_from_r2(key):
+
+    if not key:
+        return
+
+    try:
+
+        client = r2_client()
+
+        client.delete_object(
+            Bucket=R2_BUCKET,
+            Key=key
+        )
+
+    except Exception as e:
+
+        app.logger.warning(
+            "R2 delete failed: %s",
+            e
+        )
 
 
 # =========================================================
@@ -210,6 +251,10 @@ def init_db():
 
     try:
 
+        # -------------------------------------------------
+        # MOVIES TABLE
+        # -------------------------------------------------
+
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS movies (
@@ -225,6 +270,28 @@ def init_db():
             """
         )
 
+        # -------------------------------------------------
+        # R2 URL COLUMNS
+        # -------------------------------------------------
+
+        con.execute(
+            """
+            ALTER TABLE movies
+            ADD COLUMN IF NOT EXISTS poster_url TEXT DEFAULT ''
+            """
+        )
+
+        con.execute(
+            """
+            ALTER TABLE movies
+            ADD COLUMN IF NOT EXISTS video_url TEXT DEFAULT ''
+            """
+        )
+
+        # -------------------------------------------------
+        # SETTINGS
+        # -------------------------------------------------
+
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS settings (
@@ -234,24 +301,26 @@ def init_db():
             """
         )
 
-        default_settings = {
-            "ad_top": "",
-            "ad_player": "",
-            "ad_bottom": "",
-        }
+        # -------------------------------------------------
+        # DEFAULT ADS
+        # -------------------------------------------------
 
-        for key, value in default_settings.items():
+        for key in (
+            "ad_top",
+            "ad_player",
+            "ad_bottom"
+        ):
 
             con.execute(
                 """
-                INSERT INTO settings (key, value)
+                INSERT INTO settings(key, value)
                 VALUES (%s, %s)
-                ON CONFLICT (key)
+                ON CONFLICT(key)
                 DO NOTHING
                 """,
                 (
                     key,
-                    value,
+                    ""
                 )
             )
 
@@ -443,16 +512,6 @@ def movie(movie_id):
 
         con.commit()
 
-        movie_data["poster_url"] = (
-            r2_url(movie_data["poster"])
-            if movie_data.get("poster")
-            else ""
-        )
-
-        movie_data["video_url"] = r2_url(
-            movie_data["video"]
-        )
-
         return render_template(
             "movie.html",
             m=movie_data
@@ -464,27 +523,20 @@ def movie(movie_id):
 
 
 # =========================================================
-# POSTER
+# OLD LOCAL FILE ROUTES
 # =========================================================
+
+# पुराने links टूटने से बचाने के लिए रखे गए हैं.
+# नई movies R2 से चलेंगी.
 
 @app.route("/poster/<path:name>")
 def poster(name):
+    abort(404)
 
-    return redirect(
-        r2_url(name)
-    )
-
-
-# =========================================================
-# VIDEO
-# =========================================================
 
 @app.route("/video/<path:name>")
 def video(name):
-
-    return redirect(
-        r2_url(name)
-    )
+    abort(404)
 
 
 # =========================================================
@@ -508,7 +560,7 @@ def ads_txt():
 
 
 # =========================================================
-# HEALTH
+# HEALTH CHECK
 # =========================================================
 
 @app.route("/health")
@@ -666,6 +718,10 @@ def add_movie():
         "video"
     )
 
+    # -----------------------------------------------------
+    # REQUIRED
+    # -----------------------------------------------------
+
     if not title:
 
         flash(
@@ -689,6 +745,10 @@ def add_movie():
             url_for("admin")
         )
 
+    # -----------------------------------------------------
+    # VIDEO TYPE
+    # -----------------------------------------------------
+
     if not ext_ok(
         video_file.filename,
         ALLOWED_VIDEOS
@@ -701,6 +761,10 @@ def add_movie():
         return redirect(
             url_for("admin")
         )
+
+    # -----------------------------------------------------
+    # POSTER TYPE
+    # -----------------------------------------------------
 
     if (
         poster_file
@@ -720,7 +784,7 @@ def add_movie():
         )
 
     # -----------------------------------------------------
-    # R2 OBJECT NAMES
+    # SAFE FILE NAMES
     # -----------------------------------------------------
 
     safe_video = secure_filename(
@@ -741,7 +805,7 @@ def add_movie():
         safe_video
     )
 
-    video_object = (
+    video_key = (
         "videos/"
         + video_base
         + "_"
@@ -749,7 +813,11 @@ def add_movie():
         + video_ext.lower()
     )
 
-    poster_object = ""
+    poster_key = ""
+
+    # -----------------------------------------------------
+    # POSTER KEY
+    # -----------------------------------------------------
 
     if (
         poster_file
@@ -774,7 +842,7 @@ def add_movie():
             safe_poster
         )
 
-        poster_object = (
+        poster_key = (
             "posters/"
             + poster_base
             + "_"
@@ -782,50 +850,110 @@ def add_movie():
             + poster_ext.lower()
         )
 
+    # -----------------------------------------------------
+    # CONTENT TYPES
+    # -----------------------------------------------------
+
+    video_content_type = (
+        video_file.mimetype
+        or "video/mp4"
+    )
+
+    poster_content_type = (
+        poster_file.mimetype
+        if poster_file
+        else None
+    )
+
     uploaded_video = False
     uploaded_poster = False
 
-    # -----------------------------------------------------
-    # R2 UPLOAD
-    # -----------------------------------------------------
-
     try:
 
-        s3 = r2_client()
+        # -------------------------------------------------
+        # UPLOAD VIDEO TO R2
+        # -------------------------------------------------
 
-        video_file.stream.seek(0)
-
-        s3.upload_fileobj(
-            video_file.stream,
-            R2_BUCKET,
-            video_object,
-            ExtraArgs={
-                "ContentType": (
-                    video_file.mimetype
-                    or "video/mp4"
-                )
-            }
+        video_url = upload_to_r2(
+            video_file,
+            video_key,
+            video_content_type
         )
 
         uploaded_video = True
 
-        if poster_object:
+        # -------------------------------------------------
+        # UPLOAD POSTER TO R2
+        # -------------------------------------------------
 
-            poster_file.stream.seek(0)
+        poster_url = ""
 
-            s3.upload_fileobj(
-                poster_file.stream,
-                R2_BUCKET,
-                poster_object,
-                ExtraArgs={
-                    "ContentType": (
-                        poster_file.mimetype
-                        or "image/jpeg"
-                    )
-                }
+        if poster_file and poster_key:
+
+            poster_url = upload_to_r2(
+                poster_file,
+                poster_key,
+                poster_content_type
             )
 
             uploaded_poster = True
+
+        # -------------------------------------------------
+        # DATABASE
+        # -------------------------------------------------
+
+        con = db()
+
+        try:
+
+            row = con.execute(
+                """
+                INSERT INTO movies
+                (
+                    title,
+                    category,
+                    description,
+                    poster,
+                    video,
+                    poster_url,
+                    video_url,
+                    views
+                )
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    0
+                )
+                RETURNING id
+                """,
+                (
+                    title,
+                    category,
+                    description,
+                    poster_key,
+                    video_key,
+                    poster_url,
+                    video_url,
+                )
+            ).fetchone()
+
+            con.commit()
+
+            movie_id = row["id"]
+
+        finally:
+
+            con.close()
+
+        flash(
+            f"Movie publish हो गई. ID: {movie_id}"
+        )
 
     except (
         BotoCoreError,
@@ -834,117 +962,29 @@ def add_movie():
     ) as e:
 
         app.logger.exception(
-            "R2 upload failed: %s",
+            "Movie upload failed: %s",
             e
         )
 
-        # Delete partially uploaded files
+        # -------------------------------------------------
+        # ROLLBACK R2 FILES IF DATABASE FAILED
+        # -------------------------------------------------
 
-        try:
+        if uploaded_video:
 
-            if uploaded_video:
-
-                s3.delete_object(
-                    Bucket=R2_BUCKET,
-                    Key=video_object
-                )
-
-            if uploaded_poster:
-
-                s3.delete_object(
-                    Bucket=R2_BUCKET,
-                    Key=poster_object
-                )
-
-        except Exception:
-
-            pass
-
-        flash(
-            "R2 पर movie upload नहीं हो पाई."
-        )
-
-        return redirect(
-            url_for("admin")
-        )
-
-    # -----------------------------------------------------
-    # DATABASE
-    # -----------------------------------------------------
-
-    con = db()
-
-    try:
-
-        row = con.execute(
-            """
-            INSERT INTO movies
-            (
-                title,
-                category,
-                description,
-                poster,
-                video,
-                views
+            delete_from_r2(
+                video_key
             )
-            VALUES (%s, %s, %s, %s, %s, 0)
-            RETURNING id
-            """,
-            (
-                title,
-                category,
-                description,
-                poster_object,
-                video_object,
+
+        if uploaded_poster:
+
+            delete_from_r2(
+                poster_key
             )
-        ).fetchone()
-
-        con.commit()
-
-        movie_id = row["id"]
 
         flash(
-            f"Movie publish हो गई. ID: {movie_id}"
+            "Movie upload नहीं हो पाई. R2 या Database error."
         )
-
-    except Exception as e:
-
-        con.rollback()
-
-        app.logger.exception(
-            "Movie database insert failed: %s",
-            e
-        )
-
-        # Database fail होने पर R2 से files हटाएँ
-
-        try:
-
-            if uploaded_video:
-
-                s3.delete_object(
-                    Bucket=R2_BUCKET,
-                    Key=video_object
-                )
-
-            if uploaded_poster:
-
-                s3.delete_object(
-                    Bucket=R2_BUCKET,
-                    Key=poster_object
-                )
-
-        except Exception:
-
-            pass
-
-        flash(
-            "Movie database में save नहीं हो पाई."
-        )
-
-    finally:
-
-        con.close()
 
     return redirect(
         url_for("admin")
@@ -987,16 +1027,16 @@ def delete_movie(movie_id):
                 url_for("admin")
             )
 
-        video_name = movie_data.get(
+        video_key = movie_data.get(
             "video"
         )
 
-        poster_name = movie_data.get(
+        poster_key = movie_data.get(
             "poster"
         )
 
         # -------------------------------------------------
-        # Delete database
+        # DATABASE DELETE
         # -------------------------------------------------
 
         con.execute(
@@ -1011,45 +1051,12 @@ def delete_movie(movie_id):
 
         con.commit()
 
-        # -------------------------------------------------
-        # Delete R2 objects
-        # -------------------------------------------------
-
-        try:
-
-            s3 = r2_client()
-
-            if video_name:
-
-                s3.delete_object(
-                    Bucket=R2_BUCKET,
-                    Key=video_name
-                )
-
-            if poster_name:
-
-                s3.delete_object(
-                    Bucket=R2_BUCKET,
-                    Key=poster_name
-                )
-
-        except Exception as e:
-
-            app.logger.exception(
-                "R2 delete failed: %s",
-                e
-            )
-
-        flash(
-            "Movie delete हो गई."
-        )
-
     except Exception as e:
 
         con.rollback()
 
         app.logger.exception(
-            "Delete movie failed: %s",
+            "Delete movie database failed: %s",
             e
         )
 
@@ -1057,9 +1064,33 @@ def delete_movie(movie_id):
             "Movie delete नहीं हो पाई."
         )
 
+        return redirect(
+            url_for("admin")
+        )
+
     finally:
 
         con.close()
+
+    # -----------------------------------------------------
+    # R2 DELETE
+    # -----------------------------------------------------
+
+    if video_key:
+
+        delete_from_r2(
+            video_key
+        )
+
+    if poster_key:
+
+        delete_from_r2(
+            poster_key
+        )
+
+    flash(
+        "Movie delete हो गई."
+    )
 
     return redirect(
         url_for("admin")
@@ -1178,7 +1209,7 @@ except Exception as e:
 
 
 # =========================================================
-# START
+# RUN
 # =========================================================
 
 if __name__ == "__main__":
@@ -1195,3 +1226,4 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
+```
