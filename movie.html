@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 
 {% block title %}
@@ -14,20 +15,20 @@
 
     <div class="player-box">
 
-        {% if m.video %}
+        {% if m.video_url %}
 
         <video
             class="movie-player"
             controls
             preload="metadata"
             playsinline
-            {% if m.poster %}
-            poster="{{ m.poster }}"
+            {% if m.poster_url %}
+            poster="{{ m.poster_url }}"
             {% endif %}
         >
 
             <source
-                src="{{ m.video }}"
+                src="{{ m.video_url }}"
                 type="video/mp4"
             >
 
@@ -37,50 +38,34 @@
 
         {% else %}
 
-        <div class="no-video">
-            Video उपलब्ध नहीं है।
-        </div>
+        <p>Video उपलब्ध नहीं है।</p>
 
         {% endif %}
 
     </div>
 
-    <div class="movie-details">
+    <div class="movie-info">
 
-        <div class="movie-title-row">
-
-            <h1>
-                {{ m.title }}
-            </h1>
-
-        </div>
+        <h1>
+            {{ m.title }}
+        </h1>
 
         {% if m.category %}
-
-        <div class="movie-category">
+        <p>
+            <strong>Category:</strong>
             {{ m.category }}
-        </div>
-
+        </p>
         {% endif %}
 
-        <div class="movie-meta">
-
-            👁️ {{ m.views }} Views
-
-        </div>
+        <p>
+            <strong>Views:</strong>
+            {{ m.views }}
+        </p>
 
         {% if m.description %}
-
         <div class="movie-description">
-
-            <h2>About Movie</h2>
-
-            <p>
-                {{ m.description }}
-            </p>
-
+            {{ m.description }}
         </div>
-
         {% endif %}
 
     </div>
@@ -88,3 +73,4 @@
 </div>
 
 {% endblock %}
+```
