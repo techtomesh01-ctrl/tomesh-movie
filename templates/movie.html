@@ -1,318 +1,222 @@
 {% extends "base.html" %}
 
-{% block title %}
-{{ m.title }} - Tomesh Movies
-{% endblock %}
+{% block title %}{{ movie.title }} - Tomesh Movie{% endblock %}
 
 {% block content %}
 
-<div class="movie-page">
+<div class="tm-layout">
 
-    <!-- TOP AD -->
-    <div class="movie-ad">
-        {{ ads.ad_top|safe }}
-    </div>
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="tm-sidebar">
+
+        <a href="{{ url_for('home') }}" class="tm-brand">
+            <div class="tm-logo">
+                <span class="tm-logo-t">T</span>
+                <span class="tm-logo-m">M</span>
+                <span class="tm-logo-play">▶</span>
+            </div>
+
+            <div class="tm-brand-name">
+                <strong>TOMESH</strong>
+                <span>MOVIE</span>
+            </div>
+        </a>
+
+        <nav class="tm-nav">
+
+            <a href="{{ url_for('home') }}" class="tm-nav-link">
+                <span>⌂</span>
+                <b>Home</b>
+            </a>
+
+            <a href="{{ url_for('home') }}#movies" class="tm-nav-link">
+                <span>🎬</span>
+                <b>Latest Movies</b>
+            </a>
+
+        </nav>
+
+        <div class="tm-sidebar-bottom">
+            <div class="tm-side-popcorn">🍿</div>
+            <span>Enjoy Movies</span>
+        </div>
+
+    </aside>
 
 
-    <!-- BACK BUTTON -->
-    <a class="back-button" href="{{ url_for('home') }}">
-        ← Back to Movies
-    </a>
+    <!-- ================= MAIN ================= -->
+    <main class="tm-main">
+
+        <!-- TOP BAR -->
+        <header class="tm-topbar">
+
+            <a href="{{ url_for('home') }}" class="tm-mobile-brand">
+                <span class="mobile-logo">TM</span>
+                <span>TOMESH MOVIE</span>
+            </a>
+
+            <a href="{{ url_for('home') }}" class="tm-back-btn">
+                ← Back
+            </a>
+
+        </header>
 
 
-    <!-- VIDEO PLAYER -->
-    <section class="video-card">
+        <!-- ================= MOVIE HERO ================= -->
+        <section class="tm-movie-hero">
 
-        <video
-            class="movie-player"
-            controls
-            preload="metadata"
-            playsinline
-            {% if m.poster %}
-            poster="{{ url_for('poster', name=m.poster) }}"
+            <!-- LEFT CONTENT -->
+            <div class="tm-movie-info">
+
+                <div class="tm-small-label">
+                    <span>●</span> TOMESH MOVIE
+                </div>
+
+                <h1>{{ movie.title }}</h1>
+
+                {% if movie.category %}
+                <div class="tm-category">
+                    🎬 {{ movie.category }}
+                </div>
+                {% endif %}
+
+                {% if movie.description %}
+                <p class="tm-description">
+                    {{ movie.description }}
+                </p>
+                {% else %}
+                <p class="tm-description">
+                    अपनी पसंदीदा Movie को आसानी से देखें।
+                </p>
+                {% endif %}
+
+                {% if movie.video_url %}
+                <a href="{{ movie.video_url }}" class="tm-watch-btn" target="_blank">
+                    <span>▶</span>
+                    Watch Movie
+                </a>
+
+                {% elif movie.video %}
+                <a href="{{ movie.video }}" class="tm-watch-btn" target="_blank">
+                    <span>▶</span>
+                    Watch Movie
+                </a>
+                {% endif %}
+
+            </div>
+
+
+            <!-- ================= POPCORN SIDE ================= -->
+            <div class="tm-popcorn-area">
+
+                <div class="tm-glow"></div>
+
+                <div class="tm-popcorn-card">
+
+                    <div class="tm-popcorn-title">
+                        <span>NOW</span>
+                        <strong>WATCH</strong>
+                    </div>
+
+                    <div class="tm-popcorn">
+                        <div class="popcorn-piece p1">🍿</div>
+                        <div class="popcorn-piece p2">🍿</div>
+                        <div class="popcorn-piece p3">🍿</div>
+                        <div class="popcorn-piece p4">🍿</div>
+                    </div>
+
+                    <div class="tm-popcorn-text">
+                        <strong>Grab Your Popcorn!</strong>
+                        <span>Movie time starts now</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================= VIDEO ================= -->
+        {% if movie.video_url or movie.video %}
+
+        <section class="tm-player-section">
+
+            <div class="tm-section-title">
+                <span>▶</span>
+                Watch Now
+            </div>
+
+            <div class="tm-video-box">
+
+                <video
+                    controls
+                    playsinline
+                    preload="metadata"
+                    class="tm-video"
+                >
+
+                    {% if movie.video_url %}
+                    <source src="{{ movie.video_url }}" type="video/mp4">
+
+                    {% elif movie.video %}
+                    <source src="{{ movie.video }}" type="video/mp4">
+                    {% endif %}
+
+                    Your browser does not support video playback.
+                </video>
+
+            </div>
+
+        </section>
+
+        {% endif %}
+
+
+        <!-- ================= MOVIE DETAILS ================= -->
+        <section class="tm-details">
+
+            <div class="tm-detail-box">
+                <span class="detail-icon">🎬</span>
+                <div>
+                    <small>Movie</small>
+                    <strong>{{ movie.title }}</strong>
+                </div>
+            </div>
+
+            {% if movie.category %}
+            <div class="tm-detail-box">
+                <span class="detail-icon">🏷️</span>
+                <div>
+                    <small>Category</small>
+                    <strong>{{ movie.category }}</strong>
+                </div>
+            </div>
             {% endif %}
-        >
 
-            <source
-                src="{{ url_for('video', name=m.video) }}"
-                type="video/mp4"
-            >
+            <div class="tm-detail-box">
+                <span class="detail-icon">🍿</span>
+                <div>
+                    <small>Experience</small>
+                    <strong>Enjoy Your Movie</strong>
+                </div>
+            </div>
 
-            आपका browser video नहीं चला सकता।
-
-        </video>
-
-    </section>
+        </section>
 
 
-    <!-- PLAYER AD -->
-    <div class="movie-ad">
-        {{ ads.ad_player|safe }}
-    </div>
+        <!-- ================= FOOTER ================= -->
+        <footer class="tm-footer">
+            <div class="footer-logo">TM</div>
 
+            <div>
+                <strong>TOMESH MOVIE</strong>
+                <span>Enjoy movies anytime.</span>
+            </div>
+        </footer>
 
-    <!-- MOVIE DETAILS -->
-    <section class="movie-details">
-
-        <h1>{{ m.title }}</h1>
-
-
-        {% if m.category %}
-
-        <div class="movie-category">
-            🎬 {{ m.category }}
-        </div>
-
-        {% endif %}
-
-
-        <div class="movie-meta">
-
-            <span>
-                👁️ {{ m.views }} Views
-            </span>
-
-            <span>
-                🎬 Tomesh Movies
-            </span>
-
-        </div>
-
-
-        {% if m.description %}
-
-        <div class="description">
-
-            <h2>About this movie</h2>
-
-            <p>
-                {{ m.description }}
-            </p>
-
-        </div>
-
-        {% endif %}
-
-    </section>
-
-
-    <!-- BOTTOM AD -->
-    <div class="movie-ad">
-        {{ ads.ad_bottom|safe }}
-    </div>
+    </main>
 
 </div>
-
-
-<style>
-
-/* =========================
-   MOVIE PAGE
-========================= */
-
-.movie-page {
-    width: 100%;
-    max-width: 1150px;
-    margin: 25px auto 50px;
-}
-
-
-/* BACK */
-
-.back-button {
-    display: inline-flex;
-
-    align-items: center;
-
-    margin-bottom: 18px;
-
-    padding: 10px 16px;
-
-    border: 1px solid #30303a;
-
-    border-radius: 10px;
-
-    background: #15151b;
-
-    color: #ddd;
-
-    font-size: 14px;
-
-    transition: .2s;
-}
-
-.back-button:hover {
-    background: #e50914;
-    border-color: #e50914;
-    color: white;
-}
-
-
-/* VIDEO */
-
-.video-card {
-    width: 100%;
-
-    overflow: hidden;
-
-    border: 1px solid #292932;
-
-    border-radius: 18px;
-
-    background: #000;
-
-    box-shadow:
-        0 20px 60px rgba(0,0,0,.5);
-}
-
-
-.movie-player {
-    display: block;
-
-    width: 100%;
-
-    max-height: 680px;
-
-    background: #000;
-
-    object-fit: contain;
-}
-
-
-/* ADS */
-
-.movie-ad {
-    width: 100%;
-
-    margin: 18px 0;
-
-    text-align: center;
-}
-
-
-/* DETAILS */
-
-.movie-details {
-    margin-top: 22px;
-
-    padding: 28px;
-
-    border: 1px solid #292932;
-
-    border-radius: 18px;
-
-    background: #15151b;
-}
-
-
-.movie-details h1 {
-    margin: 0 0 14px;
-
-    font-size: clamp(28px, 5vw, 48px);
-
-    line-height: 1.1;
-}
-
-
-/* CATEGORY */
-
-.movie-category {
-    display: inline-block;
-
-    padding: 7px 13px;
-
-    border-radius: 8px;
-
-    background: #e50914;
-
-    color: white;
-
-    font-size: 13px;
-
-    font-weight: bold;
-}
-
-
-/* META */
-
-.movie-meta {
-    display: flex;
-
-    flex-wrap: wrap;
-
-    gap: 20px;
-
-    margin-top: 18px;
-
-    color: #999;
-
-    font-size: 14px;
-}
-
-
-/* DESCRIPTION */
-
-.description {
-    margin-top: 25px;
-
-    padding-top: 22px;
-
-    border-top: 1px solid #292932;
-}
-
-
-.description h2 {
-    margin: 0 0 12px;
-
-    font-size: 21px;
-}
-
-
-.description p {
-    margin: 0;
-
-    color: #c5c5cc;
-
-    font-size: 15px;
-
-    line-height: 1.8;
-}
-
-
-/* MOBILE */
-
-@media (max-width: 700px) {
-
-    .movie-page {
-        margin-top: 15px;
-    }
-
-    .video-card {
-        border-radius: 10px;
-    }
-
-    .movie-details {
-        padding: 20px;
-
-        border-radius: 13px;
-    }
-
-    .movie-details h1 {
-        font-size: 28px;
-    }
-
-    .movie-meta {
-        flex-direction: column;
-
-        gap: 8px;
-    }
-
-    .description p {
-        font-size: 14px;
-    }
-
-}
-
-</style>
 
 {% endblock %}
