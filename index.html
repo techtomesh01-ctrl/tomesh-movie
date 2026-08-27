@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Tomesh Movies - Watch Movies Online{% endblock %}
+{% block title %}Tomesh Movies{% endblock %}
 
 {% block content %}
 
@@ -11,10 +11,15 @@
 </div>
 {% endif %}
 
-<!-- HERO -->
+
+<!-- HERO SECTION -->
 <section class="premium-hero">
+
     <div class="hero-content">
-        <span class="hero-badge">🎬 TOMESH MOVIES</span>
+
+        <div class="hero-badge">
+            🎬 TOMESH MOVIES
+        </div>
 
         <h1>
             आपकी पसंदीदा
@@ -27,6 +32,7 @@
         </p>
 
         <div class="hero-actions">
+
             <a href="#movies" class="hero-btn">
                 ▶ Movies देखें
             </a>
@@ -34,8 +40,11 @@
             <a href="#categories" class="hero-btn secondary">
                 Browse Categories
             </a>
+
         </div>
+
     </div>
+
 </section>
 
 
@@ -43,11 +52,14 @@
 <section class="category-section" id="categories">
 
     <div class="section-heading">
+
         <div>
             <span class="mini-title">EXPLORE</span>
             <h2>Categories</h2>
         </div>
+
     </div>
+
 
     <div class="categories">
 
@@ -59,7 +71,9 @@
             <b>All Movies</b>
         </a>
 
+
         {% for c in categories %}
+
         <a
             class="category"
             href="{{ url_for('home', category=c) }}"
@@ -67,6 +81,7 @@
             <span>🍿</span>
             <b>{{ c }}</b>
         </a>
+
         {% endfor %}
 
     </div>
@@ -98,6 +113,7 @@
         <article class="movie-card">
 
             <!-- POSTER -->
+
             <a
                 class="poster-wrap"
                 href="{{ url_for('movie', movie_id=m.id) }}"
@@ -114,11 +130,17 @@
                 {% else %}
 
                 <div class="no-poster">
+
                     <span>🎬</span>
-                    <small>No Poster</small>
+
+                    <small>
+                        No Poster
+                    </small>
+
                 </div>
 
                 {% endif %}
+
 
                 <div class="poster-overlay">
 
@@ -131,19 +153,23 @@
             </a>
 
 
-            <!-- DETAILS -->
+            <!-- MOVIE DETAILS -->
+
             <div class="movie-info">
 
                 <h3 title="{{ m.title }}">
                     {{ m.title }}
                 </h3>
 
+
                 <div class="movie-meta">
 
                     {% if m.category %}
+
                     <span class="category-tag">
                         {{ m.category }}
                     </span>
+
                     {% endif %}
 
                     <span>
@@ -165,13 +191,18 @@
 
         </article>
 
+
         {% else %}
 
         <div class="empty-state">
 
-            <div class="empty-icon">🎬</div>
+            <div class="empty-icon">
+                🎬
+            </div>
 
-            <h3>अभी कोई Movie नहीं है</h3>
+            <h3>
+                अभी कोई Movie नहीं है
+            </h3>
 
             <p>
                 Admin Panel से पहली movie publish करें।
@@ -187,28 +218,43 @@
 
 
 <!-- BOTTOM AD -->
+
 {% if ads.ad_bottom %}
+
 <div class="ad-box bottom-ad">
     {{ ads.ad_bottom|safe }}
 </div>
+
 {% endif %}
 
 
 <style>
 
-* {
-    box-sizing: border-box;
-}
+/* =========================================
+   PREMIUM TOMESH MOVIES HOMEPAGE
+   ========================================= */
+
+
+/* HERO */
 
 .premium-hero {
+
     position: relative;
+
     overflow: hidden;
+
     min-height: 390px;
+
     margin: 20px 0 45px;
+
     border-radius: 24px;
+
     display: flex;
+
     align-items: center;
+
     padding: 55px;
+
     background:
         radial-gradient(
             circle at 80% 20%,
@@ -226,100 +272,187 @@
             #171421 50%,
             #0b0b10
         );
+
     border: 1px solid rgba(255,255,255,.08);
-    box-shadow: 0 25px 70px rgba(0,0,0,.35);
+
+    box-shadow:
+        0 25px 70px rgba(0,0,0,.35);
 }
+
 
 .premium-hero::before {
+
     content: "";
+
     position: absolute;
+
     width: 300px;
     height: 300px;
+
     right: -100px;
     bottom: -130px;
+
     border-radius: 50%;
-    background: rgba(255,255,255,.04);
+
+    background:
+        rgba(255,255,255,.04);
 }
+
 
 .hero-content {
+
     position: relative;
+
     z-index: 2;
+
     max-width: 700px;
+
 }
+
 
 .hero-badge {
+
     display: inline-block;
+
     padding: 8px 14px;
+
     border-radius: 30px;
-    background: rgba(255,255,255,.08);
-    border: 1px solid rgba(255,255,255,.12);
+
+    background:
+        rgba(255,255,255,.08);
+
+    border:
+        1px solid rgba(255,255,255,.12);
+
     font-size: 12px;
+
     font-weight: 800;
+
     letter-spacing: 1.5px;
+
     color: #fff;
+
     margin-bottom: 18px;
+
 }
+
 
 .premium-hero h1 {
+
     margin: 0;
-    font-size: clamp(38px, 6vw, 70px);
+
+    font-size:
+        clamp(38px, 6vw, 70px);
+
     line-height: 1.02;
+
     font-weight: 900;
+
     letter-spacing: -2px;
+
     color: #fff;
+
 }
+
 
 .premium-hero h1 span {
-    background: linear-gradient(
-        90deg,
-        #ff315d,
-        #ff6b35
-    );
+
+    background:
+        linear-gradient(
+            90deg,
+            #ff315d,
+            #ff6b35
+        );
+
     -webkit-background-clip: text;
+
     background-clip: text;
+
     color: transparent;
+
 }
+
 
 .premium-hero p {
+
     max-width: 560px;
+
     margin: 20px 0 28px;
-    color: rgba(255,255,255,.70);
+
+    color:
+        rgba(255,255,255,.70);
+
     font-size: 17px;
+
     line-height: 1.7;
+
 }
+
 
 .hero-actions {
+
     display: flex;
+
     gap: 12px;
+
     flex-wrap: wrap;
+
 }
+
 
 .hero-btn {
+
     display: inline-flex;
+
     align-items: center;
+
     justify-content: center;
+
     padding: 13px 22px;
+
     border-radius: 12px;
+
     text-decoration: none;
+
     color: #fff;
-    background: linear-gradient(
-        135deg,
-        #ff315d,
-        #ff5b32
-    );
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff315d,
+            #ff5b32
+        );
+
     font-weight: 800;
-    box-shadow: 0 10px 30px rgba(255,50,80,.25);
+
+    box-shadow:
+        0 10px 30px
+        rgba(255,50,80,.25);
+
     transition: .25s;
+
 }
+
 
 .hero-btn:hover {
-    transform: translateY(-2px);
+
+    transform:
+        translateY(-2px);
+
 }
 
+
 .hero-btn.secondary {
-    background: rgba(255,255,255,.07);
-    border: 1px solid rgba(255,255,255,.12);
+
+    background:
+        rgba(255,255,255,.07);
+
+    border:
+        1px solid
+        rgba(255,255,255,.12);
+
     box-shadow: none;
+
 }
 
 
@@ -327,296 +460,539 @@
 
 .category-section,
 .movies-section {
+
     margin-bottom: 45px;
+
 }
+
 
 .section-heading {
+
     display: flex;
+
     align-items: flex-end;
+
     justify-content: space-between;
+
     gap: 20px;
+
     margin-bottom: 20px;
+
 }
+
 
 .mini-title {
+
     display: block;
+
     color: #ff4b68;
+
     font-size: 11px;
+
     font-weight: 900;
+
     letter-spacing: 2px;
+
     margin-bottom: 5px;
+
 }
 
+
 .section-heading h2 {
+
     margin: 0;
+
     font-size: 28px;
+
     font-weight: 900;
+
 }
 
 
 /* CATEGORIES */
 
 .categories {
+
     display: flex;
+
     gap: 12px;
+
     overflow-x: auto;
-    padding: 4px 2px 12px;
+
+    padding:
+        4px 2px 12px;
+
     scrollbar-width: thin;
+
 }
+
 
 .category {
+
     flex: 0 0 auto;
+
     display: flex;
+
     align-items: center;
+
     gap: 9px;
+
     padding: 12px 17px;
+
     border-radius: 13px;
+
     text-decoration: none;
+
     color: inherit;
-    background: rgba(255,255,255,.045);
-    border: 1px solid rgba(255,255,255,.08);
+
+    background:
+        rgba(255,255,255,.045);
+
+    border:
+        1px solid
+        rgba(255,255,255,.08);
+
     transition: .25s;
+
 }
+
 
 .category span {
+
     font-size: 17px;
+
 }
 
+
 .category b {
+
     white-space: nowrap;
+
     font-size: 13px;
+
 }
+
 
 .category:hover,
 .category.active {
+
     color: #fff;
-    background: linear-gradient(
-        135deg,
-        #ff315d,
-        #ff5b32
-    );
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff315d,
+            #ff5b32
+        );
+
     border-color: transparent;
-    transform: translateY(-2px);
+
+    transform:
+        translateY(-2px);
+
 }
 
 
 /* MOVIE GRID */
 
 .movie-grid {
+
     display: grid;
+
     grid-template-columns:
         repeat(
             auto-fill,
             minmax(190px, 1fr)
         );
+
     gap: 22px;
+
 }
 
+
 .movie-card {
+
     overflow: hidden;
+
     border-radius: 17px;
-    background: rgba(255,255,255,.045);
-    border: 1px solid rgba(255,255,255,.08);
+
+    background:
+        rgba(255,255,255,.045);
+
+    border:
+        1px solid
+        rgba(255,255,255,.08);
+
     transition:
         transform .25s,
         box-shadow .25s,
         border-color .25s;
+
 }
 
+
 .movie-card:hover {
-    transform: translateY(-7px);
-    border-color: rgba(255,70,100,.35);
-    box-shadow: 0 20px 45px rgba(0,0,0,.35);
+
+    transform:
+        translateY(-7px);
+
+    border-color:
+        rgba(255,70,100,.35);
+
+    box-shadow:
+        0 20px 45px
+        rgba(0,0,0,.35);
+
 }
 
 
 /* POSTER */
 
 .poster-wrap {
+
     position: relative;
+
     display: block;
+
     aspect-ratio: 2 / 3;
+
     overflow: hidden;
+
     background: #111;
+
 }
+
 
 .poster-wrap img {
+
     width: 100%;
+
     height: 100%;
+
     display: block;
+
     object-fit: cover;
-    transition: transform .4s ease;
+
+    transition:
+        transform .4s ease;
+
 }
 
-.movie-card:hover .poster-wrap img {
-    transform: scale(1.06);
+
+.movie-card:hover
+.poster-wrap img {
+
+    transform:
+        scale(1.06);
+
 }
+
 
 .poster-overlay {
+
     position: absolute;
+
     inset: 0;
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
-    background: rgba(0,0,0,.38);
+
+    background:
+        rgba(0,0,0,.38);
+
     opacity: 0;
+
     transition: .25s;
+
 }
 
-.movie-card:hover .poster-overlay {
+
+.movie-card:hover
+.poster-overlay {
+
     opacity: 1;
+
 }
+
 
 .play-circle {
+
     width: 58px;
+
     height: 58px;
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
+
     padding-left: 3px;
+
     border-radius: 50%;
+
     color: #fff;
-    background: linear-gradient(
-        135deg,
-        #ff315d,
-        #ff5b32
-    );
-    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff315d,
+            #ff5b32
+        );
+
+    box-shadow:
+        0 10px 30px
+        rgba(0,0,0,.35);
+
     font-size: 21px;
+
 }
 
+
 .no-poster {
+
     height: 100%;
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
+
     flex-direction: column;
+
     gap: 8px;
-    color: rgba(255,255,255,.45);
+
+    color:
+        rgba(255,255,255,.45);
+
     background:
         linear-gradient(
             135deg,
             #17171e,
             #0e0e13
         );
+
 }
+
 
 .no-poster span {
+
     font-size: 45px;
+
 }
+
 
 .no-poster small {
+
     font-size: 11px;
+
 }
 
 
-/* INFO */
+/* MOVIE INFO */
 
 .movie-info {
+
     padding: 15px;
+
 }
+
 
 .movie-info h3 {
-    margin: 0 0 9px;
+
+    margin:
+        0 0 9px;
+
     font-size: 16px;
+
     line-height: 1.35;
+
     white-space: nowrap;
+
     overflow: hidden;
+
     text-overflow: ellipsis;
+
 }
+
 
 .movie-meta {
+
     display: flex;
+
     align-items: center;
+
     gap: 9px;
+
     min-height: 24px;
-    color: rgba(255,255,255,.55);
+
+    color:
+        rgba(255,255,255,.55);
+
     font-size: 11px;
+
 }
+
 
 .category-tag {
+
     padding: 4px 8px;
+
     border-radius: 6px;
-    background: rgba(255,255,255,.07);
-    color: rgba(255,255,255,.75);
+
+    background:
+        rgba(255,255,255,.07);
+
+    color:
+        rgba(255,255,255,.75);
+
 }
+
 
 .watch-btn {
+
     width: 100%;
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
+
     gap: 7px;
+
     margin-top: 13px;
+
     padding: 10px;
+
     border-radius: 10px;
+
     text-decoration: none;
+
     color: #fff;
-    background: rgba(255,255,255,.07);
-    border: 1px solid rgba(255,255,255,.08);
+
+    background:
+        rgba(255,255,255,.07);
+
+    border:
+        1px solid
+        rgba(255,255,255,.08);
+
     font-size: 13px;
+
     font-weight: 800;
+
     transition: .25s;
+
 }
+
 
 .watch-btn:hover {
-    background: linear-gradient(
-        135deg,
-        #ff315d,
-        #ff5b32
-    );
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff315d,
+            #ff5b32
+        );
+
     border-color: transparent;
+
 }
 
 
-/* COUNT */
+/* MOVIE COUNT */
 
 .movie-count {
+
     padding: 7px 11px;
+
     border-radius: 8px;
-    background: rgba(255,255,255,.06);
-    color: rgba(255,255,255,.6);
+
+    background:
+        rgba(255,255,255,.06);
+
+    color:
+        rgba(255,255,255,.6);
+
     font-size: 12px;
+
 }
 
 
-/* EMPTY */
+/* EMPTY STATE */
 
 .empty-state {
+
     grid-column: 1 / -1;
+
     text-align: center;
+
     padding: 70px 20px;
+
     border-radius: 18px;
-    background: rgba(255,255,255,.035);
-    border: 1px dashed rgba(255,255,255,.12);
+
+    background:
+        rgba(255,255,255,.035);
+
+    border:
+        1px dashed
+        rgba(255,255,255,.12);
+
 }
+
 
 .empty-icon {
+
     font-size: 50px;
+
     margin-bottom: 12px;
+
 }
+
 
 .empty-state h3 {
-    margin: 0 0 8px;
+
+    margin:
+        0 0 8px;
+
 }
 
+
 .empty-state p {
+
     margin: 0;
-    color: rgba(255,255,255,.55);
+
+    color:
+        rgba(255,255,255,.55);
+
 }
 
 
 /* ADS */
 
 .ad-box {
+
     width: 100%;
-    margin: 12px 0 25px;
+
+    margin:
+        12px 0 25px;
+
     text-align: center;
+
     overflow: hidden;
+
 }
 
+
 .bottom-ad {
+
     margin-top: 35px;
+
 }
 
 
@@ -625,68 +1001,115 @@
 @media (max-width: 700px) {
 
     .premium-hero {
+
         min-height: 350px;
+
         padding: 32px 24px;
+
         border-radius: 20px;
+
         margin-top: 12px;
+
     }
+
 
     .premium-hero h1 {
+
         font-size: 43px;
+
         letter-spacing: -1.5px;
+
     }
+
 
     .premium-hero p {
+
         font-size: 14px;
+
     }
+
 
     .hero-btn {
+
         width: 100%;
+
     }
 
+
     .movie-grid {
+
         grid-template-columns:
             repeat(
                 2,
                 minmax(0, 1fr)
             );
+
         gap: 13px;
+
     }
+
 
     .movie-info {
+
         padding: 11px;
+
     }
+
 
     .movie-info h3 {
+
         font-size: 14px;
+
     }
+
 
     .watch-btn {
+
         font-size: 11px;
+
         padding: 9px;
+
     }
+
 
     .section-heading h2 {
+
         font-size: 23px;
+
     }
 
+
     .movie-count {
+
         font-size: 10px;
+
     }
+
 }
+
+
+/* SMALL MOBILE */
 
 @media (max-width: 380px) {
 
     .movie-grid {
+
         gap: 9px;
+
     }
+
 
     .movie-info {
+
         padding: 9px;
+
     }
 
+
     .movie-info h3 {
+
         font-size: 13px;
+
     }
 
 }
