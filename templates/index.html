@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Tomesh Movie{% endblock %}
@@ -7,50 +6,98 @@
 
 <div class="tm-layout">
 
-    <!-- SIDEBAR -->
+    <!-- ================= SIDEBAR ================= -->
+
     <aside class="tm-sidebar">
 
-        <div class="tm-logo">
+        <a href="{{ url_for('home') }}" class="tm-brand">
 
-            <div class="logo-circle">
-                <div class="logo-play">▶</div>
-                <div class="logo-ring"></div>
+            <div class="tm-logo">
+                <span class="tm-logo-t">T</span>
+                <span class="tm-logo-m">M</span>
+                <span class="tm-logo-play">▶</span>
             </div>
 
-            <div class="logo-text">
-                <b>TOMESH</b>
+            <div class="tm-brand-name">
+                <strong>TOMESH</strong>
                 <span>MOVIE</span>
             </div>
 
-        </div>
+        </a>
 
-        <nav class="side-menu">
 
-            <a class="active" href="#home">⌂ <span>Home</span></a>
+        <nav class="tm-nav">
 
-            <a href="#movies">🎬 <span>Latest Movies</span></a>
+            <a href="#home" class="tm-nav-link active">
+                <span>⌂</span>
+                <b>Home</b>
+            </a>
 
-            <a href="#trending">🔥 <span>Trending</span></a>
+            <a href="#movies" class="tm-nav-link">
+                <span>🎬</span>
+                <b>Latest Movies</b>
+            </a>
 
-            <a href="#featured">☆ <span>Featured</span></a>
+            <a href="#trending" class="tm-nav-link">
+                <span>🔥</span>
+                <b>Trending</b>
+            </a>
 
-            <a href="#categories">▦ <span>Genres</span></a>
+            <a href="#featured" class="tm-nav-link">
+                <span>☆</span>
+                <b>Featured</b>
+            </a>
 
-            <a href="#shows">📺 <span>TV Shows</span></a>
+            <a href="#categories" class="tm-nav-link">
+                <span>▦</span>
+                <b>Genres</b>
+            </a>
 
-            <a href="#">🔖 <span>My Watchlist</span></a>
+            <a href="#shows" class="tm-nav-link">
+                <span>▣</span>
+                <b>TV Shows</b>
+            </a>
+
+            <a href="#movies" class="tm-nav-link">
+                <span>♡</span>
+                <b>My Watchlist</b>
+            </a>
 
         </nav>
 
-        <div class="side-bottom">
 
-            <a href="#">♙ Profile</a>
+        <div class="tm-sidebar-bottom">
 
-            <a href="#">⚙ Settings</a>
+            {% if session.get('admin') %}
 
-            <a href="#">✉ Contact Us</a>
+            <a href="{{ url_for('admin') }}"
+               class="tm-admin">
 
-            <div class="social">
+                <span>🛠</span>
+                <b>ADMIN PANEL</b>
+
+            </a>
+
+            {% endif %}
+
+
+            <a href="#" class="tm-small-link">
+                <span>♙</span>
+                <b>Profile</b>
+            </a>
+
+            <a href="#" class="tm-small-link">
+                <span>⚙</span>
+                <b>Settings</b>
+            </a>
+
+            <a href="#" class="tm-small-link">
+                <span>✉</span>
+                <b>Contact Us</b>
+            </a>
+
+
+            <div class="tm-social">
 
                 <span>▶</span>
                 <span>✈</span>
@@ -59,30 +106,91 @@
 
             </div>
 
-            <small>© 2026 Tomesh Movie</small>
+
+            <div class="tm-copy">
+                © 2026 Tomesh Movie
+            </div>
 
         </div>
 
     </aside>
 
 
-    <!-- MAIN -->
+    <!-- ================= MAIN ================= -->
+
     <main class="tm-main" id="home">
 
+
+        <!-- TOP MOBILE BAR -->
+
+        <div class="tm-mobile-bar">
+
+            <div class="tm-mobile-logo">
+                <strong>TM</strong>
+                <span>TOMESH MOVIE</span>
+            </div>
+
+            <button onclick="document.body.classList.toggle('tm-sidebar-open')">
+                ☰
+            </button>
+
+        </div>
+
+
+        <!-- TOP SEARCH -->
+
+        <div class="tm-topbar">
+
+            <div></div>
+
+            <form class="tm-search"
+                  action="{{ url_for('home') }}">
+
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ q|default('') }}"
+                    placeholder="Search movies..."
+                >
+
+                <button type="submit">
+                    ⌕
+                </button>
+
+            </form>
+
+            {% if session.get('admin') %}
+
+            <a href="{{ url_for('admin') }}"
+               class="tm-top-admin">
+
+                🛠 ADMIN
+
+            </a>
+
+            {% endif %}
+
+        </div>
+
+
+        <!-- ================= AD TOP ================= -->
+
         {% if ads.ad_top %}
-        <div class="ad-box">
+
+        <div class="tm-ad">
             {{ ads.ad_top|safe }}
         </div>
+
         {% endif %}
 
 
-        <!-- HERO -->
+        <!-- ================= HERO ================= -->
 
-        <section class="hero">
+        <section class="tm-hero">
 
-            <div class="hero-left">
+            <div class="tm-hero-content">
 
-                <div class="welcome">
+                <div class="tm-welcome">
                     WELCOME TO
                 </div>
 
@@ -95,113 +203,147 @@
                 </h2>
 
                 <p>
-                    Discover the latest movies, trending stories and entertainment —
-                    all in one place.
+                    Discover the latest movies, trending stories and
+                    entertainment — all in one place.
                 </p>
 
-                <div class="hero-buttons">
+                <div class="tm-hero-buttons">
 
-                    <a href="#movies" class="gold-btn">
-                        ▶ WATCH TRAILER
+                    <a href="#movies"
+                       class="tm-gold-btn">
+
+                        ▶ WATCH MOVIES
+
                     </a>
 
-                    <a href="#categories" class="outline-btn">
+                    <a href="#categories"
+                       class="tm-outline-btn">
+
                         EXPLORE MOVIES
+
                     </a>
 
                 </div>
 
             </div>
 
-            <div class="hero-art">
 
-                <div class="glow"></div>
+            <!-- Cinema artwork -->
 
-                <div class="popcorn">🍿</div>
+            <div class="tm-hero-art">
 
-                <div class="clap">🎬</div>
+                <div class="tm-glow"></div>
 
-                <div class="reel">◉</div>
+                <div class="tm-popcorn">
+                    🍿
+                </div>
 
-                <div class="film"></div>
+                <div class="tm-reel">
+                    ◉
+                </div>
+
+                <div class="tm-clapper">
+                    ▰<br>
+                    ▰▰
+                </div>
+
+                <div class="tm-film"></div>
 
             </div>
 
         </section>
 
 
-        <!-- FEATURES -->
+        <!-- ================= BENEFITS ================= -->
 
-        <section class="features">
+        <section class="tm-benefits">
 
-            <div>
+            <div class="tm-benefit">
 
-                <b>▣</b>
+                <span class="tm-benefit-icon">
+                    ▣
+                </span>
 
-                <span>
+                <div>
                     <strong>HIGH QUALITY</strong>
                     <small>HD & 4K Quality</small>
-                </span>
+                </div>
 
             </div>
 
-            <div>
 
-                <b>⬡</b>
+            <div class="tm-benefit">
 
-                <span>
+                <span class="tm-benefit-icon">
+                    ◇
+                </span>
+
+                <div>
                     <strong>100% SAFE</strong>
                     <small>Secure & Reliable</small>
-                </span>
+                </div>
 
             </div>
 
-            <div>
 
-                <b>◔</b>
+            <div class="tm-benefit">
 
-                <span>
+                <span class="tm-benefit-icon">
+                    ◷
+                </span>
+
+                <div>
                     <strong>REGULAR UPDATES</strong>
                     <small>New Movies Everyday</small>
-                </span>
+                </div>
 
             </div>
 
-            <div>
 
-                <b>♧</b>
+            <div class="tm-benefit">
 
-                <span>
+                <span class="tm-benefit-icon">
+                    ♧
+                </span>
+
+                <div>
                     <strong>SUPPORT 24/7</strong>
                     <small>We are here for you</small>
-                </span>
+                </div>
 
             </div>
 
         </section>
 
 
-        <!-- CATEGORIES -->
+        <!-- ================= GENRES ================= -->
 
-        <section class="section" id="categories">
+        <section class="tm-section"
+                 id="categories">
 
-            <div class="heading">
+            <div class="tm-section-heading">
 
-                <h2>GENRES</h2>
+                <h2>
+                    GENRES
+                </h2>
 
             </div>
 
-            <div class="genre-row">
 
-                <a class="genre active"
-                   href="{{ url_for('home') }}">
+            <div class="tm-genres">
+
+                <a href="{{ url_for('home') }}"
+                   class="tm-genre active">
+
                     ALL
+
                 </a>
+
 
                 {% for c in categories %}
 
-                <a class="genre"
-                   href="{{ url_for('home', category=c) }}">
+                <a href="{{ url_for('home', category=c) }}"
+                   class="tm-genre">
 
                     {{ c }}
 
@@ -214,74 +356,114 @@
         </section>
 
 
-        <!-- MOVIES -->
+        <!-- ================= MOVIES ================= -->
 
-        <section class="section" id="movies">
+        <section class="tm-section"
+                 id="movies">
 
-            <div class="heading row-title">
+            <div class="tm-section-heading tm-heading-row">
 
-                <h2>LATEST MOVIES</h2>
+                <h2>
+                    LATEST MOVIES
+                </h2>
 
-                <span>{{ movies|length }} Movies</span>
+                <span>
+                    {{ movies|length }} Movies
+                </span>
 
             </div>
 
-            <div class="movie-grid">
+
+            <div class="tm-movie-grid">
+
 
                 {% for m in movies %}
 
-                <article class="movie-card">
+
+                <article class="tm-movie-card">
+
 
                     <a href="{{ url_for('movie', movie_id=m.id) }}"
-                       class="poster">
+                       class="tm-poster">
+
 
                         {% if m.poster %}
 
-                        <img src="{{ url_for('poster', name=m.poster) }}"
-                             alt="{{ m.title }}">
+                        <img
+                            src="{{ url_for('poster', name=m.poster) }}"
+                            alt="{{ m.title }}"
+                            loading="lazy"
+                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                        >
+
+                        <div class="tm-poster-fallback">
+                            🎬
+                        </div>
 
                         {% else %}
 
-                        <div class="poster-placeholder">
+                        <div class="tm-poster-fallback"
+                             style="display:flex;">
+
                             🎬
+
                         </div>
 
                         {% endif %}
 
-                        <div class="badge-new">
-                            NEW
-                        </div>
 
-                        <div class="play-overlay">
+                        <span class="tm-badge">
+                            NEW
+                        </span>
+
+
+                        <span class="tm-play">
                             ▶
-                        </div>
+                        </span>
 
                     </a>
 
-                    <div class="movie-info">
 
-                        <h3>{{ m.title }}</h3>
+                    <div class="tm-movie-info">
 
-                        <p>
+
+                        <h3 title="{{ m.title }}">
+                            {{ m.title }}
+                        </h3>
+
+
+                        <div class="tm-movie-meta">
 
                             {% if m.category %}
-                            {{ m.category }}
+
+                            <span>
+                                {{ m.category }}
+                            </span>
+
                             {% endif %}
 
-                            · 👁 {{ m.views }}
+                            <span>
+                                👁 {{ m.views }}
+                            </span>
 
-                        </p>
+                        </div>
 
-                        <div class="movie-buttons">
+
+                        <div class="tm-card-buttons">
 
                             <a href="{{ url_for('movie', movie_id=m.id) }}"
-                               class="details">
+                               class="tm-details">
+
                                 DETAILS
+
                             </a>
 
+
                             <a href="{{ url_for('movie', movie_id=m.id) }}"
-                               class="watch">
+                               class="tm-watch">
+
                                 WATCH
+
                             </a>
 
                         </div>
@@ -290,69 +472,91 @@
 
                 </article>
 
+
                 {% else %}
 
-                <div class="empty">
 
-                    <div>🎬</div>
+                <div class="tm-empty">
 
-                    <h3>अभी कोई Movie नहीं है</h3>
+                    <div>
+                        🎬
+                    </div>
 
-                    <p>Admin Panel से Movie जोड़ें।</p>
+                    <h3>
+                        अभी कोई Movie नहीं है
+                    </h3>
+
+                    <p>
+                        Admin Panel से Movie जोड़ें।
+                    </p>
 
                 </div>
 
+
                 {% endfor %}
 
-            </div>
-
-        </section>
-
-
-        <!-- TRENDING -->
-
-        <section class="section" id="trending">
-
-            <div class="heading">
-
-                <h2>TRENDING NOW</h2>
-
-            </div>
-
-            <div class="trending-grid">
-
-                <button>🔫 ACTION</button>
-
-                <button>🎞 THRILLER</button>
-
-                <button>☺ COMEDY</button>
-
-                <button>🎭 DRAMA</button>
-
-                <button>🚀 SCI-FI</button>
-
-                <button>☠ HORROR</button>
 
             </div>
 
         </section>
 
 
-        <!-- FEATURED -->
+        <!-- ================= TRENDING ================= -->
 
-        <section class="section featured" id="featured">
+        <section class="tm-section"
+                 id="trending">
 
-            <div class="heading">
+            <div class="tm-section-heading tm-heading-row">
 
-                <h2>FEATURED</h2>
+                <h2>
+                    TRENDING NOW
+                </h2>
+
+                <a href="#categories">
+                    VIEW ALL →
+                </a>
 
             </div>
 
-            <div class="featured-box">
+
+            <div class="tm-trending-grid">
+
+                <a href="#categories">🔥 ACTION</a>
+
+                <a href="#categories">🎞 THRILLER</a>
+
+                <a href="#categories">☺ COMEDY</a>
+
+                <a href="#categories">🎭 DRAMA</a>
+
+                <a href="#categories">🚀 SCI-FI</a>
+
+                <a href="#categories">☠ HORROR</a>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================= FEATURED ================= -->
+
+        <section class="tm-section"
+                 id="featured">
+
+            <div class="tm-section-heading">
+
+                <h2>
+                    FEATURED
+                </h2>
+
+            </div>
+
+
+            <div class="tm-featured">
 
                 <div>
 
-                    <span class="editor">
+                    <span class="tm-editor">
                         EDITOR'S PICK
                     </span>
 
@@ -361,17 +565,21 @@
                     </h2>
 
                     <p>
-                        यहाँ आपकी featured movie दिखाई जाएगी।
+                        अपनी पसंदीदा movie को यहाँ featured
+                        section में highlight करें।
                     </p>
 
                     <a href="#movies"
-                       class="gold-btn">
+                       class="tm-gold-btn">
+
                         ▶ WATCH NOW
+
                     </a>
 
                 </div>
 
-                <div class="featured-icon">
+
+                <div class="tm-featured-art">
                     🎬
                 </div>
 
@@ -380,682 +588,53 @@
         </section>
 
 
-        <section id="shows" class="section shows">
+        <!-- ================= TV SHOWS ================= -->
 
-            <div class="heading">
+        <section class="tm-section"
+                 id="shows">
 
-                <h2>TV SHOWS</h2>
+            <div class="tm-section-heading">
+
+                <h2>
+                    TV SHOWS
+                </h2>
 
             </div>
 
-            <p>
-                TV Shows जल्द यहाँ उपलब्ध होंगे।
-            </p>
+
+            <div class="tm-show-box">
+
+                📺
+
+                <span>
+                    TV Shows जल्द यहाँ उपलब्ध होंगे।
+                </span>
+
+            </div>
 
         </section>
 
 
+        <!-- ================= AD BOTTOM ================= -->
+
         {% if ads.ad_bottom %}
 
-        <div class="ad-box">
+        <div class="tm-ad">
             {{ ads.ad_bottom|safe }}
         </div>
 
         {% endif %}
 
+
+        <footer class="tm-footer">
+
+            © 2026 <b>TOMESH MOVIE</b>. All Rights Reserved.
+
+        </footer>
+
+
     </main>
 
 </div>
-
-
-<style>
-
-*{
-box-sizing:border-box;
-}
-
-.tm-layout{
-display:flex;
-min-height:100vh;
-background:#08090c;
-color:#fff;
-font-family:Arial,Helvetica,sans-serif;
-}
-
-/* SIDEBAR */
-
-.tm-sidebar{
-width:240px;
-background:#0b0c10;
-border-right:1px solid #252525;
-padding:24px 16px;
-position:sticky;
-top:0;
-height:100vh;
-display:flex;
-flex-direction:column;
-}
-
-.tm-logo{
-text-align:center;
-margin-bottom:30px;
-}
-
-.logo-circle{
-width:110px;
-height:110px;
-margin:auto;
-border-radius:50%;
-border:3px solid #e8b22a;
-display:flex;
-align-items:center;
-justify-content:center;
-position:relative;
-box-shadow:0 0 30px rgba(232,178,42,.25);
-}
-
-.logo-play{
-font-size:42px;
-color:#f4bd28;
-margin-left:6px;
-z-index:2;
-}
-
-.logo-ring{
-position:absolute;
-inset:10px;
-border-radius:50%;
-border:1px dashed #d89c14;
-}
-
-.logo-text b{
-display:block;
-font-size:28px;
-letter-spacing:2px;
-margin-top:12px;
-}
-
-.logo-text span{
-display:block;
-color:#eab22b;
-font-size:18px;
-letter-spacing:6px;
-font-weight:bold;
-}
-
-.side-menu{
-display:flex;
-flex-direction:column;
-gap:8px;
-}
-
-.side-menu a,
-.side-bottom a{
-color:#d7d7d7;
-text-decoration:none;
-padding:13px 14px;
-border-radius:10px;
-font-size:15px;
-transition:.2s;
-}
-
-.side-menu a:hover,
-.side-menu .active{
-background:linear-gradient(90deg,#5b4312,#241b09);
-color:#f0bb31;
-}
-
-.side-bottom{
-margin-top:auto;
-display:flex;
-flex-direction:column;
-gap:6px;
-border-top:1px solid #252525;
-padding-top:18px;
-}
-
-.social{
-display:flex;
-gap:10px;
-margin:15px 0;
-}
-
-.social span{
-width:38px;
-height:38px;
-border-radius:50%;
-background:#1a1b20;
-display:flex;
-align-items:center;
-justify-content:center;
-color:#eab22b;
-font-weight:bold;
-}
-
-.side-bottom small{
-color:#888;
-}
-
-/* MAIN */
-
-.tm-main{
-flex:1;
-padding:22px 28px;
-min-width:0;
-}
-
-/* HERO */
-
-.hero{
-min-height:360px;
-border:1px solid #282828;
-border-radius:18px;
-overflow:hidden;
-display:flex;
-align-items:center;
-justify-content:space-between;
-padding:48px;
-background:
-linear-gradient(90deg,#0a0b0f 40%,rgba(65,42,10,.45)),
-radial-gradient(circle at 80% 50%,rgba(230,170,30,.2),transparent 35%);
-}
-
-.hero-left{
-max-width:540px;
-z-index:2;
-}
-
-.welcome{
-letter-spacing:6px;
-font-size:13px;
-color:#ddd;
-font-weight:bold;
-}
-
-.hero h1{
-font-size:58px;
-margin:12px 0;
-color:#f2b52a;
-letter-spacing:1px;
-}
-
-.hero h2{
-font-size:24px;
-margin:0;
-color:#eee;
-}
-
-.hero p{
-color:#b8b8b8;
-line-height:1.7;
-font-size:16px;
-margin:20px 0 26px;
-}
-
-.hero-buttons{
-display:flex;
-gap:14px;
-flex-wrap:wrap;
-}
-
-.gold-btn,
-.outline-btn{
-padding:14px 22px;
-border-radius:8px;
-font-weight:bold;
-text-decoration:none;
-display:inline-flex;
-align-items:center;
-justify-content:center;
-}
-
-.gold-btn{
-background:#eeb425;
-color:#111;
-}
-
-.outline-btn{
-border:1px solid #dca720;
-color:#eeb425;
-}
-
-/* HERO ART */
-
-.hero-art{
-position:relative;
-width:42%;
-height:280px;
-}
-
-.glow{
-position:absolute;
-width:260px;
-height:260px;
-border-radius:50%;
-background:rgba(231,173,30,.18);
-filter:blur(45px);
-right:40px;
-top:10px;
-}
-
-.popcorn{
-position:absolute;
-font-size:95px;
-right:170px;
-top:55px;
-filter:drop-shadow(0 10px 20px #000);
-}
-
-.clap{
-position:absolute;
-font-size:120px;
-right:40px;
-top:10px;
-transform:rotate(-8deg);
-}
-
-.reel{
-position:absolute;
-right:35px;
-bottom:20px;
-font-size:170px;
-color:#d89f19;
-text-shadow:0 0 30px rgba(255,190,40,.35);
-}
-
-.film{
-position:absolute;
-width:330px;
-height:65px;
-border:4px solid #a66d10;
-border-radius:8px;
-bottom:5px;
-left:20px;
-transform:rotate(-8deg);
-opacity:.7;
-}
-
-/* FEATURES */
-
-.features{
-margin-top:18px;
-border:1px solid #2b2b2b;
-border-radius:12px;
-display:grid;
-grid-template-columns:repeat(4,1fr);
-background:#0d0e12;
-}
-
-.features>div{
-padding:18px;
-display:flex;
-align-items:center;
-justify-content:center;
-gap:12px;
-border-right:1px solid #292929;
-}
-
-.features>div:last-child{
-border:none;
-}
-
-.features b{
-font-size:28px;
-color:#efb52a;
-}
-
-.features strong{
-display:block;
-font-size:13px;
-color:#eab22b;
-}
-
-.features small{
-color:#aaa;
-}
-
-/* SECTION */
-
-.section{
-margin-top:34px;
-}
-
-.heading{
-display:flex;
-align-items:center;
-justify-content:space-between;
-margin-bottom:18px;
-}
-
-.heading h2{
-font-size:24px;
-margin:0;
-border-left:4px solid #eab22b;
-padding-left:10px;
-}
-
-.heading span{
-color:#eab22b;
-font-size:13px;
-}
-
-/* GENRES */
-
-.genre-row{
-display:flex;
-gap:12px;
-overflow:auto;
-padding-bottom:8px;
-}
-
-.genre{
-padding:11px 22px;
-border:1px solid #4a3a17;
-border-radius:10px;
-color:#e4e4e4;
-text-decoration:none;
-white-space:nowrap;
-background:#101116;
-}
-
-.genre:hover,
-.genre.active{
-background:#e8b127;
-color:#111;
-}
-
-/* MOVIES */
-
-.movie-grid{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
-gap:18px;
-}
-
-.movie-card{
-background:#101116;
-border:1px solid #2a2a2a;
-border-radius:10px;
-overflow:hidden;
-transition:.25s;
-}
-
-.movie-card:hover{
-transform:translateY(-6px);
-border-color:#dca720;
-box-shadow:0 18px 40px rgba(0,0,0,.4);
-}
-
-.poster{
-display:block;
-position:relative;
-aspect-ratio:2/3;
-overflow:hidden;
-background:#171717;
-}
-
-.poster img{
-width:100%;
-height:100%;
-object-fit:cover;
-}
-
-.poster-placeholder{
-height:100%;
-display:flex;
-align-items:center;
-justify-content:center;
-font-size:55px;
-background:#202020;
-}
-
-.badge-new{
-position:absolute;
-top:10px;
-left:10px;
-background:#eeb425;
-color:#111;
-font-size:10px;
-font-weight:bold;
-padding:5px 8px;
-border-radius:4px;
-}
-
-.play-overlay{
-position:absolute;
-inset:0;
-background:rgba(0,0,0,.45);
-display:flex;
-align-items:center;
-justify-content:center;
-font-size:42px;
-color:#f3ba28;
-opacity:0;
-transition:.25s;
-}
-
-.poster:hover .play-overlay{
-opacity:1;
-}
-
-.movie-info{
-padding:13px;
-}
-
-.movie-info h3{
-margin:0;
-font-size:16px;
-white-space:nowrap;
-overflow:hidden;
-text-overflow:ellipsis;
-}
-
-.movie-info p{
-font-size:12px;
-color:#aaa;
-margin:8px 0 12px;
-}
-
-.movie-buttons{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:8px;
-}
-
-.details,
-.watch{
-text-align:center;
-padding:9px;
-border-radius:6px;
-font-size:11px;
-font-weight:bold;
-text-decoration:none;
-}
-
-.details{
-border:1px solid #6d5318;
-color:#e8b127;
-}
-
-.watch{
-background:#e8b127;
-color:#111;
-}
-
-/* TRENDING */
-
-.trending-grid{
-display:grid;
-grid-template-columns:repeat(6,1fr);
-gap:12px;
-}
-
-.trending-grid button{
-background:#101116;
-border:1px solid #5b4517;
-color:#eab22b;
-padding:16px;
-border-radius:10px;
-font-weight:bold;
-}
-
-/* FEATURED */
-
-.featured-box{
-border:1px solid #2b2b2b;
-border-radius:16px;
-padding:35px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-background:linear-gradient(135deg,#111,#1b1408);
-}
-
-.editor{
-background:#e8b127;
-color:#111;
-padding:6px 10px;
-border-radius:5px;
-font-size:11px;
-font-weight:bold;
-}
-
-.featured-box h2{
-font-size:34px;
-margin:16px 0 10px;
-}
-
-.featured-box p{
-color:#bbb;
-max-width:520px;
-}
-
-.featured-icon{
-font-size:110px;
-}
-
-.shows p{
-color:#aaa;
-}
-
-/* EMPTY */
-
-.empty{
-grid-column:1/-1;
-text-align:center;
-padding:70px;
-border:1px dashed #444;
-border-radius:14px;
-color:#aaa;
-}
-
-/* ADS */
-
-.ad-box{
-margin-bottom:18px;
-text-align:center;
-overflow:hidden;
-}
-
-/* RESPONSIVE */
-
-@media(max-width:1100px){
-
-.tm-sidebar{
-width:80px;
-padding:18px 8px;
-}
-
-.logo-text,
-.side-menu span,
-.side-bottom a,
-.side-bottom small{
-display:none;
-}
-
-.logo-circle{
-width:58px;
-height:58px;
-}
-
-.logo-play{
-font-size:24px;
-}
-
-.side-menu a{
-text-align:center;
-font-size:20px;
-padding:14px 8px;
-}
-
-.hero{
-padding:32px;
-}
-
-.hero h1{
-font-size:46px;
-}
-
-.trending-grid{
-grid-template-columns:repeat(3,1fr);
-}
-
-}
-
-@media(max-width:700px){
-
-.tm-layout{
-display:block;
-}
-
-.tm-sidebar{
-display:none;
-}
-
-.tm-main{
-padding:12px;
-}
-
-.hero{
-padding:24px;
-min-height:420px;
-}
-
-.hero-art{
-display:none;
-}
-
-.hero h1{
-font-size:40px;
-}
-
-.features{
-grid-template-columns:1fr 1fr;
-}
-
-.features>div{
-border-bottom:1px solid #292929;
-}
-
-.movie-grid{
-grid-template-columns:repeat(2,1fr);
-gap:12px;
-}
-
-.trending-grid{
-grid-template-columns:repeat(2,1fr);
-}
-
-.featured-box{
-padding:22px;
-}
-
-.featured-icon{
-display:none;
-}
-
-}
-
-</style>
 
 {% endblock %}
