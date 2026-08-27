@@ -1,79 +1,73 @@
 {% extends "base.html" %}
 
-{% block title %}
-Tomesh Movies - Watch Movies
-{% endblock %}
+{% block title %}Tomesh Movies{% endblock %}
 
 {% block content %}
 
-<!-- TOP AD -->
-<div class="ad">
+{% if ads.ad_top %}
+<div class="ad-box">
     {{ ads.ad_top|safe }}
 </div>
+{% endif %}
 
-<!-- HERO / HEADER -->
-<section class="hero">
+<section class="premium-hero">
 
     <div class="hero-content">
 
-        <div class="brand">
+        <div class="hero-badge">
             🎬 TOMESH MOVIES
         </div>
 
         <h1>
-            आपकी पसंदीदा Movies
+            आपकी पसंदीदा
+            <span>Movies</span>
+            एक जगह
         </h1>
 
         <p>
-            अपनी पसंदीदा Movies को आसानी से देखें।
+            Latest Movies और Entertainment को आसानी से खोजें और देखें।
         </p>
 
-        <!-- SEARCH -->
-        <form
-            class="search-form"
-            method="get"
-            action="{{ url_for('home') }}"
-        >
+        <div class="hero-actions">
 
-            <input
-                type="search"
-                name="q"
-                value="{{ q }}"
-                placeholder="🔍 Movie का नाम खोजें..."
-                autocomplete="off"
-            >
+            <a href="#movies" class="hero-btn">
+                ▶ Movies देखें
+            </a>
 
-            <button type="submit">
-                Search
-            </button>
+            <a href="#categories" class="hero-btn secondary">
+                Categories
+            </a>
 
-        </form>
+        </div>
 
     </div>
 
 </section>
 
-<!-- CATEGORIES -->
-<section class="category-section">
 
-    <h2>Categories</h2>
+<section class="category-section" id="categories">
+
+    <div class="section-heading">
+        <span class="mini-title">EXPLORE</span>
+        <h2>Categories</h2>
+    </div>
 
     <div class="categories">
 
         <a
+            class="category active"
             href="{{ url_for('home') }}"
-            class="category {% if not category %}active{% endif %}"
         >
-            All
+            🎬 All Movies
         </a>
 
-        {% for cat in categories %}
+        {% for c in categories %}
 
         <a
-            href="{{ url_for('home', category=cat) }}"
-            class="category {% if category == cat %}active{% endif %}"
+            class="category"
+            href="{{ url_for('home', category=c) }}"
         >
-            {{ cat }}
+            🍿 {{ c }}
         </a>
 
         {% endfor %}
@@ -82,29 +76,22 @@ Tomesh Movies - Watch Movies
 
 </section>
 
-<!-- MOVIES -->
-<section class="movies-section">
 
-    <div class="section-title">
+<section class="movies-section" id="movies">
 
-        <h2>
-            🎬
-            {% if q %}
-                Search Results
-            {% elif category %}
-                {{ category }}
-            {% else %}
-                Latest Movies
-            {% endif %}
-        </h2>
+    <div class="section-heading">
 
-        <span>
+        <div>
+            <span class="mini-title">COLLECTION</span>
+            <h2>Latest Movies</h2>
+        </div>
+
+        <span class="movie-count">
             {{ movies|length }} Movies
         </span>
 
     </div>
 
-    {% if movies %}
 
     <div class="movie-grid">
 
@@ -112,10 +99,9 @@ Tomesh Movies - Watch Movies
 
         <article class="movie-card">
 
-            <!-- POSTER -->
             <a
+                class="poster-wrap"
                 href="{{ url_for('movie', movie_id=m.id) }}"
-                class="poster-link"
             >
 
                 {% if m.poster %}
@@ -134,42 +120,36 @@ Tomesh Movies - Watch Movies
 
                 {% endif %}
 
-                <div class="play-overlay">
-                    ▶
+                <div class="poster-overlay">
+                    <span class="play-circle">▶</span>
                 </div>
 
             </a>
 
-            <!-- MOVIE INFO -->
+
             <div class="movie-info">
 
                 <h3>
                     {{ m.title }}
                 </h3>
 
-                {% if m.category %}
-
-                <div class="movie-category">
-                    {{ m.category }}
-                </div>
-
-                {% endif %}
-
                 <div class="movie-meta">
 
-                    <span>
-                        👁️ {{ m.views }}
+                    {% if m.category %}
+                    <span class="category-tag">
+                        {{ m.category }}
                     </span>
+                    {% endif %}
 
                     <span>
-                        🎬 Movie
+                        👁 {{ m.views }}
                     </span>
 
                 </div>
 
                 <a
-                    href="{{ url_for('movie', movie_id=m.id) }}"
                     class="watch-btn"
+                    href="{{ url_for('movie', movie_id=m.id) }}"
                 >
                     ▶ Watch Now
                 </a>
@@ -178,321 +158,242 @@ Tomesh Movies - Watch Movies
 
         </article>
 
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <div class="empty-icon">
+                🎬
+            </div>
+
+            <h3>
+                अभी कोई Movie नहीं है
+            </h3>
+
+            <p>
+                Admin Panel से पहली movie publish करें।
+            </p>
+
+        </div>
+
         {% endfor %}
 
     </div>
 
-    {% else %}
-
-    <!-- EMPTY -->
-    <div class="empty">
-
-        <div class="empty-icon">
-            🎬
-        </div>
-
-        <h2>
-            अभी कोई movie नहीं है
-        </h2>
-
-        <p>
-            Admin Panel से movie जोड़ें।
-        </p>
-
-        {% if q or category %}
-
-        <a
-            href="{{ url_for('home') }}"
-            class="watch-btn"
-        >
-            सभी Movies देखें
-        </a>
-
-        {% endif %}
-
-    </div>
-
-    {% endif %}
-
 </section>
 
-<!-- BOTTOM AD -->
-<div class="ad">
+
+{% if ads.ad_bottom %}
+
+<div class="ad-box">
     {{ ads.ad_bottom|safe }}
 </div>
 
+{% endif %}
+
+
 <style>
 
-/* =========================
-   GENERAL
-========================= */
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    background:
-        radial-gradient(
-            circle at top,
-            #24242d 0%,
-            #101014 45%,
-            #08080b 100%
-        );
-    color: #ffffff;
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-}
-
-a {
-    text-decoration: none;
-    color: inherit;
-}
-
-/* =========================
-   AD
-========================= */
-
-.ad {
-    width: 100%;
-    margin: 15px 0;
-    text-align: center;
-}
-
-/* =========================
-   HERO
-========================= */
-
-.hero {
+.premium-hero {
     position: relative;
-    min-height: 330px;
+    overflow: hidden;
+    min-height: 390px;
+    margin: 20px 0 45px;
+    padding: 55px;
     display: flex;
     align-items: center;
-    margin: 20px 0 35px;
-    padding: 50px 30px;
-    border-radius: 22px;
-    overflow: hidden;
+    border-radius: 24px;
 
     background:
+        radial-gradient(
+            circle at 80% 20%,
+            rgba(255,45,85,.30),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 20% 80%,
+            rgba(100,60,255,.25),
+            transparent 35%
+        ),
         linear-gradient(
             135deg,
-            rgba(229, 9, 20, 0.25),
-            rgba(15, 15, 20, 0.95)
+            #101018,
+            #171421,
+            #0b0b10
         );
-}
 
-.hero::before {
-    content: "";
+    border: 1px solid rgba(255,255,255,.08);
 
-    position: absolute;
-
-    width: 300px;
-    height: 300px;
-
-    right: -80px;
-    top: -80px;
-
-    background: #e50914;
-
-    filter: blur(120px);
-
-    opacity: 0.25;
+    box-shadow:
+        0 25px 70px rgba(0,0,0,.35);
 }
 
 .hero-content {
     position: relative;
-    max-width: 750px;
+    z-index: 2;
+    max-width: 700px;
 }
 
-.brand {
+.hero-badge {
     display: inline-block;
-
     padding: 8px 14px;
+    margin-bottom: 18px;
+    border-radius: 30px;
 
-    margin-bottom: 15px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
 
-    border-radius: 20px;
+    color: white;
 
-    background: rgba(255,255,255,0.08);
-
-    font-size: 14px;
-    font-weight: bold;
-
-    letter-spacing: 1px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
 }
 
-.hero h1 {
-    margin: 0 0 12px;
+.premium-hero h1 {
+    margin: 0;
+    color: white;
 
-    font-size: clamp(
-        32px,
-        6vw,
-        62px
-    );
-
+    font-size: clamp(40px,6vw,70px);
     line-height: 1.05;
+    font-weight: 900;
 }
 
-.hero p {
-    margin: 0 0 25px;
+.premium-hero h1 span {
+    background:
+        linear-gradient(
+            90deg,
+            #ff315d,
+            #ff6b35
+        );
 
-    color: #bcbcc5;
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    color: transparent;
+}
+
+.premium-hero p {
+    max-width: 560px;
+    margin: 20px 0 28px;
+
+    color: rgba(255,255,255,.70);
 
     font-size: 17px;
+    line-height: 1.7;
 }
 
-/* =========================
-   SEARCH
-========================= */
-
-.search-form {
+.hero-actions {
     display: flex;
-
-    width: 100%;
-
-    max-width: 620px;
-
-    gap: 10px;
-}
-
-.search-form input {
-    flex: 1;
-
-    min-width: 0;
-
-    padding: 15px 18px;
-
-    border: 1px solid #33333d;
-
-    border-radius: 12px;
-
-    outline: none;
-
-    background: #17171d;
-
-    color: white;
-
-    font-size: 16px;
-}
-
-.search-form input::placeholder {
-    color: #888893;
-}
-
-.search-form input:focus {
-    border-color: #e50914;
-}
-
-.search-form button {
-    padding: 0 25px;
-
-    border: none;
-
-    border-radius: 12px;
-
-    background: #e50914;
-
-    color: white;
-
-    font-weight: bold;
-
-    cursor: pointer;
-
-    font-size: 15px;
-}
-
-.search-form button:hover {
-    background: #b80710;
-}
-
-/* =========================
-   CATEGORIES
-========================= */
-
-.category-section {
-    margin-bottom: 30px;
-}
-
-.category-section h2 {
-    margin-bottom: 15px;
-}
-
-.categories {
-    display: flex;
-
-    gap: 10px;
-
+    gap: 12px;
     flex-wrap: wrap;
 }
 
-.category {
-    padding: 9px 17px;
-
-    border: 1px solid #303039;
-
-    border-radius: 30px;
-
-    background: #17171d;
-
-    color: #c8c8d0;
-
-    transition: 0.2s;
-}
-
-.category:hover {
-    border-color: #e50914;
-
-    color: white;
-}
-
-.category.active {
-    background: #e50914;
-
-    border-color: #e50914;
-
-    color: white;
-
-    font-weight: bold;
-}
-
-/* =========================
-   MOVIES SECTION
-========================= */
-
-.movies-section {
-    margin-top: 25px;
-}
-
-.section-title {
-    display: flex;
-
+.hero-btn {
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
 
-    justify-content: space-between;
+    padding: 13px 22px;
 
-    gap: 15px;
+    border-radius: 12px;
 
+    color: white;
+    text-decoration: none;
+
+    font-weight: 800;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff315d,
+            #ff5b32
+        );
+
+    transition: .25s;
+}
+
+.hero-btn:hover {
+    transform: translateY(-2px);
+}
+
+.hero-btn.secondary {
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+}
+
+
+.category-section,
+.movies-section {
+    margin-bottom: 45px;
+}
+
+.section-heading {
     margin-bottom: 20px;
 }
 
-.section-title h2 {
+.section-heading h2 {
     margin: 0;
-
-    font-size: 25px;
+    font-size: 28px;
+    font-weight: 900;
 }
 
-.section-title span {
-    color: #888893;
+.mini-title {
+    display: block;
 
-    font-size: 14px;
+    margin-bottom: 5px;
+
+    color: #ff4b68;
+
+    font-size: 11px;
+    font-weight: 900;
+
+    letter-spacing: 2px;
 }
 
-/* =========================
-   MOVIE GRID
-========================= */
+
+.categories {
+    display: flex;
+    gap: 12px;
+
+    overflow-x: auto;
+
+    padding: 4px 2px 12px;
+}
+
+.category {
+    flex: 0 0 auto;
+
+    padding: 12px 17px;
+
+    border-radius: 13px;
+
+    text-decoration: none;
+
+    color: inherit;
+
+    background: rgba(255,255,255,.045);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    transition: .25s;
+}
+
+.category:hover,
+.category.active {
+    color: white;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff315d,
+            #ff5b32
+        );
+
+    border-color: transparent;
+}
+
 
 .movie-grid {
     display: grid;
@@ -500,58 +401,47 @@ a {
     grid-template-columns:
         repeat(
             auto-fill,
-            minmax(190px, 1fr)
+            minmax(190px,1fr)
         );
 
-    gap: 20px;
+    gap: 22px;
 }
-
-/* =========================
-   MOVIE CARD
-========================= */
 
 .movie-card {
     overflow: hidden;
 
-    border: 1px solid #292932;
+    border-radius: 17px;
 
-    border-radius: 16px;
+    background: rgba(255,255,255,.045);
 
-    background: #15151b;
+    border: 1px solid rgba(255,255,255,.08);
 
-    transition:
-        transform 0.25s,
-        border-color 0.25s,
-        box-shadow 0.25s;
+    transition: .25s;
 }
 
 .movie-card:hover {
-    transform: translateY(-6px);
+    transform: translateY(-7px);
 
-    border-color: #e50914;
+    border-color:
+        rgba(255,70,100,.35);
 
     box-shadow:
-        0 15px 40px
-        rgba(0,0,0,0.45);
+        0 20px 45px rgba(0,0,0,.35);
 }
 
-/* =========================
-   POSTER
-========================= */
-
-.poster-link {
+.poster-wrap {
     position: relative;
 
     display: block;
 
-    aspect-ratio: 2 / 3;
+    aspect-ratio: 2/3;
 
     overflow: hidden;
 
-    background: #222229;
+    background: #111;
 }
 
-.poster-link img {
+.poster-wrap img {
     width: 100%;
     height: 100%;
 
@@ -559,11 +449,57 @@ a {
 
     object-fit: cover;
 
-    transition: transform 0.35s;
+    transition: .4s;
 }
 
-.movie-card:hover .poster-link img {
+.movie-card:hover
+.poster-wrap img {
     transform: scale(1.06);
+}
+
+.poster-overlay {
+    position: absolute;
+
+    inset: 0;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0,0,0,.38);
+
+    opacity: 0;
+
+    transition: .25s;
+}
+
+.movie-card:hover
+.poster-overlay {
+    opacity: 1;
+}
+
+.play-circle {
+    width: 58px;
+    height: 58px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    color: white;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff315d,
+            #ff5b32
+        );
+
+    font-size: 21px;
 }
 
 .no-poster {
@@ -575,70 +511,28 @@ a {
     align-items: center;
     justify-content: center;
 
-    font-size: 55px;
-
-    color: #777;
-}
-
-/* =========================
-   PLAY OVERLAY
-========================= */
-
-.play-overlay {
-    position: absolute;
-
-    left: 50%;
-    top: 50%;
-
-    transform:
-        translate(-50%, -50%)
-        scale(0.8);
-
-    width: 58px;
-    height: 58px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-
-    background: #e50914;
-
     color: white;
 
-    font-size: 24px;
+    font-size: 45px;
 
-    opacity: 0;
-
-    transition: 0.25s;
-
-    box-shadow:
-        0 8px 25px
-        rgba(0,0,0,0.5);
+    background:
+        linear-gradient(
+            135deg,
+            #17171e,
+            #0e0e13
+        );
 }
-
-.movie-card:hover .play-overlay {
-    opacity: 1;
-
-    transform:
-        translate(-50%, -50%)
-        scale(1);
-}
-
-/* =========================
-   MOVIE INFO
-========================= */
 
 .movie-info {
     padding: 15px;
 }
 
 .movie-info h3 {
-    margin: 0 0 8px;
+    margin: 0 0 9px;
 
-    font-size: 17px;
+    color: inherit;
+
+    font-size: 16px;
 
     white-space: nowrap;
 
@@ -647,179 +541,157 @@ a {
     text-overflow: ellipsis;
 }
 
-.movie-category {
-    display: inline-block;
-
-    margin-bottom: 10px;
-
-    padding: 4px 9px;
-
-    border-radius: 5px;
-
-    background: #27272f;
-
-    color: #bbb;
-
-    font-size: 12px;
-}
-
 .movie-meta {
     display: flex;
 
-    justify-content: space-between;
+    align-items: center;
 
-    gap: 10px;
+    gap: 9px;
 
-    margin-bottom: 13px;
+    color:
+        rgba(255,255,255,.55);
 
-    color: #888893;
+    font-size: 11px;
+}
+
+.category-tag {
+    padding: 4px 8px;
+
+    border-radius: 6px;
+
+    background:
+        rgba(255,255,255,.07);
+}
+
+.watch-btn {
+    width: 100%;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    margin-top: 13px;
+
+    padding: 10px;
+
+    border-radius: 10px;
+
+    color: white;
+
+    text-decoration: none;
+
+    background:
+        rgba(255,255,255,.07);
+
+    border:
+        1px solid
+        rgba(255,255,255,.08);
+
+    font-size: 13px;
+    font-weight: 800;
+
+    transition: .25s;
+}
+
+.watch-btn:hover {
+    background:
+        linear-gradient(
+            135deg,
+            #ff315d,
+            #ff5b32
+        );
+
+    border-color: transparent;
+}
+
+.movie-count {
+    padding: 7px 11px;
+
+    border-radius: 8px;
+
+    background:
+        rgba(255,255,255,.06);
+
+    color:
+        rgba(255,255,255,.6);
 
     font-size: 12px;
 }
 
-.watch-btn {
-    display: block;
+.empty-state {
+    grid-column: 1/-1;
 
-    width: 100%;
-
-    padding: 10px;
-
-    text-align: center;
-
-    border-radius: 9px;
-
-    background: #e50914;
-
-    color: white;
-
-    font-size: 14px;
-
-    font-weight: bold;
-
-    transition: 0.2s;
-}
-
-.watch-btn:hover {
-    background: #b80710;
-}
-
-/* =========================
-   EMPTY
-========================= */
-
-.empty {
     padding: 70px 20px;
 
     text-align: center;
 
-    border: 1px dashed #34343d;
-
     border-radius: 18px;
 
-    background: #111116;
+    background:
+        rgba(255,255,255,.035);
+
+    border:
+        1px dashed
+        rgba(255,255,255,.12);
 }
 
 .empty-icon {
-    font-size: 55px;
-
-    margin-bottom: 15px;
+    font-size: 50px;
 }
 
-.empty h2 {
-    margin: 0 0 10px;
+.ad-box {
+    width: 100%;
+
+    margin: 12px 0 25px;
+
+    text-align: center;
+
+    overflow: hidden;
 }
 
-.empty p {
-    color: #888893;
 
-    margin-bottom: 25px;
-}
+@media (max-width:700px) {
 
-.empty .watch-btn {
-    display: inline-block;
+    .premium-hero {
+        min-height: 350px;
 
-    width: auto;
+        padding: 32px 24px;
 
-    padding: 12px 20px;
-}
-
-/* =========================
-   MOBILE
-========================= */
-
-@media (max-width: 700px) {
-
-    .hero {
-        min-height: 300px;
-
-        padding: 35px 20px;
-
-        border-radius: 16px;
+        border-radius: 20px;
     }
 
-    .hero h1 {
-        font-size: 36px;
+    .premium-hero h1 {
+        font-size: 43px;
     }
 
-    .hero p {
-        font-size: 15px;
+    .premium-hero p {
+        font-size: 14px;
     }
 
-    .search-form {
-        flex-direction: column;
-    }
-
-    .search-form button {
-        min-height: 48px;
+    .hero-btn {
+        width: 100%;
     }
 
     .movie-grid {
         grid-template-columns:
-            repeat(
-                2,
-                minmax(0, 1fr)
-            );
+            repeat(2,minmax(0,1fr));
 
-        gap: 12px;
+        gap: 13px;
     }
 
     .movie-info {
-        padding: 10px;
+        padding: 11px;
     }
 
     .movie-info h3 {
         font-size: 14px;
     }
 
-    .movie-meta {
-        flex-direction: column;
-
-        gap: 4px;
-    }
-
     .watch-btn {
-        font-size: 12px;
-
-        padding: 9px 5px;
-    }
-
-    .play-overlay {
-        width: 48px;
-        height: 48px;
-
-        font-size: 19px;
-    }
-
-}
-
-@media (max-width: 380px) {
-
-    .movie-grid {
-        grid-template-columns:
-            repeat(
-                2,
-                minmax(0, 1fr)
-            );
+        font-size: 11px;
     }
 
 }
