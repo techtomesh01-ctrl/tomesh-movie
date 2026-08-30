@@ -1,5 +1,8 @@
+```python
 import os
 import secrets
+import subprocess
+import tempfile
 from functools import wraps
 from urllib.parse import quote
 
@@ -66,6 +69,9 @@ DATABASE_URL = os.environ.get(
 
 
 class DB:
+    """
+    PostgreSQL connection wrapper.
+    """
 
     def __init__(self, url):
 
@@ -79,8 +85,7 @@ class DB:
             or url.startswith("postgres://")
         ):
             raise RuntimeError(
-                "DATABASE_URL गलत है. "
-                "Render में पूरा PostgreSQL Database URL डालें."
+                "DATABASE_URL गलत है."
             )
 
         self.con = psycopg2.connect(
@@ -156,17 +161,17 @@ def get_r2_client():
 
     if not R2_ACCESS_KEY_ID:
         raise RuntimeError(
-            "R2_ACCESS_KEY_ID environment variable is missing."
+            "R2_ACCESS_KEY_ID missing."
         )
 
     if not R2_SECRET_ACCESS_KEY:
         raise RuntimeError(
-            "R2_SECRET_ACCESS_KEY environment variable is missing."
+            "R2_SECRET_ACCESS_KEY missing."
         )
 
     if not R2_BUCKET:
         raise RuntimeError(
-            "R2_BUCKET environment variable is missing."
+            "R2_BUCKET missing."
         )
 
     if not R2_ENDPOINT:
@@ -197,6 +202,10 @@ def get_r2_client():
     )
 
 
+# =========================================================
+# R2 UPLOAD
+# =========================================================
+
 def r2_upload(
     file_storage,
     object_key,
@@ -205,7 +214,7 @@ def r2_upload(
 
     if not file_storage:
         raise RuntimeError(
-            "R2 upload file missing."
+            "Upload file missing."
         )
 
     client = get_r2_client()
@@ -237,6 +246,65 @@ def r2_upload(
     return object_key
 
 
+# =========================================================
+# R2 UPLOAD FROM LOCAL FILE
+# =========================================================
+
+def r2_upload_file(
+    local_path,
+    object_key,
+    content_type=None
+):
+
+    client = get_r2_client()
+
+    extra_args = {}
+
+    if content_type:
+        extra_args["ContentType"] = content_type
+
+    if extra_args:
+
+        client.upload_file(
+            local_path,
+            R2_BUCKET,
+            object_key,
+            ExtraArgs=extra_args
+        )
+
+    else:
+
+        client.upload_file(
+            local_path,
+            R2_BUCKET,
+            object_key
+        )
+
+    return object_key
+
+
+# =========================================================
+# R2 DOWNLOAD
+# =========================================================
+
+def r2_download(
+    object_key,
+    local_path
+):
+
+    client = get_r2_client()
+
+    client.download_file(
+        R2_BUCKET,
+        object_key,
+        local_path
+    )
+
+
+# =========================================================
+# R2 DELETE
+# =========================================================
+
 def r2_delete(object_key):
 
     if not object_key:
@@ -249,6 +317,10 @@ def r2_delete(object_key):
         Key=object_key
     )
 
+
+# =========================================================
+# R2 PUBLIC URL
+# =========================================================
 
 def r2_public_url(object_key):
 
@@ -267,6 +339,10 @@ def r2_public_url(object_key):
         )
     )
 
+
+# =========================================================
+# R2 PRESIGNED URL
+# =========================================================
 
 def r2_presigned_url(object_key):
 
@@ -297,7 +373,7 @@ def r2_presigned_url(object_key):
 
 
 # =========================================================
-# LOCAL UPLOAD DIRECTORIES
+# UPLOAD DIRECTORIES
 # =========================================================
 
 BASE = os.path.dirname(
@@ -350,10 +426,13 @@ ALLOWED_VIDEOS = {
 
 
 # =========================================================
-# FILE HELPERS
+# FILE CHECK
 # =========================================================
 
-def ext_ok(filename, allowed):
+def ext_ok(
+    filename,
+    allowed
+):
 
     if not filename:
         return False
@@ -369,9 +448,13 @@ def ext_ok(filename, allowed):
     return extension in allowed
 
 
+# =========================================================
+# CONTENT TYPE
+# =========================================================
+
 def get_content_type(
     filename,
-    default
+    default="application/octet-stream"
 ):
 
     extension = os.path.splitext(
@@ -381,20 +464,167 @@ def get_content_type(
     content_types = {
 
         ".jpg": "image/jpeg",
+
         ".jpeg": "image/jpeg",
+
         ".png": "image/png",
+
         ".webp": "image/webp",
 
         ".mp4": "video/mp4",
-        ".webm": "video/webm",
-        ".mov": "video/quicktime",
-        ".mkv": "video/x-matroska",
 
+        ".webm": "video/webm",
+
+        ".mov": "video/quicktime",
+
+        ".mkv": "video/x-matroska",
     }
 
     return content_types.get(
         extension,
         default
+    )
+
+
+# =========================================================
+# FFmpeg CHECK
+# =========================================================
+
+def check_ffmpeg():
+
+    try:
+
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-version"
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode == 0:
+            return True
+
+    except Exception as e:
+
+        app.logger.warning(
+            "FFmpeg check failed: %s",
+            e
+        )
+
+    return False
+
+
+# =========================================================
+# MKV -> MP4 CONVERSION
+# =========================================================
+
+def convert_to_mp4(
+    input_path,
+    output_path
+):
+
+    """
+    MKV को browser-friendly MP4 में convert करता है.
+
+    H.264 video
+    AAC audio
+
+    Browser compatibility के लिए:
+    - faststart
+    - H.264
+    - AAC
+    """
+
+    if not check_ffmpeg():
+
+        raise RuntimeError(
+            "FFmpeg उपलब्ध नहीं है. "
+            "Render environment में FFmpeg install करें."
+        )
+
+    command = [
+        "ffmpeg",
+
+        "-y",
+
+        "-i",
+        input_path,
+
+        "-map",
+        "0:v:0",
+
+        "-map",
+        "0:a:0?",
+
+        "-c:v",
+        "libx264",
+
+        "-preset",
+        "veryfast",
+
+        "-crf",
+        "23",
+
+        "-c:a",
+        "aac",
+
+        "-b:a",
+        "128k",
+
+        "-movflags",
+        "+faststart",
+
+        output_path
+    ]
+
+    app.logger.info(
+        "Starting FFmpeg conversion."
+    )
+
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    if result.returncode != 0:
+
+        app.logger.error(
+            "FFmpeg error:\n%s",
+            result.stderr[-10000:]
+        )
+
+        raise RuntimeError(
+            "MKV से MP4 conversion failed."
+        )
+
+    if not os.path.isfile(
+        output_path
+    ):
+
+        raise RuntimeError(
+            "FFmpeg ने MP4 file create नहीं की."
+        )
+
+    size = os.path.getsize(
+        output_path
+    )
+
+    if size <= 0:
+
+        raise RuntimeError(
+            "Converted MP4 खाली है."
+        )
+
+    app.logger.info(
+        "FFmpeg conversion completed. "
+        "Output size=%s bytes",
+        size
     )
 
 
@@ -405,7 +635,10 @@ def get_content_type(
 def admin_required(function):
 
     @wraps(function)
-    def wrapper(*args, **kwargs):
+    def wrapper(
+        *args,
+        **kwargs
+    ):
 
         if not session.get("admin"):
 
@@ -458,17 +691,20 @@ def init_db():
         default_settings = {
 
             "ad_top": "",
-            "ad_player": "",
-            "ad_bottom": "",
 
+            "ad_player": "",
+
+            "ad_bottom": "",
         }
 
         for key, value in default_settings.items():
 
             con.execute(
                 """
-                INSERT INTO settings (key, value)
+                INSERT INTO settings
+                (key, value)
                 VALUES (%s, %s)
+
                 ON CONFLICT (key)
                 DO NOTHING
                 """,
@@ -564,9 +800,11 @@ def home():
                 """
                 SELECT *
                 FROM movies
+
                 WHERE
                     title ILIKE %s
                     OR category ILIKE %s
+
                 ORDER BY id DESC
                 """,
                 (
@@ -581,7 +819,9 @@ def home():
                 """
                 SELECT *
                 FROM movies
+
                 WHERE category = %s
+
                 ORDER BY id DESC
                 """,
                 (
@@ -603,9 +843,11 @@ def home():
             """
             SELECT DISTINCT category
             FROM movies
+
             WHERE
                 category IS NOT NULL
                 AND category <> ''
+
             ORDER BY category
             """
         ).fetchall()
@@ -632,7 +874,9 @@ def home():
 # MOVIE PAGE
 # =========================================================
 
-@app.route("/movie/<int:movie_id>")
+@app.route(
+    "/movie/<int:movie_id>"
+)
 def movie(movie_id):
 
     con = db()
@@ -651,12 +895,16 @@ def movie(movie_id):
         ).fetchone()
 
         if not movie_data:
+
             abort(404)
 
         con.execute(
             """
             UPDATE movies
-            SET views = COALESCE(views, 0) + 1
+
+            SET views =
+                COALESCE(views, 0) + 1
+
             WHERE id = %s
             """,
             (
@@ -688,6 +936,8 @@ def movie(movie_id):
             video_key
         )
 
+        # Public URL नहीं है तो
+        # temporary presigned URL
         if poster_key and not poster_url:
 
             poster_url = r2_presigned_url(
@@ -700,15 +950,22 @@ def movie(movie_id):
                 video_key
             )
 
-        movie_data["poster_url"] = poster_url
-        movie_data["video_url"] = video_url
+        movie_data["poster_url"] = (
+            poster_url
+        )
+
+        movie_data["video_url"] = (
+            video_url
+        )
 
         # IMPORTANT:
-        # movie.html में movie.title आदि इस्तेमाल हो रहा है।
+        # movie.html में movie.title
+        # या m.title दोनों काम करेंगे.
 
         return render_template(
             "movie.html",
-            movie=movie_data
+            movie=movie_data,
+            m=movie_data
         )
 
     finally:
@@ -717,10 +974,12 @@ def movie(movie_id):
 
 
 # =========================================================
-# POSTER
+# POSTER ROUTE
 # =========================================================
 
-@app.route("/poster/<path:name>")
+@app.route(
+    "/poster/<path:name>"
+)
 def poster(name):
 
     public_url = r2_public_url(
@@ -748,9 +1007,13 @@ def poster(name):
         os.path.basename(name)
     )
 
-    if os.path.isfile(local_path):
+    if os.path.isfile(
+        local_path
+    ):
 
-        from flask import send_from_directory
+        from flask import (
+            send_from_directory
+        )
 
         return send_from_directory(
             POSTER_DIR,
@@ -761,10 +1024,12 @@ def poster(name):
 
 
 # =========================================================
-# VIDEO
+# VIDEO ROUTE
 # =========================================================
 
-@app.route("/video/<path:name>")
+@app.route(
+    "/video/<path:name>"
+)
 def video(name):
 
     public_url = r2_public_url(
@@ -792,7 +1057,9 @@ def video(name):
         os.path.basename(name)
     )
 
-    if os.path.isfile(local_path):
+    if os.path.isfile(
+        local_path
+    ):
 
         from flask import send_file
 
@@ -808,7 +1075,9 @@ def video(name):
 # ADS.TXT
 # =========================================================
 
-@app.route("/ads.txt")
+@app.route(
+    "/ads.txt"
+)
 def ads_txt():
 
     content = (
@@ -825,10 +1094,12 @@ def ads_txt():
 
 
 # =========================================================
-# HEALTH
+# HEALTH CHECK
 # =========================================================
 
-@app.route("/health")
+@app.route(
+    "/health"
+)
 def health():
 
     con = None
@@ -850,19 +1121,25 @@ def health():
             e
         )
 
-        return "Database error", 500
+        return (
+            "Database error",
+            500
+        )
 
     finally:
 
         if con:
+
             con.close()
 
 
 # =========================================================
-# R2 HEALTH
+# R2 HEALTH CHECK
 # =========================================================
 
-@app.route("/r2-health")
+@app.route(
+    "/r2-health"
+)
 def r2_health():
 
     try:
@@ -882,7 +1159,32 @@ def r2_health():
             e
         )
 
-        return "R2 error", 500
+        return (
+            "R2 error",
+            500
+        )
+
+
+# =========================================================
+# FFMPEG HEALTH CHECK
+# =========================================================
+
+@app.route(
+    "/ffmpeg-health"
+)
+def ffmpeg_health():
+
+    if check_ffmpeg():
+
+        return (
+            "FFmpeg OK",
+            200
+        )
+
+    return (
+        "FFmpeg NOT FOUND",
+        500
+    )
 
 
 # =========================================================
@@ -907,17 +1209,24 @@ def login():
             ""
         )
 
-        username_ok = secrets.compare_digest(
-            username,
-            ADMIN_USER
+        username_ok = (
+            secrets.compare_digest(
+                username,
+                ADMIN_USER
+            )
         )
 
-        password_ok = secrets.compare_digest(
-            password,
-            ADMIN_PASSWORD
+        password_ok = (
+            secrets.compare_digest(
+                password,
+                ADMIN_PASSWORD
+            )
         )
 
-        if username_ok and password_ok:
+        if (
+            username_ok
+            and password_ok
+        ):
 
             session["admin"] = True
 
@@ -938,7 +1247,9 @@ def login():
 # LOGOUT
 # =========================================================
 
-@app.route("/logout")
+@app.route(
+    "/logout"
+)
 def logout():
 
     session.clear()
@@ -952,7 +1263,9 @@ def logout():
 # ADMIN
 # =========================================================
 
-@app.route("/admin")
+@app.route(
+    "/admin"
+)
 @admin_required
 def admin():
 
@@ -1015,6 +1328,11 @@ def add_movie():
         "video"
     )
 
+
+    # =====================================================
+    # REQUIRED FIELDS
+    # =====================================================
+
     if not title:
 
         flash(
@@ -1024,6 +1342,7 @@ def add_movie():
         return redirect(
             url_for("admin")
         )
+
 
     if (
         not video_file
@@ -1038,6 +1357,11 @@ def add_movie():
             url_for("admin")
         )
 
+
+    # =====================================================
+    # VIDEO EXTENSION
+    # =====================================================
+
     if not ext_ok(
         video_file.filename,
         ALLOWED_VIDEOS
@@ -1050,6 +1374,11 @@ def add_movie():
         return redirect(
             url_for("admin")
         )
+
+
+    # =====================================================
+    # POSTER EXTENSION
+    # =====================================================
 
     if (
         poster_file
@@ -1068,6 +1397,20 @@ def add_movie():
             url_for("admin")
         )
 
+
+    # =====================================================
+    # FILE EXTENSION
+    # =====================================================
+
+    original_extension = os.path.splitext(
+        video_file.filename
+    )[1].lower()
+
+
+    # =====================================================
+    # SAFE VIDEO NAME
+    # =====================================================
+
     safe_video = secure_filename(
         video_file.filename
     )
@@ -1082,21 +1425,33 @@ def add_movie():
             url_for("admin")
         )
 
+
     video_base, video_ext = os.path.splitext(
         safe_video
     )
 
-    safe_video = (
-        video_base
-        + "_"
-        + secrets.token_hex(8)
-        + video_ext.lower()
+
+    unique_id = secrets.token_hex(
+        8
     )
+
+
+    # =====================================================
+    # VIDEO KEY
+    # =====================================================
 
     video_key = (
         "videos/"
-        + safe_video
+        + video_base
+        + "_"
+        + unique_id
+        + ".mp4"
     )
+
+
+    # =====================================================
+    # POSTER
+    # =====================================================
 
     poster_key = ""
 
@@ -1135,63 +1490,288 @@ def add_movie():
             + poster_name
         )
 
+
+    # =====================================================
+    # TEMP FILES
+    # =====================================================
+
+    temp_input = None
+    temp_output = None
+
     video_uploaded = False
     poster_uploaded = False
 
+
     try:
 
-        r2_upload(
-            video_file,
-            video_key,
-            get_content_type(
-                video_file.filename,
-                "application/octet-stream"
+        # =================================================
+        # MKV -> MP4
+        # =================================================
+
+        if original_extension == ".mkv":
+
+            app.logger.info(
+                "MKV detected. Starting conversion."
             )
-        )
 
-        video_uploaded = True
+            with tempfile.NamedTemporaryFile(
+                suffix=".mkv",
+                delete=False
+            ) as temp_file:
 
-        if poster_file and poster_file.filename:
+                temp_input = temp_file.name
+
+                video_file.save(
+                    temp_input
+                )
+
+
+            temp_output = (
+                tempfile.mktemp(
+                    suffix=".mp4"
+                )
+            )
+
+
+            convert_to_mp4(
+                temp_input,
+                temp_output
+            )
+
+
+            # Upload converted MP4
+            r2_upload_file(
+                temp_output,
+                video_key,
+                "video/mp4"
+            )
+
+            video_uploaded = True
+
+
+        # =================================================
+        # ALREADY MP4
+        # =================================================
+
+        elif original_extension == ".mp4":
+
+            r2_upload(
+                video_file,
+                video_key,
+                "video/mp4"
+            )
+
+            video_uploaded = True
+
+
+        # =================================================
+        # WEBM
+        # =================================================
+
+        elif original_extension == ".webm":
+
+            # Browser WebM support is good,
+            # but database always stores a
+            # .mp4 key in this version.
+            #
+            # इसलिए WebM को भी MP4 में convert
+            # कर रहे हैं.
+
+            with tempfile.NamedTemporaryFile(
+                suffix=".webm",
+                delete=False
+            ) as temp_file:
+
+                temp_input = temp_file.name
+
+                video_file.save(
+                    temp_input
+                )
+
+
+            temp_output = (
+                tempfile.mktemp(
+                    suffix=".mp4"
+                )
+            )
+
+
+            convert_to_mp4(
+                temp_input,
+                temp_output
+            )
+
+
+            r2_upload_file(
+                temp_output,
+                video_key,
+                "video/mp4"
+            )
+
+            video_uploaded = True
+
+
+        # =================================================
+        # MOV
+        # =================================================
+
+        elif original_extension == ".mov":
+
+            with tempfile.NamedTemporaryFile(
+                suffix=".mov",
+                delete=False
+            ) as temp_file:
+
+                temp_input = temp_file.name
+
+                video_file.save(
+                    temp_input
+                )
+
+
+            temp_output = (
+                tempfile.mktemp(
+                    suffix=".mp4"
+                )
+            )
+
+
+            convert_to_mp4(
+                temp_input,
+                temp_output
+            )
+
+
+            r2_upload_file(
+                temp_output,
+                video_key,
+                "video/mp4"
+            )
+
+            video_uploaded = True
+
+
+        # =================================================
+        # POSTER UPLOAD
+        # =================================================
+
+        if (
+            poster_file
+            and poster_file.filename
+        ):
 
             r2_upload(
                 poster_file,
                 poster_key,
                 get_content_type(
                     poster_file.filename,
-                    "application/octet-stream"
+                    "image/jpeg"
                 )
             )
 
             poster_uploaded = True
 
+
     except Exception as e:
 
         app.logger.exception(
-            "R2 upload failed: %s",
+            "Video upload/conversion failed: %s",
             e
         )
+
+
+        # =================================================
+        # CLEAN R2 VIDEO
+        # =================================================
 
         if video_uploaded:
 
             try:
-                r2_delete(video_key)
+
+                r2_delete(
+                    video_key
+                )
+
             except Exception:
+
                 pass
+
+
+        # =================================================
+        # CLEAN R2 POSTER
+        # =================================================
 
         if poster_uploaded:
 
             try:
-                r2_delete(poster_key)
+
+                r2_delete(
+                    poster_key
+                )
+
             except Exception:
+
                 pass
 
+
         flash(
-            "R2 upload failed. Render Logs में error देखें."
+            "Video upload/conversion failed. Render Logs देखें."
         )
 
         return redirect(
             url_for("admin")
         )
+
+
+    finally:
+
+        # =================================================
+        # DELETE TEMP INPUT
+        # =================================================
+
+        if (
+            temp_input
+            and os.path.isfile(
+                temp_input
+            )
+        ):
+
+            try:
+
+                os.remove(
+                    temp_input
+                )
+
+            except Exception:
+
+                pass
+
+
+        # =================================================
+        # DELETE TEMP OUTPUT
+        # =================================================
+
+        if (
+            temp_output
+            and os.path.isfile(
+                temp_output
+            )
+        ):
+
+            try:
+
+                os.remove(
+                    temp_output
+                )
+
+            except Exception:
+
+                pass
+
+
+    # =====================================================
+    # DATABASE INSERT
+    # =====================================================
 
     con = None
 
@@ -1210,7 +1790,17 @@ def add_movie():
                 video,
                 views
             )
-            VALUES (%s, %s, %s, %s, %s, 0)
+
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                0
+            )
+
             RETURNING id
             """,
             (
@@ -1230,36 +1820,59 @@ def add_movie():
             f"Movie publish हो गई. ID: {movie_id}"
         )
 
+
     except Exception as e:
 
         if con:
+
             con.rollback()
+
 
         app.logger.exception(
             "Movie database insert failed: %s",
             e
         )
 
+
+        # =================================================
+        # DATABASE FAIL -> DELETE R2 FILES
+        # =================================================
+
         try:
-            r2_delete(video_key)
+
+            r2_delete(
+                video_key
+            )
+
         except Exception:
+
             pass
+
 
         if poster_key:
 
             try:
-                r2_delete(poster_key)
+
+                r2_delete(
+                    poster_key
+                )
+
             except Exception:
+
                 pass
+
 
         flash(
             "Movie database में save नहीं हो पाई."
         )
 
+
     finally:
 
         if con:
+
             con.close()
+
 
     return redirect(
         url_for("admin")
@@ -1304,6 +1917,7 @@ def delete_movie(movie_id):
                 url_for("admin")
             )
 
+
         video_name = movie_data.get(
             "video"
         )
@@ -1311,6 +1925,11 @@ def delete_movie(movie_id):
         poster_name = movie_data.get(
             "poster"
         )
+
+
+        # =================================================
+        # DELETE DATABASE
+        # =================================================
 
         con.execute(
             """
@@ -1323,6 +1942,11 @@ def delete_movie(movie_id):
         )
 
         con.commit()
+
+
+        # =================================================
+        # DELETE R2 VIDEO
+        # =================================================
 
         if video_name:
 
@@ -1339,6 +1963,11 @@ def delete_movie(movie_id):
                     e
                 )
 
+
+        # =================================================
+        # DELETE R2 POSTER
+        # =================================================
+
         if poster_name:
 
             try:
@@ -1354,14 +1983,18 @@ def delete_movie(movie_id):
                     e
                 )
 
+
         flash(
             "Movie delete हो गई."
         )
 
+
     except Exception as e:
 
         if con:
+
             con.rollback()
+
 
         app.logger.exception(
             "Delete movie failed: %s",
@@ -1372,10 +2005,13 @@ def delete_movie(movie_id):
             "Movie delete नहीं हो पाई."
         )
 
+
     finally:
 
         if con:
+
             con.close()
+
 
     return redirect(
         url_for("admin")
@@ -1412,10 +2048,22 @@ def save_ads():
 
             con.execute(
                 """
-                INSERT INTO settings(key, value)
-                VALUES (%s, %s)
+                INSERT INTO settings
+                (
+                    key,
+                    value
+                )
+
+                VALUES
+                (
+                    %s,
+                    %s
+                )
+
                 ON CONFLICT(key)
-                DO UPDATE SET value = EXCLUDED.value
+
+                DO UPDATE SET
+                    value = EXCLUDED.value
                 """,
                 (
                     key,
@@ -1429,10 +2077,13 @@ def save_ads():
             "Ads settings save हो गईं."
         )
 
+
     except Exception as e:
 
         if con:
+
             con.rollback()
+
 
         app.logger.exception(
             "Save ads failed: %s",
@@ -1443,10 +2094,13 @@ def save_ads():
             "Ads save नहीं हो पाईं."
         )
 
+
     finally:
 
         if con:
+
             con.close()
+
 
     return redirect(
         url_for("admin")
@@ -1494,7 +2148,8 @@ def internal_error(error):
     )
 
     return (
-        "Internal Server Error. Render Logs देखें.",
+        "Internal Server Error. "
+        "Render Logs देखें.",
         500
     )
 
@@ -1533,3 +2188,4 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
+```
