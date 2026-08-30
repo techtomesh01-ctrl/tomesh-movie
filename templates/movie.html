@@ -1,4 +1,3 @@
-```html
 {% extends "base.html" %}
 
 {% block title %}
@@ -7,791 +6,1440 @@
 
 {% block content %}
 
-<div class="tm-layout">
+<div class="tm-page">
 
-    <!-- ================= SIDEBAR ================= -->
-    <aside class="tm-sidebar">
+    <header class="tm-topbar">
 
         <a href="{{ url_for('home') }}" class="tm-brand">
+
             <div class="tm-logo">
-                <span class="tm-logo-t">T</span>
-                <span class="tm-logo-m">M</span>
-                <span class="tm-logo-play">▶</span>
+                <span>TM</span>
+                <i>▶</i>
             </div>
 
-            <div class="tm-brand-name">
+            <div class="tm-brand-text">
                 <strong>TOMESH</strong>
-                <span>MOVIE</span>
+                <small>MOVIES</small>
             </div>
+
         </a>
 
-        <nav class="tm-nav">
+        <a
+            href="{{ url_for('home') }}"
+            class="tm-back"
+        >
+            ← Back
+        </a>
 
-            <a href="{{ url_for('home') }}" class="tm-nav-link">
-                <span>⌂</span>
-                <b>Home</b>
-            </a>
-
-            <a href="{{ url_for('home') }}#movies" class="tm-nav-link">
-                <span>🎬</span>
-                <b>Latest Movies</b>
-            </a>
-
-        </nav>
-
-        <div class="tm-sidebar-bottom">
-            <div class="tm-side-popcorn">🍿</div>
-            <span>Enjoy Movies</span>
-        </div>
-
-    </aside>
+    </header>
 
 
-    <!-- ================= MAIN ================= -->
-    <main class="tm-main">
+    <!-- ================= HERO ================= -->
 
-        <!-- TOP BAR -->
-        <header class="tm-topbar">
+    <section class="tm-hero">
 
-            <a href="{{ url_for('home') }}" class="tm-mobile-brand">
-                <span class="mobile-logo">TM</span>
-                <span>TOMESH MOVIE</span>
-            </a>
+        <div class="tm-hero-content">
 
-            <a href="{{ url_for('home') }}" class="tm-back-btn">
-                ← Back
-            </a>
+            <div class="tm-label">
+                <span>●</span>
+                NOW PLAYING
+            </div>
 
-        </header>
+            <h1>
+                {{ movie.title }}
+            </h1>
 
-
-        <!-- ================= MOVIE HERO ================= -->
-        <section class="tm-movie-hero">
-
-            <!-- LEFT CONTENT -->
-            <div class="tm-movie-info">
-
-                <div class="tm-small-label">
-                    <span>●</span> TOMESH MOVIE
-                </div>
-
-                <h1>{{ movie.title }}</h1>
+            <div class="tm-meta">
 
                 {% if movie.category %}
-                <div class="tm-category">
+
+                <span class="tm-category">
                     🎬 {{ movie.category }}
-                </div>
+                </span>
+
                 {% endif %}
 
-                {% if movie.description %}
-                <p class="tm-description">
-                    {{ movie.description }}
-                </p>
-                {% else %}
-                <p class="tm-description">
-                    अपनी पसंदीदा Movie को आसानी से देखें।
-                </p>
-                {% endif %}
+                <span class="tm-views">
+                    👁 {{ movie.views or 0 }} Views
+                </span>
 
             </div>
 
+            {% if movie.description %}
 
-            <!-- POPCORN -->
-            <div class="tm-popcorn-area">
+            <p class="tm-description">
+                {{ movie.description }}
+            </p>
 
-                <div class="tm-glow"></div>
+            {% else %}
 
-                <div class="tm-popcorn-card">
+            <p class="tm-description">
+                अपनी पसंदीदा Movie को आसानी से देखें और Enjoy करें।
+            </p>
 
-                    <div class="tm-popcorn-title">
-                        <span>NOW</span>
-                        <strong>WATCH</strong>
-                    </div>
+            {% endif %}
 
-                    <div class="tm-popcorn">
-                        <div class="popcorn-piece p1">🍿</div>
-                        <div class="popcorn-piece p2">🍿</div>
-                        <div class="popcorn-piece p3">🍿</div>
-                        <div class="popcorn-piece p4">🍿</div>
-                    </div>
+        </div>
 
-                    <div class="tm-popcorn-text">
-                        <strong>Grab Your Popcorn!</strong>
-                        <span>Movie time starts now</span>
-                    </div>
 
+        <div class="tm-popcorn-area">
+
+            <div class="tm-glow"></div>
+
+            <div class="tm-popcorn-card">
+
+                <div class="tm-now">
+                    NOW
                 </div>
 
+                <div class="tm-watch">
+                    WATCH
+                </div>
+
+                <div class="tm-popcorn">
+                    🍿
+                </div>
+
+                <strong>
+                    Grab Your Popcorn!
+                </strong>
+
+                <small>
+                    Movie time starts now
+                </small>
+
             </div>
 
-        </section>
+        </div>
+
+    </section>
 
 
-        <!-- ================= VIDEO ================= -->
-        {% if movie.video_url or movie.video %}
+    <!-- ================= TOP AD ================= -->
 
-        <section class="tm-player-section">
+    {% if ads and ads.ad_top %}
 
-            <div class="tm-section-title">
-                <span>▶</span>
-                Watch Now
+    <div class="tm-ad tm-ad-top">
+        {{ ads.ad_top | safe }}
+    </div>
+
+    {% endif %}
+
+
+    <!-- ================= VIDEO ================= -->
+
+    {% if movie.video_url or movie.video %}
+
+    <section class="tm-player">
+
+        <div class="tm-player-heading">
+
+            <div>
+                <span class="play-icon">▶</span>
+                <strong>Watch Now</strong>
             </div>
 
-            <div class="tm-video-box">
+            <span class="quality">
+                HD
+            </span>
 
-                <video
-                    controls
-                    playsinline
-                    preload="metadata"
-                    class="tm-video"
+        </div>
+
+
+        <div class="tm-video-box">
+
+            <video
+                id="tmVideo"
+                class="tm-video"
+                controls
+                playsinline
+                preload="metadata"
+                poster="{% if movie.poster_url %}{{ movie.poster_url }}{% endif %}"
+            >
+
+                {% if movie.video_url %}
+
+                <source
+                    src="{{ movie.video_url }}"
+                    type="video/mp4"
                 >
 
-                    {% if movie.video_url %}
-                    <source
-                        src="{{ movie.video_url }}"
-                        type="video/mp4"
-                    >
-                    {% elif movie.video %}
-                    <source
-                        src="{{ movie.video }}"
-                        type="video/mp4"
-                    >
-                    {% endif %}
+                {% elif movie.video %}
 
-                    Your browser does not support video playback.
+                <source
+                    src="{{ movie.video }}"
+                    type="video/mp4"
+                >
 
-                </video>
+                {% endif %}
 
+                आपका browser video playback support नहीं करता।
+
+            </video>
+
+        </div>
+
+
+        <div class="tm-video-actions">
+
+            <button
+                type="button"
+                class="tm-action-btn"
+                onclick="toggleFullscreen()"
+            >
+                ⛶ Fullscreen
+            </button>
+
+            <button
+                type="button"
+                class="tm-action-btn"
+                onclick="restartVideo()"
+            >
+                ↻ Restart
+            </button>
+
+        </div>
+
+    </section>
+
+    {% endif %}
+
+
+    <!-- ================= PLAYER AD ================= -->
+
+    {% if ads and ads.ad_player %}
+
+    <div class="tm-ad tm-ad-player">
+        {{ ads.ad_player | safe }}
+    </div>
+
+    {% endif %}
+
+
+    <!-- ================= DETAILS ================= -->
+
+    <section class="tm-details">
+
+        <div class="tm-detail-card">
+
+            <div class="detail-icon">
+                🎬
             </div>
 
-        </section>
+            <div>
+                <small>Movie</small>
+
+                <strong>
+                    {{ movie.title }}
+                </strong>
+            </div>
+
+        </div>
+
+
+        {% if movie.category %}
+
+        <div class="tm-detail-card">
+
+            <div class="detail-icon">
+                🏷️
+            </div>
+
+            <div>
+                <small>Category</small>
+
+                <strong>
+                    {{ movie.category }}
+                </strong>
+            </div>
+
+        </div>
 
         {% endif %}
 
 
-        <!-- ================= MOVIE DETAILS ================= -->
-        <section class="tm-details">
+        <div class="tm-detail-card">
 
-            <div class="tm-detail-box">
-
-                <span class="detail-icon">🎬</span>
-
-                <div>
-                    <small>Movie</small>
-                    <strong>{{ movie.title }}</strong>
-                </div>
-
+            <div class="detail-icon">
+                👁
             </div>
-
-
-            {% if movie.category %}
-
-            <div class="tm-detail-box">
-
-                <span class="detail-icon">🏷️</span>
-
-                <div>
-                    <small>Category</small>
-                    <strong>{{ movie.category }}</strong>
-                </div>
-
-            </div>
-
-            {% endif %}
-
-
-            <div class="tm-detail-box">
-
-                <span class="detail-icon">🍿</span>
-
-                <div>
-                    <small>Experience</small>
-                    <strong>Enjoy Your Movie</strong>
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- ================= FOOTER ================= -->
-        <footer class="tm-footer">
-
-            <div class="footer-logo">TM</div>
 
             <div>
-                <strong>TOMESH MOVIE</strong>
-                <span>Enjoy movies anytime.</span>
+                <small>Views</small>
+
+                <strong>
+                    {{ movie.views or 0 }}
+                </strong>
             </div>
 
-        </footer>
+        </div>
 
-    </main>
+    </section>
+
+
+    <!-- ================= BOTTOM AD ================= -->
+
+    {% if ads and ads.ad_bottom %}
+
+    <div class="tm-ad tm-ad-bottom">
+        {{ ads.ad_bottom | safe }}
+    </div>
+
+    {% endif %}
+
+
+    <!-- ================= FOOTER ================= -->
+
+    <footer class="tm-footer">
+
+        <div class="footer-logo">
+            TM
+        </div>
+
+        <div>
+
+            <strong>
+                TOMESH MOVIES
+            </strong>
+
+            <span>
+                Enjoy movies anytime.
+            </span>
+
+        </div>
+
+    </footer>
 
 </div>
 
 
 <style>
 
-/* =========================
-   LAYOUT
-========================= */
+/* =====================================================
+   PAGE
+===================================================== */
 
-.tm-layout {
-    min-height: 100vh;
-    display: flex;
-    background: #09090d;
-    color: #fff;
-}
-
-
-/* =========================
-   SIDEBAR
-========================= */
-
-.tm-sidebar {
-    width: 240px;
-    min-height: 100vh;
-    background: #111116;
-    border-right: 1px solid #292932;
-    padding: 25px 18px;
-    display: flex;
-    flex-direction: column;
+.tm-page,
+.tm-page * {
     box-sizing: border-box;
 }
 
+.tm-page {
+
+    min-height: 100vh;
+
+    background:
+        radial-gradient(
+            circle at 80% 10%,
+            rgba(229, 9, 20, .10),
+            transparent 30%
+        ),
+        #08080c;
+
+    color: #fff;
+
+    padding: 0 25px 50px;
+}
+
+
+/* =====================================================
+   TOPBAR
+===================================================== */
+
+.tm-topbar {
+
+    max-width: 1200px;
+
+    height: 75px;
+
+    margin: auto;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    border-bottom: 1px solid #27272f;
+
+}
+
+
+/* =====================================================
+   BRAND
+===================================================== */
 
 .tm-brand {
+
     display: flex;
+
     align-items: center;
+
     gap: 12px;
+
+    color: #fff;
+
     text-decoration: none;
-    color: white;
-    margin-bottom: 40px;
+
 }
 
 
 .tm-logo {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: #e50914;
+
+    width: 45px;
+    height: 45px;
+
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff2430,
+            #b00008
+        );
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
+
     position: relative;
+
     font-weight: 900;
+
+    box-shadow:
+        0 8px 30px rgba(229, 9, 20, .25);
+
 }
 
 
-.tm-logo-t {
-    font-size: 22px;
+.tm-logo span {
+
+    font-size: 16px;
+
+    letter-spacing: -1px;
+
 }
 
 
-.tm-logo-m {
-    font-size: 20px;
-    margin-left: -2px;
-}
+.tm-logo i {
 
-
-.tm-logo-play {
     position: absolute;
-    right: -5px;
+
+    right: -6px;
+
     bottom: -5px;
+
     width: 21px;
+
     height: 21px;
+
     border-radius: 50%;
-    background: white;
+
+    background: #fff;
+
     color: #e50914;
-    font-size: 10px;
+
+    font-size: 9px;
+
+    font-style: normal;
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
+
 }
 
 
-.tm-brand-name {
+.tm-brand-text {
+
     display: flex;
+
     flex-direction: column;
+
     line-height: 1;
+
 }
 
 
-.tm-brand-name strong {
-    font-size: 18px;
-    letter-spacing: 1px;
+.tm-brand-text strong {
+
+    font-size: 17px;
+
+    letter-spacing: 2px;
+
 }
 
 
-.tm-brand-name span {
-    font-size: 11px;
-    color: #999;
+.tm-brand-text small {
+
     margin-top: 5px;
-    letter-spacing: 2px;
+
+    color: #777;
+
+    font-size: 9px;
+
+    letter-spacing: 3px;
+
 }
 
 
-.tm-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
+/* =====================================================
+   BACK
+===================================================== */
 
+.tm-back {
 
-.tm-nav-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 13px 14px;
-    border-radius: 10px;
     color: #aaa;
+
     text-decoration: none;
-    transition: .2s;
-}
 
-
-.tm-nav-link:hover {
-    background: #e50914;
-    color: white;
-}
-
-
-.tm-sidebar-bottom {
-    margin-top: auto;
-    text-align: center;
-    color: #888;
-    font-size: 13px;
-}
-
-
-.tm-side-popcorn {
-    font-size: 40px;
-    margin-bottom: 8px;
-}
-
-
-/* =========================
-   MAIN
-========================= */
-
-.tm-main {
-    flex: 1;
-    min-width: 0;
-    padding: 18px 25px 40px;
-    box-sizing: border-box;
-}
-
-
-.tm-topbar {
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid #292932;
-    margin-bottom: 25px;
-}
-
-
-.tm-mobile-brand {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    color: white;
-    text-decoration: none;
-    font-weight: 700;
-}
-
-
-.mobile-logo {
-    width: 35px;
-    height: 35px;
-    border-radius: 9px;
-    background: #e50914;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-}
-
-
-.tm-back-btn {
-    color: #aaa;
-    text-decoration: none;
-    padding: 9px 14px;
     border: 1px solid #30303a;
-    border-radius: 9px;
-    transition: .2s;
+
+    border-radius: 10px;
+
+    padding: 9px 15px;
+
+    transition: .25s;
+
+    font-size: 14px;
+
 }
 
 
-.tm-back-btn:hover {
+.tm-back:hover {
+
     background: #e50914;
+
     border-color: #e50914;
-    color: white;
+
+    color: #fff;
+
+    transform: translateY(-1px);
+
 }
 
 
-/* =========================
+/* =====================================================
    HERO
-========================= */
+===================================================== */
 
-.tm-movie-hero {
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    gap: 35px;
-    align-items: center;
-    max-width: 1150px;
+.tm-hero {
+
+    max-width: 1200px;
+
+    min-height: 330px;
+
     margin: auto;
-    padding: 20px 0 35px;
+
+    padding: 45px 0 35px;
+
+    display: grid;
+
+    grid-template-columns: 1fr 300px;
+
+    align-items: center;
+
+    gap: 50px;
+
 }
 
 
-.tm-small-label {
+.tm-hero-content {
+
+    min-width: 0;
+
+}
+
+
+.tm-label {
+
     color: #e50914;
-    font-size: 12px;
+
+    font-size: 11px;
+
     font-weight: 800;
-    letter-spacing: 2px;
+
+    letter-spacing: 3px;
+
     margin-bottom: 15px;
+
 }
 
 
-.tm-small-label span {
-    font-size: 10px;
+.tm-label span {
+
+    font-size: 9px;
+
 }
 
 
-.tm-movie-info h1 {
-    margin: 0 0 15px;
-    font-size: clamp(30px, 5vw, 55px);
-    line-height: 1.05;
+.tm-hero h1 {
+
+    margin: 0;
+
+    font-size: clamp(
+        34px,
+        5vw,
+        64px
+    );
+
+    line-height: 1.03;
+
+    font-weight: 900;
+
+    letter-spacing: -1px;
+
+    overflow-wrap: anywhere;
+
+}
+
+
+.tm-meta {
+
+    display: flex;
+
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 18px;
+
 }
 
 
 .tm-category {
-    display: inline-block;
+
     background: #e50914;
-    color: white;
+
+    color: #fff;
+
     padding: 7px 13px;
+
     border-radius: 8px;
-    font-size: 13px;
+
+    font-size: 12px;
+
     font-weight: 700;
+
+}
+
+
+.tm-views {
+
+    color: #999;
+
+    font-size: 13px;
+
 }
 
 
 .tm-description {
-    max-width: 700px;
-    color: #aaa;
-    font-size: 15px;
+
+    max-width: 750px;
+
+    color: #999;
+
     line-height: 1.8;
-    margin-top: 20px;
+
+    font-size: 15px;
+
+    margin: 20px 0 0;
+
 }
 
 
-/* =========================
+/* =====================================================
    POPCORN
-========================= */
+===================================================== */
 
 .tm-popcorn-area {
+
     position: relative;
+
 }
 
 
 .tm-glow {
+
     position: absolute;
-    width: 180px;
-    height: 180px;
-    background: #e50914;
-    filter: blur(100px);
-    opacity: .15;
+
+    width: 210px;
+
+    height: 210px;
+
     left: 50%;
+
     top: 50%;
-    transform: translate(-50%, -50%);
+
+    transform:
+        translate(-50%, -50%);
+
+    background: #e50914;
+
+    filter: blur(90px);
+
+    opacity: .18;
+
 }
 
 
 .tm-popcorn-card {
+
     position: relative;
-    border: 1px solid #292932;
-    border-radius: 20px;
-    background: #15151b;
-    padding: 25px;
+
     text-align: center;
+
+    padding: 27px 20px;
+
+    border-radius: 22px;
+
+    border: 1px solid #2b2b35;
+
+    background:
+        linear-gradient(
+            145deg,
+            #17171e,
+            #0f0f14
+        );
+
+    box-shadow:
+        0 20px 60px rgba(0,0,0,.35);
+
     overflow: hidden;
+
 }
 
 
-.tm-popcorn-title {
-    display: flex;
-    flex-direction: column;
+.tm-popcorn-card::before {
+
+    content: "";
+
+    position: absolute;
+
+    width: 150px;
+
+    height: 150px;
+
+    border-radius: 50%;
+
+    background: rgba(
+        229,
+        9,
+        20,
+        .07
+    );
+
+    left: -70px;
+
+    top: -70px;
+
 }
 
 
-.tm-popcorn-title span {
+.tm-now {
+
     color: #e50914;
-    font-size: 12px;
+
+    font-size: 11px;
+
     font-weight: 800;
-    letter-spacing: 3px;
+
+    letter-spacing: 4px;
+
 }
 
 
-.tm-popcorn-title strong {
+.tm-watch {
+
+    margin-top: 2px;
+
     font-size: 27px;
+
+    font-weight: 900;
+
     letter-spacing: 2px;
+
 }
 
 
 .tm-popcorn {
-    font-size: 70px;
-    margin: 15px 0;
+
+    font-size: 75px;
+
+    line-height: 1;
+
+    margin: 18px 0;
+
+    animation:
+        tmFloat 2.5s ease-in-out infinite;
+
 }
 
 
-.popcorn-piece {
-    display: inline-block;
-    animation: popcornFloat 2s infinite ease-in-out;
+.tm-popcorn-card strong {
+
+    display: block;
+
+    font-size: 15px;
+
 }
 
 
-.p2 {
-    animation-delay: .3s;
+.tm-popcorn-card small {
+
+    display: block;
+
+    color: #777;
+
+    font-size: 11px;
+
+    margin-top: 5px;
+
 }
 
 
-.p3 {
-    animation-delay: .6s;
-}
-
-
-.p4 {
-    animation-delay: .9s;
-}
-
-
-@keyframes popcornFloat {
+@keyframes tmFloat {
 
     0%,
     100% {
-        transform: translateY(0) rotate(0deg);
+
+        transform:
+            translateY(0)
+            rotate(0);
+
     }
 
     50% {
-        transform: translateY(-10px) rotate(4deg);
+
+        transform:
+            translateY(-9px)
+            rotate(3deg);
+
     }
 
 }
 
 
-.tm-popcorn-text {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+/* =====================================================
+   ADS
+===================================================== */
+
+.tm-ad {
+
+    max-width: 1200px;
+
+    margin: 20px auto;
+
+    text-align: center;
+
+    overflow: hidden;
+
 }
 
 
-.tm-popcorn-text strong {
-    font-size: 15px;
+.tm-ad-top,
+.tm-ad-player,
+.tm-ad-bottom {
+
+    min-height: 50px;
+
 }
 
 
-.tm-popcorn-text span {
-    color: #777;
-    font-size: 12px;
-}
+/* =====================================================
+   PLAYER
+===================================================== */
 
+.tm-player {
 
-/* =========================
-   VIDEO
-========================= */
+    max-width: 1200px;
 
-.tm-player-section {
-    max-width: 1150px;
     margin: 0 auto 30px;
+
 }
 
 
-.tm-section-title {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 12px;
+.tm-player-heading {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 13px;
+
 }
 
 
-.tm-section-title span {
+.tm-player-heading > div {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+}
+
+
+.play-icon {
+
     color: #e50914;
+
+    font-size: 15px;
+
 }
 
+
+.tm-player-heading strong {
+
+    font-size: 18px;
+
+}
+
+
+.quality {
+
+    background: #1b1b22;
+
+    border: 1px solid #30303a;
+
+    color: #bbb;
+
+    border-radius: 6px;
+
+    padding: 4px 8px;
+
+    font-size: 10px;
+
+    font-weight: 800;
+
+}
+
+
+/* =====================================================
+   VIDEO
+===================================================== */
 
 .tm-video-box {
+
+    position: relative;
+
+    width: 100%;
+
     background: #000;
+
     border: 1px solid #292932;
+
     border-radius: 18px;
+
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+
+    box-shadow:
+        0 25px 70px rgba(0,0,0,.55);
+
 }
 
 
 .tm-video {
+
     display: block;
+
     width: 100%;
-    max-height: 680px;
+
+    max-height: 700px;
+
+    min-height: 300px;
+
     background: #000;
+
     object-fit: contain;
+
 }
 
 
-/* =========================
+/* =====================================================
+   VIDEO BUTTONS
+===================================================== */
+
+.tm-video-actions {
+
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 9px;
+
+    margin-top: 12px;
+
+}
+
+
+.tm-action-btn {
+
+    background: #15151b;
+
+    border: 1px solid #30303a;
+
+    color: #bbb;
+
+    border-radius: 8px;
+
+    padding: 8px 12px;
+
+    cursor: pointer;
+
+    font-size: 12px;
+
+    transition: .2s;
+
+}
+
+
+.tm-action-btn:hover {
+
+    background: #e50914;
+
+    border-color: #e50914;
+
+    color: #fff;
+
+}
+
+
+/* =====================================================
    DETAILS
-========================= */
+===================================================== */
 
 .tm-details {
-    max-width: 1150px;
+
+    max-width: 1200px;
+
     margin: 25px auto;
+
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
     gap: 15px;
+
 }
 
 
-.tm-detail-box {
+.tm-detail-card {
+
+    min-width: 0;
+
     display: flex;
+
     align-items: center;
+
     gap: 13px;
+
     padding: 18px;
-    background: #15151b;
+
     border: 1px solid #292932;
-    border-radius: 13px;
+
+    background: #131319;
+
+    border-radius: 14px;
+
 }
 
 
 .detail-icon {
-    font-size: 27px;
-}
 
+    width: 45px;
 
-.tm-detail-box div {
+    height: 45px;
+
+    flex-shrink: 0;
+
+    border-radius: 11px;
+
+    background: #1d1d25;
+
     display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 21px;
+
+}
+
+
+.tm-detail-card > div:last-child {
+
+    min-width: 0;
+
+    display: flex;
+
     flex-direction: column;
-    gap: 4px;
+
+    gap: 5px;
+
 }
 
 
-.tm-detail-box small {
-    color: #777;
-    font-size: 11px;
+.tm-detail-card small {
+
+    color: #666;
+
+    font-size: 10px;
+
 }
 
 
-.tm-detail-box strong {
+.tm-detail-card strong {
+
     color: #ddd;
-    font-size: 14px;
+
+    font-size: 13px;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
 }
 
 
-/* =========================
+/* =====================================================
    FOOTER
-========================= */
+===================================================== */
 
 .tm-footer {
-    max-width: 1150px;
-    margin: 45px auto 0;
-    padding: 20px 0;
+
+    max-width: 1200px;
+
+    margin: 50px auto 0;
+
+    padding-top: 22px;
+
     border-top: 1px solid #292932;
+
     display: flex;
+
     align-items: center;
-    gap: 15px;
-    color: #888;
+
+    gap: 13px;
+
 }
 
 
 .footer-logo {
+
     width: 40px;
+
     height: 40px;
+
     border-radius: 10px;
+
     background: #e50914;
-    color: white;
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
+
     font-weight: 900;
+
+    font-size: 13px;
+
 }
 
 
 .tm-footer div:last-child {
+
     display: flex;
+
     flex-direction: column;
+
     gap: 4px;
+
 }
 
 
 .tm-footer strong {
+
     color: #ddd;
+
     font-size: 13px;
+
 }
 
 
 .tm-footer span {
-    font-size: 12px;
+
+    color: #666;
+
+    font-size: 11px;
+
 }
 
 
-/* =========================
-   MOBILE
-========================= */
+/* =====================================================
+   TABLET
+===================================================== */
 
-@media (max-width: 800px) {
+@media (max-width: 900px) {
 
-    .tm-layout {
-        display: block;
+    .tm-page {
+
+        padding-left: 16px;
+
+        padding-right: 16px;
+
     }
 
-    .tm-sidebar {
-        display: none;
-    }
+    .tm-hero {
 
-    .tm-main {
-        padding: 10px 14px 30px;
-    }
-
-    .tm-topbar {
-        height: 52px;
-        margin-bottom: 10px;
-    }
-
-    .tm-mobile-brand {
-        display: flex;
-    }
-
-    .tm-movie-hero {
         grid-template-columns: 1fr;
-        gap: 25px;
-        padding-top: 15px;
-    }
 
-    .tm-movie-info h1 {
-        font-size: 30px;
+        gap: 30px;
+
     }
 
     .tm-popcorn-area {
+
         max-width: 330px;
-        margin: auto;
+
         width: 100%;
-    }
 
-    .tm-details {
-        grid-template-columns: 1fr;
-    }
+        margin: auto;
 
-    .tm-video-box {
-        border-radius: 10px;
-    }
-
-    .tm-video {
-        max-height: 450px;
     }
 
 }
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 600px) {
+
+    .tm-page {
+
+        padding:
+            0 12px 35px;
+
+    }
+
+    .tm-topbar {
+
+        height: 60px;
+
+    }
+
+    .tm-logo {
+
+        width: 38px;
+
+        height: 38px;
+
+        border-radius: 10px;
+
+    }
+
+    .tm-brand-text strong {
+
+        font-size: 14px;
+
+    }
+
+    .tm-brand-text small {
+
+        font-size: 8px;
+
+    }
+
+    .tm-back {
+
+        padding:
+            7px 10px;
+
+        font-size: 12px;
+
+    }
+
+    .tm-hero {
+
+        padding:
+            28px 0 25px;
+
+        gap: 25px;
+
+    }
+
+    .tm-hero h1 {
+
+        font-size: 32px;
+
+    }
+
+    .tm-description {
+
+        font-size: 14px;
+
+    }
+
+    .tm-popcorn-card {
+
+        padding:
+            22px 15px;
+
+    }
+
+    .tm-popcorn {
+
+        font-size: 65px;
+
+    }
+
+    .tm-video-box {
+
+        border-radius: 10px;
+
+    }
+
+    .tm-video {
+
+        min-height: 210px;
+
+        max-height: 450px;
+
+    }
+
+    .tm-video-actions {
+
+        justify-content: stretch;
+
+    }
+
+    .tm-action-btn {
+
+        flex: 1;
+
+    }
+
+    .tm-details {
+
+        grid-template-columns: 1fr;
+
+        gap: 10px;
+
+    }
+
+    .tm-detail-card {
+
+        padding: 14px;
+
+    }
+
+    .tm-footer {
+
+        margin-top: 35px;
+
+    }
+
+}
+
+
+/* =====================================================
+   SMALL MOBILE
+===================================================== */
+
+@media (max-width: 380px) {
+
+    .tm-hero h1 {
+
+        font-size: 28px;
+
+    }
+
+    .tm-brand-text {
+
+        display: none;
+
+    }
+
+    .tm-video {
+
+        min-height: 190px;
+
+    }
+
+}
+
 </style>
 
+
+<script>
+
+function toggleFullscreen() {
+
+    const video =
+        document.getElementById(
+            "tmVideo"
+        );
+
+    if (!video) {
+        return;
+    }
+
+    if (document.fullscreenElement) {
+
+        document.exitFullscreen();
+
+    } else {
+
+        if (video.requestFullscreen) {
+
+            video.requestFullscreen();
+
+        } else if (
+            video.webkitEnterFullscreen
+        ) {
+
+            video.webkitEnterFullscreen();
+
+        }
+
+    }
+
+}
+
+
+function restartVideo() {
+
+    const video =
+        document.getElementById(
+            "tmVideo"
+        );
+
+    if (!video) {
+        return;
+    }
+
+    video.currentTime = 0;
+
+    video.play();
+
+}
+
+</script>
+
 {% endblock %}
-```
