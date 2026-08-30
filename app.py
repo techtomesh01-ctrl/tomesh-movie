@@ -895,12 +895,7 @@ def r2_health():
             e
         )
 
-        # Exact error browser में दिखाएँ
-        return (
-            "R2 error: "
-            + str(e),
-            500
-        )
+        return "R2 error", 500
 
 
 # =========================================================
