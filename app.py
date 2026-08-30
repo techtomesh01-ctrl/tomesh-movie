@@ -721,7 +721,7 @@ def movie(movie_id):
 
         return render_template(
             "movie.html",
-            m=movie_data
+            movie=movie_data
         )
 
     finally:
