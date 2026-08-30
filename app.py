@@ -1,6 +1,5 @@
 import os
 import secrets
-import shutil
 import subprocess
 import tempfile
 from functools import wraps
@@ -69,9 +68,6 @@ DATABASE_URL = os.environ.get(
 
 
 class DB:
-    """
-    PostgreSQL connection wrapper.
-    """
 
     def __init__(self, url):
 
@@ -85,8 +81,7 @@ class DB:
             or url.startswith("postgres://")
         ):
             raise RuntimeError(
-                "DATABASE_URL गलत है. "
-                "Render में पूरा PostgreSQL Database URL डालें."
+                "DATABASE_URL गलत है."
             )
 
         self.con = psycopg2.connect(
@@ -162,38 +157,37 @@ def get_r2_client():
 
     if not R2_ACCESS_KEY_ID:
         raise RuntimeError(
-            "R2_ACCESS_KEY_ID environment variable is missing."
+            "R2_ACCESS_KEY_ID missing."
         )
 
     if not R2_SECRET_ACCESS_KEY:
         raise RuntimeError(
-            "R2_SECRET_ACCESS_KEY environment variable is missing."
+            "R2_SECRET_ACCESS_KEY missing."
         )
 
     if not R2_BUCKET:
         raise RuntimeError(
-            "R2_BUCKET environment variable is missing."
+            "R2_BUCKET missing."
         )
 
-    if not R2_ENDPOINT:
+    if R2_ENDPOINT:
+        endpoint_url = R2_ENDPOINT
+    else:
 
         if not R2_ACCOUNT_ID:
             raise RuntimeError(
-                "R2_ENDPOINT और R2_ACCOUNT_ID दोनों missing हैं."
+                "R2_ACCOUNT_ID missing."
             )
 
-        R2_ENDPOINT_URL = (
+        endpoint_url = (
             "https://"
             + R2_ACCOUNT_ID
             + ".r2.cloudflarestorage.com"
         )
 
-    else:
-        R2_ENDPOINT_URL = R2_ENDPOINT
-
     return boto3.client(
         "s3",
-        endpoint_url=R2_ENDPOINT_URL,
+        endpoint_url=endpoint_url,
         aws_access_key_id=R2_ACCESS_KEY_ID,
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
         region_name="auto",
@@ -211,7 +205,7 @@ def r2_upload(
 
     if not file_storage:
         raise RuntimeError(
-            "R2 upload file missing."
+            "Upload file missing."
         )
 
     client = get_r2_client()
@@ -221,24 +215,14 @@ def r2_upload(
     if content_type:
         extra_args["ContentType"] = content_type
 
-    file_storage.stream.seek(0)
+    file_storage.seek(0)
 
-    if extra_args:
-
-        client.upload_fileobj(
-            file_storage.stream,
-            R2_BUCKET,
-            object_key,
-            ExtraArgs=extra_args
-        )
-
-    else:
-
-        client.upload_fileobj(
-            file_storage.stream,
-            R2_BUCKET,
-            object_key
-        )
+    client.upload_fileobj(
+        file_storage,
+        R2_BUCKET,
+        object_key,
+        ExtraArgs=extra_args
+    )
 
     return object_key
 
@@ -248,19 +232,10 @@ def r2_upload_path(
     object_key,
     content_type=None
 ):
-    """
-    Local file को R2 में upload करता है.
-    MKV conversion के बाद बने MP4 के लिए इस्तेमाल होता है.
-    """
-
-    if not file_path:
-        raise RuntimeError(
-            "R2 upload path missing."
-        )
 
     if not os.path.isfile(file_path):
         raise RuntimeError(
-            "Upload file नहीं मिली."
+            "Converted file नहीं मिली."
         )
 
     client = get_r2_client()
@@ -273,24 +248,14 @@ def r2_upload_path(
     with open(
         file_path,
         "rb"
-    ) as file_handle:
+    ) as file_object:
 
-        if extra_args:
-
-            client.upload_fileobj(
-                file_handle,
-                R2_BUCKET,
-                object_key,
-                ExtraArgs=extra_args
-            )
-
-        else:
-
-            client.upload_fileobj(
-                file_handle,
-                R2_BUCKET,
-                object_key
-            )
+        client.upload_fileobj(
+            file_object,
+            R2_BUCKET,
+            object_key,
+            ExtraArgs=extra_args
+        )
 
     return object_key
 
@@ -343,7 +308,6 @@ def r2_exists(object_key):
         return True
 
     except Exception:
-
         return False
 
 
@@ -472,137 +436,132 @@ def get_content_type(filename, default):
 
 
 # =========================================================
-# MKV -> MP4 CONVERSION
+# FFMPEG CHECK
 # =========================================================
 
-def convert_mkv_to_mp4(video_file):
-
-    """
-    MKV को MP4 में convert करता है.
-
-    Return:
-        output_path
-        temp_dir
-    """
-
-    temp_dir = tempfile.mkdtemp(
-        prefix="tomesh_mkv_"
-    )
-
-    input_path = os.path.join(
-        temp_dir,
-        "input.mkv"
-    )
-
-    output_path = os.path.join(
-        temp_dir,
-        "converted.mp4"
-    )
+def ffmpeg_available():
 
     try:
 
-        video_file.stream.seek(0)
-
-        video_file.save(
-            input_path
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-version"
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10
         )
 
-        app.logger.info(
-            "Starting MKV to MP4 conversion."
+        return result.returncode == 0
+
+    except Exception:
+
+        return False
+
+
+# =========================================================
+# MKV -> MP4 CONVERSION
+# =========================================================
+
+def convert_mkv_to_mp4(
+    input_file,
+    output_path
+):
+
+    if not ffmpeg_available():
+
+        raise RuntimeError(
+            "FFmpeg Render server पर installed नहीं है."
         )
+
+    input_file.seek(0)
+
+    temp_input = None
+
+    try:
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".mkv",
+            delete=False
+        ) as temp:
+
+            temp_input = temp.name
+
+            while True:
+
+                chunk = input_file.read(
+                    8 * 1024 * 1024
+                )
+
+                if not chunk:
+                    break
+
+                temp.write(chunk)
 
         command = [
             "ffmpeg",
             "-y",
-
             "-i",
-            input_path,
-
+            temp_input,
             "-map",
             "0:v:0",
-
             "-map",
-            "0:a:0?",
-
+            "0:a?",
             "-c:v",
             "libx264",
-
             "-preset",
             "veryfast",
-
             "-crf",
             "23",
-
             "-c:a",
             "aac",
-
             "-b:a",
-            "192k",
-
+            "128k",
             "-movflags",
             "+faststart",
-
             output_path
         ]
 
-        process = subprocess.run(
+        app.logger.info(
+            "Starting MKV -> MP4 conversion."
+        )
+
+        result = subprocess.run(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            check=False
+            text=True
         )
 
-        if process.returncode != 0:
-
-            error_text = process.stderr.decode(
-                "utf-8",
-                errors="ignore"
-            )
+        if result.returncode != 0:
 
             app.logger.error(
-                "FFmpeg conversion failed: %s",
-                error_text[-5000:]
+                "FFmpeg error: %s",
+                result.stderr[-5000:]
             )
 
             raise RuntimeError(
-                "MKV से MP4 conversion failed."
+                "MKV को MP4 में convert नहीं किया जा सका."
             )
 
-        if not os.path.isfile(
-            output_path
-        ):
+        if not os.path.isfile(output_path):
 
             raise RuntimeError(
-                "MP4 file create नहीं हुई."
+                "FFmpeg ने MP4 file create नहीं की."
             )
 
-        file_size = os.path.getsize(
-            output_path
-        )
+        return output_path
 
-        if file_size <= 0:
+    finally:
 
-            raise RuntimeError(
-                "Converted MP4 खाली है."
-            )
+        if temp_input:
 
-        app.logger.info(
-            "MKV to MP4 conversion completed."
-        )
-
-        return (
-            output_path,
-            temp_dir
-        )
-
-    except Exception:
-
-        shutil.rmtree(
-            temp_dir,
-            ignore_errors=True
-        )
-
-        raise
+            try:
+                os.remove(temp_input)
+            except Exception:
+                pass
 
 
 # =========================================================
@@ -672,7 +631,10 @@ def init_db():
 
             con.execute(
                 """
-                INSERT INTO settings (key, value)
+                INSERT INTO settings (
+                    key,
+                    value
+                )
                 VALUES (%s, %s)
                 ON CONFLICT (key)
                 DO NOTHING
@@ -909,7 +871,7 @@ def movie(movie_id):
         movie_data["video_url"] = video_url
 
         # IMPORTANT:
-        # movie.html में {{ movie.title }} इस्तेमाल हो रहा है.
+        # movie.html में movie.title इस्तेमाल हो रहा है.
         return render_template(
             "movie.html",
             movie=movie_data
@@ -1289,10 +1251,162 @@ def add_movie():
 
 
     # =====================================================
-    # SAFE POSTER NAME
+    # SAFE VIDEO NAME
     # =====================================================
 
-    poster_name = ""
+    original_video_name = secure_filename(
+        video_file.filename
+    )
+
+    if not original_video_name:
+
+        flash(
+            "Video filename invalid है."
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    video_base, video_ext = os.path.splitext(
+        original_video_name
+    )
+
+    video_ext = video_ext.lower()
+
+    random_name = secrets.token_hex(8)
+
+
+    # =====================================================
+    # MKV -> MP4
+    # =====================================================
+
+    converted_file = None
+
+    if video_ext == ".mkv":
+
+        try:
+
+            video_name = (
+                video_base
+                + "_"
+                + random_name
+                + ".mp4"
+            )
+
+            video_key = (
+                "videos/"
+                + video_name
+            )
+
+            converted_file = tempfile.NamedTemporaryFile(
+                suffix=".mp4",
+                delete=False
+            )
+
+            converted_path = converted_file.name
+
+            converted_file.close()
+
+            flash(
+                "MKV मिल गई. MP4 में conversion शुरू हो रही है..."
+            )
+
+            convert_mkv_to_mp4(
+                video_file,
+                converted_path
+            )
+
+            r2_upload_path(
+                converted_path,
+                video_key,
+                "video/mp4"
+            )
+
+        except Exception as e:
+
+            app.logger.exception(
+                "MKV conversion/upload failed: %s",
+                e
+            )
+
+            if converted_file:
+
+                try:
+                    os.remove(
+                        converted_file.name
+                    )
+                except Exception:
+                    pass
+
+            flash(
+                "MKV को MP4 में convert/upload नहीं किया जा सका. Render Logs देखें."
+            )
+
+            return redirect(
+                url_for("admin")
+            )
+
+        finally:
+
+            if converted_file:
+
+                try:
+                    os.remove(
+                        converted_file.name
+                    )
+                except Exception:
+                    pass
+
+    else:
+
+        # =================================================
+        # NORMAL VIDEO
+        # =================================================
+
+        safe_video = (
+            video_base
+            + "_"
+            + random_name
+            + video_ext
+        )
+
+        video_key = (
+            "videos/"
+            + safe_video
+        )
+
+        try:
+
+            r2_upload(
+                video_file,
+                video_key,
+                get_content_type(
+                    video_file.filename,
+                    "application/octet-stream"
+                )
+            )
+
+        except Exception as e:
+
+            app.logger.exception(
+                "R2 video upload failed: %s",
+                e
+            )
+
+            flash(
+                "R2 video upload failed. Render Logs देखें."
+            )
+
+            return redirect(
+                url_for("admin")
+            )
+
+
+    # =====================================================
+    # POSTER
+    # =====================================================
+
     poster_key = ""
 
     if (
@@ -1305,6 +1419,11 @@ def add_movie():
         )
 
         if not safe_poster:
+
+            try:
+                r2_delete(video_key)
+            except Exception:
+                pass
 
             flash(
                 "Poster filename invalid है."
@@ -1330,117 +1449,7 @@ def add_movie():
             + poster_name
         )
 
-
-    # =====================================================
-    # VIDEO VARIABLES
-    # =====================================================
-
-    original_video_name = secure_filename(
-        video_file.filename
-    )
-
-    if not original_video_name:
-
-        flash(
-            "Video filename invalid है."
-        )
-
-        return redirect(
-            url_for("admin")
-        )
-
-    original_base, original_ext = os.path.splitext(
-        original_video_name
-    )
-
-    original_ext = original_ext.lower()
-
-    temp_dir = None
-    converted_path = None
-
-    video_uploaded = False
-    poster_uploaded = False
-
-    video_key = ""
-
-
-    # =====================================================
-    # MKV -> MP4
-    # =====================================================
-
-    try:
-
-        if original_ext == ".mkv":
-
-            flash(
-                "MKV मिली. MP4 में conversion शुरू हो रही है..."
-            )
-
-            converted_path, temp_dir = convert_mkv_to_mp4(
-                video_file
-            )
-
-            safe_video = (
-                original_base
-                + "_"
-                + secrets.token_hex(8)
-                + ".mp4"
-            )
-
-            video_key = (
-                "videos/"
-                + safe_video
-            )
-
-            app.logger.info(
-                "Uploading converted MP4 to R2: %s",
-                video_key
-            )
-
-            r2_upload_path(
-                converted_path,
-                video_key,
-                "video/mp4"
-            )
-
-            video_uploaded = True
-
-        else:
-
-            safe_video = (
-                original_base
-                + "_"
-                + secrets.token_hex(8)
-                + original_ext
-            )
-
-            video_key = (
-                "videos/"
-                + safe_video
-            )
-
-            app.logger.info(
-                "Uploading video to R2: %s",
-                video_key
-            )
-
-            r2_upload(
-                video_file,
-                video_key,
-                get_content_type(
-                    video_file.filename,
-                    "application/octet-stream"
-                )
-            )
-
-            video_uploaded = True
-
-
-        # =================================================
-        # POSTER R2 UPLOAD
-        # =================================================
-
-        if poster_file and poster_file.filename:
+        try:
 
             r2_upload(
                 poster_file,
@@ -1451,62 +1460,24 @@ def add_movie():
                 )
             )
 
-            poster_uploaded = True
+        except Exception as e:
 
-
-    except Exception as e:
-
-        app.logger.exception(
-            "Video/poster upload failed: %s",
-            e
-        )
-
-        if video_uploaded:
-
-            try:
-
-                r2_delete(
-                    video_key
-                )
-
-            except Exception:
-
-                pass
-
-        if poster_uploaded:
-
-            try:
-
-                r2_delete(
-                    poster_key
-                )
-
-            except Exception:
-
-                pass
-
-        flash(
-            "Video upload/conversion failed. Render Logs देखें."
-        )
-
-        if temp_dir:
-
-            shutil.rmtree(
-                temp_dir,
-                ignore_errors=True
+            app.logger.exception(
+                "R2 poster upload failed: %s",
+                e
             )
 
-        return redirect(
-            url_for("admin")
-        )
+            try:
+                r2_delete(video_key)
+            except Exception:
+                pass
 
-    finally:
+            flash(
+                "Poster upload failed."
+            )
 
-        if temp_dir:
-
-            shutil.rmtree(
-                temp_dir,
-                ignore_errors=True
+            return redirect(
+                url_for("admin")
             )
 
 
@@ -1554,7 +1525,6 @@ def add_movie():
     except Exception as e:
 
         if con:
-
             con.rollback()
 
         app.logger.exception(
@@ -1563,25 +1533,15 @@ def add_movie():
         )
 
         try:
-
-            r2_delete(
-                video_key
-            )
-
+            r2_delete(video_key)
         except Exception:
-
             pass
 
         if poster_key:
 
             try:
-
-                r2_delete(
-                    poster_key
-                )
-
+                r2_delete(poster_key)
             except Exception:
-
                 pass
 
         flash(
@@ -1591,7 +1551,6 @@ def add_movie():
     finally:
 
         if con:
-
             con.close()
 
     return redirect(
@@ -1645,11 +1604,6 @@ def delete_movie(movie_id):
             "poster"
         )
 
-
-        # =================================================
-        # DELETE DATABASE ROW
-        # =================================================
-
         con.execute(
             """
             DELETE FROM movies
@@ -1661,11 +1615,6 @@ def delete_movie(movie_id):
         )
 
         con.commit()
-
-
-        # =================================================
-        # DELETE VIDEO FROM R2
-        # =================================================
 
         if video_name:
 
@@ -1681,11 +1630,6 @@ def delete_movie(movie_id):
                     "R2 video delete failed: %s",
                     e
                 )
-
-
-        # =================================================
-        # DELETE POSTER FROM R2
-        # =================================================
 
         if poster_name:
 
@@ -1709,7 +1653,6 @@ def delete_movie(movie_id):
     except Exception as e:
 
         if con:
-
             con.rollback()
 
         app.logger.exception(
@@ -1724,7 +1667,6 @@ def delete_movie(movie_id):
     finally:
 
         if con:
-
             con.close()
 
     return redirect(
@@ -1762,10 +1704,14 @@ def save_ads():
 
             con.execute(
                 """
-                INSERT INTO settings(key, value)
+                INSERT INTO settings(
+                    key,
+                    value
+                )
                 VALUES (%s, %s)
                 ON CONFLICT(key)
-                DO UPDATE SET value = EXCLUDED.value
+                DO UPDATE SET
+                    value = EXCLUDED.value
                 """,
                 (
                     key,
@@ -1782,7 +1728,6 @@ def save_ads():
     except Exception as e:
 
         if con:
-
             con.rollback()
 
         app.logger.exception(
@@ -1797,7 +1742,6 @@ def save_ads():
     finally:
 
         if con:
-
             con.close()
 
     return redirect(
