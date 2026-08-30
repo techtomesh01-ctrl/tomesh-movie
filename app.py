@@ -35,9 +35,7 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-# Browser -> R2 direct upload होने के कारण
-# Render को 4 GB body receive नहीं करनी पड़ेगी.
-# फिर भी normal routes के लिए 4 GB limit रखी है.
+# Normal routes के लिए 4 GB limit
 app.config["MAX_CONTENT_LENGTH"] = (
     4 * 1024 * 1024 * 1024
 )
@@ -56,6 +54,88 @@ ADMIN_PASSWORD = os.environ.get(
     "ADMIN_PASSWORD",
     "change-me-now"
 )
+
+
+# =========================================================
+# ALLOWED FILE TYPES
+# =========================================================
+
+ALLOWED_POSTERS = {
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+}
+
+ALLOWED_VIDEOS = {
+    "mp4",
+    "webm",
+    "mov",
+}
+
+
+def ext_ok(filename, allowed):
+
+    if not filename:
+        return False
+
+    if "." not in filename:
+        return False
+
+    extension = filename.rsplit(
+        ".",
+        1
+    )[1].lower()
+
+    return extension in allowed
+
+
+def get_content_type(
+    filename,
+    default
+):
+
+    extension = os.path.splitext(
+        filename
+    )[1].lower()
+
+    content_types = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+        ".mov": "video/quicktime",
+    }
+
+    return content_types.get(
+        extension,
+        default
+    )
+
+
+# =========================================================
+# ADMIN REQUIRED
+# =========================================================
+
+def admin_required(function):
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+
+        if not session.get("admin"):
+
+            return redirect(
+                url_for("login")
+            )
+
+        return function(
+            *args,
+            **kwargs
+        )
+
+    return wrapper
 
 
 # =========================================================
@@ -172,7 +252,9 @@ def get_r2_client():
         )
 
     if R2_ENDPOINT:
+
         endpoint_url = R2_ENDPOINT
+
     else:
 
         if not R2_ACCOUNT_ID:
@@ -266,12 +348,16 @@ def r2_delete(object_key):
 # =========================================================
 
 # 20 MB chunks
-# R2/S3 multipart में last part को छोड़कर parts >= 5 MB होने चाहिए.
+# Last part को छोड़कर parts >= 5 MB होने चाहिए.
 PART_SIZE = 20 * 1024 * 1024
 
 # एक साथ इतने chunks upload होंगे
 PARALLEL_PARTS = 8
 
+
+# =========================================================
+# MULTIPART CREATE
+# =========================================================
 
 @app.route(
     "/api/r2/multipart/create",
@@ -296,6 +382,7 @@ def create_multipart():
     ).strip()
 
     if not filename:
+
         return jsonify({
             "ok": False,
             "error": "Filename missing."
@@ -306,6 +393,7 @@ def create_multipart():
     )
 
     if not safe_name:
+
         return jsonify({
             "ok": False,
             "error": "Invalid filename."
@@ -315,6 +403,7 @@ def create_multipart():
         safe_name,
         ALLOWED_VIDEOS
     ):
+
         return jsonify({
             "ok": False,
             "error": (
@@ -398,18 +487,21 @@ def multipart_urls():
     )
 
     if not upload_id or not object_key:
+
         return jsonify({
             "ok": False,
             "error": "Upload information missing."
         }), 400
 
     if not isinstance(parts, list):
+
         return jsonify({
             "ok": False,
             "error": "Parts invalid."
         }), 400
 
     if len(parts) > 10000:
+
         return jsonify({
             "ok": False,
             "error": "Too many parts."
@@ -427,7 +519,10 @@ def multipart_urls():
                 part_number
             )
 
-            if part_number < 1 or part_number > 10000:
+            if (
+                part_number < 1
+                or part_number > 10000
+            ):
                 raise ValueError(
                     "Invalid part number."
                 )
@@ -495,12 +590,14 @@ def complete_multipart():
     )
 
     if not upload_id or not object_key:
+
         return jsonify({
             "ok": False,
             "error": "Upload information missing."
         }), 400
 
     if not parts:
+
         return jsonify({
             "ok": False,
             "error": "No uploaded parts."
@@ -520,7 +617,10 @@ def complete_multipart():
                 part["ETag"]
             ).strip()
 
-            if etag.startswith('"') and etag.endswith('"'):
+            if (
+                etag.startswith('"')
+                and etag.endswith('"')
+            ):
                 etag = etag[1:-1]
 
             clean_parts.append({
@@ -624,65 +724,6 @@ def abort_multipart():
 
 
 # =========================================================
-# ALLOWED FILE TYPES
-# =========================================================
-
-ALLOWED_POSTERS = {
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
-}
-
-ALLOWED_VIDEOS = {
-    "mp4",
-    "webm",
-    "mov",
-}
-
-
-def ext_ok(filename, allowed):
-
-    if not filename:
-        return False
-
-    if "." not in filename:
-        return False
-
-    extension = filename.rsplit(
-        ".",
-        1
-    )[1].lower()
-
-    return extension in allowed
-
-
-def get_content_type(
-    filename,
-    default
-):
-
-    extension = os.path.splitext(
-        filename
-    )[1].lower()
-
-    content_types = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".mp4": "video/mp4",
-        ".webm": "video/webm",
-        ".mov": "video/quicktime",
-    }
-
-    return content_types.get(
-        extension,
-        default
-    )
-
-
-# =========================================================
 # LOCAL DIRECTORIES
 # =========================================================
 
@@ -714,29 +755,6 @@ os.makedirs(
     VIDEO_DIR,
     exist_ok=True
 )
-
-
-# =========================================================
-# ADMIN REQUIRED
-# =========================================================
-
-def admin_required(function):
-
-    @wraps(function)
-    def wrapper(*args, **kwargs):
-
-        if not session.get("admin"):
-
-            return redirect(
-                url_for("login")
-            )
-
-        return function(
-            *args,
-            **kwargs
-        )
-
-    return wrapper
 
 
 # =========================================================
@@ -1547,9 +1565,11 @@ def delete_movie(movie_id):
         if video_name:
 
             try:
+
                 r2_delete(
                     video_name
                 )
+
             except Exception as e:
 
                 app.logger.exception(
@@ -1560,9 +1580,11 @@ def delete_movie(movie_id):
         if poster_name:
 
             try:
+
                 r2_delete(
                     poster_name
                 )
+
             except Exception as e:
 
                 app.logger.exception(
