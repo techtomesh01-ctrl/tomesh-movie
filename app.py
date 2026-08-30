@@ -1,3 +1,4 @@
+```python
 import os
 import secrets
 from functools import wraps
@@ -895,7 +896,12 @@ def r2_health():
             e
         )
 
-        return "R2 error", 500
+        # Exact error browser में दिखाएँ
+        return (
+            "R2 error: "
+            + str(e),
+            500
+        )
 
 
 # =========================================================
@@ -1598,3 +1604,4 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
+```
