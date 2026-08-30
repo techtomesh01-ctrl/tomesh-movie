@@ -380,6 +380,7 @@ ALLOWED_VIDEOS = {
     "mp4",
     "webm",
     "mov",
+    "mkv",
 }
 
 
@@ -417,6 +418,7 @@ def get_content_type(filename, default):
         ".mp4": "video/mp4",
         ".webm": "video/webm",
         ".mov": "video/quicktime",
+        ".mkv": "video/x-matroska",
     }
 
     return content_types.get(
@@ -1089,7 +1091,7 @@ def add_movie():
     ):
 
         flash(
-            "Video केवल MP4, WebM या MOV होनी चाहिए."
+            "Video केवल MP4, WebM, MOV या MKV होनी चाहिए."
         )
 
         return redirect(
@@ -1626,4 +1628,3 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
-
