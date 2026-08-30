@@ -4,7 +4,6 @@ from functools import wraps
 from urllib.parse import quote
 
 import boto3
-from boto3.s3.transfer import TransferConfig
 from botocore.client import Config
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -24,6 +23,10 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 
+# =========================================================
+# FLASK APP
+# =========================================================
+
 app = Flask(__name__)
 
 app.secret_key = os.environ.get(
@@ -31,12 +34,10 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-# =========================================================
-# MAXIMUM UPLOAD SIZE
-# =========================================================
-
-# Maximum single upload request = 4 GB
-app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
+# Maximum upload size = 4 GB
+app.config["MAX_CONTENT_LENGTH"] = (
+    4 * 1024 * 1024 * 1024
+)
 
 
 # =========================================================
@@ -46,7 +47,7 @@ app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 ADMIN_USER = os.environ.get(
     "ADMIN_USER",
     "admin"
-).strip()
+)
 
 ADMIN_PASSWORD = os.environ.get(
     "ADMIN_PASSWORD",
@@ -65,7 +66,12 @@ DATABASE_URL = os.environ.get(
 
 
 class DB:
+    """
+    PostgreSQL connection wrapper.
+    """
+
     def __init__(self, url):
+
         if not url:
             raise RuntimeError(
                 "DATABASE_URL environment variable is missing."
@@ -76,7 +82,8 @@ class DB:
             or url.startswith("postgres://")
         ):
             raise RuntimeError(
-                "DATABASE_URL गलत है."
+                "DATABASE_URL गलत है. "
+                "Render में पूरा PostgreSQL Database URL डालें."
             )
 
         self.con = psycopg2.connect(
@@ -86,6 +93,7 @@ class DB:
         )
 
     def execute(self, query, params=None):
+
         cursor = self.con.cursor()
 
         if params is None:
@@ -148,38 +156,41 @@ R2_PUBLIC_URL = os.environ.get(
 
 
 def get_r2_client():
+
     if not R2_ACCESS_KEY_ID:
         raise RuntimeError(
-            "R2_ACCESS_KEY_ID missing."
+            "R2_ACCESS_KEY_ID environment variable is missing."
         )
 
     if not R2_SECRET_ACCESS_KEY:
         raise RuntimeError(
-            "R2_SECRET_ACCESS_KEY missing."
+            "R2_SECRET_ACCESS_KEY environment variable is missing."
         )
 
     if not R2_BUCKET:
         raise RuntimeError(
-            "R2_BUCKET missing."
+            "R2_BUCKET environment variable is missing."
         )
 
-    if R2_ENDPOINT:
-        endpoint_url = R2_ENDPOINT
-    else:
+    if not R2_ENDPOINT:
+
         if not R2_ACCOUNT_ID:
             raise RuntimeError(
-                "R2_ENDPOINT या R2_ACCOUNT_ID missing."
+                "R2_ENDPOINT और R2_ACCOUNT_ID दोनों missing हैं."
             )
 
-        endpoint_url = (
+        R2_ENDPOINT_URL = (
             "https://"
             + R2_ACCOUNT_ID
             + ".r2.cloudflarestorage.com"
         )
 
+    else:
+        R2_ENDPOINT_URL = R2_ENDPOINT
+
     return boto3.client(
         "s3",
-        endpoint_url=endpoint_url,
+        endpoint_url=R2_ENDPOINT_URL,
         aws_access_key_id=R2_ACCESS_KEY_ID,
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
         region_name="auto",
@@ -189,49 +200,48 @@ def get_r2_client():
     )
 
 
-# =========================================================
-# R2 LARGE FILE UPLOAD CONFIG
-# =========================================================
-
-R2_TRANSFER_CONFIG = TransferConfig(
-    multipart_threshold=64 * 1024 * 1024,
-    multipart_chunksize=64 * 1024 * 1024,
-    max_concurrency=4,
-    use_threads=True
-)
-
-
 def r2_upload(
     file_storage,
     object_key,
     content_type=None
 ):
+
     if not file_storage:
         raise RuntimeError(
-            "Upload file missing."
+            "R2 upload file missing."
         )
 
     client = get_r2_client()
-
-    file_storage.stream.seek(0)
 
     extra_args = {}
 
     if content_type:
         extra_args["ContentType"] = content_type
 
-    client.upload_fileobj(
-        Fileobj=file_storage.stream,
-        Bucket=R2_BUCKET,
-        Key=object_key,
-        ExtraArgs=extra_args if extra_args else None,
-        Config=R2_TRANSFER_CONFIG
-    )
+    file_storage.stream.seek(0)
+
+    if extra_args:
+
+        client.upload_fileobj(
+            file_storage.stream,
+            R2_BUCKET,
+            object_key,
+            ExtraArgs=extra_args
+        )
+
+    else:
+
+        client.upload_fileobj(
+            file_storage.stream,
+            R2_BUCKET,
+            object_key
+        )
 
     return object_key
 
 
 def r2_delete(object_key):
+
     if not object_key:
         return
 
@@ -244,6 +254,7 @@ def r2_delete(object_key):
 
 
 def r2_public_url(object_key):
+
     if not object_key:
         return ""
 
@@ -261,10 +272,12 @@ def r2_public_url(object_key):
 
 
 def r2_exists(object_key):
+
     if not object_key:
         return False
 
     try:
+
         client = get_r2_client()
 
         client.head_object(
@@ -275,14 +288,17 @@ def r2_exists(object_key):
         return True
 
     except Exception:
+
         return False
 
 
 def r2_presigned_url(object_key):
+
     if not object_key:
         return ""
 
     try:
+
         client = get_r2_client()
 
         return client.generate_presigned_url(
@@ -295,8 +311,9 @@ def r2_presigned_url(object_key):
         )
 
     except Exception as e:
+
         app.logger.exception(
-            "Presigned URL failed: %s",
+            "Presigned URL creation failed: %s",
             e
         )
 
@@ -304,7 +321,7 @@ def r2_presigned_url(object_key):
 
 
 # =========================================================
-# LOCAL UPLOAD DIRECTORIES
+# UPLOAD DIRECTORIES
 # =========================================================
 
 BASE = os.path.dirname(
@@ -345,22 +362,23 @@ ALLOWED_POSTERS = {
     "jpg",
     "jpeg",
     "png",
-    "webp"
+    "webp",
 }
 
 ALLOWED_VIDEOS = {
     "mp4",
     "webm",
     "mov",
-    "mkv"
+    "mkv",
 }
 
 
 # =========================================================
-# FILE HELPERS
+# FILE CHECK
 # =========================================================
 
 def ext_ok(filename, allowed):
+
     if not filename:
         return False
 
@@ -375,10 +393,8 @@ def ext_ok(filename, allowed):
     return extension in allowed
 
 
-def get_content_type(
-    filename,
-    default="application/octet-stream"
-):
+def get_content_type(filename, default):
+
     extension = os.path.splitext(
         filename
     )[1].lower()
@@ -388,7 +404,6 @@ def get_content_type(
         ".jpeg": "image/jpeg",
         ".png": "image/png",
         ".webp": "image/webp",
-
         ".mp4": "video/mp4",
         ".webm": "video/webm",
         ".mov": "video/quicktime",
@@ -411,6 +426,7 @@ def admin_required(function):
     def wrapper(*args, **kwargs):
 
         if not session.get("admin"):
+
             return redirect(
                 url_for("login")
             )
@@ -460,17 +476,15 @@ def init_db():
         default_settings = {
             "ad_top": "",
             "ad_player": "",
-            "ad_bottom": ""
+            "ad_bottom": "",
         }
 
         for key, value in default_settings.items():
 
             con.execute(
                 """
-                INSERT INTO settings
-                    (key, value)
-                VALUES
-                    (%s, %s)
+                INSERT INTO settings (key, value)
+                VALUES (%s, %s)
                 ON CONFLICT (key)
                 DO NOTHING
                 """,
@@ -483,6 +497,7 @@ def init_db():
         con.commit()
 
     finally:
+
         con.close()
 
 
@@ -510,6 +525,7 @@ def get_settings():
         }
 
     finally:
+
         con.close()
 
 
@@ -521,13 +537,15 @@ def get_settings():
 def inject_global_data():
 
     try:
+
         ads = get_settings()
 
     except Exception:
+
         ads = {
             "ad_top": "",
             "ad_player": "",
-            "ad_bottom": ""
+            "ad_bottom": "",
         }
 
     return {
@@ -622,6 +640,7 @@ def home():
         )
 
     finally:
+
         con.close()
 
 
@@ -686,11 +705,13 @@ def movie(movie_id):
         )
 
         if poster_key and not poster_url:
+
             poster_url = r2_presigned_url(
                 poster_key
             )
 
         if video_key and not video_url:
+
             video_url = r2_presigned_url(
                 video_key
             )
@@ -704,11 +725,12 @@ def movie(movie_id):
         )
 
     finally:
+
         con.close()
 
 
 # =========================================================
-# POSTER
+# POSTER ROUTE
 # =========================================================
 
 @app.route("/poster/<path:name>")
@@ -719,6 +741,7 @@ def poster(name):
     )
 
     if public_url:
+
         return redirect(
             public_url
         )
@@ -728,6 +751,7 @@ def poster(name):
     )
 
     if signed_url:
+
         return redirect(
             signed_url
         )
@@ -750,7 +774,7 @@ def poster(name):
 
 
 # =========================================================
-# VIDEO
+# VIDEO ROUTE
 # =========================================================
 
 @app.route("/video/<path:name>")
@@ -761,6 +785,7 @@ def video(name):
     )
 
     if public_url:
+
         return redirect(
             public_url
         )
@@ -770,6 +795,7 @@ def video(name):
     )
 
     if signed_url:
+
         return redirect(
             signed_url
         )
@@ -964,6 +990,7 @@ def admin():
         )
 
     finally:
+
         con.close()
 
 
@@ -1001,9 +1028,10 @@ def add_movie():
         "video"
     )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # REQUIRED FIELDS
-    # -----------------------------------------------------
+    # =====================================================
 
     if not title:
 
@@ -1028,9 +1056,10 @@ def add_movie():
             url_for("admin")
         )
 
-    # -----------------------------------------------------
-    # VIDEO TYPE
-    # -----------------------------------------------------
+
+    # =====================================================
+    # VIDEO EXTENSION
+    # =====================================================
 
     if not ext_ok(
         video_file.filename,
@@ -1045,9 +1074,10 @@ def add_movie():
             url_for("admin")
         )
 
-    # -----------------------------------------------------
-    # POSTER TYPE
-    # -----------------------------------------------------
+
+    # =====================================================
+    # POSTER EXTENSION
+    # =====================================================
 
     if (
         poster_file
@@ -1066,9 +1096,10 @@ def add_movie():
             url_for("admin")
         )
 
-    # -----------------------------------------------------
-    # SAFE VIDEO NAME
-    # -----------------------------------------------------
+
+    # =====================================================
+    # CREATE SAFE VIDEO NAME
+    # =====================================================
 
     safe_video = secure_filename(
         video_file.filename
@@ -1100,10 +1131,12 @@ def add_movie():
         + safe_video
     )
 
-    # -----------------------------------------------------
-    # SAFE POSTER NAME
-    # -----------------------------------------------------
 
+    # =====================================================
+    # CREATE SAFE POSTER NAME
+    # =====================================================
+
+    poster_name = ""
     poster_key = ""
 
     if (
@@ -1129,7 +1162,7 @@ def add_movie():
             safe_poster
         )
 
-        safe_poster = (
+        poster_name = (
             poster_base
             + "_"
             + secrets.token_hex(8)
@@ -1138,12 +1171,13 @@ def add_movie():
 
         poster_key = (
             "posters/"
-            + safe_poster
+            + poster_name
         )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # R2 UPLOAD
-    # -----------------------------------------------------
+    # =====================================================
 
     video_uploaded = False
     poster_uploaded = False
@@ -1154,22 +1188,21 @@ def add_movie():
             video_file,
             video_key,
             get_content_type(
-                video_file.filename
+                video_file.filename,
+                "application/octet-stream"
             )
         )
 
         video_uploaded = True
 
-        if (
-            poster_file
-            and poster_file.filename
-        ):
+        if poster_file and poster_file.filename:
 
             r2_upload(
                 poster_file,
                 poster_key,
                 get_content_type(
-                    poster_file.filename
+                    poster_file.filename,
+                    "application/octet-stream"
                 )
             )
 
@@ -1185,32 +1218,29 @@ def add_movie():
         if video_uploaded:
 
             try:
-                r2_delete(
-                    video_key
-                )
+                r2_delete(video_key)
             except Exception:
                 pass
 
         if poster_uploaded:
 
             try:
-                r2_delete(
-                    poster_key
-                )
+                r2_delete(poster_key)
             except Exception:
                 pass
 
         flash(
-            "R2 upload failed. Render Logs देखें."
+            "R2 upload failed. Render Logs में error देखें."
         )
 
         return redirect(
             url_for("admin")
         )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # DATABASE INSERT
-    # -----------------------------------------------------
+    # =====================================================
 
     con = None
 
@@ -1229,15 +1259,7 @@ def add_movie():
                 video,
                 views
             )
-            VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                0
-            )
+            VALUES (%s, %s, %s, %s, %s, 0)
             RETURNING id
             """,
             (
@@ -1245,7 +1267,7 @@ def add_movie():
                 category,
                 description,
                 poster_key,
-                video_key
+                video_key,
             )
         ).fetchone()
 
@@ -1268,18 +1290,14 @@ def add_movie():
         )
 
         try:
-            r2_delete(
-                video_key
-            )
+            r2_delete(video_key)
         except Exception:
             pass
 
         if poster_key:
 
             try:
-                r2_delete(
-                    poster_key
-                )
+                r2_delete(poster_key)
             except Exception:
                 pass
 
@@ -1343,6 +1361,11 @@ def delete_movie(movie_id):
             "poster"
         )
 
+
+        # =================================================
+        # DELETE DATABASE ROW
+        # =================================================
+
         con.execute(
             """
             DELETE FROM movies
@@ -1355,25 +1378,41 @@ def delete_movie(movie_id):
 
         con.commit()
 
+
+        # =================================================
+        # DELETE VIDEO FROM R2
+        # =================================================
+
         if video_name:
 
             try:
+
                 r2_delete(
                     video_name
                 )
+
             except Exception as e:
+
                 app.logger.exception(
                     "R2 video delete failed: %s",
                     e
                 )
 
+
+        # =================================================
+        # DELETE POSTER FROM R2
+        # =================================================
+
         if poster_name:
 
             try:
+
                 r2_delete(
                     poster_name
                 )
+
             except Exception as e:
+
                 app.logger.exception(
                     "R2 poster delete failed: %s",
                     e
@@ -1437,13 +1476,10 @@ def save_ads():
 
             con.execute(
                 """
-                INSERT INTO settings
-                    (key, value)
-                VALUES
-                    (%s, %s)
-                ON CONFLICT (key)
-                DO UPDATE SET
-                    value = EXCLUDED.value
+                INSERT INTO settings(key, value)
+                VALUES (%s, %s)
+                ON CONFLICT(key)
+                DO UPDATE SET value = EXCLUDED.value
                 """,
                 (
                     key,
@@ -1494,7 +1530,7 @@ def not_found(error):
 
 
 # =========================================================
-# 413 - FILE TOO LARGE
+# 413
 # =========================================================
 
 @app.errorhandler(413)
@@ -1522,7 +1558,8 @@ def internal_error(error):
     )
 
     return (
-        "Internal Server Error. Render Logs देखें.",
+        "Internal Server Error. "
+        "Render Logs देखें.",
         500
     )
 
@@ -1532,6 +1569,7 @@ def internal_error(error):
 # =========================================================
 
 try:
+
     init_db()
 
 except Exception as e:
