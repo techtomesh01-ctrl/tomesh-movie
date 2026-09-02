@@ -35,7 +35,9 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-# Normal routes के लिए 4 GB limit
+# Direct R2 upload होने के कारण normal Flask upload
+# request में बड़ी video नहीं आती।
+# फिर भी 4 GB limit रखी गई है।
 app.config["MAX_CONTENT_LENGTH"] = (
     4 * 1024 * 1024 * 1024
 )
@@ -75,7 +77,6 @@ ALLOWED_VIDEOS = {
 
 
 def ext_ok(filename, allowed):
-
     if not filename:
         return False
 
@@ -92,9 +93,8 @@ def ext_ok(filename, allowed):
 
 def get_content_type(
     filename,
-    default
+    default="application/octet-stream"
 ):
-
     extension = os.path.splitext(
         filename
     )[1].lower()
@@ -104,6 +104,7 @@ def get_content_type(
         ".jpeg": "image/jpeg",
         ".png": "image/png",
         ".webp": "image/webp",
+
         ".mp4": "video/mp4",
         ".webm": "video/webm",
         ".mov": "video/quicktime",
@@ -125,7 +126,6 @@ def admin_required(function):
     def wrapper(*args, **kwargs):
 
         if not session.get("admin"):
-
             return redirect(
                 url_for("login")
             )
@@ -171,7 +171,11 @@ class DB:
             connect_timeout=10
         )
 
-    def execute(self, query, params=None):
+    def execute(
+        self,
+        query,
+        params=None
+    ):
 
         cursor = self.con.cursor()
 
@@ -347,12 +351,22 @@ def r2_delete(object_key):
 # DIRECT R2 MULTIPART UPLOAD
 # =========================================================
 
-# 20 MB chunks
-# Last part को छोड़कर parts >= 5 MB होने चाहिए.
-PART_SIZE = 20 * 1024 * 1024
+# 10 MB chunks
+#
+# R2 multipart upload में last part को छोड़कर
+# बाकी parts कम से कम 5 MB होने चाहिए।
+#
+# 10 MB रखने से connection पर ज्यादा pressure नहीं पड़ेगा।
 
-# एक साथ इतने chunks upload होंगे
-PARALLEL_PARTS = 8
+PART_SIZE = 10 * 1024 * 1024
+
+
+# एक साथ 3 chunks
+#
+# 8 की जगह 3 रखने से unstable connection पर
+# connection reset की संभावना कम होगी।
+
+PARALLEL_PARTS = 3
 
 
 # =========================================================
@@ -371,7 +385,10 @@ def create_multipart():
     ) or {}
 
     filename = str(
-        data.get("filename", "")
+        data.get(
+            "filename",
+            ""
+        )
     ).strip()
 
     content_type = str(
@@ -398,6 +415,8 @@ def create_multipart():
             "ok": False,
             "error": "Invalid filename."
         }), 400
+
+    # Video extension check
 
     if not ext_ok(
         safe_name,
@@ -454,7 +473,9 @@ def create_multipart():
 
         return jsonify({
             "ok": False,
-            "error": "R2 multipart upload शुरू नहीं हो पाया."
+            "error": (
+                "R2 multipart upload शुरू नहीं हो पाया."
+            )
         }), 500
 
 
@@ -474,11 +495,17 @@ def multipart_urls():
     ) or {}
 
     upload_id = str(
-        data.get("upload_id", "")
+        data.get(
+            "upload_id",
+            ""
+        )
     ).strip()
 
     object_key = str(
-        data.get("key", "")
+        data.get(
+            "key",
+            ""
+        )
     ).strip()
 
     parts = data.get(
@@ -523,6 +550,7 @@ def multipart_urls():
                 part_number < 1
                 or part_number > 10000
             ):
+
                 raise ValueError(
                     "Invalid part number."
                 )
@@ -557,7 +585,9 @@ def multipart_urls():
 
         return jsonify({
             "ok": False,
-            "error": "Upload URLs generate नहीं हुए."
+            "error": (
+                "Upload URLs generate नहीं हुए."
+            )
         }), 500
 
 
@@ -577,11 +607,17 @@ def complete_multipart():
     ) or {}
 
     upload_id = str(
-        data.get("upload_id", "")
+        data.get(
+            "upload_id",
+            ""
+        )
     ).strip()
 
     object_key = str(
-        data.get("key", "")
+        data.get(
+            "key",
+            ""
+        )
     ).strip()
 
     parts = data.get(
@@ -621,6 +657,7 @@ def complete_multipart():
                 etag.startswith('"')
                 and etag.endswith('"')
             ):
+
                 etag = etag[1:-1]
 
             clean_parts.append({
@@ -629,7 +666,8 @@ def complete_multipart():
             })
 
         clean_parts.sort(
-            key=lambda x: x["PartNumber"]
+            key=lambda x:
+            x["PartNumber"]
         )
 
         client = get_r2_client()
@@ -688,11 +726,17 @@ def abort_multipart():
     ) or {}
 
     upload_id = str(
-        data.get("upload_id", "")
+        data.get(
+            "upload_id",
+            ""
+        )
     ).strip()
 
     object_key = str(
-        data.get("key", "")
+        data.get(
+            "key",
+            ""
+        )
     ).strip()
 
     if not upload_id or not object_key:
@@ -969,7 +1013,9 @@ def home():
 # MOVIE PAGE
 # =========================================================
 
-@app.route("/movie/<int:movie_id>")
+@app.route(
+    "/movie/<int:movie_id>"
+)
 def movie(movie_id):
 
     con = db()
@@ -1054,7 +1100,9 @@ def movie(movie_id):
 # POSTER ROUTE
 # =========================================================
 
-@app.route("/poster/<path:name>")
+@app.route(
+    "/poster/<path:name>"
+)
 def poster(name):
 
     public_url = r2_public_url(
@@ -1098,7 +1146,9 @@ def poster(name):
 # VIDEO ROUTE
 # =========================================================
 
-@app.route("/video/<path:name>")
+@app.route(
+    "/video/<path:name>"
+)
 def video(name):
 
     public_url = r2_public_url(
@@ -1142,7 +1192,9 @@ def video(name):
 # ADS.TXT
 # =========================================================
 
-@app.route("/ads.txt")
+@app.route(
+    "/ads.txt"
+)
 def ads_txt():
 
     content = (
@@ -1162,7 +1214,9 @@ def ads_txt():
 # HEALTH
 # =========================================================
 
-@app.route("/health")
+@app.route(
+    "/health"
+)
 def health():
 
     con = None
@@ -1196,7 +1250,9 @@ def health():
 # R2 HEALTH
 # =========================================================
 
-@app.route("/r2-health")
+@app.route(
+    "/r2-health"
+)
 def r2_health():
 
     try:
@@ -1272,7 +1328,9 @@ def login():
 # LOGOUT
 # =========================================================
 
-@app.route("/logout")
+@app.route(
+    "/logout"
+)
 def logout():
 
     session.clear()
@@ -1286,7 +1344,9 @@ def logout():
 # ADMIN
 # =========================================================
 
-@app.route("/admin")
+@app.route(
+    "/admin"
+)
 @admin_required
 def admin():
 
@@ -1331,23 +1391,38 @@ def save_movie():
     ) or {}
 
     title = str(
-        data.get("title", "")
+        data.get(
+            "title",
+            ""
+        )
     ).strip()
 
     category = str(
-        data.get("category", "")
+        data.get(
+            "category",
+            ""
+        )
     ).strip()
 
     description = str(
-        data.get("description", "")
+        data.get(
+            "description",
+            ""
+        )
     ).strip()
 
     video_key = str(
-        data.get("video_key", "")
+        data.get(
+            "video_key",
+            ""
+        )
     ).strip()
 
     poster_key = str(
-        data.get("poster_key", "")
+        data.get(
+            "poster_key",
+            ""
+        )
     ).strip()
 
     if not title:
@@ -1420,7 +1495,9 @@ def save_movie():
 
         return jsonify({
             "ok": False,
-            "error": "Movie database में save नहीं हुई."
+            "error": (
+                "Movie database में save नहीं हुई."
+            )
         }), 500
 
     finally:
@@ -1562,6 +1639,8 @@ def delete_movie(movie_id):
 
         con.commit()
 
+        # Delete video from R2
+
         if video_name:
 
             try:
@@ -1576,6 +1655,8 @@ def delete_movie(movie_id):
                     "R2 video delete failed: %s",
                     e
                 )
+
+        # Delete poster from R2
 
         if poster_name:
 
