@@ -2,32 +2,32 @@
 <html lang="hi">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
 
     <title>{% block title %}Tomesh Movies{% endblock %}</title>
 
     <meta name="description"
-          content="Tomesh Movies - Movies and entertainment portal">
+          content="Tomesh Movies - Movies, entertainment and latest stories.">
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
-
-    {% block head %}{% endblock %}
 </head>
 
 <body>
 
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="flash">
-                {% for x in messages %}
-                    {{ x }}
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="flash-wrap">
+            {% for message in messages %}
+                <div class="flash-message">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
 
-    {% block content %}{% endblock %}
+{% block content %}{% endblock %}
 
 </body>
 </html>
