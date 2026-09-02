@@ -1,392 +1,888 @@
 {% extends "base.html" %}
 
 {% block title %}
-Admin Panel
+Admin Panel | Tomesh Movies
 {% endblock %}
 
 {% block content %}
 
-<div class="adminhead">
-    <h1>⚙️ Admin Panel</h1>
-    <a href="{{ url_for('logout') }}">Logout</a>
-</div>
+<div class="tm-admin-page">
 
-<!-- ===================================================== -->
-<!-- ADD MOVIE -->
-<!-- ===================================================== -->
+    <!-- =====================================================
+         ADMIN HEADER
+    ====================================================== -->
+    <div class="admin-topbar">
 
-<section class="panel">
+        <div class="admin-heading">
+            <div class="admin-heading-icon">⚙️</div>
 
-    <h2>➕ Add Movie</h2>
+            <div>
+                <span class="admin-eyebrow">
+                    TOMESH MOVIES
+                </span>
 
-    <form
-        id="movieForm"
-        enctype="multipart/form-data"
-    >
+                <h1>
+                    Admin Dashboard
+                </h1>
 
-        <input
-            id="title"
-            name="title"
-            placeholder="Movie name"
-            required
+                <p>
+                    Manage movies, uploads and advertisements
+                </p>
+            </div>
+        </div>
+
+        <a
+            href="{{ url_for('logout') }}"
+            class="admin-logout"
         >
+            <span>↪</span>
+            Logout
+        </a>
 
-        <input
-            id="category"
-            name="category"
-            placeholder="Category"
-        >
-
-        <input
-            id="posterFile"
-            name="poster"
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-        >
-
-        <input
-            id="videoFile"
-            name="video"
-            type="file"
-            accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime"
-            required
-        >
-
-        <textarea
-            id="description"
-            name="description"
-            placeholder="Description"
-        ></textarea>
+    </div>
 
 
-        <!-- ================================================= -->
-        <!-- FILE INFO -->
-        <!-- ================================================= -->
+    <!-- =====================================================
+         DASHBOARD STATS
+    ====================================================== -->
+    <div class="admin-stats">
 
-        <div
-            id="fileInfo"
-            style="
-                display:none;
-                margin:15px 0;
-                padding:15px;
-                background:#15151c;
-                border-radius:10px;
-                line-height:1.7;
-            "
-        ></div>
+        <div class="admin-stat-card">
 
+            <div class="stat-icon">
+                🎬
+            </div>
 
-        <!-- ================================================= -->
-        <!-- UPLOAD BOX -->
-        <!-- ================================================= -->
+            <div class="stat-info">
+                <span>Total Movies</span>
 
-        <div
-            id="uploadBox"
-            style="
-                display:none;
-                margin:20px 0;
-                padding:18px;
-                background:#10141e;
-                border:1px solid #292f3d;
-                border-radius:12px;
-            "
-        >
-
-            <div
-                style="
-                    display:flex;
-                    justify-content:space-between;
-                    align-items:center;
-                    margin-bottom:10px;
-                    gap:10px;
-                "
-            >
-
-                <strong id="uploadStatus">
-                    Upload शुरू हो रहा है...
+                <strong>
+                    {{ movies|length }}
                 </strong>
+            </div>
 
-                <strong id="uploadPercent">
-                    0%
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                👁️
+            </div>
+
+            <div class="stat-info">
+                <span>Total Views</span>
+
+                <strong>
+                    {{ movies|sum(attribute='views') }}
                 </strong>
+            </div>
+
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                ☁️
+            </div>
+
+            <div class="stat-info">
+                <span>Cloud Storage</span>
+
+                <strong>
+                    R2
+                </strong>
+            </div>
+
+            <div class="stat-status">
+                <i></i>
+                Connected
+            </div>
+
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                🚀
+            </div>
+
+            <div class="stat-info">
+                <span>Upload Mode</span>
+
+                <strong>
+                    Direct
+                </strong>
+            </div>
+
+            <div class="stat-status">
+                <i></i>
+                Multipart
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         ADD MOVIE
+    ====================================================== -->
+    <section class="admin-card upload-card">
+
+        <div class="admin-card-header">
+
+            <div class="admin-card-title">
+
+                <div class="card-title-icon">
+                    🎬
+                </div>
+
+                <div>
+                    <span>
+                        CONTENT MANAGEMENT
+                    </span>
+
+                    <h2>
+                        Add New Movie
+                    </h2>
+
+                    <p>
+                        Upload your movie directly to Cloudflare R2.
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="r2-badge">
+                <span>☁</span>
+                R2 DIRECT
+            </div>
+
+        </div>
+
+
+        <form
+            id="movieForm"
+            enctype="multipart/form-data"
+        >
+
+            <!-- =================================================
+                 MOVIE DETAILS
+            ================================================== -->
+            <div class="form-grid">
+
+                <div class="form-group">
+
+                    <label for="title">
+                        Movie Title
+                    </label>
+
+                    <div class="input-wrap">
+                        <span>🎬</span>
+
+                        <input
+                            id="title"
+                            name="title"
+                            type="text"
+                            placeholder="Enter movie name"
+                            autocomplete="off"
+                            required
+                        >
+                    </div>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="category">
+                        Category
+                    </label>
+
+                    <div class="input-wrap">
+                        <span>🏷️</span>
+
+                        <input
+                            id="category"
+                            name="category"
+                            type="text"
+                            placeholder="Action, Drama, Comedy..."
+                            autocomplete="off"
+                        >
+                    </div>
+
+                </div>
 
             </div>
 
 
-            <!-- PROGRESS BAR -->
+            <!-- =================================================
+                 DESCRIPTION
+            ================================================== -->
+            <div class="form-group">
 
+                <label for="description">
+                    Movie Description
+                </label>
+
+                <div class="textarea-wrap">
+
+                    <span>📝</span>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        placeholder="Write a short description about this movie..."
+                    ></textarea>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 FILE UPLOAD GRID
+            ================================================== -->
+            <div class="file-upload-grid">
+
+
+                <!-- POSTER -->
+                <div class="file-upload-card">
+
+                    <div class="file-card-icon poster-icon">
+                        🖼️
+                    </div>
+
+                    <div class="file-card-content">
+
+                        <h3>
+                            Movie Poster
+                        </h3>
+
+                        <p>
+                            JPG, JPEG, PNG or WEBP
+                        </p>
+
+                        <label
+                            for="posterFile"
+                            class="choose-file"
+                        >
+                            📁 Choose Poster
+                        </label>
+
+                        <input
+                            id="posterFile"
+                            name="poster"
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                            hidden
+                        >
+
+                        <div
+                            id="posterName"
+                            class="selected-file"
+                        >
+                            No poster selected
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- VIDEO -->
+                <div class="file-upload-card video-upload-card">
+
+                    <div class="file-card-icon video-icon">
+                        🎥
+                    </div>
+
+                    <div class="file-card-content">
+
+                        <h3>
+                            Movie Video
+                        </h3>
+
+                        <p>
+                            MP4, MKV, WebM or MOV • Maximum 4 GB
+                        </p>
+
+                        <label
+                            for="videoFile"
+                            class="choose-file primary"
+                        >
+                            🎬 Choose Video
+                        </label>
+
+                        <input
+                            id="videoFile"
+                            name="video"
+                            type="file"
+                            accept=".mp4,.mkv,.webm,.mov,video/mp4,video/x-matroska,video/webm,video/quicktime"
+                            required
+                            hidden
+                        >
+
+                        <div
+                            id="videoName"
+                            class="selected-file"
+                        >
+                            No video selected
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 FILE INFO
+            ================================================== -->
             <div
-                style="
-                    width:100%;
-                    height:16px;
-                    background:#292933;
-                    border-radius:20px;
-                    overflow:hidden;
-                "
+                id="fileInfo"
+                class="file-info-box"
+                style="display:none;"
+            ></div>
+
+
+            <!-- =================================================
+                 UPLOAD BOX
+            ================================================== -->
+            <div
+                id="uploadBox"
+                class="r2-upload-box"
+                style="display:none;"
             >
 
+                <div class="upload-box-top">
+
+                    <div class="upload-live">
+
+                        <span class="live-dot"></span>
+
+                        <strong id="uploadStatus">
+                            Upload शुरू हो रहा है...
+                        </strong>
+
+                    </div>
+
+                    <strong
+                        id="uploadPercent"
+                        class="upload-percent"
+                    >
+                        0%
+                    </strong>
+
+                </div>
+
+
+                <!-- PROGRESS -->
+                <div class="progress-container">
+
+                    <div
+                        id="progressBar"
+                        class="progress-bar"
+                        style="width:0%;"
+                    ></div>
+
+                </div>
+
+
+                <div class="upload-progress-label">
+
+                    <span>
+                        Cloudflare R2 Multipart Upload
+                    </span>
+
+                    <span>
+                        4 parallel chunks
+                    </span>
+
+                </div>
+
+
+                <!-- STATS -->
+                <div class="upload-stats">
+
+                    <div class="upload-stat">
+
+                        <span class="upload-stat-icon">
+                            📦
+                        </span>
+
+                        <div>
+                            <small>
+                                Uploaded
+                            </small>
+
+                            <strong id="uploadedText">
+                                0 MB
+                            </strong>
+                        </div>
+
+                    </div>
+
+
+                    <div class="upload-stat">
+
+                        <span class="upload-stat-icon">
+                            ⚡
+                        </span>
+
+                        <div>
+                            <small>
+                                Speed
+                            </small>
+
+                            <strong id="speedText">
+                                0 MB/s
+                            </strong>
+                        </div>
+
+                    </div>
+
+
+                    <div class="upload-stat">
+
+                        <span class="upload-stat-icon">
+                            ⏱️
+                        </span>
+
+                        <div>
+                            <small>
+                                Remaining
+                            </small>
+
+                            <strong id="remainingText">
+                                --
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- RETRY -->
                 <div
-                    id="progressBar"
-                    style="
-                        width:0%;
-                        height:100%;
-                        background:#e50914;
-                        transition:width .2s;
-                    "
+                    id="retryText"
+                    class="retry-message"
+                    style="display:none;"
                 ></div>
 
             </div>
 
 
-            <!-- STATS -->
+            <!-- =================================================
+                 PUBLISH
+            ================================================== -->
+            <div class="publish-area">
 
-            <div
-                style="
-                    display:grid;
-                    grid-template-columns:repeat(3,1fr);
-                    gap:10px;
-                    margin-top:15px;
-                    text-align:center;
-                "
-            >
+                <div class="publish-info">
 
-                <div
-                    style="
-                        background:#171b25;
-                        padding:10px;
-                        border-radius:8px;
-                    "
+                    <span>
+                        ☁️
+                    </span>
+
+                    <div>
+                        <strong>
+                            Direct R2 Upload
+                        </strong>
+
+                        <small>
+                            Large files are uploaded in secure multipart chunks.
+                        </small>
+                    </div>
+
+                </div>
+
+                <button
+                    id="publishButton"
+                    class="publish-button"
+                    type="submit"
                 >
-                    <small>Uploaded</small>
-                    <br>
-                    <strong id="uploadedText">
-                        0 MB
-                    </strong>
+                    <span>🚀</span>
+                    Publish Movie
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+    <!-- =====================================================
+         ADS MANAGER
+    ====================================================== -->
+    <section class="admin-card ads-card">
+
+        <div class="admin-card-header">
+
+            <div class="admin-card-title">
+
+                <div class="card-title-icon">
+                    📢
+                </div>
+
+                <div>
+                    <span>
+                        MONETIZATION
+                    </span>
+
+                    <h2>
+                        Advertisement Manager
+                    </h2>
+
+                    <p>
+                        अपने approved ad network का HTML/ad code यहाँ लगाएँ।
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="ads-badge">
+                ADS
+            </div>
+
+        </div>
+
+
+        <form
+            method="post"
+            action="{{ url_for('save_ads') }}"
+        >
+
+            <div class="ads-grid">
+
+                <div class="ad-field">
+
+                    <label>
+                        <span>⬆️</span>
+                        Top Ad
+                    </label>
+
+                    <textarea
+                        name="ad_top"
+                        placeholder="Paste your approved ad code..."
+                    >{{ ads.ad_top }}</textarea>
+
+                    <small>
+                        दिखाई देगा page के ऊपर
+                    </small>
+
                 </div>
 
 
-                <div
-                    style="
-                        background:#171b25;
-                        padding:10px;
-                        border-radius:8px;
-                    "
-                >
-                    <small>Speed</small>
-                    <br>
-                    <strong id="speedText">
-                        0 MB/s
-                    </strong>
+                <div class="ad-field">
+
+                    <label>
+                        <span>▶️</span>
+                        Player Ad
+                    </label>
+
+                    <textarea
+                        name="ad_player"
+                        placeholder="Paste your approved ad code..."
+                    >{{ ads.ad_player }}</textarea>
+
+                    <small>
+                        Movie player के आसपास
+                    </small>
+
                 </div>
 
 
-                <div
-                    style="
-                        background:#171b25;
-                        padding:10px;
-                        border-radius:8px;
-                    "
-                >
-                    <small>Remaining</small>
-                    <br>
-                    <strong id="remainingText">
-                        --
-                    </strong>
+                <div class="ad-field">
+
+                    <label>
+                        <span>⬇️</span>
+                        Bottom Ad
+                    </label>
+
+                    <textarea
+                        name="ad_bottom"
+                        placeholder="Paste your approved ad code..."
+                    >{{ ads.ad_bottom }}</textarea>
+
+                    <small>
+                        Page के नीचे दिखाई देगा
+                    </small>
+
                 </div>
 
             </div>
 
 
-            <!-- RETRY -->
+            <div class="ads-save-area">
 
-            <p
-                id="retryText"
-                style="
-                    color:#ffcc00;
-                    margin-top:12px;
-                    display:none;
-                "
-            ></p>
+                <span>
+                    💡 केवल approved ad network का code इस्तेमाल करें।
+                </span>
+
+                <button
+                    type="submit"
+                    class="save-ads-button"
+                >
+                    💾 Save Advertisements
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+    <!-- =====================================================
+         MOVIES
+    ====================================================== -->
+    <section class="admin-card movies-card">
+
+        <div class="admin-card-header">
+
+            <div class="admin-card-title">
+
+                <div class="card-title-icon">
+                    🎞️
+                </div>
+
+                <div>
+                    <span>
+                        LIBRARY
+                    </span>
+
+                    <h2>
+                        Movie Collection
+                    </h2>
+
+                    <p>
+                        आपकी सभी published movies
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="movie-total">
+
+                <strong>
+                    {{ movies|length }}
+                </strong>
+
+                <span>
+                    MOVIES
+                </span>
+
+            </div>
 
         </div>
 
 
-        <!-- ================================================= -->
-        <!-- PUBLISH BUTTON -->
-        <!-- ================================================= -->
+        <div class="movie-table-wrap">
 
-        <button
-            id="publishButton"
-            class="publish"
-            type="submit"
-        >
-            🚀 Publish Movie
-        </button>
+            <table class="admin-movie-table">
 
-    </form>
+                <thead>
 
-</section>
+                    <tr>
 
+                        <th>
+                            #
+                        </th>
 
-<!-- ===================================================== -->
-<!-- ADS -->
-<!-- ===================================================== -->
+                        <th>
+                            Movie
+                        </th>
 
-<section class="panel">
+                        <th>
+                            Category
+                        </th>
 
-    <h2>📢 Ads Slots</h2>
+                        <th>
+                            Views
+                        </th>
 
-    <p>
-        अपने approved ad network का HTML/ad code यहाँ लगाएँ।
-    </p>
+                        <th>
+                            Action
+                        </th>
 
-    <form
-        method="post"
-        action="{{ url_for('save_ads') }}"
-    >
+                    </tr>
 
-        <label>Top</label>
-
-        <textarea
-            name="ad_top"
-        >{{ ads.ad_top }}</textarea>
+                </thead>
 
 
-        <label>Player</label>
+                <tbody>
 
-        <textarea
-            name="ad_player"
-        >{{ ads.ad_player }}</textarea>
+                    {% for m in movies %}
 
+                    <tr>
 
-        <label>Bottom</label>
-
-        <textarea
-            name="ad_bottom"
-        >{{ ads.ad_bottom }}</textarea>
+                        <td class="movie-number">
+                            {{ loop.index }}
+                        </td>
 
 
-        <button type="submit">
-            💾 Save Ads
-        </button>
+                        <td>
 
-    </form>
+                            <div class="movie-name-cell">
 
-</section>
+                                <div class="movie-mini-icon">
+                                    🎬
+                                </div>
+
+                                <div>
+
+                                    <strong>
+                                        {{ m.title }}
+                                    </strong>
+
+                                    <small>
+                                        Movie ID #{{ m.id }}
+                                    </small>
+
+                                </div>
+
+                            </div>
+
+                        </td>
 
 
-<!-- ===================================================== -->
-<!-- MOVIES -->
-<!-- ===================================================== -->
+                        <td>
 
-<section class="panel">
+                            <span class="category-badge">
+                                {{ m.category or "General" }}
+                            </span>
 
-    <h2>🎬 Movies</h2>
-
-    <table>
-
-        <tr>
-            <th>Title</th>
-            <th>Views</th>
-            <th>Action</th>
-        </tr>
+                        </td>
 
 
-        {% for m in movies %}
+                        <td>
 
-        <tr>
+                            <span class="views-badge">
+                                👁️ {{ m.views }}
+                            </span>
 
-            <td>
-                {{ m.title }}
-            </td>
+                        </td>
 
-            <td>
-                {{ m.views }}
-            </td>
 
-            <td>
+                        <td>
 
-                <form
-                    method="post"
-                    action="{{ url_for('delete_movie', movie_id=m.id) }}"
-                    onsubmit="return confirm('Delete this movie?')"
-                >
+                            <form
+                                method="post"
+                                action="{{ url_for('delete_movie', movie_id=m.id) }}"
+                                onsubmit="return confirm('क्या आप इस movie को delete करना चाहते हैं?')"
+                            >
 
-                    <button
-                        class="danger"
-                        type="submit"
-                    >
-                        Delete
-                    </button>
+                                <button
+                                    class="delete-button"
+                                    type="submit"
+                                >
+                                    🗑️ Delete
+                                </button>
 
-                </form>
+                            </form>
 
-            </td>
+                        </td>
 
-        </tr>
+                    </tr>
 
-        {% else %}
+                    {% else %}
 
-        <tr>
+                    <tr>
 
-            <td colspan="3">
-                अभी कोई movie नहीं है।
-            </td>
+                        <td
+                            colspan="5"
+                            class="empty-movies"
+                        >
 
-        </tr>
+                            <div>
+                                🎬
+                            </div>
 
-        {% endfor %}
+                            <strong>
+                                अभी कोई movie नहीं है
+                            </strong>
 
-    </table>
+                            <small>
+                                ऊपर से अपनी पहली movie upload करें।
+                            </small>
 
-</section>
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         FOOTER
+    ====================================================== -->
+    <div class="admin-footer">
+
+        <span>
+            🎬 TOMESH MOVIES
+        </span>
+
+        <span>
+            •
+        </span>
+
+        <span>
+            Cloudflare R2 Direct Upload
+        </span>
+
+        <span>
+            •
+        </span>
+
+        <span>
+            Admin Panel
+        </span>
+
+    </div>
+
+</div>
 
 
 <script>
 
 /* ========================================================
    TOMESH MOVIES
+   PREMIUM ADMIN
    DIRECT CLOUDFLARE R2 MULTIPART UPLOADER
-   ======================================================== */
+======================================================== */
 
 
 /* ========================================================
    SETTINGS
-   ======================================================== */
+======================================================== */
 
 const DEFAULT_PART_SIZE =
     20 * 1024 * 1024;
 
-
-/*
-   4 parallel connections रखे हैं।
-   8 की तुलना में unstable connection पर
-   ज्यादा reliable रहेगा।
-*/
-
 const DEFAULT_PARALLEL =
     4;
-
-
-/*
-   हर part maximum 5 बार retry होगा।
-*/
 
 const MAX_RETRIES =
     5;
 
-
-/*
-   एक part maximum 15 मिनट तक चल सकता है।
-*/
-
 const REQUEST_TIMEOUT =
     15 * 60 * 1000;
-
-
-/*
-   Maximum video size = 4 GB
-*/
 
 const MAX_VIDEO_SIZE =
     4 * 1024 * 1024 * 1024;
@@ -394,7 +890,7 @@ const MAX_VIDEO_SIZE =
 
 /* ========================================================
    ELEMENTS
-   ======================================================== */
+======================================================== */
 
 const movieForm =
     document.getElementById(
@@ -476,10 +972,20 @@ const publishButton =
         "publishButton"
     );
 
+const posterName =
+    document.getElementById(
+        "posterName"
+    );
+
+const videoName =
+    document.getElementById(
+        "videoName"
+    );
+
 
 /* ========================================================
    STATE
-   ======================================================== */
+======================================================== */
 
 let uploadInProgress =
     false;
@@ -487,7 +993,7 @@ let uploadInProgress =
 
 /* ========================================================
    FORMAT BYTES
-   ======================================================== */
+======================================================== */
 
 function formatBytes(bytes) {
 
@@ -502,28 +1008,24 @@ function formatBytes(bytes) {
         bytes <
         1024 * 1024
     ) {
-
         return (
             (bytes / 1024)
-            .toFixed(1)
+                .toFixed(1)
             + " KB"
         );
-
     }
 
     if (
         bytes <
         1024 * 1024 * 1024
     ) {
-
         return (
             (bytes / (
                 1024 * 1024
             ))
-            .toFixed(1)
+                .toFixed(1)
             + " MB"
         );
-
     }
 
     return (
@@ -532,7 +1034,7 @@ function formatBytes(bytes) {
             1024 *
             1024
         ))
-        .toFixed(2)
+            .toFixed(2)
         + " GB"
     );
 }
@@ -540,7 +1042,7 @@ function formatBytes(bytes) {
 
 /* ========================================================
    FORMAT TIME
-   ======================================================== */
+======================================================== */
 
 function formatTime(seconds) {
 
@@ -554,12 +1056,10 @@ function formatTime(seconds) {
     seconds =
         Math.ceil(seconds);
 
-
     const hours =
         Math.floor(
             seconds / 3600
         );
-
 
     const minutes =
         Math.floor(
@@ -568,38 +1068,30 @@ function formatTime(seconds) {
             ) / 60
         );
 
-
     const secs =
         seconds % 60;
-
 
     if (
         hours > 0
     ) {
-
         return (
             hours
             + "h "
             + minutes
             + "m"
         );
-
     }
-
 
     if (
         minutes > 0
     ) {
-
         return (
             minutes
             + "m "
             + secs
             + "s"
         );
-
     }
-
 
     return (
         secs
@@ -610,7 +1102,7 @@ function formatTime(seconds) {
 
 /* ========================================================
    FILE EXTENSION
-   ======================================================== */
+======================================================== */
 
 function getExtension(
     filename
@@ -632,8 +1124,9 @@ function getExtension(
 
 
 /* ========================================================
-   VIDEO FILE VALIDATION
-   ======================================================== */
+   VIDEO VALIDATION
+   MKV INCLUDED
+======================================================== */
 
 function validVideoFile(
     file
@@ -645,6 +1138,7 @@ function validVideoFile(
 
     const allowed = [
         "mp4",
+        "mkv",
         "webm",
         "mov"
     ];
@@ -658,8 +1152,8 @@ function validVideoFile(
 
 
 /* ========================================================
-   POSTER FILE VALIDATION
-   ======================================================== */
+   POSTER VALIDATION
+======================================================== */
 
 function validPosterFile(
     file
@@ -685,91 +1179,8 @@ function validPosterFile(
 
 
 /* ========================================================
-   FILE INFO
-   ======================================================== */
-
-videoFile.addEventListener(
-    "change",
-    function () {
-
-        const file =
-            this.files[0];
-
-
-        if (!file) {
-
-            fileInfo.style.display =
-                "none";
-
-            return;
-        }
-
-
-        if (
-            !validVideoFile(file)
-        ) {
-
-            alert(
-                "Video केवल MP4, WebM या MOV होनी चाहिए."
-            );
-
-            this.value = "";
-
-            fileInfo.style.display =
-                "none";
-
-            return;
-        }
-
-
-        if (
-            file.size >
-            MAX_VIDEO_SIZE
-        ) {
-
-            alert(
-                "Maximum video size 4 GB है."
-            );
-
-            this.value = "";
-
-            fileInfo.style.display =
-                "none";
-
-            return;
-        }
-
-
-        fileInfo.innerHTML =
-
-            "🎬 <strong>"
-            + escapeHtml(
-                file.name
-            )
-            + "</strong><br>"
-
-            + "📦 Size: "
-            + formatBytes(
-                file.size
-            )
-            + "<br>"
-
-            + "☁️ Direct Cloudflare R2 upload<br>"
-
-            + "🚀 4 parallel chunks<br>"
-
-            + "🔄 Automatic retry enabled";
-
-
-        fileInfo.style.display =
-            "block";
-    }
-);
-
-
-/* ========================================================
    HTML ESCAPE
-   ======================================================== */
+======================================================== */
 
 function escapeHtml(
     value
@@ -800,8 +1211,177 @@ function escapeHtml(
 
 
 /* ========================================================
+   POSTER CHANGE
+======================================================== */
+
+posterFile.addEventListener(
+    "change",
+    function () {
+
+        const file =
+            this.files[0];
+
+        if (!file) {
+
+            posterName.innerText =
+                "No poster selected";
+
+            return;
+        }
+
+        if (
+            !validPosterFile(file)
+        ) {
+
+            alert(
+                "Poster केवल JPG, JPEG, PNG या WEBP होना चाहिए."
+            );
+
+            this.value = "";
+
+            posterName.innerText =
+                "No poster selected";
+
+            return;
+        }
+
+        posterName.innerText =
+            "✓ "
+            + file.name;
+
+    }
+);
+
+
+/* ========================================================
+   VIDEO CHANGE
+======================================================== */
+
+videoFile.addEventListener(
+    "change",
+    function () {
+
+        const file =
+            this.files[0];
+
+        if (!file) {
+
+            videoName.innerText =
+                "No video selected";
+
+            fileInfo.style.display =
+                "none";
+
+            return;
+        }
+
+
+        if (
+            !validVideoFile(file)
+        ) {
+
+            alert(
+                "Video केवल MP4, MKV, WebM या MOV होनी चाहिए."
+            );
+
+            this.value = "";
+
+            videoName.innerText =
+                "No video selected";
+
+            fileInfo.style.display =
+                "none";
+
+            return;
+        }
+
+
+        if (
+            file.size <= 0
+        ) {
+
+            alert(
+                "Video file खाली है."
+            );
+
+            this.value = "";
+
+            return;
+        }
+
+
+        if (
+            file.size >
+            MAX_VIDEO_SIZE
+        ) {
+
+            alert(
+                "Maximum video size 4 GB है."
+            );
+
+            this.value = "";
+
+            videoName.innerText =
+                "No video selected";
+
+            fileInfo.style.display =
+                "none";
+
+            return;
+        }
+
+
+        videoName.innerText =
+            "✓ "
+            + file.name;
+
+
+        fileInfo.innerHTML =
+
+            '<div class="file-info-main">' +
+
+                '<span class="file-info-icon">🎬</span>' +
+
+                '<div>' +
+
+                    '<strong>'
+                    + escapeHtml(
+                        file.name
+                    )
+                    + '</strong>' +
+
+                    '<small>'
+                    + formatBytes(
+                        file.size
+                    )
+                    + ' • '
+                    + getExtension(
+                        file.name
+                    ).toUpperCase()
+                    + '</small>' +
+
+                '</div>' +
+
+            '</div>' +
+
+            '<div class="file-info-features">' +
+
+                '<span>☁️ Direct R2</span>' +
+                '<span>🚀 4 Parallel</span>' +
+                '<span>🔄 Auto Retry</span>' +
+
+            '</div>';
+
+        fileInfo.style.display =
+            "flex";
+
+    }
+);
+
+
+/* ========================================================
    JSON REQUEST
-   ======================================================== */
+======================================================== */
 
 async function postJSON(
     url,
@@ -812,14 +1392,16 @@ async function postJSON(
         await fetch(
             url,
             {
-                method: "POST",
+                method:
+                    "POST",
 
                 headers: {
                     "Content-Type":
                         "application/json"
                 },
 
-                credentials: "same-origin",
+                credentials:
+                    "same-origin",
 
                 body:
                     JSON.stringify(
@@ -831,13 +1413,14 @@ async function postJSON(
 
     let result;
 
-
     try {
 
         result =
             await response.json();
 
-    } catch (error) {
+    } catch (
+        error
+    ) {
 
         throw new Error(
             "Server ने invalid response दिया."
@@ -866,7 +1449,7 @@ async function postJSON(
 
 /* ========================================================
    UPLOAD ONE PART
-   ======================================================== */
+======================================================== */
 
 function uploadPart(
     url,
@@ -910,7 +1493,9 @@ function uploadPart(
                             partNumber,
                             event.loaded
                         );
+
                     }
+
                 }
             );
 
@@ -923,11 +1508,6 @@ function uploadPart(
                         xhr.status >= 200 &&
                         xhr.status < 300
                     ) {
-
-                        /*
-                           R2 multipart complete के लिए
-                           ETag जरूरी है।
-                        */
 
                         const etag =
                             xhr.getResponseHeader(
@@ -947,10 +1527,6 @@ function uploadPart(
                         }
 
 
-                        /*
-                           Final progress सुनिश्चित करें।
-                        */
-
                         onProgress(
                             partNumber,
                             blob.size
@@ -958,15 +1534,12 @@ function uploadPart(
 
 
                         resolve({
-
                             PartNumber:
                                 partNumber,
 
                             ETag:
                                 etag
-
                         });
-
 
                         return;
                     }
@@ -980,6 +1553,7 @@ function uploadPart(
                             + xhr.status
                         )
                     );
+
                 }
             );
 
@@ -995,6 +1569,7 @@ function uploadPart(
                             + " network error."
                         )
                     );
+
                 }
             );
 
@@ -1010,6 +1585,7 @@ function uploadPart(
                             + " timeout."
                         )
                     );
+
                 }
             );
 
@@ -1025,6 +1601,7 @@ function uploadPart(
                             + " aborted."
                         )
                     );
+
                 }
             );
 
@@ -1032,6 +1609,7 @@ function uploadPart(
             xhr.send(
                 blob
             );
+
         }
     );
 }
@@ -1039,7 +1617,7 @@ function uploadPart(
 
 /* ========================================================
    UPLOAD PART WITH RETRY
-   ======================================================== */
+======================================================== */
 
 async function uploadPartWithRetry(
     url,
@@ -1056,11 +1634,6 @@ async function uploadPartWithRetry(
         attempt <= MAX_RETRIES;
         attempt++
     ) {
-
-        /*
-           हर retry से पहले इस part का
-           progress zero से शुरू करें।
-        */
 
         onProgress(
             partNumber,
@@ -1090,7 +1663,6 @@ async function uploadPartWithRetry(
 
 
             retryText.innerText =
-
                 "🔄 Part "
                 + partNumber
                 + " retry "
@@ -1108,10 +1680,6 @@ async function uploadPartWithRetry(
                 attempt <
                 MAX_RETRIES
             ) {
-
-                /*
-                   Exponential backoff
-                */
 
                 const delay =
                     Math.min(
@@ -1131,8 +1699,11 @@ async function uploadPartWithRetry(
                             delay
                         )
                 );
+
             }
+
         }
+
     }
 
 
@@ -1141,8 +1712,8 @@ async function uploadPartWithRetry(
 
 
 /* ========================================================
-   UPDATE UPLOAD UI
-   ======================================================== */
+   PROGRESS TRACKER
+======================================================== */
 
 function createProgressTracker(
     file,
@@ -1168,6 +1739,23 @@ function createProgressTracker(
             ) => total + value,
             0
         );
+
+    }
+
+
+    function getPartSize(
+        index
+    ) {
+
+        const start =
+            index *
+            DEFAULT_PART_SIZE;
+
+        return Math.min(
+            DEFAULT_PART_SIZE,
+            file.size - start
+        );
+
     }
 
 
@@ -1188,23 +1776,13 @@ function createProgressTracker(
         }
 
 
-        /*
-           कभी भी part size से ज्यादा
-           progress नहीं जाने दें।
-        */
-
         loadedParts[index] =
             Math.max(
                 0,
                 Math.min(
                     loaded,
-                    file.size -
-                    (
-                        index *
-                        (
-                            file.size /
-                            partCount
-                        )
+                    getPartSize(
+                        index
                     )
                 )
             );
@@ -1279,6 +1857,7 @@ function createProgressTracker(
             formatTime(
                 remaining
             );
+
     }
 
 
@@ -1289,29 +1868,11 @@ function createProgressTracker(
         const index =
             partNumber - 1;
 
-
-        const start =
-            index *
-            (
-                file.size /
-                partCount
-            );
-
-
-        const approximateSize =
-            Math.min(
-                file.size -
-                start,
-                file.size /
-                partCount
-            );
-
-
         loadedParts[index] =
-            Math.max(
-                loadedParts[index],
-                approximateSize
+            getPartSize(
+                index
             );
+
     }
 
 
@@ -1325,17 +1886,13 @@ function createProgressTracker(
 
 /* ========================================================
    DIRECT R2 FILE UPLOAD
-   ======================================================== */
+======================================================== */
 
 async function uploadR2File(
     file,
     kind,
     showProgress
 ) {
-
-    /*
-       CREATE MULTIPART
-    */
 
     uploadStatus.innerText =
         kind === "video"
@@ -1347,17 +1904,21 @@ async function uploadR2File(
         await postJSON(
             "/api/r2/multipart/create",
             {
-
                 filename:
                     file.name,
 
                 content_type:
                     file.type ||
-                    "application/octet-stream",
+                    (
+                        getExtension(
+                            file.name
+                        ) === "mkv"
+                            ? "video/x-matroska"
+                            : "application/octet-stream"
+                    ),
 
                 kind:
                     kind
-
             }
         );
 
@@ -1394,6 +1955,7 @@ async function uploadR2File(
         throw new Error(
             "File खाली है."
         );
+
     }
 
 
@@ -1404,15 +1966,16 @@ async function uploadR2File(
         throw new Error(
             "File बहुत बड़ी है या part size गलत है."
         );
+
     }
 
 
-    /*
+    /* =====================================================
        GET PRESIGNED URLS
-    */
+    ====================================================== */
 
     uploadStatus.innerText =
-        "🔗 Upload links तैयार हो रहे हैं...";
+        "🔗 Secure upload links तैयार हो रहे हैं...";
 
 
     const partNumbers =
@@ -1428,6 +1991,7 @@ async function uploadR2File(
         partNumbers.push(
             i
         );
+
     }
 
 
@@ -1435,7 +1999,6 @@ async function uploadR2File(
         await postJSON(
             "/api/r2/multipart/urls",
             {
-
                 upload_id:
                     uploadId,
 
@@ -1444,7 +2007,6 @@ async function uploadR2File(
 
                 parts:
                     partNumbers
-
             }
         );
 
@@ -1464,6 +2026,7 @@ async function uploadR2File(
             ),
             item.url
         );
+
     }
 
 
@@ -1475,12 +2038,13 @@ async function uploadR2File(
         throw new Error(
             "सभी upload URLs नहीं मिले."
         );
+
     }
 
 
-    /*
-       PROGRESS TRACKER
-    */
+    /* =====================================================
+       PROGRESS
+    ====================================================== */
 
     const tracker =
         createProgressTracker(
@@ -1489,17 +2053,13 @@ async function uploadR2File(
         );
 
 
-    /*
-       COMPLETED PARTS
-    */
-
     const completedParts =
         [];
 
 
-    /*
+    /* =====================================================
        WORKER QUEUE
-    */
+    ====================================================== */
 
     let nextPart =
         1;
@@ -1519,6 +2079,7 @@ async function uploadR2File(
             ) {
 
                 return;
+
             }
 
 
@@ -1557,6 +2118,7 @@ async function uploadR2File(
                     + partNumber
                     + " का URL नहीं मिला."
                 );
+
             }
 
 
@@ -1565,11 +2127,11 @@ async function uploadR2File(
             ) {
 
                 uploadStatus.innerText =
-
-                    "🎬 Video upload हो रही है... Part "
+                    "🎬 Video upload हो रही है • Part "
                     + partNumber
                     + " / "
                     + totalParts;
+
             }
 
 
@@ -1582,11 +2144,6 @@ async function uploadR2File(
                 );
 
 
-            /*
-               Upload complete होने पर
-               exact part size set करें।
-            */
-
             tracker.update(
                 partNumber,
                 blob.size
@@ -1596,13 +2153,15 @@ async function uploadR2File(
             completedParts.push(
                 result
             );
+
         }
+
     }
 
 
-    /*
+    /* =====================================================
        START WORKERS
-    */
+    ====================================================== */
 
     const workerCount =
         Math.min(
@@ -1612,7 +2171,6 @@ async function uploadR2File(
 
 
     uploadStatus.innerText =
-
         "🚀 "
         + workerCount
         + " chunks एक साथ upload हो रहे हैं...";
@@ -1631,6 +2189,7 @@ async function uploadR2File(
         workers.push(
             worker()
         );
+
     }
 
 
@@ -1644,22 +2203,16 @@ async function uploadR2File(
         error
     ) {
 
-        /*
-           FAILED UPLOAD ABORT
-        */
-
         try {
 
             await postJSON(
                 "/api/r2/multipart/abort",
                 {
-
                     upload_id:
                         uploadId,
 
                     key:
                         objectKey
-
                 }
             );
 
@@ -1670,16 +2223,18 @@ async function uploadR2File(
             console.error(
                 abortError
             );
+
         }
 
 
         throw error;
+
     }
 
 
-    /*
+    /* =====================================================
        COMPLETE MULTIPART
-    */
+    ====================================================== */
 
     retryText.style.display =
         "none";
@@ -1698,10 +2253,6 @@ async function uploadR2File(
             b.PartNumber
     );
 
-
-    /*
-       Duplicate part check
-    */
 
     const seenParts =
         new Set();
@@ -1722,12 +2273,14 @@ async function uploadR2File(
                 "Duplicate part मिला: "
                 + part.PartNumber
             );
+
         }
 
 
         seenParts.add(
             part.PartNumber
         );
+
     }
 
 
@@ -1739,6 +2292,7 @@ async function uploadR2File(
         throw new Error(
             "कुछ upload parts missing हैं."
         );
+
     }
 
 
@@ -1746,7 +2300,6 @@ async function uploadR2File(
         await postJSON(
             "/api/r2/multipart/complete",
             {
-
                 upload_id:
                     uploadId,
 
@@ -1755,14 +2308,13 @@ async function uploadR2File(
 
                 parts:
                     completedParts
-
             }
         );
 
 
-    /*
+    /* =====================================================
        FINAL UI
-    */
+    ====================================================== */
 
     if (
         showProgress
@@ -1801,7 +2353,7 @@ async function uploadR2File(
 
 /* ========================================================
    FORM SUBMIT
-   ======================================================== */
+======================================================== */
 
 movieForm.addEventListener(
     "submit",
@@ -1815,7 +2367,6 @@ movieForm.addEventListener(
         if (
             uploadInProgress
         ) {
-
             return;
         }
 
@@ -1828,9 +2379,9 @@ movieForm.addEventListener(
             posterFile.files[0];
 
 
-        /*
+        /* =================================================
            VIDEO CHECK
-        */
+        ================================================== */
 
         if (!video) {
 
@@ -1839,6 +2390,7 @@ movieForm.addEventListener(
             );
 
             return;
+
         }
 
 
@@ -1847,10 +2399,11 @@ movieForm.addEventListener(
         ) {
 
             alert(
-                "Video केवल MP4, WebM या MOV होनी चाहिए."
+                "Video केवल MP4, MKV, WebM या MOV होनी चाहिए."
             );
 
             return;
+
         }
 
 
@@ -1863,6 +2416,7 @@ movieForm.addEventListener(
             );
 
             return;
+
         }
 
 
@@ -1876,12 +2430,13 @@ movieForm.addEventListener(
             );
 
             return;
+
         }
 
 
-        /*
+        /* =================================================
            POSTER CHECK
-        */
+        ================================================== */
 
         if (
             poster &&
@@ -1895,12 +2450,13 @@ movieForm.addEventListener(
             );
 
             return;
+
         }
 
 
-        /*
+        /* =================================================
            TITLE CHECK
-        */
+        ================================================== */
 
         if (
             !titleInput.value.trim()
@@ -1913,12 +2469,13 @@ movieForm.addEventListener(
             titleInput.focus();
 
             return;
+
         }
 
 
-        /*
+        /* =================================================
            ONLINE CHECK
-        */
+        ================================================== */
 
         if (
             !navigator.onLine
@@ -1929,12 +2486,13 @@ movieForm.addEventListener(
             );
 
             return;
+
         }
 
 
-        /*
+        /* =================================================
            START
-        */
+        ================================================== */
 
         uploadInProgress =
             true;
@@ -1944,25 +2502,21 @@ movieForm.addEventListener(
             true;
 
 
-        publishButton.innerText =
-            "⏳ Uploading...";
+        publishButton.innerHTML =
+            "<span>⏳</span> Uploading...";
 
 
         videoFile.disabled =
             true;
 
-
         posterFile.disabled =
             true;
-
 
         titleInput.disabled =
             true;
 
-
         categoryInput.disabled =
             true;
-
 
         descriptionInput.disabled =
             true;
@@ -2002,18 +2556,15 @@ movieForm.addEventListener(
         let videoKey =
             "";
 
-
         let posterKey =
             "";
 
 
         try {
 
-            /*
-               =========================================
+            /* =============================================
                VIDEO
-               =========================================
-            */
+            ============================================== */
 
             videoKey =
                 await uploadR2File(
@@ -2023,11 +2574,9 @@ movieForm.addEventListener(
                 );
 
 
-            /*
-               =========================================
+            /* =============================================
                POSTER
-               =========================================
-            */
+            ============================================== */
 
             if (
                 poster
@@ -2043,14 +2592,13 @@ movieForm.addEventListener(
                         "poster",
                         false
                     );
+
             }
 
 
-            /*
-               =========================================
+            /* =============================================
                DATABASE
-               =========================================
-            */
+            ============================================== */
 
             uploadStatus.innerText =
                 "💾 Movie database में save हो रही है...";
@@ -2060,7 +2608,6 @@ movieForm.addEventListener(
                 await postJSON(
                     "/api/movie/save",
                     {
-
                         title:
                             titleInput.value.trim(),
 
@@ -2075,7 +2622,6 @@ movieForm.addEventListener(
 
                         poster_key:
                             posterKey
-
                     }
                 );
 
@@ -2088,14 +2634,13 @@ movieForm.addEventListener(
                     save.error ||
                     "Movie save failed."
                 );
+
             }
 
 
-            /*
-               =========================================
+            /* =============================================
                SUCCESS
-               =========================================
-            */
+            ============================================== */
 
             progressBar.style.width =
                 "100%";
@@ -2167,25 +2712,21 @@ movieForm.addEventListener(
                 false;
 
 
-            publishButton.innerText =
-                "🚀 Publish Movie";
+            publishButton.innerHTML =
+                "<span>🚀</span> Publish Movie";
 
 
             videoFile.disabled =
                 false;
 
-
             posterFile.disabled =
                 false;
-
 
             titleInput.disabled =
                 false;
 
-
             categoryInput.disabled =
                 false;
-
 
             descriptionInput.disabled =
                 false;
@@ -2193,6 +2734,7 @@ movieForm.addEventListener(
 
             uploadInProgress =
                 false;
+
         }
 
     }
@@ -2201,7 +2743,7 @@ movieForm.addEventListener(
 
 /* ========================================================
    INTERNET CONNECTION
-   ======================================================== */
+======================================================== */
 
 window.addEventListener(
     "offline",
@@ -2214,9 +2756,12 @@ window.addEventListener(
             retryText.style.display =
                 "block";
 
+
             retryText.innerText =
                 "⚠️ Internet connection टूट गई है। Upload retry होगा.";
+
         }
+
     }
 );
 
@@ -2232,16 +2777,19 @@ window.addEventListener(
             retryText.style.display =
                 "block";
 
+
             retryText.innerText =
                 "🌐 Internet वापस आ गया है.";
+
         }
+
     }
 );
 
 
 /* ========================================================
    PAGE CLOSE WARNING
-   ======================================================== */
+======================================================== */
 
 window.addEventListener(
     "beforeunload",
@@ -2259,7 +2807,9 @@ window.addEventListener(
                 "Upload अभी चल रहा है।";
 
             return event.returnValue;
+
         }
+
     }
 );
 
