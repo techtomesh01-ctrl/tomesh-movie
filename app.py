@@ -37,7 +37,9 @@ app.secret_key = os.environ.get(
 
 # Direct browser -> R2 upload होने के कारण बड़ी video
 # Flask server से होकर नहीं गुजरती।
-app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = (
+    4 * 1024 * 1024 * 1024
+)
 
 
 # =========================================================
@@ -68,6 +70,7 @@ ALLOWED_POSTERS = {
 
 ALLOWED_VIDEOS = {
     "mp4",
+    "mkv",
     "webm",
     "mov",
 }
@@ -80,7 +83,10 @@ def ext_ok(filename, allowed):
     if "." not in filename:
         return False
 
-    extension = filename.rsplit(".", 1)[1].lower()
+    extension = filename.rsplit(
+        ".",
+        1
+    )[1].lower()
 
     return extension in allowed
 
@@ -89,14 +95,18 @@ def get_content_type(
     filename,
     default="application/octet-stream"
 ):
-    extension = os.path.splitext(filename)[1].lower()
+    extension = os.path.splitext(
+        filename
+    )[1].lower()
 
     content_types = {
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
         ".png": "image/png",
         ".webp": "image/webp",
+
         ".mp4": "video/mp4",
+        ".mkv": "video/x-matroska",
         ".webm": "video/webm",
         ".mov": "video/quicktime",
     }
@@ -112,12 +122,19 @@ def get_content_type(
 # =========================================================
 
 def admin_required(function):
+
     @wraps(function)
     def wrapper(*args, **kwargs):
-        if not session.get("admin"):
-            return redirect(url_for("login"))
 
-        return function(*args, **kwargs)
+        if not session.get("admin"):
+            return redirect(
+                url_for("login")
+            )
+
+        return function(
+            *args,
+            **kwargs
+        )
 
     return wrapper
 
@@ -135,6 +152,7 @@ DATABASE_URL = os.environ.get(
 class DB:
 
     def __init__(self, url):
+
         if not url:
             raise RuntimeError(
                 "DATABASE_URL environment variable is missing."
@@ -154,13 +172,20 @@ class DB:
             connect_timeout=10
         )
 
-    def execute(self, query, params=None):
+    def execute(
+        self,
+        query,
+        params=None
+    ):
         cursor = self.con.cursor()
 
         if params is None:
             cursor.execute(query)
         else:
-            cursor.execute(query, params)
+            cursor.execute(
+                query,
+                params
+            )
 
         return cursor
 
@@ -232,7 +257,9 @@ def get_r2_client():
 
     if R2_ENDPOINT:
         endpoint_url = R2_ENDPOINT
+
     else:
+
         if not R2_ACCOUNT_ID:
             raise RuntimeError(
                 "R2_ACCOUNT_ID missing."
@@ -271,7 +298,10 @@ def r2_public_url(object_key):
     return (
         R2_PUBLIC_URL.rstrip("/")
         + "/"
-        + quote(object_key, safe="/")
+        + quote(
+            object_key,
+            safe="/"
+        )
     )
 
 
@@ -285,6 +315,7 @@ def r2_presigned_url(object_key):
         return ""
 
     try:
+
         client = get_r2_client()
 
         return client.generate_presigned_url(
@@ -297,6 +328,7 @@ def r2_presigned_url(object_key):
         )
 
     except Exception as e:
+
         app.logger.exception(
             "Presigned GET URL failed: %s",
             e
@@ -327,7 +359,9 @@ def r2_delete(object_key):
 # =========================================================
 
 # 10 MB प्रति part
-PART_SIZE = 10 * 1024 * 1024
+PART_SIZE = (
+    10 * 1024 * 1024
+)
 
 # एक साथ 3 parts
 PARALLEL_PARTS = 3
@@ -340,7 +374,10 @@ PRESIGNED_EXPIRES = 3600
 # R2 KEY VALIDATION
 # =========================================================
 
-def valid_r2_key(object_key, allowed_prefixes):
+def valid_r2_key(
+    object_key,
+    allowed_prefixes
+):
 
     if not object_key:
         return False
@@ -349,6 +386,7 @@ def valid_r2_key(object_key, allowed_prefixes):
         return False
 
     for prefix in allowed_prefixes:
+
         if object_key.startswith(prefix):
             return True
 
@@ -399,6 +437,7 @@ def create_multipart():
         "video",
         "poster"
     ):
+
         return jsonify({
             "ok": False,
             "error": "Invalid upload type."
@@ -409,14 +448,18 @@ def create_multipart():
     # -----------------------------------------------------
 
     if not filename:
+
         return jsonify({
             "ok": False,
             "error": "Filename missing."
         }), 400
 
-    safe_name = secure_filename(filename)
+    safe_name = secure_filename(
+        filename
+    )
 
     if not safe_name:
+
         return jsonify({
             "ok": False,
             "error": "Invalid filename."
@@ -432,10 +475,11 @@ def create_multipart():
             safe_name,
             ALLOWED_VIDEOS
         ):
+
             return jsonify({
                 "ok": False,
                 "error": (
-                    "Video केवल MP4, WebM या MOV होनी चाहिए."
+                    "Video केवल MP4, MKV, WebM या MOV होनी चाहिए."
                 )
             }), 400
 
@@ -447,6 +491,7 @@ def create_multipart():
             safe_name,
             ALLOWED_POSTERS
         ):
+
             return jsonify({
                 "ok": False,
                 "error": (
@@ -462,7 +507,8 @@ def create_multipart():
 
     content_type = get_content_type(
         safe_name,
-        browser_content_type or "application/octet-stream"
+        browser_content_type
+        or "application/octet-stream"
     )
 
     # -----------------------------------------------------
@@ -482,6 +528,10 @@ def create_multipart():
         + secrets.token_hex(12)
         + extension
     )
+
+    # -----------------------------------------------------
+    # CREATE R2 MULTIPART
+    # -----------------------------------------------------
 
     try:
 
@@ -557,6 +607,7 @@ def multipart_urls():
     # -----------------------------------------------------
 
     if not upload_id:
+
         return jsonify({
             "ok": False,
             "error": "Upload ID missing."
@@ -569,35 +620,45 @@ def multipart_urls():
             "posters/"
         )
     ):
+
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
         }), 400
 
-    if not isinstance(parts, list):
+    if not isinstance(
+        parts,
+        list
+    ):
+
         return jsonify({
             "ok": False,
             "error": "Parts invalid."
         }), 400
 
     if not parts:
+
         return jsonify({
             "ok": False,
             "error": "Parts missing."
         }), 400
 
     if len(parts) > 10000:
+
         return jsonify({
             "ok": False,
             "error": "Too many parts."
         }), 400
+
+    # -----------------------------------------------------
+    # GENERATE URLS
+    # -----------------------------------------------------
 
     try:
 
         client = get_r2_client()
 
         urls = []
-
         seen = set()
 
         for raw_part_number in parts:
@@ -610,11 +671,13 @@ def multipart_urls():
                 part_number < 1
                 or part_number > 10000
             ):
+
                 raise ValueError(
                     "Invalid part number."
                 )
 
             if part_number in seen:
+
                 raise ValueError(
                     "Duplicate part number."
                 )
@@ -698,6 +761,7 @@ def complete_multipart():
     # -----------------------------------------------------
 
     if not upload_id:
+
         return jsonify({
             "ok": False,
             "error": "Upload ID missing."
@@ -710,33 +774,43 @@ def complete_multipart():
             "posters/"
         )
     ):
+
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
         }), 400
 
-    if not isinstance(parts, list):
+    if not isinstance(
+        parts,
+        list
+    ):
+
         return jsonify({
             "ok": False,
             "error": "Parts invalid."
         }), 400
 
     if not parts:
+
         return jsonify({
             "ok": False,
             "error": "No uploaded parts."
         }), 400
 
     if len(parts) > 10000:
+
         return jsonify({
             "ok": False,
             "error": "Too many parts."
         }), 400
 
+    # -----------------------------------------------------
+    # COMPLETE
+    # -----------------------------------------------------
+
     try:
 
         clean_parts = []
-
         seen = set()
 
         for part in parts:
@@ -745,6 +819,7 @@ def complete_multipart():
                 part,
                 dict
             ):
+
                 raise ValueError(
                     "Invalid part data."
                 )
@@ -759,11 +834,13 @@ def complete_multipart():
                 part_number < 1
                 or part_number > 10000
             ):
+
                 raise ValueError(
                     "Invalid part number."
                 )
 
             if part_number in seen:
+
                 raise ValueError(
                     "Duplicate part number."
                 )
@@ -780,6 +857,7 @@ def complete_multipart():
             ).strip()
 
             if not etag:
+
                 raise ValueError(
                     "ETag missing."
                 )
@@ -788,6 +866,7 @@ def complete_multipart():
                 etag.startswith('"')
                 and etag.endswith('"')
             ):
+
                 etag = etag[1:-1]
 
             clean_parts.append({
@@ -796,7 +875,8 @@ def complete_multipart():
             })
 
         clean_parts.sort(
-            key=lambda x: x["PartNumber"]
+            key=lambda x:
+                x["PartNumber"]
         )
 
         client = get_r2_client()
@@ -869,6 +949,7 @@ def abort_multipart():
     ).strip()
 
     if not upload_id or not object_key:
+
         return jsonify({
             "ok": True
         })
@@ -880,6 +961,7 @@ def abort_multipart():
             "posters/"
         )
     ):
+
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
@@ -1589,7 +1671,9 @@ def save_movie():
 
     if not valid_r2_key(
         video_key,
-        ("videos/",)
+        (
+            "videos/",
+        )
     ):
 
         return jsonify({
@@ -1602,7 +1686,9 @@ def save_movie():
         and
         not valid_r2_key(
             poster_key,
-            ("posters/",)
+            (
+                "posters/",
+            )
         )
     ):
 
@@ -1671,9 +1757,11 @@ def save_movie():
         if video_key:
 
             try:
+
                 r2_delete(
                     video_key
                 )
+
             except Exception as cleanup_error:
 
                 app.logger.exception(
@@ -1684,9 +1772,11 @@ def save_movie():
         if poster_key:
 
             try:
+
                 r2_delete(
                     poster_key
                 )
+
             except Exception as cleanup_error:
 
                 app.logger.exception(
