@@ -1,3 +1,4 @@
+```python
 import os
 import secrets
 from functools import wraps
@@ -35,8 +36,6 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-# Direct browser -> Cloudflare R2 upload के लिए
-# video Flask server से होकर नहीं जाती।
 app.config["MAX_CONTENT_LENGTH"] = (
     4 * 1024 * 1024 * 1024
 )
@@ -104,7 +103,6 @@ def get_content_type(
         ".jpeg": "image/jpeg",
         ".png": "image/png",
         ".webp": "image/webp",
-
         ".mp4": "video/mp4",
         ".mkv": "video/x-matroska",
         ".webm": "video/webm",
@@ -127,6 +125,21 @@ def admin_required(function):
     def wrapper(*args, **kwargs):
 
         if not session.get("admin"):
+
+            # IMPORTANT:
+            # API request पर login page का HTML redirect
+            # नहीं भेजेंगे।
+            # सीधे JSON response भेजेंगे।
+            if request.path.startswith("/api/"):
+
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Admin session expired. "
+                        "Please login again."
+                    )
+                }), 401
+
             return redirect(
                 url_for("login")
             )
@@ -360,15 +373,12 @@ def r2_delete(object_key):
 # DIRECT R2 MULTIPART SETTINGS
 # =========================================================
 
-# 10 MB प्रति part
 PART_SIZE = (
     10 * 1024 * 1024
 )
 
-# एक साथ 3 parts
 PARALLEL_PARTS = 3
 
-# Presigned URL 1 घंटे तक valid
 PRESIGNED_EXPIRES = 3600
 
 
@@ -431,10 +441,6 @@ def create_multipart():
         )
     ).strip()
 
-    # -----------------------------------------------------
-    # KIND
-    # -----------------------------------------------------
-
     if kind not in (
         "video",
         "poster"
@@ -444,10 +450,6 @@ def create_multipart():
             "ok": False,
             "error": "Invalid upload type."
         }), 400
-
-    # -----------------------------------------------------
-    # FILENAME
-    # -----------------------------------------------------
 
     if not filename:
 
@@ -466,10 +468,6 @@ def create_multipart():
             "ok": False,
             "error": "Invalid filename."
         }), 400
-
-    # -----------------------------------------------------
-    # EXTENSION
-    # -----------------------------------------------------
 
     if kind == "video":
 
@@ -503,19 +501,11 @@ def create_multipart():
 
         prefix = "posters/"
 
-    # -----------------------------------------------------
-    # SERVER CONTENT TYPE
-    # -----------------------------------------------------
-
     content_type = get_content_type(
         safe_name,
         browser_content_type
         or "application/octet-stream"
     )
-
-    # -----------------------------------------------------
-    # UNIQUE R2 KEY
-    # -----------------------------------------------------
 
     base, extension = os.path.splitext(
         safe_name
@@ -530,10 +520,6 @@ def create_multipart():
         + secrets.token_hex(12)
         + extension
     )
-
-    # -----------------------------------------------------
-    # CREATE R2 MULTIPART
-    # -----------------------------------------------------
 
     try:
 
@@ -566,7 +552,8 @@ def create_multipart():
         return jsonify({
             "ok": False,
             "error": (
-                "R2 multipart upload शुरू नहीं हो पाया."
+                "R2 multipart upload शुरू नहीं हो पाया: "
+                + str(e)
             )
         }), 500
 
@@ -604,10 +591,6 @@ def multipart_urls():
         "parts",
         []
     )
-
-    # -----------------------------------------------------
-    # VALIDATION
-    # -----------------------------------------------------
 
     if not upload_id:
 
@@ -653,10 +636,6 @@ def multipart_urls():
             "error": "Too many parts."
         }), 400
 
-    # -----------------------------------------------------
-    # GENERATE URLS
-    # -----------------------------------------------------
-
     try:
 
         client = get_r2_client()
@@ -668,10 +647,13 @@ def multipart_urls():
         for raw_part_number in parts:
 
             try:
+
                 part_number = int(
                     raw_part_number
                 )
+
             except Exception:
+
                 raise ValueError(
                     "Invalid part number."
                 )
@@ -726,7 +708,8 @@ def multipart_urls():
         return jsonify({
             "ok": False,
             "error": (
-                "Upload URLs generate नहीं हुए."
+                "Upload URLs generate नहीं हुए: "
+                + str(e)
             )
         }), 500
 
@@ -764,10 +747,6 @@ def complete_multipart():
         "parts",
         []
     )
-
-    # -----------------------------------------------------
-    # VALIDATION
-    # -----------------------------------------------------
 
     if not upload_id:
 
@@ -812,10 +791,6 @@ def complete_multipart():
             "ok": False,
             "error": "Too many parts."
         }), 400
-
-    # -----------------------------------------------------
-    # COMPLETE
-    # -----------------------------------------------------
 
     try:
 
@@ -932,7 +907,8 @@ def complete_multipart():
         return jsonify({
             "ok": False,
             "error": (
-                "R2 multipart upload complete नहीं हुआ."
+                "R2 multipart upload complete नहीं हुआ: "
+                + str(e)
             )
         }), 500
 
@@ -1326,10 +1302,6 @@ def movie(movie_id):
         movie_data["poster_url"] = poster_url
         movie_data["video_url"] = video_url
 
-        # IMPORTANT:
-        # movie.html में movie.title आदि के लिए
-        # variable "movie" ही भेजा जा रहा है।
-
         return render_template(
             "movie.html",
             movie=movie_data
@@ -1673,10 +1645,6 @@ def save_movie():
         )
     ).strip()
 
-    # -----------------------------------------------------
-    # VALIDATION
-    # -----------------------------------------------------
-
     if not title:
 
         return jsonify({
@@ -1773,8 +1741,6 @@ def save_movie():
             e
         )
 
-        # DB save fail होने पर R2 cleanup
-
         if video_key:
 
             try:
@@ -1808,7 +1774,8 @@ def save_movie():
         return jsonify({
             "ok": False,
             "error": (
-                "Movie database में save नहीं हुई."
+                "Movie database में save नहीं हुई: "
+                + str(e)
             )
         }), 500
 
@@ -1951,10 +1918,6 @@ def delete_movie(movie_id):
 
         con.commit()
 
-        # -------------------------------------------------
-        # R2 VIDEO DELETE
-        # -------------------------------------------------
-
         if video_name:
 
             try:
@@ -1969,10 +1932,6 @@ def delete_movie(movie_id):
                     "R2 video delete failed: %s",
                     e
                 )
-
-        # -------------------------------------------------
-        # R2 POSTER DELETE
-        # -------------------------------------------------
 
         if poster_name:
 
@@ -2036,6 +1995,16 @@ def not_found(error):
 @app.errorhandler(413)
 def too_large(error):
 
+    if request.path.startswith("/api/"):
+
+        return jsonify({
+            "ok": False,
+            "error": (
+                "Request बहुत बड़ी है. "
+                "Maximum upload size 4 GB है."
+            )
+        }), 413
+
     flash(
         "File बहुत बड़ी है. Maximum upload size 4 GB है."
     )
@@ -2056,6 +2025,20 @@ def internal_error(error):
         "Internal server error: %s",
         error
     )
+
+    # IMPORTANT:
+    # API के लिए HTML नहीं,
+    # हमेशा JSON response।
+    if request.path.startswith("/api/"):
+
+        return jsonify({
+            "ok": False,
+            "error": (
+                "Server error. "
+                "Render Logs देखें."
+            ),
+            "path": request.path
+        }), 500
 
     return (
         "Internal Server Error. Render Logs देखें.",
@@ -2097,3 +2080,4 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
+```
