@@ -35,8 +35,8 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-# Direct browser -> R2 upload होने के कारण बड़ी video
-# Flask server से होकर नहीं गुजरती।
+# Direct browser -> Cloudflare R2 upload के लिए
+# video Flask server से होकर नहीं जाती।
 app.config["MAX_CONTENT_LENGTH"] = (
     4 * 1024 * 1024 * 1024
 )
@@ -177,6 +177,7 @@ class DB:
         query,
         params=None
     ):
+
         cursor = self.con.cursor()
 
         if params is None:
@@ -256,6 +257,7 @@ def get_r2_client():
         )
 
     if R2_ENDPOINT:
+
         endpoint_url = R2_ENDPOINT
 
     else:
@@ -502,7 +504,7 @@ def create_multipart():
         prefix = "posters/"
 
     # -----------------------------------------------------
-    # SERVER-SIDE CONTENT TYPE
+    # SERVER CONTENT TYPE
     # -----------------------------------------------------
 
     content_type = get_content_type(
@@ -550,7 +552,8 @@ def create_multipart():
             "upload_id": upload_id,
             "key": object_key,
             "part_size": PART_SIZE,
-            "parallel": PARALLEL_PARTS
+            "parallel": PARALLEL_PARTS,
+            "expires": PRESIGNED_EXPIRES
         })
 
     except Exception as e:
@@ -659,13 +662,19 @@ def multipart_urls():
         client = get_r2_client()
 
         urls = []
+
         seen = set()
 
         for raw_part_number in parts:
 
-            part_number = int(
-                raw_part_number
-            )
+            try:
+                part_number = int(
+                    raw_part_number
+                )
+            except Exception:
+                raise ValueError(
+                    "Invalid part number."
+                )
 
             if (
                 part_number < 1
@@ -811,6 +820,7 @@ def complete_multipart():
     try:
 
         clean_parts = []
+
         seen = set()
 
         for part in parts:
@@ -824,11 +834,19 @@ def complete_multipart():
                     "Invalid part data."
                 )
 
-            part_number = int(
-                part.get(
-                    "PartNumber"
+            try:
+
+                part_number = int(
+                    part.get(
+                        "PartNumber"
+                    )
                 )
-            )
+
+            except Exception:
+
+                raise ValueError(
+                    "Invalid part number."
+                )
 
             if (
                 part_number < 1
@@ -1308,6 +1326,10 @@ def movie(movie_id):
         movie_data["poster_url"] = poster_url
         movie_data["video_url"] = video_url
 
+        # IMPORTANT:
+        # movie.html में movie.title आदि के लिए
+        # variable "movie" ही भेजा जा रहा है।
+
         return render_template(
             "movie.html",
             movie=movie_data
@@ -1751,8 +1773,7 @@ def save_movie():
             e
         )
 
-        # Database save fail होने पर
-        # R2 में बनी files cleanup करें।
+        # DB save fail होने पर R2 cleanup
 
         if video_key:
 
