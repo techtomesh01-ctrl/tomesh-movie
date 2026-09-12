@@ -36,6 +36,8 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
+# Browser -> R2 direct upload में Render को बड़ी video
+# receive नहीं करनी पड़ती।
 app.config["MAX_CONTENT_LENGTH"] = (
     4 * 1024 * 1024 * 1024
 )
@@ -103,6 +105,7 @@ def get_content_type(
         ".jpeg": "image/jpeg",
         ".png": "image/png",
         ".webp": "image/webp",
+
         ".mp4": "video/mp4",
         ".mkv": "video/x-matroska",
         ".webm": "video/webm",
@@ -126,10 +129,6 @@ def admin_required(function):
 
         if not session.get("admin"):
 
-            # IMPORTANT:
-            # API request पर login page का HTML redirect
-            # नहीं भेजेंगे।
-            # सीधे JSON response भेजेंगे।
             if request.path.startswith("/api/"):
 
                 return jsonify({
@@ -373,12 +372,15 @@ def r2_delete(object_key):
 # DIRECT R2 MULTIPART SETTINGS
 # =========================================================
 
+# 10 MB per part
 PART_SIZE = (
     10 * 1024 * 1024
 )
 
+# Frontend can upload 3 parts simultaneously
 PARALLEL_PARTS = 3
 
+# Presigned URL valid for 1 hour
 PRESIGNED_EXPIRES = 3600
 
 
@@ -469,6 +471,10 @@ def create_multipart():
             "error": "Invalid filename."
         }), 400
 
+    # -----------------------------------------------------
+    # VIDEO
+    # -----------------------------------------------------
+
     if kind == "video":
 
         if not ext_ok(
@@ -484,6 +490,10 @@ def create_multipart():
             }), 400
 
         prefix = "videos/"
+
+    # -----------------------------------------------------
+    # POSTER
+    # -----------------------------------------------------
 
     else:
 
@@ -513,6 +523,7 @@ def create_multipart():
 
     extension = extension.lower()
 
+    # Unique R2 key
     object_key = (
         prefix
         + base
@@ -715,7 +726,7 @@ def multipart_urls():
 
 
 # =========================================================
-# COMPLETE MULTIPART
+# COMPLETE MULTIPART UPLOAD
 # =========================================================
 
 @app.route(
@@ -809,12 +820,28 @@ def complete_multipart():
                     "Invalid part data."
                 )
 
+            # Support both:
+            # PartNumber / part_number
+            # ETag / etag
+            raw_part_number = part.get(
+                "PartNumber",
+                part.get(
+                    "part_number"
+                )
+            )
+
+            raw_etag = part.get(
+                "ETag",
+                part.get(
+                    "etag",
+                    ""
+                )
+            )
+
             try:
 
                 part_number = int(
-                    part.get(
-                        "PartNumber"
-                    )
+                    raw_part_number
                 )
 
             except Exception:
@@ -843,18 +870,17 @@ def complete_multipart():
             )
 
             etag = str(
-                part.get(
-                    "ETag",
-                    ""
-                )
+                raw_etag
             ).strip()
 
             if not etag:
 
                 raise ValueError(
-                    "ETag missing."
+                    "ETag missing for part "
+                    + str(part_number)
                 )
 
+            # Browser कई बार ETag को quotes में देता है.
             if (
                 etag.startswith('"')
                 and etag.endswith('"')
@@ -883,12 +909,23 @@ def complete_multipart():
             }
         )
 
+        # -------------------------------------------------
+        # IMPORTANT:
+        # R2 में object सच में बन गया या नहीं check करें.
+        # -------------------------------------------------
+
+        client.head_object(
+            Bucket=R2_BUCKET,
+            Key=object_key
+        )
+
         return jsonify({
             "ok": True,
             "key": object_key,
             "url": r2_public_url(
                 object_key
             ),
+            "message": "R2 upload complete.",
             "result": {
                 "location": result.get(
                     "Location",
@@ -1687,6 +1724,38 @@ def save_movie():
             "error": "Invalid poster R2 key."
         }), 400
 
+    # R2 object वास्तव में मौजूद है या नहीं check करें.
+    try:
+
+        client = get_r2_client()
+
+        client.head_object(
+            Bucket=R2_BUCKET,
+            Key=video_key
+        )
+
+        if poster_key:
+
+            client.head_object(
+                Bucket=R2_BUCKET,
+                Key=poster_key
+            )
+
+    except Exception as e:
+
+        app.logger.exception(
+            "R2 object verification failed: %s",
+            e
+        )
+
+        return jsonify({
+            "ok": False,
+            "error": (
+                "R2 में uploaded file verify नहीं हुई: "
+                + str(e)
+            )
+        }), 400
+
     con = None
 
     try:
@@ -1740,36 +1809,6 @@ def save_movie():
             "Save movie failed: %s",
             e
         )
-
-        if video_key:
-
-            try:
-
-                r2_delete(
-                    video_key
-                )
-
-            except Exception as cleanup_error:
-
-                app.logger.exception(
-                    "Video cleanup failed: %s",
-                    cleanup_error
-                )
-
-        if poster_key:
-
-            try:
-
-                r2_delete(
-                    poster_key
-                )
-
-            except Exception as cleanup_error:
-
-                app.logger.exception(
-                    "Poster cleanup failed: %s",
-                    cleanup_error
-                )
 
         return jsonify({
             "ok": False,
@@ -1983,9 +2022,10 @@ def delete_movie(movie_id):
 @app.errorhandler(404)
 def not_found(error):
 
-    return render_template(
-        "base.html"
-    ), 404
+    return (
+        "Page नहीं मिली.",
+        404
+    )
 
 
 # =========================================================
@@ -2026,9 +2066,6 @@ def internal_error(error):
         error
     )
 
-    # IMPORTANT:
-    # API के लिए HTML नहीं,
-    # हमेशा JSON response।
     if request.path.startswith("/api/"):
 
         return jsonify({
