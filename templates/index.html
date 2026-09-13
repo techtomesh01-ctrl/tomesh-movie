@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 
 {% block title %}
@@ -500,7 +501,7 @@ Tomesh Movie — हर कहानी, एक नया अनुभव
                 <article class="tm-movie-card">
 
                     <a class="tm-poster"
-                       href="{{ url_for('movie', movie_id=m.id) }}">
+                       href="{{ url_for('movie_page', movie_id=m.id) }}">
 
                         <img
                             src="{{ url_for('poster', name=m.poster) }}"
@@ -544,7 +545,7 @@ Tomesh Movie — हर कहानी, एक नया अनुभव
                         </div>
 
                         <a class="tm-watch-btn"
-                           href="{{ url_for('movie', movie_id=m.id) }}">
+                           href="{{ url_for('movie_page', movie_id=m.id) }}">
                             ▶ WATCH NOW
                         </a>
 
@@ -887,3 +888,8 @@ Tomesh Movie — हर कहानी, एक नया अनुभव
 </script>
 
 {% endblock %}
+```
+
+अब **GitHub → Commit changes** करो। उसके बाद Render deploy होने दो।
+
+इस fix के बाद homepage का `BuildError: endpoint 'movie'` खत्म हो जाना चाहिए।
