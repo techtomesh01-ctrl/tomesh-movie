@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 import boto3
 import psycopg2
+from psycopg2.extras import RealDictCursor
 from botocore.client import Config
 
 from flask import (
@@ -36,8 +37,7 @@ app.secret_key = os.environ.get(
     "tomesh-movies-change-this-secret"
 )
 
-# Direct browser -> R2 upload ke liye Flask ko large
-# video receive nahi karna hai.
+# Direct browser -> R2 upload ke liye
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
 
@@ -77,16 +77,9 @@ ALLOWED_POSTERS = {
 MAX_VIDEO_SIZE = 4 * 1024 * 1024 * 1024
 MAX_POSTER_SIZE = 25 * 1024 * 1024
 
-# 10 MB per R2 multipart part
 PART_SIZE = 10 * 1024 * 1024
-
-# Existing admin.html = 3 parallel
 PARALLEL_PARTS = 3
-
-# Presigned URL validity
 PRESIGNED_EXPIRES = 3600
-
-# S3 multipart maximum
 MAX_MULTIPART_PARTS = 10000
 
 
@@ -95,17 +88,6 @@ MAX_MULTIPART_PARTS = 10000
 # =========================================================
 
 def clean_env_value(name, default=""):
-    """
-    Environment values ko safely clean karta hai.
-
-    Remove:
-    - spaces
-    - tabs
-    - CR
-    - LF
-    - accidental surrounding quotes
-    - literal \\n / \\r / \\t
-    """
 
     value = os.environ.get(name, default)
 
@@ -114,24 +96,18 @@ def clean_env_value(name, default=""):
 
     value = str(value)
 
-    # Literal escaped characters bhi remove karo.
     value = value.replace("\\r", "")
     value = value.replace("\\n", "")
     value = value.replace("\\t", "")
 
-    # Actual whitespace remove karo.
     value = re.sub(r"\s+", "", value)
 
-    # Accidental quotes remove karo.
     value = value.strip("\"'")
 
     return value
 
 
 def clean_endpoint(value):
-    """
-    R2 endpoint ko normalize karta hai.
-    """
 
     value = value or ""
 
@@ -142,8 +118,6 @@ def clean_endpoint(value):
     value = re.sub(r"\s+", "", value)
 
     value = value.strip("\"'")
-
-    # Trailing slash remove
     value = value.rstrip("/")
 
     return value
@@ -238,17 +212,6 @@ def get_r2_client():
             "R2_ENDPOINT is missing."
         )
 
-    # -----------------------------------------------------
-    # IMPORTANT:
-    # endpoint mein bucket nahi hona chahiye.
-    #
-    # Correct:
-    # https://ACCOUNT_ID.r2.cloudflarestorage.com
-    #
-    # Wrong:
-    # https://ACCOUNT_ID.r2.cloudflarestorage.com/tomesh-movies
-    # -----------------------------------------------------
-
     endpoint = R2_ENDPOINT.rstrip("/")
 
     if "/tomesh-movies" in endpoint.lower():
@@ -256,10 +219,6 @@ def get_r2_client():
             "R2_ENDPOINT mein bucket name nahi hona chahiye. "
             "Sirf https://ACCOUNT_ID.r2.cloudflarestorage.com use karein."
         )
-
-    # -----------------------------------------------------
-    # boto3 S3 client
-    # -----------------------------------------------------
 
     return boto3.client(
         "s3",
@@ -408,11 +367,14 @@ def make_object_key(prefix, filename):
     )
 
     if extension:
+
         base = filename.rsplit(
             ".",
             1
         )[0]
+
     else:
+
         base = filename
 
     base = re.sub(
@@ -429,6 +391,7 @@ def make_object_key(prefix, filename):
     token = secrets.token_hex(12)
 
     if extension:
+
         return (
             f"{prefix}"
             f"{base}-"
@@ -455,8 +418,6 @@ def guess_content_type(
     if content_type:
         return content_type
 
-    # MKV ke liye browser kabhi kabhi
-    # empty/incorrect MIME bhej deta hai.
     extension = get_extension(
         filename
     )
@@ -593,21 +554,149 @@ def init_db():
 @app.route("/")
 def home():
 
+    q = request.args.get(
+        "q",
+        ""
+    ).strip()
+
+    category = request.args.get(
+        "category",
+        ""
+    ).strip()
+
     conn = get_db()
 
     try:
 
-        cur = conn.cursor()
+        cur = conn.cursor(
+            cursor_factory=RealDictCursor
+        )
+
+        # -------------------------------------------------
+        # MOVIES
+        # -------------------------------------------------
+
+        if q and category:
+
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE
+                    (
+                        title ILIKE %s
+                        OR category ILIKE %s
+                        OR description ILIKE %s
+                    )
+                    AND category = %s
+                ORDER BY id DESC
+                """,
+                (
+                    f"%{q}%",
+                    f"%{q}%",
+                    f"%{q}%",
+                    category,
+                )
+            )
+
+        elif q:
+
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE
+                    title ILIKE %s
+                    OR category ILIKE %s
+                    OR description ILIKE %s
+                ORDER BY id DESC
+                """,
+                (
+                    f"%{q}%",
+                    f"%{q}%",
+                    f"%{q}%",
+                )
+            )
+
+        elif category:
+
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE category = %s
+                ORDER BY id DESC
+                """,
+                (category,)
+            )
+
+        else:
+
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                ORDER BY id DESC
+                """
+            )
+
+        movies = cur.fetchall()
+
+        # -------------------------------------------------
+        # CATEGORIES
+        # -------------------------------------------------
 
         cur.execute(
             """
-            SELECT *
+            SELECT DISTINCT category
             FROM movies
-            ORDER BY id DESC
+            WHERE category IS NOT NULL
+              AND TRIM(category) <> ''
+            ORDER BY category ASC
             """
         )
 
-        movies = cur.fetchall()
+        category_rows = cur.fetchall()
+
+        categories = [
+            row["category"]
+            for row in category_rows
+        ]
+
+        # -------------------------------------------------
+        # ADS
+        # -------------------------------------------------
+
+        cur.execute(
+            """
+            SELECT key, value
+            FROM settings
+            WHERE key IN (
+                'top_ad',
+                'player_ad',
+                'bottom_ad'
+            )
+            """
+        )
+
+        settings_rows = cur.fetchall()
+
+        ads = {
+            "ad_top": "",
+            "ad_player": "",
+            "ad_bottom": "",
+        }
+
+        for row in settings_rows:
+
+            if row["key"] == "top_ad":
+                ads["ad_top"] = row["value"] or ""
+
+            elif row["key"] == "player_ad":
+                ads["ad_player"] = row["value"] or ""
+
+            elif row["key"] == "bottom_ad":
+                ads["ad_bottom"] = row["value"] or ""
 
         cur.close()
 
@@ -617,7 +706,11 @@ def home():
 
     return render_template(
         "index.html",
-        movies=movies
+        movies=movies,
+        categories=categories,
+        ads=ads,
+        q=q,
+        current_year=2026,
     )
 
 
@@ -634,7 +727,9 @@ def movie_page(movie_id):
 
     try:
 
-        cur = conn.cursor()
+        cur = conn.cursor(
+            cursor_factory=RealDictCursor
+        )
 
         cur.execute(
             """
@@ -997,10 +1092,6 @@ def r2_multipart_create():
             or ""
         ).strip()
 
-        # -------------------------------------------------
-        # BASIC VALIDATION
-        # -------------------------------------------------
-
         if not filename:
 
             return jsonify({
@@ -1014,10 +1105,6 @@ def r2_multipart_create():
                 "ok": False,
                 "error": "Invalid file size."
             }), 400
-
-        # -------------------------------------------------
-        # VIDEO
-        # -------------------------------------------------
 
         if kind == "video":
 
@@ -1051,10 +1138,6 @@ def r2_multipart_create():
                 content_type = guess_content_type(
                     filename
                 )
-
-        # -------------------------------------------------
-        # POSTER
-        # -------------------------------------------------
 
         elif kind == "poster":
 
@@ -1096,24 +1179,12 @@ def r2_multipart_create():
                 "error": "Invalid upload type."
             }), 400
 
-        # -------------------------------------------------
-        # OBJECT KEY
-        # -------------------------------------------------
-
         key = make_object_key(
             prefix,
             filename
         )
 
-        # -------------------------------------------------
-        # R2 CLIENT
-        # -------------------------------------------------
-
         client = get_r2_client()
-
-        # -------------------------------------------------
-        # CREATE MULTIPART
-        # -------------------------------------------------
 
         result = client.create_multipart_upload(
             Bucket=R2_BUCKET,
@@ -1368,10 +1439,6 @@ def r2_multipart_complete():
 
         client = get_r2_client()
 
-        # -------------------------------------------------
-        # GET ALL PARTS
-        # -------------------------------------------------
-
         all_parts = []
 
         part_marker = None
@@ -1422,19 +1489,11 @@ def r2_multipart_complete():
                 "error": "R2 has no uploaded parts."
             }), 400
 
-        # -------------------------------------------------
-        # SORT
-        # -------------------------------------------------
-
         all_parts.sort(
             key=lambda x: int(
                 x["PartNumber"]
             )
         )
-
-        # -------------------------------------------------
-        # EXPECTED PART COUNT
-        # -------------------------------------------------
 
         expected_part_count = (
             expected_size
@@ -1452,10 +1511,6 @@ def r2_multipart_complete():
                     f"found {len(all_parts)}."
                 )
             }), 400
-
-        # -------------------------------------------------
-        # BUILD COMPLETE PARTS
-        # -------------------------------------------------
 
         total_size = 0
 
@@ -1507,10 +1562,6 @@ def r2_multipart_complete():
                 "ETag": etag,
             })
 
-        # -------------------------------------------------
-        # SIZE CHECK
-        # -------------------------------------------------
-
         if total_size != expected_size:
 
             return jsonify({
@@ -1522,10 +1573,6 @@ def r2_multipart_complete():
                 )
             }), 400
 
-        # -------------------------------------------------
-        # COMPLETE
-        # -------------------------------------------------
-
         result = client.complete_multipart_upload(
             Bucket=R2_BUCKET,
             Key=key,
@@ -1534,10 +1581,6 @@ def r2_multipart_complete():
                 "Parts": complete_parts
             },
         )
-
-        # -------------------------------------------------
-        # FINAL OBJECT CHECK
-        # -------------------------------------------------
 
         head = client.head_object(
             Bucket=R2_BUCKET,
@@ -1785,20 +1828,12 @@ def save_movie():
             or ""
         ).strip()
 
-        # -------------------------------------------------
-        # TITLE
-        # -------------------------------------------------
-
         if not title:
 
             return jsonify({
                 "ok": False,
                 "error": "Movie title is required."
             }), 400
-
-        # -------------------------------------------------
-        # VIDEO KEY
-        # -------------------------------------------------
 
         if not valid_r2_key(
             video_key
@@ -1817,10 +1852,6 @@ def save_movie():
                 "ok": False,
                 "error": "Invalid video object."
             }), 400
-
-        # -------------------------------------------------
-        # POSTER KEY
-        # -------------------------------------------------
 
         if poster_key:
 
@@ -1842,10 +1873,6 @@ def save_movie():
                     "error": "Invalid poster object."
                 }), 400
 
-        # -------------------------------------------------
-        # VERIFY VIDEO
-        # -------------------------------------------------
-
         video_head = r2_head(
             video_key
         )
@@ -1863,10 +1890,6 @@ def save_movie():
                 "ok": False,
                 "error": "Video object is empty."
             }), 400
-
-        # -------------------------------------------------
-        # VERIFY POSTER
-        # -------------------------------------------------
 
         if poster_key:
 
@@ -1887,10 +1910,6 @@ def save_movie():
                     "ok": False,
                     "error": "Poster object is empty."
                 }), 400
-
-        # -------------------------------------------------
-        # SAVE DATABASE
-        # -------------------------------------------------
 
         conn = get_db()
 
@@ -2024,14 +2043,16 @@ def delete_movie(movie_id):
 
         conn.close()
 
-    # R2 delete
     if video_key:
 
         try:
+
             r2_delete(
                 video_key
             )
+
         except Exception as e:
+
             print(
                 "Video delete error:",
                 repr(e)
@@ -2040,10 +2061,13 @@ def delete_movie(movie_id):
     if poster_key:
 
         try:
+
             r2_delete(
                 poster_key
             )
+
         except Exception as e:
+
             print(
                 "Poster delete error:",
                 repr(e)
