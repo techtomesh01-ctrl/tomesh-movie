@@ -1,4 +1,3 @@
-python
 import os
 import secrets
 from functools import wraps
@@ -36,11 +35,9 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-# Browser -> R2 direct upload में Render को बड़ी video
-# receive नहीं करनी पड़ती।
-app.config["MAX_CONTENT_LENGTH"] = (
-    4 * 1024 * 1024 * 1024
-)
+# Direct browser -> R2 upload होने के कारण
+# बड़ी video Flask/Render server से होकर नहीं जाती।
+app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
 
 # =========================================================
@@ -84,10 +81,7 @@ def ext_ok(filename, allowed):
     if "." not in filename:
         return False
 
-    extension = filename.rsplit(
-        ".",
-        1
-    )[1].lower()
+    extension = filename.rsplit(".", 1)[1].lower()
 
     return extension in allowed
 
@@ -96,9 +90,7 @@ def get_content_type(
     filename,
     default="application/octet-stream"
 ):
-    extension = os.path.splitext(
-        filename
-    )[1].lower()
+    extension = os.path.splitext(filename)[1].lower()
 
     content_types = {
         ".jpg": "image/jpeg",
@@ -130,7 +122,6 @@ def admin_required(function):
         if not session.get("admin"):
 
             if request.path.startswith("/api/"):
-
                 return jsonify({
                     "ok": False,
                     "error": (
@@ -373,14 +364,12 @@ def r2_delete(object_key):
 # =========================================================
 
 # 10 MB per part
-PART_SIZE = (
-    10 * 1024 * 1024
-)
+PART_SIZE = 10 * 1024 * 1024
 
-# Frontend can upload 3 parts simultaneously
+# Frontend एक समय में 3 parts upload कर सकता है
 PARALLEL_PARTS = 3
 
-# Presigned URL valid for 1 hour
+# Presigned URL 1 hour valid
 PRESIGNED_EXPIRES = 3600
 
 
@@ -447,14 +436,12 @@ def create_multipart():
         "video",
         "poster"
     ):
-
         return jsonify({
             "ok": False,
             "error": "Invalid upload type."
         }), 400
 
     if not filename:
-
         return jsonify({
             "ok": False,
             "error": "Filename missing."
@@ -465,15 +452,14 @@ def create_multipart():
     )
 
     if not safe_name:
-
         return jsonify({
             "ok": False,
             "error": "Invalid filename."
         }), 400
 
-    # -----------------------------------------------------
+    # =====================================================
     # VIDEO
-    # -----------------------------------------------------
+    # =====================================================
 
     if kind == "video":
 
@@ -481,7 +467,6 @@ def create_multipart():
             safe_name,
             ALLOWED_VIDEOS
         ):
-
             return jsonify({
                 "ok": False,
                 "error": (
@@ -491,9 +476,9 @@ def create_multipart():
 
         prefix = "videos/"
 
-    # -----------------------------------------------------
+    # =====================================================
     # POSTER
-    # -----------------------------------------------------
+    # =====================================================
 
     else:
 
@@ -501,7 +486,6 @@ def create_multipart():
             safe_name,
             ALLOWED_POSTERS
         ):
-
             return jsonify({
                 "ok": False,
                 "error": (
@@ -523,7 +507,6 @@ def create_multipart():
 
     extension = extension.lower()
 
-    # Unique R2 key
     object_key = (
         prefix
         + base
@@ -604,7 +587,6 @@ def multipart_urls():
     )
 
     if not upload_id:
-
         return jsonify({
             "ok": False,
             "error": "Upload ID missing."
@@ -617,7 +599,6 @@ def multipart_urls():
             "posters/"
         )
     ):
-
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
@@ -627,21 +608,18 @@ def multipart_urls():
         parts,
         list
     ):
-
         return jsonify({
             "ok": False,
             "error": "Parts invalid."
         }), 400
 
     if not parts:
-
         return jsonify({
             "ok": False,
             "error": "Parts missing."
         }), 400
 
     if len(parts) > 10000:
-
         return jsonify({
             "ok": False,
             "error": "Too many parts."
@@ -673,13 +651,11 @@ def multipart_urls():
                 part_number < 1
                 or part_number > 10000
             ):
-
                 raise ValueError(
                     "Invalid part number."
                 )
 
             if part_number in seen:
-
                 raise ValueError(
                     "Duplicate part number."
                 )
@@ -760,7 +736,6 @@ def complete_multipart():
     )
 
     if not upload_id:
-
         return jsonify({
             "ok": False,
             "error": "Upload ID missing."
@@ -773,7 +748,6 @@ def complete_multipart():
             "posters/"
         )
     ):
-
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
@@ -783,21 +757,18 @@ def complete_multipart():
         parts,
         list
     ):
-
         return jsonify({
             "ok": False,
             "error": "Parts invalid."
         }), 400
 
     if not parts:
-
         return jsonify({
             "ok": False,
             "error": "No uploaded parts."
         }), 400
 
     if len(parts) > 10000:
-
         return jsonify({
             "ok": False,
             "error": "Too many parts."
@@ -815,14 +786,10 @@ def complete_multipart():
                 part,
                 dict
             ):
-
                 raise ValueError(
                     "Invalid part data."
                 )
 
-            # Support both:
-            # PartNumber / part_number
-            # ETag / etag
             raw_part_number = part.get(
                 "PartNumber",
                 part.get(
@@ -854,13 +821,11 @@ def complete_multipart():
                 part_number < 1
                 or part_number > 10000
             ):
-
                 raise ValueError(
                     "Invalid part number."
                 )
 
             if part_number in seen:
-
                 raise ValueError(
                     "Duplicate part number."
                 )
@@ -874,18 +839,15 @@ def complete_multipart():
             ).strip()
 
             if not etag:
-
                 raise ValueError(
                     "ETag missing for part "
                     + str(part_number)
                 )
 
-            # Browser कई बार ETag को quotes में देता है.
             if (
                 etag.startswith('"')
                 and etag.endswith('"')
             ):
-
                 etag = etag[1:-1]
 
             clean_parts.append({
@@ -909,11 +871,8 @@ def complete_multipart():
             }
         )
 
-        # -------------------------------------------------
-        # IMPORTANT:
-        # R2 में object सच में बन गया या नहीं check करें.
-        # -------------------------------------------------
-
+        # R2 object वास्तव में बन गया या नहीं
+        # उसका verification
         client.head_object(
             Bucket=R2_BUCKET,
             Key=object_key
@@ -980,7 +939,6 @@ def abort_multipart():
     ).strip()
 
     if not upload_id or not object_key:
-
         return jsonify({
             "ok": True
         })
@@ -992,7 +950,6 @@ def abort_multipart():
             "posters/"
         )
     ):
-
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
@@ -1724,7 +1681,10 @@ def save_movie():
             "error": "Invalid poster R2 key."
         }), 400
 
-    # R2 object वास्तव में मौजूद है या नहीं check करें.
+    # =====================================================
+    # VERIFY R2 OBJECTS
+    # =====================================================
+
     try:
 
         client = get_r2_client()
@@ -1755,6 +1715,10 @@ def save_movie():
                 + str(e)
             )
         }), 400
+
+    # =====================================================
+    # DATABASE SAVE
+    # =====================================================
 
     con = None
 
