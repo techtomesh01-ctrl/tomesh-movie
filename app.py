@@ -35,8 +35,8 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-# Direct browser -> R2 upload के कारण
-# बड़ी video Flask/Render server से होकर नहीं जाती।
+# Direct browser -> R2 upload के लिए
+# बड़ी files Flask/Render server से होकर नहीं जातीं।
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
 
@@ -79,21 +79,14 @@ ALLOWED_VIDEOS = {
 # =========================================================
 
 def clean_filename(filename):
-    """
-    Filename को safely साफ करता है।
-    Path/query जैसी चीजों को extension check से पहले हटाता है।
-    """
-
     if not filename:
         return ""
 
     filename = str(filename).strip()
 
-    # Windows / URL path हटाना
     filename = filename.replace("\\", "/")
     filename = filename.rsplit("/", 1)[-1]
 
-    # Query/hash हटाना
     filename = filename.split("?", 1)[0]
     filename = filename.split("#", 1)[0]
 
@@ -101,10 +94,6 @@ def clean_filename(filename):
 
 
 def get_extension(filename):
-    """
-    Filename की अंतिम extension लौटाता है।
-    """
-
     if not filename:
         return ""
 
@@ -132,11 +121,6 @@ def ext_ok(filename, allowed):
 
 
 def poster_mime_ok(content_type):
-    """
-    Browser के MIME type से poster पहचानने की
-    अतिरिक्त सुविधा।
-    """
-
     if not content_type:
         return False
 
@@ -153,11 +137,6 @@ def poster_mime_ok(content_type):
 
 
 def video_mime_ok(content_type):
-    """
-    Browser MIME type से video पहचानने की
-    अतिरिक्त सुविधा।
-    """
-
     if not content_type:
         return False
 
@@ -170,6 +149,7 @@ def video_mime_ok(content_type):
         "video/x-matroska",
         "video/webm",
         "video/quicktime",
+        "application/octet-stream",
     }
 
 
@@ -177,7 +157,6 @@ def get_content_type(
     filename,
     default="application/octet-stream"
 ):
-
     extension = get_extension(filename)
 
     content_types = {
@@ -192,7 +171,6 @@ def get_content_type(
         ".mov": "video/quicktime",
     }
 
-    # extension में dot नहीं है, इसलिए fallback lookup
     if extension:
         mime = content_types.get(
             "." + extension
@@ -275,7 +253,6 @@ class DB:
         query,
         params=None
     ):
-
         cursor = self.con.cursor()
 
         if params is None:
@@ -355,7 +332,6 @@ def get_r2_client():
         )
 
     if R2_ENDPOINT:
-
         endpoint_url = R2_ENDPOINT
 
     else:
@@ -378,7 +354,10 @@ def get_r2_client():
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
         region_name="auto",
         config=Config(
-            signature_version="s3v4"
+            signature_version="s3v4",
+            s3={
+                "addressing_style": "path"
+            }
         )
     )
 
@@ -463,6 +442,8 @@ PART_SIZE = 10 * 1024 * 1024
 PARALLEL_PARTS = 3
 
 PRESIGNED_EXPIRES = 3600
+
+MAX_MULTIPART_PARTS = 10000
 
 
 # =========================================================
@@ -561,13 +542,16 @@ def create_multipart():
             ALLOWED_VIDEOS
         )
 
-        mime_valid = video_mime_ok(
-            browser_content_type
-        )
-
+        # IMPORTANT:
+        # Video को extension से allow करेंगे।
+        # Browser MIME blank/unknown होने पर भी
+        # valid MP4/MKV/WebM/MOV reject नहीं होगा.
         if not extension_valid:
 
-            # MIME भी valid नहीं है तो reject
+            mime_valid = video_mime_ok(
+                browser_content_type
+            )
+
             if not mime_valid:
 
                 return jsonify({
@@ -603,14 +587,6 @@ def create_multipart():
             browser_content_type
         )
 
-        # JPG/JPEG/PNG/WEBP extension valid हो
-        # तो browser MIME पर निर्भर नहीं करेंगे।
-        #
-        # अगर extension गलत/unknown है लेकिन
-        # browser ने valid image MIME दिया है,
-        # तब भी upload allow करेंगे और filename
-        # को appropriate extension देंगे।
-
         if not extension_valid and not mime_valid:
 
             return jsonify({
@@ -630,8 +606,6 @@ def create_multipart():
 
         prefix = "posters/"
 
-        # MIME valid लेकिन extension खराब है
-        # तो सही extension लगाएँ।
         if not extension_valid:
 
             mime_extension = {
@@ -684,6 +658,13 @@ def create_multipart():
 
     extension = extension.lower()
 
+    # Filename में unsafe/problematic characters
+    # होने की स्थिति में clean base रखें.
+    base = secure_filename(base)
+
+    if not base:
+        base = "upload"
+
     object_key = (
         prefix
         + base
@@ -710,11 +691,12 @@ def create_multipart():
         upload_id = result["UploadId"]
 
         app.logger.info(
-            "R2 multipart created | kind=%s | filename=%s | key=%s | type=%s",
+            "R2 multipart created | kind=%s | filename=%s | key=%s | type=%s | upload_id=%s",
             kind,
             safe_name,
             object_key,
-            content_type
+            content_type,
+            upload_id
         )
 
         return jsonify({
@@ -813,7 +795,7 @@ def multipart_urls():
             "error": "Parts missing."
         }), 400
 
-    if len(parts) > 10000:
+    if len(parts) > MAX_MULTIPART_PARTS:
 
         return jsonify({
             "ok": False,
@@ -844,7 +826,7 @@ def multipart_urls():
 
             if (
                 part_number < 1
-                or part_number > 10000
+                or part_number > MAX_MULTIPART_PARTS
             ):
 
                 raise ValueError(
@@ -932,6 +914,21 @@ def complete_multipart():
         []
     )
 
+    # Browser से भेजी गई original file size
+    expected_size_raw = data.get(
+        "expected_size"
+    )
+
+    try:
+
+        expected_size = int(
+            expected_size_raw
+        )
+
+    except Exception:
+
+        expected_size = 0
+
     if not upload_id:
 
         return jsonify({
@@ -969,11 +966,18 @@ def complete_multipart():
             "error": "No uploaded parts."
         }), 400
 
-    if len(parts) > 10000:
+    if len(parts) > MAX_MULTIPART_PARTS:
 
         return jsonify({
             "ok": False,
             "error": "Too many parts."
+        }), 400
+
+    if expected_size <= 0:
+
+        return jsonify({
+            "ok": False,
+            "error": "Original file size missing."
         }), 400
 
     try:
@@ -1022,7 +1026,7 @@ def complete_multipart():
 
             if (
                 part_number < 1
-                or part_number > 10000
+                or part_number > MAX_MULTIPART_PARTS
             ):
 
                 raise ValueError(
@@ -1057,6 +1061,15 @@ def complete_multipart():
 
                 etag = etag[1:-1]
 
+            etag = etag.strip()
+
+            if not etag:
+
+                raise ValueError(
+                    "Invalid ETag for part "
+                    + str(part_number)
+                )
+
             clean_parts.append({
                 "PartNumber": part_number,
                 "ETag": etag
@@ -1067,7 +1080,34 @@ def complete_multipart():
                 x["PartNumber"]
         )
 
+        # Parts 1 से शुरू होकर continuous होने चाहिए.
+        expected_part_numbers = list(
+            range(
+                1,
+                len(clean_parts) + 1
+            )
+        )
+
+        actual_part_numbers = [
+            item["PartNumber"]
+            for item in clean_parts
+        ]
+
+        if actual_part_numbers != expected_part_numbers:
+
+            raise ValueError(
+                "Multipart parts incomplete हैं. "
+                "Expected: "
+                + str(expected_part_numbers[-1])
+                + " parts, received part numbers: "
+                + str(actual_part_numbers)
+            )
+
         client = get_r2_client()
+
+        # =================================================
+        # COMPLETE ON R2
+        # =================================================
 
         result = client.complete_multipart_upload(
             Bucket=R2_BUCKET,
@@ -1078,16 +1118,58 @@ def complete_multipart():
             }
         )
 
-        # R2 object verification
+        # =================================================
+        # IMPORTANT:
+        # R2 में final object verify करें.
+        # =================================================
+
         head = client.head_object(
             Bucket=R2_BUCKET,
             Key=object_key
         )
 
+        actual_size = int(
+            head.get(
+                "ContentLength",
+                0
+            )
+            or 0
+        )
+
+        if actual_size <= 0:
+
+            raise RuntimeError(
+                "R2 complete के बाद object खाली है."
+            )
+
+        if actual_size != expected_size:
+
+            app.logger.error(
+                "R2 size mismatch | key=%s | expected=%s | actual=%s",
+                object_key,
+                expected_size,
+                actual_size
+            )
+
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "R2 upload size match नहीं हुई. "
+                    "Expected "
+                    + str(expected_size)
+                    + " bytes, लेकिन R2 में "
+                    + str(actual_size)
+                    + " bytes मिले."
+                ),
+                "expected_size": expected_size,
+                "actual_size": actual_size
+            }), 400
+
         app.logger.info(
-            "R2 multipart complete | key=%s | size=%s",
+            "R2 multipart complete VERIFIED | key=%s | size=%s | parts=%s",
             object_key,
-            head.get("ContentLength")
+            actual_size,
+            len(clean_parts)
         )
 
         return jsonify({
@@ -1096,11 +1178,9 @@ def complete_multipart():
             "url": r2_public_url(
                 object_key
             ),
-            "message": "R2 upload complete.",
-            "size": head.get(
-                "ContentLength",
-                0
-            ),
+            "message": "R2 upload complete and verified.",
+            "size": actual_size,
+            "parts": len(clean_parts),
             "result": {
                 "location": result.get(
                     "Location",
@@ -1181,6 +1261,12 @@ def abort_multipart():
             Bucket=R2_BUCKET,
             Key=object_key,
             UploadId=upload_id
+        )
+
+        app.logger.info(
+            "R2 multipart aborted | key=%s | upload_id=%s",
+            object_key,
+            upload_id
         )
 
     except Exception as e:
@@ -1857,6 +1943,21 @@ def save_movie():
         )
     ).strip()
 
+    # Optional frontend size verification
+    expected_video_size_raw = data.get(
+        "video_size"
+    )
+
+    try:
+
+        expected_video_size = int(
+            expected_video_size_raw
+        )
+
+    except Exception:
+
+        expected_video_size = 0
+
     if not title:
 
         return jsonify({
@@ -1883,7 +1984,6 @@ def save_movie():
             "error": "Invalid video R2 key."
         }), 400
 
-    # Video key extension check
     video_extension = get_extension(
         video_key
     )
@@ -1914,7 +2014,6 @@ def save_movie():
             "error": "Invalid poster R2 key."
         }), 400
 
-    # Poster extension check
     if poster_key:
 
         poster_extension = get_extension(
@@ -1945,10 +2044,15 @@ def save_movie():
             Key=video_key
         )
 
-        if not video_head.get(
-            "ContentLength",
-            0
-        ):
+        actual_video_size = int(
+            video_head.get(
+                "ContentLength",
+                0
+            )
+            or 0
+        )
+
+        if actual_video_size <= 0:
 
             return jsonify({
                 "ok": False,
@@ -1957,12 +2061,49 @@ def save_movie():
                 )
             }), 400
 
+        if (
+            expected_video_size > 0
+            and
+            actual_video_size != expected_video_size
+        ):
+
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "Video size verify नहीं हुई. "
+                    "Expected "
+                    + str(expected_video_size)
+                    + " bytes, R2 में "
+                    + str(actual_video_size)
+                    + " bytes मिले."
+                ),
+                "expected_size": expected_video_size,
+                "actual_size": actual_video_size
+            }), 400
+
         if poster_key:
 
-            client.head_object(
+            poster_head = client.head_object(
                 Bucket=R2_BUCKET,
                 Key=poster_key
             )
+
+            poster_size = int(
+                poster_head.get(
+                    "ContentLength",
+                    0
+                )
+                or 0
+            )
+
+            if poster_size <= 0:
+
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "R2 poster object खाली है."
+                    )
+                }), 400
 
     except Exception as e:
 
@@ -2023,17 +2164,19 @@ def save_movie():
         con.commit()
 
         app.logger.info(
-            "Movie published | id=%s | title=%s | video=%s | poster=%s",
+            "Movie published | id=%s | title=%s | video=%s | poster=%s | size=%s",
             row["id"],
             title,
             video_key,
-            poster_key
+            poster_key,
+            actual_video_size
         )
 
         return jsonify({
             "ok": True,
             "id": row["id"],
-            "message": "Movie publish हो गई."
+            "message": "Movie publish हो गई.",
+            "video_size": actual_video_size
         })
 
     except Exception as e:
