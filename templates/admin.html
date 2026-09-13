@@ -284,10 +284,13 @@
         <small>COLORFUL PREMIUM ADMIN PANEL • BLACK + GOLD + PURPLE + RED</small>
     </div>
 
-    <div class="admin-actions">
-        <a class="tm-btn purple" href="{{ url_for('admin') }}">Dashboard</a>
-        <a class="tm-btn red" href="{{ url_for('logout') }}">Logout</a>
-    </div>
+```
+<div class="admin-actions">
+    <a class="tm-btn purple" href="{{ url_for('admin') }}">Dashboard</a>
+    <a class="tm-btn red" href="{{ url_for('logout') }}">Logout</a>
+</div>
+```
+
 </div>
 
 <div class="stats">
@@ -296,311 +299,320 @@
         <span>Total Movies</span>
     </div>
 
-    <div class="stat">
-        <b>{{ movies|sum(attribute='views') }}</b>
-        <span>Total Views</span>
-    </div>
+```
+<div class="stat">
+    <b>{{ movies|sum(attribute='views') }}</b>
+    <span>Total Views</span>
+</div>
 
-    <div class="stat">
-        <b>R2</b>
-        <span>Direct Storage</span>
-    </div>
+<div class="stat">
+    <b>R2</b>
+    <span>Direct Storage</span>
+</div>
 
-    <div class="stat">
-        <b>3×</b>
-        <span>Parallel Upload</span>
-    </div>
+<div class="stat">
+    <b>3×</b>
+    <span>Parallel Upload</span>
+</div>
+```
+
 </div>
 
 <div class="panel">
 
-    <h2>🎬 Add New Movie</h2>
+```
+<h2>🎬 Add New Movie</h2>
 
-    <div class="sub">
-        Video और poster सीधे Cloudflare R2 पर upload होंगे.
-        Render server के through video नहीं जाएगी.
-    </div>
+<div class="sub">
+    Video और poster सीधे Cloudflare R2 पर upload होंगे.
+    Render server के through video नहीं जाएगी.
+</div>
 
-    <div class="grid2">
+<div class="grid2">
 
-        <div>
+    <div>
 
-            <div class="field">
-                <label>Movie Title</label>
-                <input
-                    id="movieTitle"
-                    type="text"
-                    placeholder="Movie title"
-                    autocomplete="off"
-                >
-            </div>
-
-            <div class="field">
-                <label>Category</label>
-                <input
-                    id="movieCategory"
-                    type="text"
-                    placeholder="Action, Drama, Hindi..."
-                    autocomplete="off"
-                >
-            </div>
-
-            <div class="field">
-                <label>Description</label>
-                <textarea
-                    id="movieDescription"
-                    placeholder="Movie description"
-                ></textarea>
-            </div>
-
+        <div class="field">
+            <label>Movie Title</label>
+            <input
+                id="movieTitle"
+                type="text"
+                placeholder="Movie title"
+                autocomplete="off"
+            >
         </div>
 
-        <div>
+        <div class="field">
+            <label>Category</label>
+            <input
+                id="movieCategory"
+                type="text"
+                placeholder="Action, Drama, Hindi..."
+                autocomplete="off"
+            >
+        </div>
 
-            <div class="field">
-                <label>Poster</label>
-
-                <div class="filebox">
-                    <input
-                        id="posterFile"
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                    >
-
-                    <div class="hint">
-                        JPG / JPEG / PNG / WEBP • Maximum 25 MB
-                    </div>
-
-                    <div id="posterName" class="hint">
-                        No poster selected
-                    </div>
-                </div>
-            </div>
-
-            <div class="field">
-                <label>Video</label>
-
-                <div class="filebox">
-                    <input
-                        id="videoFile"
-                        type="file"
-                        accept=".mp4,.mkv,.webm,.mov,video/mp4,video/x-matroska,video/webm,video/quicktime"
-                    >
-
-                    <div class="hint">
-                        MP4 / MKV / WebM / MOV — Maximum 4 GB
-                    </div>
-
-                    <div id="videoName" class="hint">
-                        No video selected
-                    </div>
-                </div>
-            </div>
-
+        <div class="field">
+            <label>Description</label>
+            <textarea
+                id="movieDescription"
+                placeholder="Movie description"
+            ></textarea>
         </div>
 
     </div>
 
-    <div class="uploadbox">
+    <div>
 
-        <div class="upload-title">
-            ☁️ CLOUDFLARE R2
-        </div>
+        <div class="field">
+            <label>Poster</label>
 
-        <div id="uploadStatus">
-            Ready to upload
-        </div>
+            <div class="filebox">
+                <input
+                    id="posterFile"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                >
 
-        <div class="progress">
-            <i id="progressBar"></i>
-        </div>
+                <div class="hint">
+                    JPG / JPEG / PNG / WEBP • Maximum 25 MB
+                </div>
 
-        <div id="progressPercent" class="pct">
-            0%
-        </div>
-
-        <div class="metrics">
-
-            <div class="metric">
-                <span>Uploaded</span>
-                <b id="uploadedText">0 B / 0 B</b>
+                <div id="posterName" class="hint">
+                    No poster selected
+                </div>
             </div>
+        </div>
 
-            <div class="metric">
-                <span>Speed</span>
-                <b id="speedText">0 B/s</b>
+        <div class="field">
+            <label>Video</label>
+
+            <div class="filebox">
+                <input
+                    id="videoFile"
+                    type="file"
+                    accept=".mp4,.mkv,.webm,.mov,video/mp4,video/x-matroska,video/webm,video/quicktime"
+                >
+
+                <div class="hint">
+                    MP4 / MKV / WebM / MOV — Maximum 4 GB
+                </div>
+
+                <div id="videoName" class="hint">
+                    No video selected
+                </div>
             </div>
-
-            <div class="metric">
-                <span>Remaining</span>
-                <b id="remainingText">--</b>
-            </div>
-
-        </div>
-
-        <div class="chips">
-            <span class="chip">☁️ Direct R2</span>
-            <span class="chip">🚀 3 Parallel</span>
-            <span class="chip">🔁 Auto Retry</span>
-            <span class="chip">✖ Cancel Anytime</span>
-            <span class="chip">📦 10 MB Parts</span>
-        </div>
-
-        <div id="uploadMessage">
-            Video और poster select करके Publish दबाएँ.
-        </div>
-
-        <div class="actions">
-
-            <button
-                id="publishBtn"
-                class="tm-btn gold"
-                type="button"
-            >
-                🚀 Publish Movie
-            </button>
-
-            <button
-                id="cancelBtn"
-                class="tm-btn red"
-                type="button"
-                disabled
-            >
-                ✖ Cancel
-            </button>
-
         </div>
 
     </div>
 
 </div>
 
-<div class="panel">
+<div class="uploadbox">
 
-    <h2>📢 Ads Manager</h2>
-
-    <div class="sub">
-        Top / Player / Bottom ads
+    <div class="upload-title">
+        ☁️ CLOUDFLARE R2
     </div>
 
-    <form
-        method="post"
-        action="{{ url_for('admin_ads') }}"
-    >
+    <div id="uploadStatus">
+        Ready to upload
+    </div>
 
-        <div class="adgrid">
+    <div class="progress">
+        <i id="progressBar"></i>
+    </div>
 
-            <div class="field">
-                <label>Top Ad</label>
-                <textarea name="top_ad">{{ settings.get('top_ad','') }}</textarea>
-            </div>
+    <div id="progressPercent" class="pct">
+        0%
+    </div>
 
-            <div class="field">
-                <label>Player Ad</label>
-                <textarea name="player_ad">{{ settings.get('player_ad','') }}</textarea>
-            </div>
+    <div class="metrics">
 
-            <div class="field">
-                <label>Bottom Ad</label>
-                <textarea name="bottom_ad">{{ settings.get('bottom_ad','') }}</textarea>
-            </div>
-
+        <div class="metric">
+            <span>Uploaded</span>
+            <b id="uploadedText">0 B / 0 B</b>
         </div>
 
-        <button class="tm-btn gold" type="submit">
-            Save Ads
+        <div class="metric">
+            <span>Speed</span>
+            <b id="speedText">0 B/s</b>
+        </div>
+
+        <div class="metric">
+            <span>Remaining</span>
+            <b id="remainingText">--</b>
+        </div>
+
+    </div>
+
+    <div class="chips">
+        <span class="chip">☁️ Direct R2</span>
+        <span class="chip">🚀 3 Parallel</span>
+        <span class="chip">🔁 Auto Retry</span>
+        <span class="chip">✖ Cancel Anytime</span>
+        <span class="chip">📦 10 MB Parts</span>
+    </div>
+
+    <div id="uploadMessage">
+        Video और poster select करके Publish दबाएँ.
+    </div>
+
+    <div class="actions">
+
+        <button
+            id="publishBtn"
+            class="tm-btn gold"
+            type="button"
+        >
+            🚀 Publish Movie
         </button>
 
-    </form>
+        <button
+            id="cancelBtn"
+            class="tm-btn red"
+            type="button"
+            disabled
+        >
+            ✖ Cancel
+        </button>
+
+    </div>
+
+</div>
+```
 
 </div>
 
 <div class="panel">
 
-    <h2>🎞️ Movie Collection</h2>
+```
+<h2>📢 Ads Manager</h2>
 
-    <div class="sub">
-        Uploaded movies
+<div class="sub">
+    Top / Player / Bottom ads
+</div>
+
+<form
+    method="post"
+    action="{{ url_for('admin_ads') }}"
+>
+
+    <div class="adgrid">
+
+        <div class="field">
+            <label>Top Ad</label>
+            <textarea name="ad_top">{{ settings.get('ad_top','') }}</textarea>
+        </div>
+
+        <div class="field">
+            <label>Player Ad</label>
+            <textarea name="ad_player">{{ settings.get('ad_player','') }}</textarea>
+        </div>
+
+        <div class="field">
+            <label>Bottom Ad</label>
+            <textarea name="ad_bottom">{{ settings.get('ad_bottom','') }}</textarea>
+        </div>
+
     </div>
 
-    <div class="tablewrap">
+    <button class="tm-btn gold" type="submit">
+        Save Ads
+    </button>
 
-        <table class="movies">
+</form>
+```
 
-            <thead>
-                <tr>
-                    <th>Poster</th>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Views</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
+</div>
 
-            <tbody>
+<div class="panel">
 
-            {% for m in movies %}
+```
+<h2>🎞️ Movie Collection</h2>
 
-                <tr>
+<div class="sub">
+    Uploaded movies
+</div>
 
-                    <td>
+<div class="tablewrap">
 
-                        {% if m.poster %}
+    <table class="movies">
 
-                            <img
-                                class="poster-mini"
-                                src="{{ site_settings.get('r2_public_url','').rstrip('/') }}/{{ m.poster }}"
-                                alt="{{ m.title }}"
-                            >
+        <thead>
+            <tr>
+                <th>Poster</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Views</th>
+                <th>Action</th>
+            </tr>
+        </thead>
 
-                        {% else %}
+        <tbody>
 
-                            —
+        {% for m in movies %}
 
-                        {% endif %}
+            <tr>
 
-                    </td>
+                <td>
 
-                    <td>{{ m.title }}</td>
+                    {% if m.poster %}
 
-                    <td>{{ m.category }}</td>
-
-                    <td>{{ m.views }}</td>
-
-                    <td>
-
-                        <form
-                            method="post"
-                            action="{{ url_for('delete_movie', movie_id=m.id) }}"
-                            onsubmit="return confirm('Delete this movie?')"
+                        <img
+                            class="poster-mini"
+                            src="{{ site_settings.get('r2_public_url','').rstrip('/') }}/{{ m.poster }}"
+                            alt="{{ m.title }}"
                         >
 
-                            <button
-                                class="tm-btn red"
-                                type="submit"
-                            >
-                                Delete
-                            </button>
+                    {% else %}
 
-                        </form>
+                        —
 
-                    </td>
+                    {% endif %}
 
-                </tr>
+                </td>
 
-            {% else %}
+                <td>{{ m.title }}</td>
 
-                <tr>
-                    <td colspan="5">No movies yet.</td>
-                </tr>
+                <td>{{ m.category }}</td>
 
-            {% endfor %}
+                <td>{{ m.views }}</td>
 
-            </tbody>
+                <td>
 
-        </table>
+                    <form
+                        method="post"
+                        action="{{ url_for('delete_movie', movie_id=m.id) }}"
+                        onsubmit="return confirm('Delete this movie?')"
+                    >
 
-    </div>
+                        <button
+                            class="tm-btn red"
+                            type="submit"
+                        >
+                            Delete
+                        </button>
+
+                    </form>
+
+                </td>
+
+            </tr>
+
+        {% else %}
+
+            <tr>
+                <td colspan="5">No movies yet.</td>
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+```
 
 </div>
 
@@ -612,36 +624,20 @@
 
 "use strict";
 
-/* =========================================================
-   SETTINGS
-========================================================= */
-
 const PART_SIZE = 10 * 1024 * 1024;
 const PARALLEL_UPLOADS = 3;
 const MAX_RETRIES = 4;
 
-const MAX_VIDEO_SIZE =
-    4 * 1024 * 1024 * 1024;
-
-const MAX_POSTER_SIZE =
-    25 * 1024 * 1024;
-
-
-/* =========================================================
-   STATE
-========================================================= */
+const MAX_VIDEO_SIZE = 4 * 1024 * 1024 * 1024;
+const MAX_POSTER_SIZE = 25 * 1024 * 1024;
 
 let uploading = false;
 let cancelled = false;
-
 let currentMultipart = null;
 
 let activeXHRs = new Set();
-
 let completedObjects = [];
-
 let completedParts = {};
-
 let partProgress = {};
 
 let totalBytes = 0;
@@ -653,20 +649,11 @@ let lastSampleBytes = 0;
 
 let fatalError = null;
 
-
-/* =========================================================
-   DOM
-========================================================= */
-
 const $ = id => document.getElementById(id);
 
 const publishBtn = $("publishBtn");
 const cancelBtn = $("cancelBtn");
 
-
-/* =========================================================
-   FORMAT BYTES
-========================================================= */
 
 function formatBytes(bytes) {
 
@@ -677,7 +664,6 @@ function formatBytes(bytes) {
     }
 
     const units = ["KB","MB","GB","TB"];
-
     let index = -1;
 
     do {
@@ -696,15 +682,9 @@ function formatBytes(bytes) {
         digits = 1;
     }
 
-    return bytes.toFixed(digits)
-        + " "
-        + units[index];
+    return bytes.toFixed(digits) + " " + units[index];
 }
 
-
-/* =========================================================
-   FORMAT TIME
-========================================================= */
 
 function formatTime(seconds) {
 
@@ -717,14 +697,9 @@ function formatTime(seconds) {
 
     seconds = Math.ceil(seconds);
 
-    const hours =
-        Math.floor(seconds / 3600);
-
-    const minutes =
-        Math.floor((seconds % 3600) / 60);
-
-    const secs =
-        seconds % 60;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
 
     if (hours > 0) {
         return hours + "h " + minutes + "m";
@@ -738,17 +713,15 @@ function formatTime(seconds) {
 }
 
 
-/* =========================================================
-   UI
-========================================================= */
-
 function setStatus(text) {
     $("uploadStatus").textContent = text || "";
 }
 
+
 function setMessage(text) {
     $("uploadMessage").textContent = text || "";
 }
+
 
 function setBusy(value) {
 
@@ -758,10 +731,6 @@ function setBusy(value) {
     cancelBtn.disabled = !value;
 }
 
-
-/* =========================================================
-   RESET PROGRESS
-========================================================= */
 
 function resetProgress() {
 
@@ -778,20 +747,11 @@ function resetProgress() {
     $("progressBar").style.width = "0%";
     $("progressPercent").textContent = "0%";
 
-    $("uploadedText").textContent =
-        "0 B / 0 B";
-
-    $("speedText").textContent =
-        "0 B/s";
-
-    $("remainingText").textContent =
-        "--";
+    $("uploadedText").textContent = "0 B / 0 B";
+    $("speedText").textContent = "0 B/s";
+    $("remainingText").textContent = "--";
 }
 
-
-/* =========================================================
-   PROGRESS
-========================================================= */
 
 function updateOverallProgress() {
 
@@ -806,6 +766,7 @@ function updateOverallProgress() {
     let percent = 0;
 
     if (totalBytes > 0) {
+
         percent =
             Math.min(
                 100,
@@ -820,10 +781,9 @@ function updateOverallProgress() {
         Math.round(percent) + "%";
 
     $("uploadedText").textContent =
-        formatBytes(uploadedBytes)
-        + " / "
-        + formatBytes(totalBytes);
-
+        formatBytes(uploadedBytes) +
+        " / " +
+        formatBytes(totalBytes);
 
     const now = performance.now();
 
@@ -863,18 +823,10 @@ function updateOverallProgress() {
         }
     }
 
-
-    if (speed > 1024) {
-
-        $("speedText").textContent =
-            formatBytes(speed) + "/s";
-
-    } else {
-
-        $("speedText").textContent =
-            "0 B/s";
-    }
-
+    $("speedText").textContent =
+        speed > 1024
+            ? formatBytes(speed) + "/s"
+            : "0 B/s";
 
     if (
         speed > 1024 &&
@@ -884,32 +836,19 @@ function updateOverallProgress() {
         const remaining =
             (totalBytes - uploadedBytes) / speed;
 
-        if (
+        $("remainingText").textContent =
             Number.isFinite(remaining) &&
             remaining >= 0 &&
             remaining < 86400
-        ) {
-
-            $("remainingText").textContent =
-                formatTime(remaining);
-
-        } else {
-
-            $("remainingText").textContent =
-                "--";
-        }
+                ? formatTime(remaining)
+                : "--";
 
     } else {
 
-        $("remainingText").textContent =
-            "--";
+        $("remainingText").textContent = "--";
     }
 }
 
-
-/* =========================================================
-   JSON
-========================================================= */
 
 async function readJSON(response) {
 
@@ -940,15 +879,12 @@ async function postJSON(url, body) {
         await fetch(
             url,
             {
-                method:"POST",
-
-                credentials:"same-origin",
-
-                headers:{
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
                     "Content-Type":
                         "application/json"
                 },
-
                 body:
                     JSON.stringify(body)
             }
@@ -957,10 +893,6 @@ async function postJSON(url, body) {
     return readJSON(response);
 }
 
-
-/* =========================================================
-   FILE NAME UI
-========================================================= */
 
 $("videoFile").addEventListener(
     "change",
@@ -992,10 +924,6 @@ $("posterFile").addEventListener(
 );
 
 
-/* =========================================================
-   VALIDATE VIDEO
-========================================================= */
-
 function validateVideo(file) {
 
     if (!file) {
@@ -1006,6 +934,7 @@ function validateVideo(file) {
         file.size <= 0 ||
         file.size > MAX_VIDEO_SIZE
     ) {
+
         throw new Error(
             "Video maximum 4 GB होनी चाहिए."
         );
@@ -1032,10 +961,6 @@ function validateVideo(file) {
     }
 }
 
-
-/* =========================================================
-   VALIDATE POSTER
-========================================================= */
 
 function validatePoster(file) {
 
@@ -1075,10 +1000,6 @@ function validatePoster(file) {
 }
 
 
-/* =========================================================
-   R2 KEY
-========================================================= */
-
 function makeR2Key(file, kind) {
 
     const extension =
@@ -1089,12 +1010,10 @@ function makeR2Key(file, kind) {
 
     const random =
         crypto.randomUUID
-            ? crypto.randomUUID().replace(/-/g,"")
+            ? crypto.randomUUID().replace(/-/g, "")
             : (
                 Date.now().toString(16) +
-                Math.random()
-                    .toString(16)
-                    .slice(2)
+                Math.random().toString(16).slice(2)
             );
 
     const prefix =
@@ -1102,18 +1021,9 @@ function makeR2Key(file, kind) {
             ? "videos/"
             : "posters/";
 
-    return (
-        prefix +
-        random +
-        "." +
-        extension
-    );
+    return prefix + random + "." + extension;
 }
 
-
-/* =========================================================
-   CREATE MULTIPART
-========================================================= */
 
 async function createMultipart(file, kind) {
 
@@ -1131,16 +1041,18 @@ async function createMultipart(file, kind) {
     return postJSON(
         "/api/r2/multipart/create",
         {
-            key:key,
-            content_type:contentType
+            key: key,
+            content_type: contentType
         }
     );
 }
 
 
-/* =========================================================
-   GET PRESIGNED URLS
-========================================================= */
+/*
+=========================================================
+FIXED R2 PRESIGNED URL HANDLER
+=========================================================
+*/
 
 async function getPartURLs(
     multipart,
@@ -1149,7 +1061,7 @@ async function getPartURLs(
 
     const parts =
         Array.from(
-            {length:totalParts},
+            { length: totalParts },
             (_, index) => index + 1
         );
 
@@ -1170,35 +1082,135 @@ async function getPartURLs(
 
     const urlMap = {};
 
-    for (
-        const item
-        of (data.urls || [])
-    ) {
-
-        const number =
-            Number(item.part_number);
-
-        urlMap[number] =
-            item.url;
-    }
+    /*
+     * CURRENT app.py returns an OBJECT:
+     *
+     * {
+     *     "1": "https://...",
+     *     "2": "https://...",
+     *     "3": "https://..."
+     * }
+     *
+     * Older code expected an ARRAY.
+     *
+     * This function supports BOTH.
+     */
 
     if (
-        Object.keys(urlMap).length !==
-        totalParts
+        data.urls &&
+        !Array.isArray(data.urls) &&
+        typeof data.urls === "object"
     ) {
 
+        for (
+            const [partNumber, signedUrl]
+            of Object.entries(data.urls)
+        ) {
+
+            const number =
+                Number(partNumber);
+
+            if (
+                Number.isInteger(number) &&
+                number >= 1 &&
+                number <= totalParts &&
+                typeof signedUrl === "string" &&
+                signedUrl.trim()
+            ) {
+
+                urlMap[number] =
+                    signedUrl.trim();
+            }
+        }
+
+    } else if (
+        Array.isArray(data.urls)
+    ) {
+
+        for (
+            const item
+            of data.urls
+        ) {
+
+            if (!item) {
+                continue;
+            }
+
+            const number =
+                Number(
+                    item.part_number ??
+                    item.PartNumber ??
+                    item.part
+                );
+
+            const signedUrl =
+                item.url ??
+                item.signed_url ??
+                item.signedUrl;
+
+            if (
+                Number.isInteger(number) &&
+                number >= 1 &&
+                number <= totalParts &&
+                typeof signedUrl === "string" &&
+                signedUrl.trim()
+            ) {
+
+                urlMap[number] =
+                    signedUrl.trim();
+            }
+        }
+    }
+
+
+    /*
+     * Check EVERY requested part.
+     */
+
+    const missingParts = [];
+
+    for (
+        let partNumber = 1;
+        partNumber <= totalParts;
+        partNumber++
+    ) {
+
+        if (
+            !urlMap[partNumber]
+        ) {
+
+            missingParts.push(
+                partNumber
+            );
+        }
+    }
+
+
+    if (missingParts.length > 0) {
+
+        console.error(
+            "Missing R2 presigned URLs:",
+            missingParts
+        );
+
         throw new Error(
-            "R2 presigned part URLs incomplete हैं."
+            "R2 presigned part URLs incomplete हैं. Missing parts: " +
+            missingParts.join(", ")
         );
     }
+
+
+    console.log(
+        "R2 presigned URLs ready:",
+        Object.keys(urlMap).length +
+        "/" +
+        totalParts
+    );
+
 
     return urlMap;
 }
 
-
-/* =========================================================
-   ABORT MULTIPART
-========================================================= */
 
 async function abortMultipart(multipart) {
 
@@ -1223,10 +1235,6 @@ async function abortMultipart(multipart) {
 }
 
 
-/* =========================================================
-   DELETE R2 OBJECT
-========================================================= */
-
 async function deleteObject(key) {
 
     if (!key) {
@@ -1238,17 +1246,13 @@ async function deleteObject(key) {
         await postJSON(
             "/api/r2/object/delete",
             {
-                key:key
+                key: key
             }
         );
 
     } catch (_) {}
 }
 
-
-/* =========================================================
-   ABORT XHR
-========================================================= */
 
 function abortActiveXHRs() {
 
@@ -1264,10 +1268,6 @@ function abortActiveXHRs() {
 }
 
 
-/* =========================================================
-   SLEEP
-========================================================= */
-
 function sleep(ms) {
 
     return new Promise(
@@ -1275,10 +1275,6 @@ function sleep(ms) {
     );
 }
 
-
-/* =========================================================
-   UPLOAD ONE PART
-========================================================= */
 
 function uploadPart(
     file,
@@ -1297,10 +1293,10 @@ function uploadPart(
         );
 
     const blob =
-        file.slice(start,end);
+        file.slice(start, end);
 
     return new Promise(
-        (resolve,reject) => {
+        (resolve, reject) => {
 
             if (
                 cancelled ||
@@ -1486,10 +1482,6 @@ function uploadPart(
 }
 
 
-/* =========================================================
-   MULTIPART UPLOAD
-========================================================= */
-
 async function uploadMultipart(
     file,
     kind
@@ -1555,10 +1547,7 @@ async function uploadMultipart(
 
 
     speed = 0;
-
-    lastSampleAt =
-        performance.now();
-
+    lastSampleAt = performance.now();
     lastSampleBytes = 0;
 
     updateOverallProgress();
@@ -1718,7 +1707,9 @@ async function uploadMultipart(
     }
 
 
-    await Promise.allSettled(workers);
+    await Promise.allSettled(
+        workers
+    );
 
     abortActiveXHRs();
 
@@ -1752,7 +1743,7 @@ async function uploadMultipart(
     const finalParts =
         Object.values(completedParts)
             .sort(
-                (a,b) =>
+                (a, b) =>
                     a.PartNumber -
                     b.PartNumber
             );
@@ -1897,10 +1888,6 @@ async function uploadMultipart(
 }
 
 
-/* =========================================================
-   PUBLISH MOVIE
-========================================================= */
-
 async function publishMovie() {
 
     if (uploading) {
@@ -1935,6 +1922,7 @@ async function publishMovie() {
     try {
 
         if (!title) {
+
             throw new Error(
                 "Movie title डालें."
             );
@@ -1946,7 +1934,6 @@ async function publishMovie() {
 
         cancelled = false;
         fatalError = null;
-
         completedObjects = [];
 
         resetProgress();
@@ -1963,16 +1950,12 @@ async function publishMovie() {
         );
 
 
-        /* VIDEO */
-
         const videoResult =
             await uploadMultipart(
                 video,
                 "video"
             );
 
-
-        /* POSTER */
 
         let posterResult = null;
 
@@ -1995,8 +1978,6 @@ async function publishMovie() {
                 );
         }
 
-
-        /* DATABASE */
 
         setStatus(
             "Movie save हो रही है..."
@@ -2057,7 +2038,6 @@ async function publishMovie() {
             error
         );
 
-
         abortActiveXHRs();
 
 
@@ -2113,10 +2093,6 @@ async function publishMovie() {
 }
 
 
-/* =========================================================
-   CANCEL
-========================================================= */
-
 function cancelUpload() {
 
     if (!uploading) {
@@ -2137,10 +2113,6 @@ function cancelUpload() {
 }
 
 
-/* =========================================================
-   BUTTONS
-========================================================= */
-
 publishBtn.addEventListener(
     "click",
     publishMovie
@@ -2151,10 +2123,6 @@ cancelBtn.addEventListener(
     cancelUpload
 );
 
-
-/* =========================================================
-   PREVENT CLOSE
-========================================================= */
 
 window.addEventListener(
     "beforeunload",
@@ -2169,10 +2137,6 @@ window.addEventListener(
     }
 );
 
-
-/* =========================================================
-   INITIAL
-========================================================= */
 
 setBusy(false);
 resetProgress();
