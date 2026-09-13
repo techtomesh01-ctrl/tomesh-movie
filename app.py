@@ -36,7 +36,6 @@ app.secret_key = os.environ.get(
 )
 
 # Direct browser -> R2 upload के लिए
-# बड़ी files Flask/Render server से होकर नहीं जातीं।
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
 
@@ -83,10 +82,8 @@ def clean_filename(filename):
         return ""
 
     filename = str(filename).strip()
-
     filename = filename.replace("\\", "/")
     filename = filename.rsplit("/", 1)[-1]
-
     filename = filename.split("?", 1)[0]
     filename = filename.split("#", 1)[0]
 
@@ -98,10 +95,8 @@ def get_extension(filename):
         return ""
 
     filename = str(filename).strip()
-
     filename = filename.replace("\\", "/")
     filename = filename.rsplit("/", 1)[-1]
-
     filename = filename.split("?", 1)[0]
     filename = filename.split("#", 1)[0]
 
@@ -150,6 +145,7 @@ def video_mime_ok(content_type):
         "video/webm",
         "video/quicktime",
         "application/octet-stream",
+        "binary/octet-stream",
     }
 
 
@@ -160,21 +156,19 @@ def get_content_type(
     extension = get_extension(filename)
 
     content_types = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp",
 
-        ".mp4": "video/mp4",
-        ".mkv": "video/x-matroska",
-        ".webm": "video/webm",
-        ".mov": "video/quicktime",
+        "mp4": "video/mp4",
+        "mkv": "video/x-matroska",
+        "webm": "video/webm",
+        "mov": "video/quicktime",
     }
 
     if extension:
-        mime = content_types.get(
-            "." + extension
-        )
+        mime = content_types.get(extension)
 
         if mime:
             return mime
@@ -332,6 +326,7 @@ def get_r2_client():
         )
 
     if R2_ENDPOINT:
+
         endpoint_url = R2_ENDPOINT
 
     else:
@@ -445,6 +440,8 @@ PRESIGNED_EXPIRES = 3600
 
 MAX_MULTIPART_PARTS = 10000
 
+MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024
+
 
 # =========================================================
 # R2 KEY VALIDATION
@@ -474,7 +471,7 @@ def valid_r2_key(
 
 
 # =========================================================
-# CREATE MULTIPART UPLOAD
+# CREATE MULTIPART
 # =========================================================
 
 @app.route(
@@ -509,6 +506,32 @@ def create_multipart():
         )
     ).strip().lower()
 
+    file_size_raw = data.get(
+        "size",
+        0
+    )
+
+    try:
+        file_size = int(file_size_raw)
+    except Exception:
+        file_size = 0
+
+    if file_size <= 0:
+
+        return jsonify({
+            "ok": False,
+            "error": "File size missing."
+        }), 400
+
+    if file_size > MAX_FILE_SIZE:
+
+        return jsonify({
+            "ok": False,
+            "error": (
+                "File maximum 4 GB तक हो सकती है."
+            )
+        }), 400
+
     safe_name = clean_filename(
         original_filename
     )
@@ -542,10 +565,6 @@ def create_multipart():
             ALLOWED_VIDEOS
         )
 
-        # IMPORTANT:
-        # Video को extension से allow करेंगे।
-        # Browser MIME blank/unknown होने पर भी
-        # valid MP4/MKV/WebM/MOV reject नहीं होगा.
         if not extension_valid:
 
             mime_valid = video_mime_ok(
@@ -561,11 +580,6 @@ def create_multipart():
                         "WebM या MOV होनी चाहिए. "
                         "Filename: "
                         + safe_name
-                        + " | Type: "
-                        + (
-                            browser_content_type
-                            or "unknown"
-                        )
                     )
                 }), 400
 
@@ -593,14 +607,7 @@ def create_multipart():
                 "ok": False,
                 "error": (
                     "Poster केवल JPG, JPEG, "
-                    "PNG या WEBP होना चाहिए. "
-                    "Filename: "
-                    + safe_name
-                    + " | Type: "
-                    + (
-                        browser_content_type
-                        or "unknown"
-                    )
+                    "PNG या WEBP होना चाहिए."
                 )
             }), 400
 
@@ -658,8 +665,6 @@ def create_multipart():
 
     extension = extension.lower()
 
-    # Filename में unsafe/problematic characters
-    # होने की स्थिति में clean base रखें.
     base = secure_filename(base)
 
     if not base:
@@ -691,11 +696,11 @@ def create_multipart():
         upload_id = result["UploadId"]
 
         app.logger.info(
-            "R2 multipart created | kind=%s | filename=%s | key=%s | type=%s | upload_id=%s",
+            "R2 multipart created | kind=%s | filename=%s | size=%s | key=%s | upload_id=%s",
             kind,
             safe_name,
+            file_size,
             object_key,
-            content_type,
             upload_id
         )
 
@@ -778,10 +783,7 @@ def multipart_urls():
             "error": "Invalid R2 object key."
         }), 400
 
-    if not isinstance(
-        parts,
-        list
-    ):
+    if not isinstance(parts, list):
 
         return jsonify({
             "ok": False,
@@ -813,13 +815,10 @@ def multipart_urls():
         for raw_part_number in parts:
 
             try:
-
                 part_number = int(
                     raw_part_number
                 )
-
             except Exception:
-
                 raise ValueError(
                     "Invalid part number."
                 )
@@ -828,20 +827,16 @@ def multipart_urls():
                 part_number < 1
                 or part_number > MAX_MULTIPART_PARTS
             ):
-
                 raise ValueError(
                     "Invalid part number."
                 )
 
             if part_number in seen:
-
                 raise ValueError(
                     "Duplicate part number."
                 )
 
-            seen.add(
-                part_number
-            )
+            seen.add(part_number)
 
             url = client.generate_presigned_url(
                 "upload_part",
@@ -881,7 +876,12 @@ def multipart_urls():
 
 
 # =========================================================
-# COMPLETE MULTIPART UPLOAD
+# COMPLETE MULTIPART
+#
+# IMPORTANT:
+# Browser के ETag पर depend नहीं करेंगे.
+# R2 से server-side list_parts करके असली ETag लेंगे.
+# इससे browser CORS/ETag समस्या खत्म होती है.
 # =========================================================
 
 @app.route(
@@ -909,164 +909,200 @@ def complete_multipart():
         )
     ).strip()
 
-    parts = data.get(
-        "parts",
-        []
-    )
-
-    # Browser से भेजी गई original file size
     expected_size_raw = data.get(
         "expected_size"
     )
 
     try:
-
         expected_size = int(
             expected_size_raw
         )
-
     except Exception:
-
         expected_size = 0
 
-    if not upload_id:
-
-        return jsonify({
-            "ok": False,
-            "error": "Upload ID missing."
-        }), 400
-
-    if not valid_r2_key(
-        object_key,
-        (
-            "videos/",
-            "posters/"
-        )
-    ):
-
-        return jsonify({
-            "ok": False,
-            "error": "Invalid R2 object key."
-        }), 400
-
-    if not isinstance(
-        parts,
-        list
-    ):
-
-        return jsonify({
-            "ok": False,
-            "error": "Parts invalid."
-        }), 400
-
-    if not parts:
-
-        return jsonify({
-            "ok": False,
-            "error": "No uploaded parts."
-        }), 400
-
-    if len(parts) > MAX_MULTIPART_PARTS:
-
-        return jsonify({
-            "ok": False,
-            "error": "Too many parts."
-        }), 400
-
-    if expected_size <= 0:
-
-        return jsonify({
-            "ok": False,
-            "error": "Original file size missing."
-        }), 400
+    client = None
 
     try:
 
+        if not upload_id:
+
+            return jsonify({
+                "ok": False,
+                "error": "Upload ID missing."
+            }), 400
+
+        if not valid_r2_key(
+            object_key,
+            (
+                "videos/",
+                "posters/"
+            )
+        ):
+
+            return jsonify({
+                "ok": False,
+                "error": "Invalid R2 object key."
+            }), 400
+
+        if expected_size <= 0:
+
+            return jsonify({
+                "ok": False,
+                "error": "Original file size missing."
+            }), 400
+
+        client = get_r2_client()
+
+
+        # =================================================
+        # GET ACTUAL PARTS FROM R2
+        # =================================================
+
+        r2_parts = []
+
+        part_marker = None
+
+        while True:
+
+            params = {
+                "Bucket": R2_BUCKET,
+                "Key": object_key,
+                "UploadId": upload_id,
+                "MaxParts": 1000
+            }
+
+            if part_marker:
+                params["PartNumberMarker"] = part_marker
+
+            response = client.list_parts(
+                **params
+            )
+
+            current_parts = response.get(
+                "Parts",
+                []
+            )
+
+            r2_parts.extend(
+                current_parts
+            )
+
+            if not response.get(
+                "IsTruncated",
+                False
+            ):
+                break
+
+            next_marker = response.get(
+                "NextPartNumberMarker"
+            )
+
+            if not next_marker:
+                break
+
+            part_marker = next_marker
+
+            if len(r2_parts) > MAX_MULTIPART_PARTS:
+                raise ValueError(
+                    "Too many uploaded parts."
+                )
+
+
+        # =================================================
+        # CHECK PARTS
+        # =================================================
+
+        if not r2_parts:
+
+            raise ValueError(
+                "R2 में कोई uploaded part नहीं मिला."
+            )
+
+        r2_parts.sort(
+            key=lambda item:
+                int(item["PartNumber"])
+        )
+
+        actual_part_numbers = [
+            int(item["PartNumber"])
+            for item in r2_parts
+        ]
+
+        expected_part_numbers = list(
+            range(
+                1,
+                len(r2_parts) + 1
+            )
+        )
+
+        if actual_part_numbers != expected_part_numbers:
+
+            raise ValueError(
+                "Multipart parts incomplete हैं. "
+                "R2 में मिले parts: "
+                + str(actual_part_numbers)
+            )
+
+
+        # =================================================
+        # CHECK UPLOADED SIZE
+        # =================================================
+
+        uploaded_parts_size = sum(
+            int(
+                item.get(
+                    "Size",
+                    0
+                )
+                or 0
+            )
+            for item in r2_parts
+        )
+
+        if uploaded_parts_size != expected_size:
+
+            app.logger.error(
+                "R2 multipart part-size mismatch | key=%s | expected=%s | parts_size=%s",
+                object_key,
+                expected_size,
+                uploaded_parts_size
+            )
+
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "Upload पूरा नहीं हुआ. "
+                    "Expected "
+                    + str(expected_size)
+                    + " bytes, लेकिन parts में "
+                    + str(uploaded_parts_size)
+                    + " bytes मिले."
+                ),
+                "expected_size": expected_size,
+                "uploaded_parts_size": uploaded_parts_size
+            }), 400
+
+
+        # =================================================
+        # BUILD REAL R2 PART LIST
+        # =================================================
+
         clean_parts = []
 
-        seen = set()
+        for item in r2_parts:
 
-        for part in parts:
-
-            if not isinstance(
-                part,
-                dict
-            ):
-
-                raise ValueError(
-                    "Invalid part data."
-                )
-
-            raw_part_number = part.get(
-                "PartNumber",
-                part.get(
-                    "part_number"
-                )
-            )
-
-            raw_etag = part.get(
-                "ETag",
-                part.get(
-                    "etag",
-                    ""
-                )
-            )
-
-            try:
-
-                part_number = int(
-                    raw_part_number
-                )
-
-            except Exception:
-
-                raise ValueError(
-                    "Invalid part number."
-                )
-
-            if (
-                part_number < 1
-                or part_number > MAX_MULTIPART_PARTS
-            ):
-
-                raise ValueError(
-                    "Invalid part number."
-                )
-
-            if part_number in seen:
-
-                raise ValueError(
-                    "Duplicate part number."
-                )
-
-            seen.add(
-                part_number
+            part_number = int(
+                item["PartNumber"]
             )
 
             etag = str(
-                raw_etag
+                item["ETag"]
             ).strip()
 
             if not etag:
 
                 raise ValueError(
-                    "ETag missing for part "
-                    + str(part_number)
-                )
-
-            if (
-                etag.startswith('"')
-                and etag.endswith('"')
-            ):
-
-                etag = etag[1:-1]
-
-            etag = etag.strip()
-
-            if not etag:
-
-                raise ValueError(
-                    "Invalid ETag for part "
+                    "R2 ETag missing for part "
                     + str(part_number)
                 )
 
@@ -1075,35 +1111,6 @@ def complete_multipart():
                 "ETag": etag
             })
 
-        clean_parts.sort(
-            key=lambda x:
-                x["PartNumber"]
-        )
-
-        # Parts 1 से शुरू होकर continuous होने चाहिए.
-        expected_part_numbers = list(
-            range(
-                1,
-                len(clean_parts) + 1
-            )
-        )
-
-        actual_part_numbers = [
-            item["PartNumber"]
-            for item in clean_parts
-        ]
-
-        if actual_part_numbers != expected_part_numbers:
-
-            raise ValueError(
-                "Multipart parts incomplete हैं. "
-                "Expected: "
-                + str(expected_part_numbers[-1])
-                + " parts, received part numbers: "
-                + str(actual_part_numbers)
-            )
-
-        client = get_r2_client()
 
         # =================================================
         # COMPLETE ON R2
@@ -1118,9 +1125,9 @@ def complete_multipart():
             }
         )
 
+
         # =================================================
-        # IMPORTANT:
-        # R2 में final object verify करें.
+        # FINAL OBJECT VERIFY
         # =================================================
 
         head = client.head_object(
@@ -1145,7 +1152,7 @@ def complete_multipart():
         if actual_size != expected_size:
 
             app.logger.error(
-                "R2 size mismatch | key=%s | expected=%s | actual=%s",
+                "R2 final size mismatch | key=%s | expected=%s | actual=%s",
                 object_key,
                 expected_size,
                 actual_size
@@ -1165,8 +1172,9 @@ def complete_multipart():
                 "actual_size": actual_size
             }), 400
 
+
         app.logger.info(
-            "R2 multipart complete VERIFIED | key=%s | size=%s | parts=%s",
+            "R2 multipart COMPLETE VERIFIED | key=%s | size=%s | parts=%s",
             object_key,
             actual_size,
             len(clean_parts)
@@ -1279,6 +1287,72 @@ def abort_multipart():
     return jsonify({
         "ok": True
     })
+
+
+# =========================================================
+# DELETE R2 OBJECT
+#
+# Upload हो गया लेकिन बाद में movie save fail हो जाए,
+# तो frontend orphan file delete कर सके.
+# =========================================================
+
+@app.route(
+    "/api/r2/object/delete",
+    methods=["POST"]
+)
+@admin_required
+def delete_r2_object():
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    object_key = str(
+        data.get(
+            "key",
+            ""
+        )
+    ).strip()
+
+    if not valid_r2_key(
+        object_key,
+        (
+            "videos/",
+            "posters/"
+        )
+    ):
+
+        return jsonify({
+            "ok": False,
+            "error": "Invalid R2 object key."
+        }), 400
+
+    try:
+
+        r2_delete(
+            object_key
+        )
+
+        app.logger.info(
+            "R2 object deleted | key=%s",
+            object_key
+        )
+
+        return jsonify({
+            "ok": True
+        })
+
+    except Exception as e:
+
+        app.logger.exception(
+            "R2 object delete failed: %s",
+            e
+        )
+
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
 
 
 # =========================================================
@@ -1943,19 +2017,15 @@ def save_movie():
         )
     ).strip()
 
-    # Optional frontend size verification
     expected_video_size_raw = data.get(
         "video_size"
     )
 
     try:
-
         expected_video_size = int(
             expected_video_size_raw
         )
-
     except Exception:
-
         expected_video_size = 0
 
     if not title:
@@ -2339,11 +2409,9 @@ def delete_movie(movie_id):
         if video_name:
 
             try:
-
                 r2_delete(
                     video_name
                 )
-
             except Exception as e:
 
                 app.logger.exception(
@@ -2354,11 +2422,9 @@ def delete_movie(movie_id):
         if poster_name:
 
             try:
-
                 r2_delete(
                     poster_name
                 )
-
             except Exception as e:
 
                 app.logger.exception(
@@ -2440,7 +2506,7 @@ def too_large(error):
 @app.errorhandler(500)
 def internal_error(error):
 
-    app.logger.exception(
+    app.logger.error(
         "Internal server error: %s",
         error
     )
