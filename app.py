@@ -35,7 +35,7 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
-# Direct browser -> R2 upload होने के कारण
+# Direct browser -> R2 upload के कारण
 # बड़ी video Flask/Render server से होकर नहीं जाती।
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
@@ -74,23 +74,111 @@ ALLOWED_VIDEOS = {
 }
 
 
-def ext_ok(filename, allowed):
+# =========================================================
+# FILE HELPERS
+# =========================================================
+
+def clean_filename(filename):
+    """
+    Filename को safely साफ करता है।
+    Path/query जैसी चीजों को extension check से पहले हटाता है।
+    """
+
     if not filename:
-        return False
+        return ""
+
+    filename = str(filename).strip()
+
+    # Windows / URL path हटाना
+    filename = filename.replace("\\", "/")
+    filename = filename.rsplit("/", 1)[-1]
+
+    # Query/hash हटाना
+    filename = filename.split("?", 1)[0]
+    filename = filename.split("#", 1)[0]
+
+    return secure_filename(filename)
+
+
+def get_extension(filename):
+    """
+    Filename की अंतिम extension लौटाता है।
+    """
+
+    if not filename:
+        return ""
+
+    filename = str(filename).strip()
+
+    filename = filename.replace("\\", "/")
+    filename = filename.rsplit("/", 1)[-1]
+
+    filename = filename.split("?", 1)[0]
+    filename = filename.split("#", 1)[0]
 
     if "." not in filename:
+        return ""
+
+    return filename.rsplit(".", 1)[1].lower()
+
+
+def ext_ok(filename, allowed):
+    extension = get_extension(filename)
+
+    return (
+        bool(extension)
+        and extension in allowed
+    )
+
+
+def poster_mime_ok(content_type):
+    """
+    Browser के MIME type से poster पहचानने की
+    अतिरिक्त सुविधा।
+    """
+
+    if not content_type:
         return False
 
-    extension = filename.rsplit(".", 1)[1].lower()
+    content_type = str(
+        content_type
+    ).split(";", 1)[0].strip().lower()
 
-    return extension in allowed
+    return content_type in {
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+    }
+
+
+def video_mime_ok(content_type):
+    """
+    Browser MIME type से video पहचानने की
+    अतिरिक्त सुविधा।
+    """
+
+    if not content_type:
+        return False
+
+    content_type = str(
+        content_type
+    ).split(";", 1)[0].strip().lower()
+
+    return content_type in {
+        "video/mp4",
+        "video/x-matroska",
+        "video/webm",
+        "video/quicktime",
+    }
 
 
 def get_content_type(
     filename,
     default="application/octet-stream"
 ):
-    extension = os.path.splitext(filename)[1].lower()
+
+    extension = get_extension(filename)
 
     content_types = {
         ".jpg": "image/jpeg",
@@ -104,10 +192,16 @@ def get_content_type(
         ".mov": "video/quicktime",
     }
 
-    return content_types.get(
-        extension,
-        default
-    )
+    # extension में dot नहीं है, इसलिए fallback lookup
+    if extension:
+        mime = content_types.get(
+            "." + extension
+        )
+
+        if mime:
+            return mime
+
+    return default
 
 
 # =========================================================
@@ -122,6 +216,7 @@ def admin_required(function):
         if not session.get("admin"):
 
             if request.path.startswith("/api/"):
+
                 return jsonify({
                     "ok": False,
                     "error": (
@@ -363,13 +458,10 @@ def r2_delete(object_key):
 # DIRECT R2 MULTIPART SETTINGS
 # =========================================================
 
-# 10 MB per part
 PART_SIZE = 10 * 1024 * 1024
 
-# Frontend एक समय में 3 parts upload कर सकता है
 PARALLEL_PARTS = 3
 
-# Presigned URL 1 hour valid
 PRESIGNED_EXPIRES = 3600
 
 
@@ -384,6 +476,10 @@ def valid_r2_key(
 
     if not object_key:
         return False
+
+    object_key = str(
+        object_key
+    ).strip()
 
     if len(object_key) > 1024:
         return False
@@ -411,7 +507,7 @@ def create_multipart():
         silent=True
     ) or {}
 
-    filename = str(
+    original_filename = str(
         data.get(
             "filename",
             ""
@@ -430,32 +526,29 @@ def create_multipart():
             "content_type",
             ""
         )
-    ).strip()
+    ).strip().lower()
+
+    safe_name = clean_filename(
+        original_filename
+    )
 
     if kind not in (
         "video",
         "poster"
     ):
+
         return jsonify({
             "ok": False,
             "error": "Invalid upload type."
         }), 400
 
-    if not filename:
-        return jsonify({
-            "ok": False,
-            "error": "Filename missing."
-        }), 400
-
-    safe_name = secure_filename(
-        filename
-    )
-
     if not safe_name:
+
         return jsonify({
             "ok": False,
             "error": "Invalid filename."
         }), 400
+
 
     # =====================================================
     # VIDEO
@@ -463,18 +556,37 @@ def create_multipart():
 
     if kind == "video":
 
-        if not ext_ok(
+        extension_valid = ext_ok(
             safe_name,
             ALLOWED_VIDEOS
-        ):
-            return jsonify({
-                "ok": False,
-                "error": (
-                    "Video केवल MP4, MKV, WebM या MOV होनी चाहिए."
-                )
-            }), 400
+        )
+
+        mime_valid = video_mime_ok(
+            browser_content_type
+        )
+
+        if not extension_valid:
+
+            # MIME भी valid नहीं है तो reject
+            if not mime_valid:
+
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Video केवल MP4, MKV, "
+                        "WebM या MOV होनी चाहिए. "
+                        "Filename: "
+                        + safe_name
+                        + " | Type: "
+                        + (
+                            browser_content_type
+                            or "unknown"
+                        )
+                    )
+                }), 400
 
         prefix = "videos/"
+
 
     # =====================================================
     # POSTER
@@ -482,24 +594,89 @@ def create_multipart():
 
     else:
 
-        if not ext_ok(
+        extension_valid = ext_ok(
             safe_name,
             ALLOWED_POSTERS
-        ):
+        )
+
+        mime_valid = poster_mime_ok(
+            browser_content_type
+        )
+
+        # JPG/JPEG/PNG/WEBP extension valid हो
+        # तो browser MIME पर निर्भर नहीं करेंगे।
+        #
+        # अगर extension गलत/unknown है लेकिन
+        # browser ने valid image MIME दिया है,
+        # तब भी upload allow करेंगे और filename
+        # को appropriate extension देंगे।
+
+        if not extension_valid and not mime_valid:
+
             return jsonify({
                 "ok": False,
                 "error": (
-                    "Poster केवल JPG, JPEG, PNG या WEBP होना चाहिए."
+                    "Poster केवल JPG, JPEG, "
+                    "PNG या WEBP होना चाहिए. "
+                    "Filename: "
+                    + safe_name
+                    + " | Type: "
+                    + (
+                        browser_content_type
+                        or "unknown"
+                    )
                 )
             }), 400
 
         prefix = "posters/"
+
+        # MIME valid लेकिन extension खराब है
+        # तो सही extension लगाएँ।
+        if not extension_valid:
+
+            mime_extension = {
+                "image/jpeg": ".jpg",
+                "image/jpg": ".jpg",
+                "image/png": ".png",
+                "image/webp": ".webp",
+            }.get(
+                browser_content_type,
+                ""
+            )
+
+            if not mime_extension:
+
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Poster format पहचान नहीं पाया."
+                    )
+                }), 400
+
+            base_name = os.path.splitext(
+                safe_name
+            )[0]
+
+            safe_name = (
+                base_name
+                + mime_extension
+            )
+
+
+    # =====================================================
+    # CONTENT TYPE
+    # =====================================================
 
     content_type = get_content_type(
         safe_name,
         browser_content_type
         or "application/octet-stream"
     )
+
+
+    # =====================================================
+    # OBJECT KEY
+    # =====================================================
 
     base, extension = os.path.splitext(
         safe_name
@@ -515,6 +692,11 @@ def create_multipart():
         + extension
     )
 
+
+    # =====================================================
+    # R2 CREATE
+    # =====================================================
+
     try:
 
         client = get_r2_client()
@@ -526,6 +708,14 @@ def create_multipart():
         )
 
         upload_id = result["UploadId"]
+
+        app.logger.info(
+            "R2 multipart created | kind=%s | filename=%s | key=%s | type=%s",
+            kind,
+            safe_name,
+            object_key,
+            content_type
+        )
 
         return jsonify({
             "ok": True,
@@ -587,6 +777,7 @@ def multipart_urls():
     )
 
     if not upload_id:
+
         return jsonify({
             "ok": False,
             "error": "Upload ID missing."
@@ -599,6 +790,7 @@ def multipart_urls():
             "posters/"
         )
     ):
+
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
@@ -608,18 +800,21 @@ def multipart_urls():
         parts,
         list
     ):
+
         return jsonify({
             "ok": False,
             "error": "Parts invalid."
         }), 400
 
     if not parts:
+
         return jsonify({
             "ok": False,
             "error": "Parts missing."
         }), 400
 
     if len(parts) > 10000:
+
         return jsonify({
             "ok": False,
             "error": "Too many parts."
@@ -651,11 +846,13 @@ def multipart_urls():
                 part_number < 1
                 or part_number > 10000
             ):
+
                 raise ValueError(
                     "Invalid part number."
                 )
 
             if part_number in seen:
+
                 raise ValueError(
                     "Duplicate part number."
                 )
@@ -736,6 +933,7 @@ def complete_multipart():
     )
 
     if not upload_id:
+
         return jsonify({
             "ok": False,
             "error": "Upload ID missing."
@@ -748,6 +946,7 @@ def complete_multipart():
             "posters/"
         )
     ):
+
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
@@ -757,18 +956,21 @@ def complete_multipart():
         parts,
         list
     ):
+
         return jsonify({
             "ok": False,
             "error": "Parts invalid."
         }), 400
 
     if not parts:
+
         return jsonify({
             "ok": False,
             "error": "No uploaded parts."
         }), 400
 
     if len(parts) > 10000:
+
         return jsonify({
             "ok": False,
             "error": "Too many parts."
@@ -786,6 +988,7 @@ def complete_multipart():
                 part,
                 dict
             ):
+
                 raise ValueError(
                     "Invalid part data."
                 )
@@ -821,11 +1024,13 @@ def complete_multipart():
                 part_number < 1
                 or part_number > 10000
             ):
+
                 raise ValueError(
                     "Invalid part number."
                 )
 
             if part_number in seen:
+
                 raise ValueError(
                     "Duplicate part number."
                 )
@@ -839,6 +1044,7 @@ def complete_multipart():
             ).strip()
 
             if not etag:
+
                 raise ValueError(
                     "ETag missing for part "
                     + str(part_number)
@@ -848,6 +1054,7 @@ def complete_multipart():
                 etag.startswith('"')
                 and etag.endswith('"')
             ):
+
                 etag = etag[1:-1]
 
             clean_parts.append({
@@ -871,11 +1078,16 @@ def complete_multipart():
             }
         )
 
-        # R2 object वास्तव में बन गया या नहीं
-        # उसका verification
-        client.head_object(
+        # R2 object verification
+        head = client.head_object(
             Bucket=R2_BUCKET,
             Key=object_key
+        )
+
+        app.logger.info(
+            "R2 multipart complete | key=%s | size=%s",
+            object_key,
+            head.get("ContentLength")
         )
 
         return jsonify({
@@ -885,6 +1097,10 @@ def complete_multipart():
                 object_key
             ),
             "message": "R2 upload complete.",
+            "size": head.get(
+                "ContentLength",
+                0
+            ),
             "result": {
                 "location": result.get(
                     "Location",
@@ -939,6 +1155,7 @@ def abort_multipart():
     ).strip()
 
     if not upload_id or not object_key:
+
         return jsonify({
             "ok": True
         })
@@ -950,6 +1167,7 @@ def abort_multipart():
             "posters/"
         )
     ):
+
         return jsonify({
             "ok": False,
             "error": "Invalid R2 object key."
@@ -1665,6 +1883,21 @@ def save_movie():
             "error": "Invalid video R2 key."
         }), 400
 
+    # Video key extension check
+    video_extension = get_extension(
+        video_key
+    )
+
+    if video_extension not in ALLOWED_VIDEOS:
+
+        return jsonify({
+            "ok": False,
+            "error": (
+                "Video R2 key में valid extension नहीं है. "
+                "Allowed: MP4, MKV, WebM, MOV."
+            )
+        }), 400
+
     if (
         poster_key
         and
@@ -1681,6 +1914,24 @@ def save_movie():
             "error": "Invalid poster R2 key."
         }), 400
 
+    # Poster extension check
+    if poster_key:
+
+        poster_extension = get_extension(
+            poster_key
+        )
+
+        if poster_extension not in ALLOWED_POSTERS:
+
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "Poster R2 key में valid extension नहीं है. "
+                    "Allowed: JPG, JPEG, PNG, WEBP."
+                )
+            }), 400
+
+
     # =====================================================
     # VERIFY R2 OBJECTS
     # =====================================================
@@ -1689,10 +1940,22 @@ def save_movie():
 
         client = get_r2_client()
 
-        client.head_object(
+        video_head = client.head_object(
             Bucket=R2_BUCKET,
             Key=video_key
         )
+
+        if not video_head.get(
+            "ContentLength",
+            0
+        ):
+
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "R2 video object खाली है."
+                )
+            }), 400
 
         if poster_key:
 
@@ -1715,6 +1978,7 @@ def save_movie():
                 + str(e)
             )
         }), 400
+
 
     # =====================================================
     # DATABASE SAVE
@@ -1757,6 +2021,14 @@ def save_movie():
         ).fetchone()
 
         con.commit()
+
+        app.logger.info(
+            "Movie published | id=%s | title=%s | video=%s | poster=%s",
+            row["id"],
+            title,
+            video_key,
+            poster_key
+        )
 
         return jsonify({
             "ok": True,
