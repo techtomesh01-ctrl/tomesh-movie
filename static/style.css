@@ -1887,3 +1887,609 @@ img{
         transition-duration:.01ms!important;
     }
 }
+```css
+/* =========================================================
+   TOMESH MOVIES — CINEMATIC PREMIUM ANIMATIONS
+   Paste at the very bottom of style.css
+========================================================= */
+
+/* PAGE CONTENT ENTRY */
+.tm-main{
+    animation:tmPageIn .8s ease both;
+}
+
+@keyframes tmPageIn{
+    from{
+        opacity:0;
+        transform:translateY(12px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+
+/* HERO CINEMATIC LIGHT */
+.tm-hero{
+    animation:tmHeroIn 1s cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes tmHeroIn{
+    from{
+        opacity:0;
+        transform:scale(.97) translateY(18px);
+    }
+    to{
+        opacity:1;
+        transform:scale(1) translateY(0);
+    }
+}
+
+
+/* HERO LIGHT SWEEP */
+.tm-hero::before{
+    content:"";
+    position:absolute;
+    z-index:3;
+    top:-30%;
+    left:-80%;
+    width:45%;
+    height:160%;
+    pointer-events:none;
+    background:linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,.09),
+        transparent
+    );
+    transform:skewX(-18deg);
+    animation:tmHeroSweep 6s ease-in-out infinite;
+}
+
+@keyframes tmHeroSweep{
+    0%,45%{
+        left:-80%;
+    }
+    65%,100%{
+        left:140%;
+    }
+}
+
+
+/* HERO TEXT REVEAL */
+.tm-hero-badge{
+    animation:tmReveal .7s .15s both;
+}
+
+.tm-hero-eyebrow{
+    animation:tmReveal .7s .25s both;
+}
+
+.tm-hero h1{
+    animation:tmTitle .9s .35s both;
+}
+
+.tm-hero-tagline{
+    animation:tmReveal .7s .5s both;
+}
+
+.tm-hero-content p{
+    animation:tmReveal .7s .6s both;
+}
+
+.tm-hero-buttons{
+    animation:tmReveal .7s .7s both;
+}
+
+.tm-hero-meta{
+    animation:tmReveal .7s .8s both;
+}
+
+@keyframes tmReveal{
+    from{
+        opacity:0;
+        transform:translateY(18px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+@keyframes tmTitle{
+    from{
+        opacity:0;
+        transform:translateY(25px) scale(.96);
+        letter-spacing:8px;
+    }
+    to{
+        opacity:1;
+        transform:translateY(0) scale(1);
+        letter-spacing:-4px;
+    }
+}
+
+
+/* HERO PLAY ORB */
+.tm-play-orb{
+    animation:
+        tmOrbFloat 4s ease-in-out infinite,
+        tmOrbGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes tmOrbFloat{
+    0%,100%{
+        transform:translateY(0);
+    }
+    50%{
+        transform:translateY(-13px);
+    }
+}
+
+@keyframes tmOrbGlow{
+    0%,100%{
+        box-shadow:
+            0 0 0 10px rgba(245,196,81,.07),
+            0 15px 40px rgba(245,196,81,.16);
+    }
+    50%{
+        box-shadow:
+            0 0 0 22px rgba(245,196,81,.025),
+            0 18px 55px rgba(245,196,81,.30);
+    }
+}
+
+
+/* HERO REEL */
+.tm-reel{
+    animation:tmReelSpin 20s linear infinite;
+}
+
+@keyframes tmReelSpin{
+    from{
+        transform:translate(-50%,-50%) rotate(0deg);
+    }
+    to{
+        transform:translate(-50%,-50%) rotate(360deg);
+    }
+}
+
+
+/* POPCORN FLOAT */
+.tm-popcorn{
+    animation:tmPopcorn 3.5s ease-in-out infinite;
+}
+
+@keyframes tmPopcorn{
+    0%,100%{
+        transform:translateY(0) rotate(-2deg);
+    }
+    50%{
+        transform:translateY(-15px) rotate(5deg);
+    }
+}
+
+
+/* CLAPPER FLOAT */
+.tm-clapper{
+    animation:tmClapper 5s ease-in-out infinite;
+}
+
+@keyframes tmClapper{
+    0%,100%{
+        transform:rotate(-8deg) translateY(0);
+    }
+    50%{
+        transform:rotate(-5deg) translateY(-8px);
+    }
+}
+
+
+/* ART GLOW PULSE */
+.tm-art-glow{
+    animation:tmGlow 4s ease-in-out infinite;
+}
+
+@keyframes tmGlow{
+    0%,100%{
+        opacity:.55;
+        transform:translate(-50%,-50%) scale(.9);
+    }
+    50%{
+        opacity:1;
+        transform:translate(-50%,-50%) scale(1.15);
+    }
+}
+
+
+/* BENEFIT CARDS */
+.tm-benefit{
+    animation:tmCardUp .7s ease both;
+}
+
+.tm-benefit:nth-child(1){animation-delay:.05s}
+.tm-benefit:nth-child(2){animation-delay:.12s}
+.tm-benefit:nth-child(3){animation-delay:.19s}
+.tm-benefit:nth-child(4){animation-delay:.26s}
+
+@keyframes tmCardUp{
+    from{
+        opacity:0;
+        transform:translateY(20px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+
+/* GENRE CARD HOVER */
+.tm-genre{
+    overflow:hidden;
+}
+
+.tm-genre::before{
+    content:"";
+    position:absolute;
+    top:0;
+    left:-120%;
+    width:70%;
+    height:100%;
+    transform:skewX(-20deg);
+    background:linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,.07),
+        transparent
+    );
+    transition:.6s;
+}
+
+.tm-genre:hover::before{
+    left:140%;
+}
+
+
+/* MOVIE CARD ENTRY */
+.tm-movie-card{
+    animation:tmMovieIn .65s ease both;
+}
+
+.tm-movie-card:nth-child(1){animation-delay:.05s}
+.tm-movie-card:nth-child(2){animation-delay:.10s}
+.tm-movie-card:nth-child(3){animation-delay:.15s}
+.tm-movie-card:nth-child(4){animation-delay:.20s}
+.tm-movie-card:nth-child(5){animation-delay:.25s}
+.tm-movie-card:nth-child(6){animation-delay:.30s}
+.tm-movie-card:nth-child(7){animation-delay:.35s}
+.tm-movie-card:nth-child(8){animation-delay:.40s}
+.tm-movie-card:nth-child(9){animation-delay:.45s}
+.tm-movie-card:nth-child(10){animation-delay:.50s}
+
+@keyframes tmMovieIn{
+    from{
+        opacity:0;
+        transform:translateY(25px) scale(.97);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0) scale(1);
+    }
+}
+
+
+/* MOVIE POSTER SHINE */
+.tm-poster::after{
+    content:"";
+    position:absolute;
+    z-index:4;
+    top:-100%;
+    left:-70%;
+    width:45%;
+    height:300%;
+    pointer-events:none;
+    background:linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,.16),
+        transparent
+    );
+    transform:rotate(18deg);
+    transition:.7s;
+}
+
+.tm-movie-card:hover .tm-poster::after{
+    left:135%;
+}
+
+
+/* PLAY BUTTON PULSE */
+.tm-card-play{
+    animation:tmPlayPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes tmPlayPulse{
+    0%,100%{
+        box-shadow:
+            0 0 0 8px rgba(245,196,81,.08);
+    }
+    50%{
+        box-shadow:
+            0 0 0 15px rgba(245,196,81,.025);
+    }
+}
+
+
+/* WATCH BUTTON ARROW EFFECT */
+.tm-watch-btn{
+    position:relative;
+    overflow:hidden;
+}
+
+.tm-watch-btn::before{
+    content:"";
+    position:absolute;
+    top:0;
+    left:-100%;
+    width:60%;
+    height:100%;
+    background:linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,.12),
+        transparent
+    );
+    transform:skewX(-20deg);
+    transition:.5s;
+}
+
+.tm-watch-btn:hover::before{
+    left:140%;
+}
+
+
+/* TRENDING CARDS */
+.tm-trending-card{
+    animation:tmTrendIn .7s ease both;
+}
+
+.tm-trending-card:nth-child(1){animation-delay:.1s}
+.tm-trending-card:nth-child(2){animation-delay:.2s}
+.tm-trending-card:nth-child(3){animation-delay:.3s}
+
+@keyframes tmTrendIn{
+    from{
+        opacity:0;
+        transform:translateX(-20px);
+    }
+    to{
+        opacity:1;
+        transform:translateX(0);
+    }
+}
+
+
+/* TRENDING NUMBER */
+.tm-trend-number{
+    transition:.35s;
+}
+
+.tm-trending-card:hover .tm-trend-number{
+    color:rgba(255,255,255,.16);
+    transform:scale(1.12);
+}
+
+
+/* TRENDING ARROW */
+.tm-trending-card>b{
+    transition:.3s;
+}
+
+.tm-trending-card:hover>b{
+    color:var(--gold);
+    transform:translateX(7px);
+}
+
+
+/* FEATURED SECTION */
+.tm-featured{
+    animation:tmFeaturedIn .8s ease both;
+}
+
+@keyframes tmFeaturedIn{
+    from{
+        opacity:0;
+        transform:scale(.97);
+    }
+    to{
+        opacity:1;
+        transform:scale(1);
+    }
+}
+
+
+/* FEATURED PLAY */
+.tm-featured-play{
+    animation:tmFeaturedPulse 2s ease-in-out infinite;
+}
+
+@keyframes tmFeaturedPulse{
+    0%,100%{
+        transform:scale(1);
+    }
+    50%{
+        transform:scale(1.08);
+    }
+}
+
+
+/* SHOW BOX */
+.tm-shows-box{
+    transition:.35s;
+}
+
+.tm-shows-box:hover{
+    transform:translateY(-5px);
+    border-color:rgba(139,92,246,.25);
+    box-shadow:0 20px 50px rgba(0,0,0,.35);
+}
+
+.tm-show-icon{
+    animation:tmTvFloat 3s ease-in-out infinite;
+}
+
+@keyframes tmTvFloat{
+    0%,100%{
+        transform:translateY(0);
+    }
+    50%{
+        transform:translateY(-6px);
+    }
+}
+
+
+/* SECTION HEADINGS */
+.tm-section-heading{
+    animation:tmHeadingIn .7s ease both;
+}
+
+@keyframes tmHeadingIn{
+    from{
+        opacity:0;
+        transform:translateY(12px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+
+/* LIVE DOT */
+.tm-live i{
+    animation:tmLiveDot 1.4s ease-in-out infinite;
+}
+
+@keyframes tmLiveDot{
+    0%,100%{
+        opacity:1;
+        transform:scale(1);
+    }
+    50%{
+        opacity:.45;
+        transform:scale(.7);
+    }
+}
+
+
+/* GOLD BUTTON SHINE */
+.tm-btn-gold{
+    position:relative;
+    overflow:hidden;
+}
+
+.tm-btn-gold::after{
+    content:"";
+    position:absolute;
+    top:0;
+    left:-100%;
+    width:45%;
+    height:100%;
+    transform:skewX(-20deg);
+    background:linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,.55),
+        transparent
+    );
+    animation:tmButtonShine 4s ease-in-out infinite;
+}
+
+@keyframes tmButtonShine{
+    0%,55%{
+        left:-100%;
+    }
+    75%,100%{
+        left:150%;
+    }
+}
+
+
+/* FOOTER FADE */
+.tm-footer{
+    animation:tmFooterIn 1s ease both;
+}
+
+@keyframes tmFooterIn{
+    from{
+        opacity:0;
+    }
+    to{
+        opacity:1;
+    }
+}
+
+
+/* SIDEBAR LINK EFFECT */
+.tm-nav-link::after{
+    content:"";
+    position:absolute;
+    left:0;
+    top:50%;
+    width:0;
+    height:2px;
+    border-radius:5px;
+    background:var(--gold);
+    transition:.3s;
+}
+
+.tm-nav-link:hover::after{
+    width:3px;
+}
+
+
+/* SEARCH GLOW */
+.tm-search{
+    animation:tmSearchGlow 5s ease-in-out infinite;
+}
+
+@keyframes tmSearchGlow{
+    0%,100%{
+        box-shadow:0 0 0 rgba(245,196,81,0);
+    }
+    50%{
+        box-shadow:0 0 25px rgba(139,92,246,.035);
+    }
+}
+
+
+/* MOBILE SAFE ANIMATION */
+@media(max-width:750px){
+
+    .tm-hero::before{
+        animation-duration:8s;
+    }
+
+    .tm-reel{
+        animation-duration:25s;
+    }
+
+    .tm-movie-card{
+        animation-delay:0s !important;
+    }
+}
+
+
+/* REDUCED MOTION */
+@media(prefers-reduced-motion:reduce){
+
+    *,
+    *::before,
+    *::after{
+        animation:none !important;
+        transition:none !important;
+    }
+}
+```
