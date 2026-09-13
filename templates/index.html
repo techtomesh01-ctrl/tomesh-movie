@@ -144,11 +144,13 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
     <header class="tm-topbar">
 
         <div class="tm-top-welcome">
+
             <span>WELCOME BACK</span>
 
             <strong>
                 Your cinematic world starts here.
             </strong>
+
         </div>
 
 
@@ -178,14 +180,11 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
         <div class="tm-top-actions">
 
             <div class="tm-top-admin">
-
                 <span class="tm-top-admin-icon">♛</span>
-
                 <div>
                     <small>PREMIUM</small>
                     <strong>TOMESH</strong>
                 </div>
-
             </div>
 
         </div>
@@ -206,331 +205,167 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
 
     <!-- =================================================
-         DYNAMIC CINEMATIC HERO
+         CINEMATIC HERO
     ================================================== -->
-    {% if movies %}
+    <section class="tm-hero" id="home">
 
-        {% set hero_movie = movies[0] %}
+        <div class="tm-hero-bg"></div>
 
-        <section class="tm-hero tm-dynamic-hero" id="home">
+        <div class="tm-hero-glow-one"></div>
+        <div class="tm-hero-glow-two"></div>
 
-            <!-- Dynamic Movie Background -->
-            <div
-                class="tm-hero-bg tm-dynamic-hero-bg"
-                style="
-                    background-image:
-                    linear-gradient(
-                        90deg,
-                        rgba(5,5,7,.98) 0%,
-                        rgba(5,5,7,.88) 35%,
-                        rgba(5,5,7,.50) 65%,
-                        rgba(5,5,7,.82) 100%
-                    ),
-                    linear-gradient(
-                        0deg,
-                        rgba(5,5,7,.96) 0%,
-                        rgba(5,5,7,.10) 60%,
-                        rgba(5,5,7,.65) 100%
-                    ),
-                    url('{{ url_for("poster", name=hero_movie.poster) }}');
-                "
-            ></div>
+        <div class="tm-hero-grid"></div>
 
-            <div class="tm-hero-glow-one"></div>
-            <div class="tm-hero-glow-two"></div>
-            <div class="tm-hero-grid"></div>
+        <div class="tm-hero-content">
 
-            <div class="tm-cinema-light"></div>
+            <div class="tm-hero-badge">
+                <span class="tm-live-dot"></span>
+                TOMESH ORIGINAL EXPERIENCE
+            </div>
 
+            <div class="tm-hero-eyebrow">
+                YOUR CINEMATIC WORLD
+            </div>
 
-            <!-- =========================================
-                 HERO CONTENT
-            ========================================== -->
-            <div class="tm-hero-content tm-dynamic-content">
+            <h1>
+                TOMESH
+                <span>MOVIES</span>
+            </h1>
 
-                <div class="tm-hero-badge">
+            <div class="tm-hero-tagline">
+                हर कहानी, एक नया अनुभव
+            </div>
 
-                    <span class="tm-live-dot"></span>
-
-                    LATEST RELEASE
-
-                </div>
+            <p>
+                अपनी और licensed movies के लिए
+                एक premium movie portal।
+                अपनी पसंद की stories खोजें,
+                explore करें और cinematic experience का मज़ा लें।
+            </p>
 
 
-                <div class="tm-hero-eyebrow">
-                    NOW STREAMING ON TOMESH
-                </div>
+            <div class="tm-hero-buttons">
 
+                <a href="#movies" class="tm-btn tm-btn-gold">
+                    <span>▶</span>
+                    Watch Movies
+                </a>
 
-                <h1 class="tm-dynamic-title">
-
-                    {{ hero_movie.title }}
-
-                </h1>
-
-
-                <div class="tm-dynamic-info">
-
-                    <span class="tm-dynamic-category">
-                        {{ hero_movie.category or 'Movie' }}
-                    </span>
-
-                    <span>•</span>
-
-                    <span>HD</span>
-
-                    <span>•</span>
-
-                    <span>
-                        👁 {{ hero_movie.views or 0 }} views
-                    </span>
-
-                </div>
-
-
-                <div class="tm-hero-tagline">
-                    हर कहानी, एक नया अनुभव
-                </div>
-
-
-                <p>
-                    अपनी पसंद की कहानी खोजें और
-                    Tomesh Movies के cinematic experience
-                    का आनंद लें।
-                </p>
-
-
-                <div class="tm-hero-buttons">
-
-                    <a
-                        href="{{ url_for('movie_page', movie_id=hero_movie.id) }}"
-                        class="tm-btn tm-btn-gold"
-                    >
-                        <span>▶</span>
-                        Watch Now
-                    </a>
-
-                    <a
-                        href="#movies"
-                        class="tm-btn tm-btn-outline"
-                    >
-                        <span>✦</span>
-                        Explore Movies
-                    </a>
-
-                </div>
-
-
-                <div class="tm-hero-meta">
-
-                    <div>
-                        <strong>{{ movies|length }}</strong>
-                        <span>Movies</span>
-                    </div>
-
-                    <i></i>
-
-                    <div>
-                        <strong>HD</strong>
-                        <span>Quality</span>
-                    </div>
-
-                    <i></i>
-
-                    <div>
-                        <strong>24/7</strong>
-                        <span>Entertainment</span>
-                    </div>
-
-                </div>
+                <a href="#categories" class="tm-btn tm-btn-outline">
+                    <span>✦</span>
+                    Explore Genres
+                </a>
 
             </div>
 
 
-            <!-- =========================================
-                 HERO POSTER
-            ========================================== -->
-            <div class="tm-dynamic-poster-wrap">
+            <div class="tm-hero-meta">
 
-                <div class="tm-dynamic-poster-glow"></div>
-
-                <div class="tm-dynamic-poster">
-
-                    <img
-                        src="{{ url_for('poster', name=hero_movie.poster) }}"
-                        alt="{{ hero_movie.title }}"
-                    >
-
-                    <div class="tm-dynamic-poster-shine"></div>
-
-                    <a
-                        href="{{ url_for('movie_page', movie_id=hero_movie.id) }}"
-                        class="tm-dynamic-play"
-                        aria-label="Watch {{ hero_movie.title }}"
-                    >
-                        ▶
-                    </a>
-
+                <div>
+                    <strong>{{ movies|length }}</strong>
+                    <span>Movies</span>
                 </div>
 
-                <div class="tm-poster-label">
-                    <span>FEATURED</span>
-                    <strong>{{ hero_movie.title }}</strong>
+                <i></i>
+
+                <div>
+                    <strong>HD</strong>
+                    <span>Quality</span>
+                </div>
+
+                <i></i>
+
+                <div>
+                    <strong>24/7</strong>
+                    <span>Entertainment</span>
                 </div>
 
             </div>
 
+        </div>
 
-            <!-- Cinematic Decoration -->
-            <div class="tm-hero-art tm-hero-decoration">
-
-                <div class="tm-art-glow"></div>
-
-                <div class="tm-hero-ring ring-one"></div>
-                <div class="tm-hero-ring ring-two"></div>
-
-                <div class="tm-film film-one">
-                    🎞
-                </div>
-
-                <div class="tm-film film-two">
-                    🎬
-                </div>
-
-                <div class="tm-hero-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-
-            </div>
-
-        </section>
-
-    {% else %}
 
         <!-- =============================================
-             FALLBACK HERO — NO MOVIES
+             HERO ART
         ============================================== -->
-        <section class="tm-hero" id="home">
+        <div class="tm-hero-art">
 
-            <div class="tm-hero-bg"></div>
+            <div class="tm-art-glow"></div>
 
-            <div class="tm-hero-glow-one"></div>
-            <div class="tm-hero-glow-two"></div>
-            <div class="tm-hero-grid"></div>
+            <div class="tm-hero-ring ring-one"></div>
+            <div class="tm-hero-ring ring-two"></div>
+            <div class="tm-hero-ring ring-three"></div>
 
-            <div class="tm-hero-content">
 
-                <div class="tm-hero-badge">
-                    <span class="tm-live-dot"></span>
-                    TOMESH ORIGINAL EXPERIENCE
+            <!-- Film Reel -->
+            <div class="tm-reel">
+
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+
+                <span>▶</span>
+
+            </div>
+
+
+            <!-- Popcorn -->
+            <div class="tm-popcorn">
+                🍿
+            </div>
+
+
+            <!-- Clapper -->
+            <div class="tm-clapper">
+
+                <div class="clapper-top">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
 
-                <div class="tm-hero-eyebrow">
-                    YOUR CINEMATIC WORLD
-                </div>
-
-                <h1>
+                <div class="clapper-body">
                     TOMESH
-                    <span>MOVIES</span>
-                </h1>
-
-                <div class="tm-hero-tagline">
-                    हर कहानी, एक नया अनुभव
-                </div>
-
-                <p>
-                    अपनी और licensed movies के लिए
-                    एक premium movie portal।
-                </p>
-
-                <div class="tm-hero-buttons">
-
-                    <a href="#movies" class="tm-btn tm-btn-gold">
-                        <span>▶</span>
-                        Explore Movies
-                    </a>
-
-                    <a href="#categories" class="tm-btn tm-btn-outline">
-                        <span>✦</span>
-                        Explore Genres
-                    </a>
-
                 </div>
 
             </div>
 
 
-            <div class="tm-hero-art">
+            <!-- Play Orb -->
+            <div class="tm-play-orb">
 
-                <div class="tm-art-glow"></div>
-
-                <div class="tm-hero-ring ring-one"></div>
-                <div class="tm-hero-ring ring-two"></div>
-                <div class="tm-hero-ring ring-three"></div>
-
-                <div class="tm-reel">
-
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-
-                    <span>▶</span>
-
-                </div>
-
-                <div class="tm-popcorn">
-                    🍿
-                </div>
-
-                <div class="tm-clapper">
-
-                    <div class="clapper-top">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-
-                    <div class="clapper-body">
-                        TOMESH
-                    </div>
-
-                </div>
-
-                <div class="tm-play-orb">
-                    <div class="tm-play-inner">
-                        ▶
-                    </div>
-                </div>
-
-                <div class="tm-film film-one">
-                    🎞
-                </div>
-
-                <div class="tm-film film-two">
-                    🎬
-                </div>
-
-                <div class="tm-hero-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                <div class="tm-play-inner">
+                    ▶
                 </div>
 
             </div>
 
-        </section>
 
-    {% endif %}
+            <!-- Floating Film -->
+            <div class="tm-film film-one">
+                🎞
+            </div>
+
+            <div class="tm-film film-two">
+                🎬
+            </div>
+
+
+            <div class="tm-hero-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+        </div>
+
+    </section>
 
 
     <!-- =================================================
@@ -596,7 +431,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
         <div class="tm-section-heading">
 
             <div>
-
                 <span class="tm-kicker">
                     EXPLORE
                 </span>
@@ -604,7 +438,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                 <h2>
                     Browse by Genre
                 </h2>
-
             </div>
 
             <span class="tm-count">
@@ -709,10 +542,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                         src="{{ url_for('poster', name=m.poster) }}"
                         alt="{{ m.title }}"
                         loading="lazy"
-                        onerror="
-                            this.style.display='none';
-                            this.nextElementSibling.style.display='flex';
-                        "
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
                     >
 
                     <div class="tm-poster-fallback">
@@ -932,7 +762,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
 
     <!-- =================================================
-         COMING SOON
+         TV SHOWS / COMING SOON
     ================================================== -->
     <section class="tm-section">
 
@@ -1052,7 +882,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 </div>
 
 <!-- =========================================================
-     DYNAMIC HERO + MOBILE MENU
+     MOBILE MENU SCRIPT
 ========================================================== -->
 
 <script>
@@ -1062,11 +892,6 @@ document.addEventListener("DOMContentLoaded", function(){
     const menuBtn = document.getElementById("tmMenuBtn");
     const sidebar = document.getElementById("tmSidebar");
     const overlay = document.getElementById("tmSidebarOverlay");
-
-
-    /* ================================================
-       MOBILE MENU
-    ================================================= */
 
     if(menuBtn && sidebar && overlay){
 
@@ -1100,10 +925,7 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
 
-    /* ================================================
-       SMOOTH SCROLL
-    ================================================= */
-
+    /* Smooth anchor scrolling */
     document.querySelectorAll('a[href^="#"]').forEach(function(link){
 
         link.addEventListener("click", function(e){
@@ -1132,78 +954,24 @@ document.addEventListener("DOMContentLoaded", function(){
     });
 
 
-    /* ================================================
-       DYNAMIC HERO MOUSE EFFECT
-    ================================================= */
+    /* Subtle mouse movement on desktop hero */
+    const hero = document.querySelector(".tm-hero");
+    const heroArt = document.querySelector(".tm-hero-art");
 
-    const hero = document.querySelector(".tm-dynamic-hero");
-    const poster = document.querySelector(".tm-dynamic-poster");
-
-    if(hero && poster && window.innerWidth > 1000){
+    if(hero && heroArt && window.innerWidth > 1000){
 
         hero.addEventListener("mousemove", function(e){
 
             const rect = hero.getBoundingClientRect();
 
-            const x =
-                (e.clientX - rect.left) /
-                rect.width - 0.5;
+            const x = (e.clientX - rect.left) / rect.width - 0.5;
+            const y = (e.clientY - rect.top) / rect.height - 0.5;
 
-            const y =
-                (e.clientY - rect.top) /
-                rect.height - 0.5;
-
-
-            poster.style.transform =
-                "perspective(1000px) " +
-                "rotateY(" + (x * -7) + "deg) " +
-                "rotateX(" + (y * 5) + "deg) " +
-                "translateY(-5px)";
-
-        });
-
-
-        hero.addEventListener("mouseleave", function(){
-
-            poster.style.transform =
-                "perspective(1000px) " +
-                "rotateY(0deg) " +
-                "rotateX(0deg) " +
-                "translateY(0)";
-
-        });
-
-    }
-
-
-    /* ================================================
-       HERO BACKGROUND PARALLAX
-    ================================================= */
-
-    const heroBg =
-        document.querySelector(".tm-dynamic-hero-bg");
-
-
-    if(hero && heroBg && window.innerWidth > 1000){
-
-        hero.addEventListener("mousemove", function(e){
-
-            const rect = hero.getBoundingClientRect();
-
-            const x =
-                (e.clientX - rect.left) /
-                rect.width - 0.5;
-
-            const y =
-                (e.clientY - rect.top) /
-                rect.height - 0.5;
-
-
-            heroBg.style.transform =
-                "scale(1.06) translate(" +
-                (x * -10) +
+            heroArt.style.transform =
+                "translate(" +
+                (x * 12) +
                 "px, " +
-                (y * -6) +
+                (y * 8) +
                 "px)";
 
         });
@@ -1211,8 +979,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
         hero.addEventListener("mouseleave", function(){
 
-            heroBg.style.transform =
-                "scale(1.03)";
+            heroArt.style.transform = "";
 
         });
 
