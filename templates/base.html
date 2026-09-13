@@ -14,327 +14,931 @@
           href="{{ url_for('static', filename='style.css') }}">
 
     <style>
+
         /* =====================================================
-           TOMESH MOVIES - PREMIUM OPENING ANIMATION
+           TOMESH MOVIES
+           ULTRA PREMIUM CINEMATIC INTRO
         ===================================================== */
 
         #tm-intro {
             position: fixed;
             inset: 0;
-            z-index: 999999;
+            z-index: 9999999;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
             background:
-                radial-gradient(circle at 50% 45%,
-                    rgba(130, 60, 255, .20),
-                    transparent 28%),
-                radial-gradient(circle at 20% 80%,
-                    rgba(255, 0, 80, .12),
-                    transparent 30%),
-                #050505;
-            animation: tmIntroOut .9s ease 2.7s forwards;
+                radial-gradient(
+                    circle at 50% 50%,
+                    rgba(128, 40, 255, .20),
+                    transparent 22%
+                ),
+                radial-gradient(
+                    circle at 20% 80%,
+                    rgba(255, 0, 80, .13),
+                    transparent 30%
+                ),
+                radial-gradient(
+                    circle at 85% 15%,
+                    rgba(255, 193, 7, .10),
+                    transparent 28%
+                ),
+                #020203;
+
+            animation:
+                tmIntroExit 1.1s cubic-bezier(.77,0,.18,1)
+                3.35s forwards;
+        }
+
+
+        /* =====================================================
+           CINEMATIC VIGNETTE
+        ===================================================== */
+
+        #tm-intro .tm-vignette {
+            position: absolute;
+            inset: 0;
             pointer-events: none;
+
+            background:
+                radial-gradient(
+                    ellipse at center,
+                    transparent 25%,
+                    rgba(0,0,0,.25) 55%,
+                    rgba(0,0,0,.92) 100%
+                );
         }
 
-        #tm-intro::before {
-            content: "";
+
+        /* =====================================================
+           BIG GLOW
+        ===================================================== */
+
+        #tm-intro .tm-big-glow {
             position: absolute;
-            width: 520px;
-            height: 520px;
+
+            width: 420px;
+            height: 420px;
+
             border-radius: 50%;
-            border: 1px solid rgba(255, 193, 7, .20);
+
+            background:
+                radial-gradient(
+                    circle,
+                    rgba(156,77,255,.28),
+                    rgba(255,193,7,.07) 38%,
+                    transparent 70%
+                );
+
+            filter: blur(25px);
+
+            animation:
+                tmBigGlow 2.8s ease-in-out infinite;
+        }
+
+
+        /* =====================================================
+           OUTER RINGS
+        ===================================================== */
+
+        #tm-intro .tm-ring {
+            position: absolute;
+
+            width: 430px;
+            height: 430px;
+
+            border-radius: 50%;
+
+            border: 1px solid rgba(255,193,7,.20);
+
             box-shadow:
-                0 0 50px rgba(255, 193, 7, .10),
-                inset 0 0 50px rgba(150, 50, 255, .08);
-            animation: tmRing 2.4s ease-in-out infinite;
+                0 0 35px rgba(255,193,7,.08),
+                inset 0 0 40px rgba(145,55,255,.08);
+
+            animation:
+                tmRingPulse 2.5s ease-in-out infinite;
         }
 
-        #tm-intro::after {
-            content: "";
-            position: absolute;
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-            background: rgba(139, 60, 255, .18);
-            filter: blur(65px);
-            animation: tmGlow 1.8s ease-in-out infinite alternate;
+        #tm-intro .tm-ring.r2 {
+            width: 580px;
+            height: 580px;
+
+            border-color:
+                rgba(156,77,255,.10);
+
+            animation-delay: .35s;
         }
+
+        #tm-intro .tm-ring.r3 {
+            width: 760px;
+            height: 760px;
+
+            border-color:
+                rgba(255,255,255,.045);
+
+            animation-delay: .7s;
+        }
+
+
+        /* =====================================================
+           LOGO CONTENT
+        ===================================================== */
 
         .tm-intro-content {
             position: relative;
-            z-index: 3;
+            z-index: 20;
+
             text-align: center;
-            animation: tmLogoIn 1.2s cubic-bezier(.2,.8,.2,1);
+
+            transform: translateY(20px) scale(.82);
+
+            opacity: 0;
+
+            animation:
+                tmContentIn
+                1.25s
+                cubic-bezier(.16,1,.3,1)
+                .15s
+                forwards;
         }
 
+
+        /* =====================================================
+           FILM ICON
+        ===================================================== */
+
         .tm-film-icon {
-            width: 72px;
-            height: 72px;
-            margin: 0 auto 18px;
-            border: 2px solid rgba(255, 193, 7, .9);
-            border-radius: 18px;
+            position: relative;
+
+            width: 82px;
+            height: 82px;
+
+            margin: 0 auto 25px;
+
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 34px;
-            color: #ffc107;
-            background: rgba(255,255,255,.035);
+
+            border-radius: 22px;
+
+            border: 1px solid
+                rgba(255,193,7,.65);
+
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(255,255,255,.09),
+                    rgba(255,255,255,.025)
+                );
+
             box-shadow:
-                0 0 20px rgba(255,193,7,.25),
-                0 0 70px rgba(126,50,255,.15);
-            animation: tmIconFloat 2s ease-in-out infinite;
+                0 0 25px rgba(255,193,7,.18),
+                0 0 80px rgba(125,50,255,.20),
+                inset 0 0 25px rgba(255,255,255,.035);
+
+            font-size: 38px;
+
+            animation:
+                tmIconAppear
+                1.2s
+                cubic-bezier(.16,1,.3,1)
+                .25s
+                both;
         }
+
+        .tm-film-icon::before {
+            content: "";
+
+            position: absolute;
+            inset: -8px;
+
+            border-radius: 28px;
+
+            border: 1px solid
+                rgba(156,77,255,.20);
+
+            animation:
+                tmIconRing
+                2s
+                ease-in-out
+                infinite;
+        }
+
+
+        /* =====================================================
+           MAIN LOGO
+        ===================================================== */
 
         .tm-intro-title {
+            position: relative;
+
             margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: clamp(36px, 8vw, 76px);
-            font-weight: 900;
-            letter-spacing: 5px;
-            line-height: 1;
-            color: #fff;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            font-size:
+                clamp(40px, 9vw, 92px);
+
+            line-height: .95;
+
+            font-weight: 1000;
+
+            letter-spacing:
+                clamp(3px, .7vw, 9px);
+
             text-transform: uppercase;
+
+            color: #fff;
+
+            transform: scaleX(1.02);
+
             text-shadow:
-                0 0 10px rgba(255,255,255,.25),
-                0 0 30px rgba(255,193,7,.20);
+                0 0 8px rgba(255,255,255,.25),
+                0 0 25px rgba(255,193,7,.15),
+                0 0 65px rgba(156,77,255,.16);
+
+            animation:
+                tmLogoGlow
+                2.5s
+                ease-in-out
+                1.1s
+                infinite alternate;
         }
+
 
         .tm-intro-title span {
+            position: relative;
+
             color: #ffc107;
+
+            background:
+                linear-gradient(
+                    110deg,
+                    #ffc107 0%,
+                    #fff0a3 35%,
+                    #ffc107 55%,
+                    #9c4dff 100%
+                );
+
+            background-size: 220% auto;
+
+            -webkit-background-clip: text;
+            background-clip: text;
+
+            -webkit-text-fill-color: transparent;
+
+            animation:
+                tmGoldMove
+                2.8s
+                linear
+                infinite;
         }
+
+
+        /* =====================================================
+           SHINE OVER LOGO
+        ===================================================== */
+
+        .tm-intro-title::after {
+            content: "";
+
+            position: absolute;
+
+            top: -30%;
+            left: -20%;
+
+            width: 15%;
+            height: 160%;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(255,255,255,.75),
+                    transparent
+                );
+
+            filter: blur(4px);
+
+            transform:
+                skewX(-20deg)
+                translateX(-600%);
+
+            animation:
+                tmLogoShine
+                2.8s
+                ease-in-out
+                1.25s
+                infinite;
+        }
+
+
+        /* =====================================================
+           TAGLINE
+        ===================================================== */
 
         .tm-intro-subtitle {
-            margin-top: 16px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            letter-spacing: 5px;
-            text-transform: uppercase;
-            color: rgba(255,255,255,.62);
-            animation: tmSubIn 1.5s ease .35s both;
+            margin-top: 22px;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            font-size:
+                clamp(9px, 1.2vw, 13px);
+
+            letter-spacing:
+                clamp(3px, .55vw, 7px);
+
+            color:
+                rgba(255,255,255,.62);
+
+            text-transform:
+                uppercase;
+
+            opacity: 0;
+
+            animation:
+                tmSubtitleIn
+                .9s
+                ease
+                .95s
+                forwards;
         }
+
+
+        /* =====================================================
+           GOLD LINE
+        ===================================================== */
 
         .tm-intro-line {
+            position: relative;
+
             width: 0;
             height: 2px;
-            margin: 23px auto 0;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                #ffc107,
-                #9c4dff,
-                transparent
-            );
-            animation: tmLine 1.4s ease .5s forwards;
+
+            margin:
+                25px auto 0;
+
+            border-radius: 20px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    #ffc107 20%,
+                    #fff 50%,
+                    #9c4dff 80%,
+                    transparent
+                );
+
+            box-shadow:
+                0 0 15px rgba(255,193,7,.45);
+
+            animation:
+                tmLineGrow
+                1.25s
+                cubic-bezier(.16,1,.3,1)
+                1.05s
+                forwards;
         }
 
-        /* cinematic moving light */
-        .tm-light {
-            position: absolute;
-            width: 2px;
-            height: 180px;
-            background: linear-gradient(
-                transparent,
-                rgba(255,193,7,.7),
-                transparent
-            );
-            transform: rotate(35deg);
-            filter: blur(1px);
+
+        /* =====================================================
+           LOADING BAR
+        ===================================================== */
+
+        .tm-loading {
+            width: 220px;
+
+            margin:
+                18px auto 0;
+
             opacity: 0;
+
+            animation:
+                tmSubtitleIn
+                .7s
+                ease
+                1.35s
+                forwards;
         }
 
-        .tm-light.one {
-            left: 15%;
-            animation: tmLight 2.5s linear .2s infinite;
+        .tm-loading-track {
+            width: 100%;
+            height: 2px;
+
+            overflow: hidden;
+
+            border-radius: 20px;
+
+            background:
+                rgba(255,255,255,.08);
         }
 
-        .tm-light.two {
-            right: 20%;
-            animation: tmLight 3s linear 1s infinite;
+        .tm-loading-fill {
+            width: 0;
+            height: 100%;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    #9c4dff,
+                    #ffc107,
+                    #fff
+                );
+
+            box-shadow:
+                0 0 12px rgba(255,193,7,.5);
+
+            animation:
+                tmLoading
+                2s
+                cubic-bezier(.16,1,.3,1)
+                1.45s
+                forwards;
         }
 
-        /* particles */
+        .tm-loading-text {
+            margin-top: 9px;
+
+            font-size: 8px;
+
+            letter-spacing: 3px;
+
+            color:
+                rgba(255,255,255,.35);
+
+            text-transform: uppercase;
+        }
+
+
+        /* =====================================================
+           CINEMATIC LIGHT BEAMS
+        ===================================================== */
+
+        .tm-beam {
+            position: absolute;
+
+            width: 2px;
+            height: 150vh;
+
+            opacity: 0;
+
+            background:
+                linear-gradient(
+                    transparent,
+                    rgba(255,193,7,.5),
+                    rgba(156,77,255,.25),
+                    transparent
+                );
+
+            filter: blur(2px);
+
+            transform:
+                rotate(28deg)
+                translateY(100vh);
+        }
+
+        .tm-beam.b1 {
+            left: 8%;
+
+            animation:
+                tmBeamMove
+                3.5s
+                linear
+                .2s
+                infinite;
+        }
+
+        .tm-beam.b2 {
+            left: 72%;
+
+            animation:
+                tmBeamMove
+                4s
+                linear
+                .9s
+                infinite;
+        }
+
+        .tm-beam.b3 {
+            left: 92%;
+
+            animation:
+                tmBeamMove
+                3.2s
+                linear
+                1.5s
+                infinite;
+        }
+
+
+        /* =====================================================
+           PARTICLES
+        ===================================================== */
+
         .tm-particle {
             position: absolute;
+
             width: 3px;
             height: 3px;
+
             border-radius: 50%;
+
             background: #ffc107;
+
+            box-shadow:
+                0 0 12px #ffc107;
+
             opacity: 0;
-            box-shadow: 0 0 10px #ffc107;
         }
 
         .tm-p1 {
-            left: 15%;
+            left: 12%;
             top: 30%;
-            animation: tmParticle 2.8s ease-in-out infinite;
+            animation: tmParticle 3s ease-in-out infinite;
         }
 
         .tm-p2 {
-            left: 80%;
-            top: 25%;
-            animation: tmParticle 3.4s ease-in-out .5s infinite;
+            left: 23%;
+            top: 72%;
+            animation: tmParticle 3.8s ease-in-out .4s infinite;
         }
 
         .tm-p3 {
-            left: 25%;
-            top: 75%;
-            animation: tmParticle 3s ease-in-out 1s infinite;
+            left: 79%;
+            top: 25%;
+            animation: tmParticle 3.2s ease-in-out .8s infinite;
         }
 
         .tm-p4 {
-            left: 72%;
-            top: 72%;
-            animation: tmParticle 3.7s ease-in-out .8s infinite;
+            left: 88%;
+            top: 68%;
+            animation: tmParticle 4s ease-in-out 1.2s infinite;
         }
 
-        @keyframes tmLogoIn {
+        .tm-p5 {
+            left: 48%;
+            top: 15%;
+            animation: tmParticle 3.5s ease-in-out .6s infinite;
+        }
+
+        .tm-p6 {
+            left: 55%;
+            top: 83%;
+            animation: tmParticle 3.1s ease-in-out 1.1s infinite;
+        }
+
+
+        /* =====================================================
+           ANIMATIONS
+        ===================================================== */
+
+        @keyframes tmContentIn {
+
             0% {
                 opacity: 0;
-                transform: scale(.65) translateY(20px);
-                filter: blur(12px);
+
+                transform:
+                    translateY(45px)
+                    scale(.72);
+
+                filter: blur(18px);
             }
-            65% {
+
+            60% {
                 opacity: 1;
-                transform: scale(1.05);
+
+                transform:
+                    translateY(-5px)
+                    scale(1.035);
+
                 filter: blur(0);
             }
+
             100% {
-                transform: scale(1);
+                opacity: 1;
+
+                transform:
+                    translateY(0)
+                    scale(1);
             }
         }
 
-        @keyframes tmSubIn {
+
+        @keyframes tmIconAppear {
+
+            0% {
+                opacity: 0;
+                transform:
+                    scale(.35)
+                    rotate(-25deg);
+            }
+
+            65% {
+                opacity: 1;
+                transform:
+                    scale(1.12)
+                    rotate(3deg);
+            }
+
+            100% {
+                transform:
+                    scale(1)
+                    rotate(0);
+            }
+        }
+
+
+        @keyframes tmIconRing {
+
+            0%,100% {
+                transform: scale(.95);
+                opacity: .25;
+            }
+
+            50% {
+                transform: scale(1.08);
+                opacity: .7;
+            }
+        }
+
+
+        @keyframes tmLogoGlow {
+
+            from {
+                text-shadow:
+                    0 0 8px rgba(255,255,255,.20),
+                    0 0 25px rgba(255,193,7,.12),
+                    0 0 55px rgba(156,77,255,.12);
+            }
+
+            to {
+                text-shadow:
+                    0 0 12px rgba(255,255,255,.35),
+                    0 0 35px rgba(255,193,7,.25),
+                    0 0 85px rgba(156,77,255,.25);
+            }
+        }
+
+
+        @keyframes tmGoldMove {
+
+            0% {
+                background-position: 0% 50%;
+            }
+
+            100% {
+                background-position: 220% 50%;
+            }
+        }
+
+
+        @keyframes tmLogoShine {
+
+            0% {
+                transform:
+                    skewX(-20deg)
+                    translateX(-600%);
+            }
+
+            55%,100% {
+                transform:
+                    skewX(-20deg)
+                    translateX(900%);
+            }
+        }
+
+
+        @keyframes tmSubtitleIn {
+
             from {
                 opacity: 0;
-                transform: translateY(12px);
+                transform:
+                    translateY(15px);
             }
+
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform:
+                    translateY(0);
             }
         }
 
-        @keyframes tmLine {
+
+        @keyframes tmLineGrow {
+
             from {
                 width: 0;
-                opacity: 0;
             }
+
             to {
-                width: 260px;
-                opacity: 1;
+                width: min(300px, 70vw);
             }
         }
 
-        @keyframes tmRing {
+
+        @keyframes tmLoading {
+
+            from {
+                width: 0;
+            }
+
+            to {
+                width: 100%;
+            }
+        }
+
+
+        @keyframes tmBigGlow {
+
             0%,100% {
-                transform: scale(.92);
+                transform:
+                    scale(.75);
+
                 opacity: .45;
             }
-            50% {
-                transform: scale(1.05);
-                opacity: .8;
-            }
-        }
 
-        @keyframes tmGlow {
-            from {
-                transform: scale(.8);
-                opacity: .5;
-            }
-            to {
-                transform: scale(1.35);
+            50% {
+                transform:
+                    scale(1.35);
+
                 opacity: .9;
             }
         }
 
-        @keyframes tmIconFloat {
+
+        @keyframes tmRingPulse {
+
             0%,100% {
-                transform: translateY(0) rotate(0deg);
+                transform:
+                    scale(.88);
+
+                opacity: .25;
             }
+
             50% {
-                transform: translateY(-7px) rotate(2deg);
+                transform:
+                    scale(1.06);
+
+                opacity: .75;
             }
         }
 
-        @keyframes tmLight {
+
+        @keyframes tmBeamMove {
+
             0% {
-                transform: translateY(120vh) rotate(35deg);
                 opacity: 0;
+
+                transform:
+                    rotate(28deg)
+                    translateY(100vh);
             }
+
             15% {
-                opacity: .7;
+                opacity: .55;
             }
-            80% {
-                opacity: .2;
+
+            75% {
+                opacity: .15;
             }
+
             100% {
-                transform: translateY(-120vh) rotate(35deg);
                 opacity: 0;
+
+                transform:
+                    rotate(28deg)
+                    translateY(-100vh);
             }
         }
+
 
         @keyframes tmParticle {
+
             0%,100% {
-                transform: translateY(0) scale(.5);
                 opacity: 0;
+
+                transform:
+                    translateY(20px)
+                    scale(.4);
             }
-            40% {
+
+            35% {
                 opacity: .8;
             }
+
             70% {
-                transform: translateY(-35px) scale(1.2);
-                opacity: .4;
+                opacity: .25;
+
+                transform:
+                    translateY(-45px)
+                    scale(1.4);
             }
         }
 
-        @keyframes tmIntroOut {
+
+        @keyframes tmIntroExit {
+
             0% {
                 opacity: 1;
+
+                transform:
+                    scale(1);
+
                 visibility: visible;
             }
-            75% {
+
+            55% {
                 opacity: 1;
+
+                transform:
+                    scale(1.015);
             }
+
             100% {
                 opacity: 0;
+
+                transform:
+                    scale(1.08);
+
                 visibility: hidden;
             }
         }
 
-        /* Mobile */
+
+        /* =====================================================
+           MOBILE
+        ===================================================== */
+
         @media (max-width: 600px) {
-            #tm-intro::before {
-                width: 320px;
-                height: 320px;
+
+            #tm-intro .tm-ring {
+                width: 300px;
+                height: 300px;
+            }
+
+            #tm-intro .tm-ring.r2 {
+                width: 420px;
+                height: 420px;
+            }
+
+            #tm-intro .tm-ring.r3 {
+                width: 560px;
+                height: 560px;
+            }
+
+            #tm-intro .tm-big-glow {
+                width: 280px;
+                height: 280px;
+            }
+
+            .tm-film-icon {
+                width: 68px;
+                height: 68px;
+
+                margin-bottom: 20px;
+
+                border-radius: 19px;
+
+                font-size: 32px;
             }
 
             .tm-intro-title {
-                font-size: 38px;
+                font-size: 39px;
                 letter-spacing: 3px;
             }
 
             .tm-intro-subtitle {
-                font-size: 9px;
+                font-size: 8px;
                 letter-spacing: 3px;
             }
 
-            .tm-film-icon {
-                width: 62px;
-                height: 62px;
-                font-size: 29px;
-            }
-
-            .tm-intro-line {
-                margin-top: 18px;
+            .tm-loading {
+                width: 180px;
             }
         }
 
-        /* Accessibility */
+
+        /* =====================================================
+           REDUCED MOTION
+        ===================================================== */
+
         @media (prefers-reduced-motion: reduce) {
+
             #tm-intro {
-                animation: tmIntroOut .3s ease .7s forwards;
+                animation:
+                    tmIntroExit
+                    .35s
+                    ease
+                    .5s
+                    forwards;
             }
 
             #tm-intro *,
@@ -343,28 +947,41 @@
                 animation: none !important;
             }
         }
+
     </style>
 </head>
 
 <body>
 
+
 <!-- =========================================================
-     PREMIUM OPENING
+     TOMESH MOVIES ULTRA PREMIUM INTRO
 ========================================================= -->
 
-<div id="tm-intro" aria-hidden="true">
+<div id="tm-intro">
 
-    <div class="tm-light one"></div>
-    <div class="tm-light two"></div>
+    <div class="tm-big-glow"></div>
+
+    <div class="tm-ring"></div>
+    <div class="tm-ring r2"></div>
+    <div class="tm-ring r3"></div>
+
+    <div class="tm-beam b1"></div>
+    <div class="tm-beam b2"></div>
+    <div class="tm-beam b3"></div>
 
     <div class="tm-particle tm-p1"></div>
     <div class="tm-particle tm-p2"></div>
     <div class="tm-particle tm-p3"></div>
     <div class="tm-particle tm-p4"></div>
+    <div class="tm-particle tm-p5"></div>
+    <div class="tm-particle tm-p6"></div>
 
     <div class="tm-intro-content">
 
-        <div class="tm-film-icon">🎬</div>
+        <div class="tm-film-icon">
+            🎬
+        </div>
 
         <h1 class="tm-intro-title">
             TOMESH <span>MOVIES</span>
@@ -376,21 +993,43 @@
 
         <div class="tm-intro-line"></div>
 
+        <div class="tm-loading">
+
+            <div class="tm-loading-track">
+                <div class="tm-loading-fill"></div>
+            </div>
+
+            <div class="tm-loading-text">
+                ENTERING CINEMA
+            </div>
+
+        </div>
+
     </div>
+
+    <div class="tm-vignette"></div>
 
 </div>
 
 
 {% with messages = get_flashed_messages() %}
+
     {% if messages %}
+
         <div class="flash-wrap">
+
             {% for message in messages %}
+
                 <div class="flash-message">
                     {{ message }}
                 </div>
+
             {% endfor %}
+
         </div>
+
     {% endif %}
+
 {% endwith %}
 
 
@@ -398,24 +1037,49 @@
 
 
 <script>
+
     /* =====================================================
-       TOMESH MOVIES - INTRO CLEANUP
+       REMOVE INTRO AFTER ANIMATION
     ===================================================== */
 
     window.addEventListener("load", function () {
 
         setTimeout(function () {
 
-            const intro = document.getElementById("tm-intro");
+            const intro =
+                document.getElementById("tm-intro");
 
             if (intro) {
+
                 intro.remove();
+
             }
 
-        }, 3800);
+        }, 4700);
 
     });
+
+
+    /* =====================================================
+       SAFETY FALLBACK
+       Never leave the intro stuck on screen.
+    ===================================================== */
+
+    setTimeout(function () {
+
+        const intro =
+            document.getElementById("tm-intro");
+
+        if (intro) {
+
+            intro.style.display = "none";
+
+        }
+
+    }, 6000);
+
 </script>
+
 
 </body>
 </html>
