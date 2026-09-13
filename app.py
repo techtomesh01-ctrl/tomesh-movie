@@ -1,13 +1,13 @@
 import os
+import re
 import secrets
+import mimetypes
 from functools import wraps
 from urllib.parse import quote
 
 import boto3
-from botocore.client import Config
 import psycopg2
-from psycopg2.extras import RealDictCursor
-
+from botocore.client import Config
 from flask import (
     Flask,
     render_template,
@@ -17,32 +17,40 @@ from flask import (
     session,
     flash,
     abort,
-    jsonify,
     Response,
+    jsonify,
 )
-
 from werkzeug.utils import secure_filename
 
 
-# ============================================================
+# =========================================================
 # APP
-# ============================================================
+# =========================================================
 
 app = Flask(__name__)
 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
-    "change-this-secret-key"
+    "tomesh-movies-change-this-secret"
 )
 
-# Browser -> R2 direct upload is used.
-# This limit mainly protects normal Flask requests.
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
 
-# ============================================================
+# =========================================================
+# BASIC CONFIG
+# =========================================================
+
+ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
+ADMIN_PASSWORD = os.environ.get(
+    "ADMIN_PASSWORD",
+    "change-me-now"
+)
+
+
+# =========================================================
 # FILE SETTINGS
-# ============================================================
+# =========================================================
 
 ALLOWED_VIDEOS = {
     "mp4",
@@ -59,209 +67,110 @@ ALLOWED_POSTERS = {
 }
 
 MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024
+MAX_POSTER_SIZE = 25 * 1024 * 1024
 
-# R2 multipart settings
 PART_SIZE = 10 * 1024 * 1024
 PARALLEL_PARTS = 3
 PRESIGNED_EXPIRES = 3600
 MAX_MULTIPART_PARTS = 10000
 
 
-# ============================================================
-# BASIC HELPERS
-# ============================================================
+# =========================================================
+# ENVIRONMENT HELPERS
+# =========================================================
 
-def get_extension(filename):
-    return os.path.splitext(filename or "")[1].lower().lstrip(".")
+def clean_r2_value(name, default=""):
+    """
+    R2 credentials sometimes accidentally get pasted with
+    hidden Enter/newline characters.
 
+    This removes:
+      - spaces
+      - tabs
+      - CR
+      - LF
+    """
 
-def clean_filename(filename):
-    filename = secure_filename(filename or "")
-    return filename or "file"
+    value = os.environ.get(name, default)
 
+    if value is None:
+        return ""
 
-def is_allowed_file(filename, kind):
-    ext = get_extension(filename)
+    value = str(value)
 
-    if kind == "video":
-        return ext in ALLOWED_VIDEOS
+    # Remove ALL whitespace characters.
+    # Safe for R2 account/access/secret values.
+    value = re.sub(r"\s+", "", value)
 
-    if kind == "poster":
-        return ext in ALLOWED_POSTERS
-
-    return False
-
-
-def is_valid_r2_key(key):
-    if not isinstance(key, str):
-        return False
-
-    if ".." in key:
-        return False
-
-    if key.startswith("videos/"):
-        return True
-
-    if key.startswith("posters/"):
-        return True
-
-    return False
+    return value
 
 
-# ============================================================
-# ADMIN LOGIN
-# ============================================================
+# =========================================================
+# R2 CONFIG
+# =========================================================
 
-def admin_required(function):
-    @wraps(function)
-    def wrapper(*args, **kwargs):
+R2_ACCOUNT_ID = clean_r2_value("R2_ACCOUNT_ID")
+R2_ACCESS_KEY_ID = clean_r2_value("R2_ACCESS_KEY_ID")
+R2_SECRET_ACCESS_KEY = clean_r2_value("R2_SECRET_ACCESS_KEY")
 
-        if not session.get("admin_logged_in"):
+R2_BUCKET = os.environ.get(
+    "R2_BUCKET",
+    "tomesh-movies"
+).strip()
 
-            if request.path.startswith("/api/"):
-                return jsonify({
-                    "ok": False,
-                    "error": "Admin login required"
-                }), 401
+R2_ENDPOINT = os.environ.get(
+    "R2_ENDPOINT",
+    ""
+).strip().rstrip("/")
 
-            return redirect(
-                url_for(
-                    "login",
-                    next=request.path
-                )
-            )
-
-        return function(*args, **kwargs)
-
-    return wrapper
+R2_PUBLIC_URL = os.environ.get(
+    "R2_PUBLIC_URL",
+    ""
+).strip().rstrip("/")
 
 
-# ============================================================
+# =========================================================
 # DATABASE
-# ============================================================
+# =========================================================
 
-class Database:
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
-    def connect(self):
 
-        database_url = os.environ.get("DATABASE_URL")
-
-        if not database_url:
-            raise RuntimeError(
-                "DATABASE_URL environment variable is missing"
-            )
-
-        return psycopg2.connect(
-            database_url,
-            sslmode="require"
+def get_db():
+    if not DATABASE_URL:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is missing."
         )
 
-    def fetchall(self, sql, params=()):
-
-        with self.connect() as connection:
-
-            with connection.cursor(
-                cursor_factory=RealDictCursor
-            ) as cursor:
-
-                cursor.execute(sql, params)
-
-                return cursor.fetchall()
-
-    def fetchone(self, sql, params=()):
-
-        with self.connect() as connection:
-
-            with connection.cursor(
-                cursor_factory=RealDictCursor
-            ) as cursor:
-
-                cursor.execute(sql, params)
-
-                return cursor.fetchone()
-
-    def execute(self, sql, params=()):
-
-        with self.connect() as connection:
-
-            with connection.cursor() as cursor:
-
-                cursor.execute(sql, params)
+    return psycopg2.connect(DATABASE_URL)
 
 
-db = Database()
-
-
-# ============================================================
-# DATABASE INIT
-# ============================================================
-
-def init_db():
-
-    db.execute(
-        """
-        CREATE TABLE IF NOT EXISTS movies (
-            id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            category TEXT DEFAULT '',
-            description TEXT DEFAULT '',
-            poster TEXT DEFAULT '',
-            video TEXT NOT NULL,
-            views INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-
-    db.execute(
-        """
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT DEFAULT ''
-        )
-        """
-    )
-
-
-# ============================================================
-# CLOUDFLARE R2
-# ============================================================
+# =========================================================
+# R2 CLIENT
+# =========================================================
 
 def get_r2_client():
 
-    endpoint = os.environ.get(
-        "R2_ENDPOINT",
-        ""
-    ).rstrip("/")
+    if not R2_ACCOUNT_ID:
+        raise RuntimeError("R2_ACCOUNT_ID is missing.")
 
-    if not endpoint:
-        raise RuntimeError(
-            "R2_ENDPOINT environment variable is missing"
-        )
+    if not R2_ACCESS_KEY_ID:
+        raise RuntimeError("R2_ACCESS_KEY_ID is missing.")
 
-    access_key = os.environ.get(
-        "R2_ACCESS_KEY_ID"
-    )
+    if not R2_SECRET_ACCESS_KEY:
+        raise RuntimeError("R2_SECRET_ACCESS_KEY is missing.")
 
-    secret_key = os.environ.get(
-        "R2_SECRET_ACCESS_KEY"
-    )
+    if not R2_BUCKET:
+        raise RuntimeError("R2_BUCKET is missing.")
 
-    if not access_key:
-        raise RuntimeError(
-            "R2_ACCESS_KEY_ID environment variable is missing"
-        )
-
-    if not secret_key:
-        raise RuntimeError(
-            "R2_SECRET_ACCESS_KEY environment variable is missing"
-        )
+    if not R2_ENDPOINT:
+        raise RuntimeError("R2_ENDPOINT is missing.")
 
     return boto3.client(
         "s3",
-        endpoint_url=endpoint,
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
         region_name="auto",
         config=Config(
             signature_version="s3v4",
@@ -272,96 +181,251 @@ def get_r2_client():
     )
 
 
-def get_r2_bucket():
+# =========================================================
+# R2 HELPERS
+# =========================================================
 
-    return os.environ.get(
-        "R2_BUCKET",
-        "tomesh-movies"
-    )
+def r2_public_url(key):
+
+    key = str(key).lstrip("/")
+
+    if not R2_PUBLIC_URL:
+        return ""
+
+    return f"{R2_PUBLIC_URL}/{quote(key, safe='/')}"
 
 
-def get_public_url(key):
+def r2_presigned_url(key):
 
-    public_base = os.environ.get(
-        "R2_PUBLIC_URL",
-        ""
-    ).rstrip("/")
+    client = get_r2_client()
 
-    if public_base:
-
-        return (
-            public_base
-            + "/"
-            + quote(key, safe="/")
-        )
-
-    return get_r2_client().generate_presigned_url(
+    return client.generate_presigned_url(
         "get_object",
         Params={
-            "Bucket": get_r2_bucket(),
+            "Bucket": R2_BUCKET,
             "Key": key,
         },
-        ExpiresIn=3600,
+        ExpiresIn=PRESIGNED_EXPIRES,
     )
 
 
-def delete_r2_object(key):
+def r2_delete(key):
 
-    if not is_valid_r2_key(key):
+    if not key:
         return
 
     client = get_r2_client()
 
-    client.delete_object(
-        Bucket=get_r2_bucket(),
+    try:
+        client.delete_object(
+            Bucket=R2_BUCKET,
+            Key=key,
+        )
+    except Exception:
+        pass
+
+
+def r2_head(key):
+
+    client = get_r2_client()
+
+    return client.head_object(
+        Bucket=R2_BUCKET,
         Key=key,
     )
 
 
-# ============================================================
-# GLOBAL SETTINGS
-# ============================================================
+# =========================================================
+# FILE HELPERS
+# =========================================================
 
-@app.context_processor
-def inject_global_settings():
+def get_extension(filename):
+
+    filename = filename or ""
+
+    if "." not in filename:
+        return ""
+
+    return filename.rsplit(".", 1)[1].lower().strip()
+
+
+def allowed_video(filename):
+
+    return get_extension(filename) in ALLOWED_VIDEOS
+
+
+def allowed_poster(filename):
+
+    return get_extension(filename) in ALLOWED_POSTERS
+
+
+def safe_original_name(filename):
+
+    filename = secure_filename(filename or "")
+
+    if not filename:
+        return "file"
+
+    return filename
+
+
+def make_object_key(prefix, filename):
+
+    filename = safe_original_name(filename)
+
+    extension = get_extension(filename)
+
+    base = filename
+
+    if extension:
+        base = filename.rsplit(".", 1)[0]
+
+    base = re.sub(
+        r"[^A-Za-z0-9._-]+",
+        "-",
+        base
+    ).strip("-")
+
+    if not base:
+        base = "movie"
+
+    token = secrets.token_hex(12)
+
+    if extension:
+        return f"{prefix}/{base}-{token}.{extension}"
+
+    return f"{prefix}/{base}-{token}"
+
+
+def guess_content_type(filename, fallback):
+
+    content_type, _ = mimetypes.guess_type(filename)
+
+    if content_type:
+        return content_type
+
+    return fallback
+
+
+# =========================================================
+# R2 KEY SECURITY
+# =========================================================
+
+def valid_r2_key(key):
+
+    if not key:
+        return False
+
+    if not isinstance(key, str):
+        return False
+
+    if key.startswith("/"):
+        return False
+
+    if ".." in key:
+        return False
+
+    return (
+        key.startswith("videos/")
+        or key.startswith("posters/")
+    )
+
+
+# =========================================================
+# ADMIN AUTH
+# =========================================================
+
+def admin_required(view):
+
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+
+        if not session.get("admin_logged_in"):
+
+            if request.path.startswith("/api/"):
+                return jsonify({
+                    "ok": False,
+                    "error": "Admin login required."
+                }), 401
+
+            return redirect(url_for("login"))
+
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+# =========================================================
+# DATABASE INIT
+# =========================================================
+
+def init_db():
+
+    conn = get_db()
 
     try:
 
-        rows = db.fetchall(
+        cur = conn.cursor()
+
+        cur.execute(
             """
-            SELECT key, value
-            FROM settings
+            CREATE TABLE IF NOT EXISTS movies (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                category TEXT DEFAULT '',
+                description TEXT DEFAULT '',
+                poster TEXT DEFAULT '',
+                video TEXT NOT NULL,
+                views INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
             """
         )
 
-        settings = {
-            row["key"]: row["value"]
-            for row in rows
-        }
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT DEFAULT ''
+            )
+            """
+        )
 
-    except Exception:
+        conn.commit()
 
-        settings = {}
+        cur.close()
 
-    return {
-        "site_settings": settings
-    }
+    finally:
+        conn.close()
 
 
-# ============================================================
+# =========================================================
 # HOME
-# ============================================================
+# =========================================================
 
 @app.route("/")
 def home():
 
-    movies = db.fetchall(
-        """
-        SELECT *
-        FROM movies
-        ORDER BY id DESC
-        """
-    )
+    conn = get_db()
+
+    try:
+
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            ORDER BY id DESC
+            """
+        )
+
+        movies = cur.fetchall()
+
+        cur.close()
+
+    finally:
+        conn.close()
 
     return render_template(
         "index.html",
@@ -369,146 +433,149 @@ def home():
     )
 
 
-# ============================================================
+# =========================================================
 # MOVIE PAGE
-# ============================================================
+# =========================================================
 
 @app.route("/movie/<int:movie_id>")
-def movie(movie_id):
+def movie_page(movie_id):
 
-    movie_data = db.fetchone(
-        """
-        SELECT *
-        FROM movies
-        WHERE id=%s
-        """,
-        (movie_id,)
-    )
+    conn = get_db()
 
-    if not movie_data:
-        abort(404)
+    try:
 
-    db.execute(
-        """
-        UPDATE movies
-        SET views = views + 1
-        WHERE id=%s
-        """,
-        (movie_id,)
-    )
+        cur = conn.cursor()
 
-    movie_data["views"] = (
-        movie_data.get("views", 0) + 1
-    )
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
+
+        movie = cur.fetchone()
+
+        if not movie:
+            abort(404)
+
+        cur.execute(
+            """
+            UPDATE movies
+            SET views = views + 1
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
+
+        conn.commit()
+
+        cur.close()
+
+    finally:
+        conn.close()
 
     return render_template(
         "movie.html",
-        movie=movie_data
+        movie=movie
     )
 
 
-# ============================================================
-# POSTER ROUTE
-# ============================================================
+# =========================================================
+# POSTER
+# =========================================================
 
 @app.route("/poster/<path:name>")
 def poster(name):
 
-    key = "posters/" + name
-
-    if not is_valid_r2_key(key):
+    if not valid_r2_key(name):
         abort(404)
 
     try:
 
-        client = get_r2_client()
+        url = r2_presigned_url(name)
 
-        result = client.get_object(
-            Bucket=get_r2_bucket(),
-            Key=key
-        )
-
-        content_type = result.get(
-            "ContentType",
-            "image/jpeg"
-        )
-
-        return Response(
-            result["Body"].read(),
-            mimetype=content_type
-        )
+        return redirect(url)
 
     except Exception:
 
         abort(404)
 
 
-# ============================================================
-# VIDEO ROUTE
-# ============================================================
+# =========================================================
+# VIDEO
+# =========================================================
 
 @app.route("/video/<path:name>")
 def video(name):
 
-    key = "videos/" + name
-
-    if not is_valid_r2_key(key):
+    if not valid_r2_key(name):
         abort(404)
 
-    return redirect(
-        get_public_url(key)
-    )
+    try:
+
+        url = r2_presigned_url(name)
+
+        return redirect(url)
+
+    except Exception:
+
+        abort(404)
 
 
-# ============================================================
+# =========================================================
 # ADS.TXT
-# ============================================================
+# =========================================================
 
 @app.route("/ads.txt")
 def ads_txt():
 
-    publisher = os.environ.get(
-        "ADSENSE_PUBLISHER_ID",
-        "pub-8697157365303435"
-    )
+    publisher_id = "pub-8697157365303435"
 
-    content = (
+    text = (
         "google.com, "
-        + publisher
-        + ", DIRECT, f08c47fec0942fa0\n"
+        + publisher_id
+        + ", "
+        + "DIRECT, f08c47fec0942fa0"
     )
 
     return Response(
-        content,
+        text + "\n",
         mimetype="text/plain"
     )
 
 
-# ============================================================
+# =========================================================
 # HEALTH
-# ============================================================
+# =========================================================
 
 @app.route("/health")
 def health():
 
     try:
 
-        db.fetchone("SELECT 1")
+        conn = get_db()
 
-        return "OK", 200
+        conn.close()
 
-    except Exception as error:
+        return jsonify({
+            "ok": True,
+            "database": "OK"
+        })
 
-        return (
-            "DB ERROR: "
-            + str(error),
-            500
-        )
+    except Exception as e:
+
+        return jsonify({
+            "ok": False,
+            "database": "ERROR",
+            "error": str(e)
+        }), 500
 
 
-# ============================================================
+# =========================================================
 # R2 HEALTH
-# ============================================================
+# =========================================================
 
 @app.route("/r2-health")
 def r2_health():
@@ -518,28 +585,29 @@ def r2_health():
         client = get_r2_client()
 
         client.head_bucket(
-            Bucket=get_r2_bucket()
+            Bucket=R2_BUCKET
         )
 
-        return "R2 OK", 200
+        return jsonify({
+            "ok": True,
+            "message": "R2 OK",
+            "bucket": R2_BUCKET
+        })
 
-    except Exception as error:
+    except Exception as e:
 
-        return (
-            "R2 ERROR: "
-            + str(error),
-            500
-        )
+        return jsonify({
+            "ok": False,
+            "message": "R2 ERROR",
+            "error": str(e)
+        }), 500
 
 
-# ============================================================
+# =========================================================
 # LOGIN
-# ============================================================
+# =========================================================
 
-@app.route(
-    "/login",
-    methods=["GET", "POST"]
-)
+@app.route("/login", methods=["GET", "POST"])
 def login():
 
     if request.method == "POST":
@@ -547,51 +615,35 @@ def login():
         username = request.form.get(
             "username",
             ""
-        )
+        ).strip()
 
         password = request.form.get(
             "password",
             ""
         )
 
-        admin_user = os.environ.get(
-            "ADMIN_USER",
-            "admin"
-        )
-
-        admin_password = os.environ.get(
-            "ADMIN_PASSWORD",
-            "change-me-now"
-        )
-
         if (
-            username == admin_user
-            and password == admin_password
+            username == ADMIN_USER
+            and password == ADMIN_PASSWORD
         ):
 
             session["admin_logged_in"] = True
 
-            next_url = request.args.get(
-                "next"
-            )
-
             return redirect(
-                next_url or url_for("admin")
+                url_for("admin")
             )
 
         flash(
-            "Invalid username or password",
+            "Invalid username or password.",
             "error"
         )
 
-    return render_template(
-        "login.html"
-    )
+    return render_template("login.html")
 
 
-# ============================================================
+# =========================================================
 # LOGOUT
-# ============================================================
+# =========================================================
 
 @app.route("/logout")
 def logout():
@@ -603,166 +655,206 @@ def logout():
     )
 
 
-# ============================================================
-# ADMIN DASHBOARD
-# ============================================================
+# =========================================================
+# ADMIN
+# =========================================================
 
 @app.route("/admin")
 @admin_required
 def admin():
 
-    movies = db.fetchall(
-        """
-        SELECT *
-        FROM movies
-        ORDER BY id DESC
-        """
-    )
+    conn = get_db()
 
-    settings_rows = db.fetchall(
-        """
-        SELECT key, value
-        FROM settings
-        """
-    )
+    try:
 
-    settings = {
-        row["key"]: row["value"]
-        for row in settings_rows
-    }
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            ORDER BY id DESC
+            """
+        )
+
+        movies = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT COALESCE(
+                SUM(views),
+                0
+            )
+            FROM movies
+            """
+        )
+
+        total_views = cur.fetchone()[0]
+
+        cur.execute(
+            """
+            SELECT key, value
+            FROM settings
+            """
+        )
+
+        settings_rows = cur.fetchall()
+
+        settings = {
+            row[0]: row[1]
+            for row in settings_rows
+        }
+
+        cur.close()
+
+    finally:
+        conn.close()
 
     return render_template(
         "admin.html",
         movies=movies,
+        total_movies=len(movies),
+        total_views=total_views,
         settings=settings
     )
 
 
-# ============================================================
+# =========================================================
 # R2 MULTIPART CREATE
-# ============================================================
+# =========================================================
 
-@app.post("/api/r2/multipart/create")
+@app.route(
+    "/api/r2/multipart/create",
+    methods=["POST"]
+)
 @admin_required
-def create_multipart():
-
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    filename = clean_filename(
-        data.get("filename")
-    )
-
-    kind = data.get("kind")
+def r2_multipart_create():
 
     try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        filename = (
+            data.get("filename")
+            or ""
+        ).strip()
+
         size = int(
             data.get("size") or 0
         )
-    except Exception:
-        size = 0
 
-    content_type = (
-        data.get("content_type")
-        or "application/octet-stream"
-    )
+        kind = (
+            data.get("kind")
+            or ""
+        ).strip().lower()
 
-    # --------------------------------------------------------
-    # Validate kind
-    # --------------------------------------------------------
+        content_type = (
+            data.get("content_type")
+            or ""
+        ).strip()
 
-    if kind not in {
-        "video",
-        "poster"
-    }:
+        if not filename:
+            return jsonify({
+                "ok": False,
+                "error": "Filename is required."
+            }), 400
 
-        return jsonify({
-            "ok": False,
-            "error": "Invalid upload type"
-        }), 400
+        if size <= 0:
+            return jsonify({
+                "ok": False,
+                "error": "Invalid file size."
+            }), 400
 
-    # --------------------------------------------------------
-    # Validate size
-    # --------------------------------------------------------
+        if size > MAX_FILE_SIZE:
+            return jsonify({
+                "ok": False,
+                "error": "File is larger than 4 GB."
+            }), 400
 
-    if size <= 0:
-
-        return jsonify({
-            "ok": False,
-            "error": "File is empty"
-        }), 400
-
-    if size > MAX_FILE_SIZE:
-
-        return jsonify({
-            "ok": False,
-            "error": "Maximum file size is 4 GB"
-        }), 400
-
-    # --------------------------------------------------------
-    # Validate extension
-    # --------------------------------------------------------
-
-    if not is_allowed_file(
-        filename,
-        kind
-    ):
+        extension = get_extension(filename)
 
         if kind == "video":
 
-            error = (
-                "Video केवल MP4, MKV, "
-                "WebM या MOV होनी चाहिए."
-            )
+            if extension not in ALLOWED_VIDEOS:
+
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Video केवल MP4, MKV, "
+                        "WebM या MOV होनी चाहिए."
+                    )
+                }), 400
+
+            prefix = "videos/"
+
+            if not content_type:
+                content_type = (
+                    guess_content_type(
+                        filename,
+                        "application/octet-stream"
+                    )
+                )
+
+        elif kind == "poster":
+
+            if extension not in ALLOWED_POSTERS:
+
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Poster JPG, JPEG, PNG "
+                        "या WEBP होना चाहिए."
+                    )
+                }), 400
+
+            if size > MAX_POSTER_SIZE:
+
+                return jsonify({
+                    "ok": False,
+                    "error": "Poster maximum 25 MB हो सकता है."
+                }), 400
+
+            prefix = "posters/"
+
+            if not content_type:
+                content_type = (
+                    guess_content_type(
+                        filename,
+                        "application/octet-stream"
+                    )
+                )
 
         else:
 
-            error = (
-                "Poster केवल JPG, JPEG, "
-                "PNG या WEBP होना चाहिए."
-            )
+            return jsonify({
+                "ok": False,
+                "error": "Invalid upload type."
+            }), 400
 
-        return jsonify({
-            "ok": False,
-            "error": error
-        }), 400
-
-    # --------------------------------------------------------
-    # Object key
-    # --------------------------------------------------------
-
-    prefix = (
-        "videos"
-        if kind == "video"
-        else "posters"
-    )
-
-    token = secrets.token_hex(12)
-
-    key = (
-        prefix
-        + "/"
-        + token
-        + "-"
-        + filename
-    )
-
-    # --------------------------------------------------------
-    # Create R2 multipart
-    # --------------------------------------------------------
-
-    try:
+        key = make_object_key(
+            prefix,
+            filename
+        )
 
         client = get_r2_client()
 
         result = client.create_multipart_upload(
-            Bucket=get_r2_bucket(),
+            Bucket=R2_BUCKET,
             Key=key,
-            ContentType=content_type,
+            ContentType=content_type
         )
 
-        upload_id = result["UploadId"]
+        upload_id = result.get(
+            "UploadId"
+        )
+
+        if not upload_id:
+
+            raise RuntimeError(
+                "R2 did not return UploadId."
+            )
 
         return jsonify({
             "ok": True,
@@ -770,560 +862,565 @@ def create_multipart():
             "key": key,
             "part_size": PART_SIZE,
             "parallel": PARALLEL_PARTS,
-            "expires": PRESIGNED_EXPIRES,
+            "expires": PRESIGNED_EXPIRES
         })
 
-    except Exception as error:
+    except Exception as e:
 
         return jsonify({
             "ok": False,
             "error": (
                 "R2 multipart create failed: "
-                + str(error)
+                + str(e)
             )
         }), 500
 
 
-# ============================================================
-# R2 MULTIPART PRESIGNED URLS
-# ============================================================
+# =========================================================
+# R2 MULTIPART PRESIGNED PART URLS
+# =========================================================
 
-@app.post("/api/r2/multipart/urls")
+@app.route(
+    "/api/r2/multipart/urls",
+    methods=["POST"]
+)
 @admin_required
-def multipart_urls():
-
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    upload_id = data.get(
-        "upload_id"
-    )
-
-    key = data.get(
-        "key"
-    )
-
-    parts = data.get(
-        "parts"
-    ) or []
-
-    if not upload_id:
-
-        return jsonify({
-            "ok": False,
-            "error": "Upload ID missing"
-        }), 400
-
-    if not is_valid_r2_key(key):
-
-        return jsonify({
-            "ok": False,
-            "error": "Invalid R2 key"
-        }), 400
-
-    # --------------------------------------------------------
-    # Convert part numbers safely
-    # --------------------------------------------------------
+def r2_multipart_urls():
 
     try:
 
-        part_numbers = sorted(
-            {
-                int(number)
-                for number in parts
-            }
-        )
+        data = request.get_json(
+            silent=True
+        ) or {}
 
-    except Exception:
+        upload_id = (
+            data.get("upload_id")
+            or ""
+        ).strip()
 
-        return jsonify({
-            "ok": False,
-            "error": "Invalid part numbers"
-        }), 400
+        key = (
+            data.get("key")
+            or ""
+        ).strip()
 
-    if not part_numbers:
+        parts = data.get("parts")
 
-        return jsonify({
-            "ok": False,
-            "error": "No parts requested"
-        }), 400
+        if not upload_id:
+            return jsonify({
+                "ok": False,
+                "error": "Upload ID is required."
+            }), 400
 
-    if len(part_numbers) > MAX_MULTIPART_PARTS:
+        if not valid_r2_key(key):
 
-        return jsonify({
-            "ok": False,
-            "error": "Too many parts"
-        }), 400
+            return jsonify({
+                "ok": False,
+                "error": "Invalid R2 object key."
+            }), 400
 
-    if (
-        part_numbers[0] < 1
-        or part_numbers[-1] > MAX_MULTIPART_PARTS
-    ):
+        if not isinstance(parts, list):
 
-        return jsonify({
-            "ok": False,
-            "error": "Invalid part range"
-        }), 400
+            return jsonify({
+                "ok": False,
+                "error": "Parts must be an array."
+            }), 400
 
-    # --------------------------------------------------------
-    # Generate presigned URLs
-    # --------------------------------------------------------
+        if not parts:
 
-    try:
+            return jsonify({
+                "ok": False,
+                "error": "No parts requested."
+            }), 400
+
+        if len(parts) > MAX_MULTIPART_PARTS:
+
+            return jsonify({
+                "ok": False,
+                "error": "Too many parts."
+            }), 400
 
         client = get_r2_client()
 
         urls = []
 
-        for part_number in part_numbers:
+        for part_number in parts:
 
-            signed_url = client.generate_presigned_url(
+            try:
+                part_number = int(part_number)
+            except Exception:
+                return jsonify({
+                    "ok": False,
+                    "error": "Invalid part number."
+                }), 400
+
+            if (
+                part_number < 1
+                or part_number > MAX_MULTIPART_PARTS
+            ):
+
+                return jsonify({
+                    "ok": False,
+                    "error": "Invalid part number."
+                }), 400
+
+            url = client.generate_presigned_url(
                 "upload_part",
                 Params={
-                    "Bucket": get_r2_bucket(),
+                    "Bucket": R2_BUCKET,
                     "Key": key,
                     "UploadId": upload_id,
                     "PartNumber": part_number,
                 },
-                ExpiresIn=PRESIGNED_EXPIRES,
+                ExpiresIn=PRESIGNED_EXPIRES
             )
 
             urls.append({
                 "part_number": part_number,
-                "url": signed_url,
+                "url": url
             })
 
         return jsonify({
             "ok": True,
-            "urls": urls,
+            "urls": urls
         })
 
-    except Exception as error:
+    except Exception as e:
 
         return jsonify({
             "ok": False,
             "error": (
-                "R2 presigned URL generation failed: "
-                + str(error)
+                "R2 presigned URL creation failed: "
+                + str(e)
             )
         }), 500
 
 
-# ============================================================
+# =========================================================
 # R2 MULTIPART COMPLETE
-# ============================================================
+# =========================================================
 
-@app.post("/api/r2/multipart/complete")
+@app.route(
+    "/api/r2/multipart/complete",
+    methods=["POST"]
+)
 @admin_required
-def complete_multipart():
-
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    upload_id = data.get(
-        "upload_id"
-    )
-
-    key = data.get(
-        "key"
-    )
+def r2_multipart_complete():
 
     try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        upload_id = (
+            data.get("upload_id")
+            or ""
+        ).strip()
+
+        key = (
+            data.get("key")
+            or ""
+        ).strip()
+
         expected_size = int(
             data.get("expected_size") or 0
         )
-    except Exception:
-        expected_size = 0
 
-    if not upload_id:
+        if not upload_id:
+            return jsonify({
+                "ok": False,
+                "error": "Upload ID is required."
+            }), 400
 
-        return jsonify({
-            "ok": False,
-            "error": "Upload ID missing"
-        }), 400
+        if not valid_r2_key(key):
 
-    if not is_valid_r2_key(key):
+            return jsonify({
+                "ok": False,
+                "error": "Invalid R2 object key."
+            }), 400
 
-        return jsonify({
-            "ok": False,
-            "error": "Invalid R2 key"
-        }), 400
+        if expected_size <= 0:
 
-    if expected_size <= 0:
+            return jsonify({
+                "ok": False,
+                "error": "Invalid expected file size."
+            }), 400
 
-        return jsonify({
-            "ok": False,
-            "error": "Expected file size missing"
-        }), 400
+        client = get_r2_client()
 
-    client = get_r2_client()
+        all_parts = []
 
-    try:
-
-        # ----------------------------------------------------
-        # Read all uploaded parts from R2
-        # ----------------------------------------------------
-
-        uploaded_parts = []
-
-        marker = None
+        part_marker = None
 
         while True:
 
             params = {
-                "Bucket": get_r2_bucket(),
+                "Bucket": R2_BUCKET,
                 "Key": key,
                 "UploadId": upload_id,
                 "MaxParts": 1000,
             }
 
-            if marker is not None:
+            if part_marker is not None:
+                params["PartNumberMarker"] = part_marker
 
-                params[
-                    "PartNumberMarker"
-                ] = marker
-
-            page = client.list_parts(
+            response = client.list_parts(
                 **params
             )
 
-            page_parts = page.get(
+            for part in response.get(
                 "Parts",
                 []
-            )
+            ):
 
-            uploaded_parts.extend(
-                page_parts
-            )
+                all_parts.append(part)
 
-            if not page.get(
-                "IsTruncated"
+            if not response.get(
+                "IsTruncated",
+                False
             ):
                 break
 
-            marker = page.get(
+            part_marker = response.get(
                 "NextPartNumberMarker"
             )
 
-            if not marker:
+            if part_marker is None:
                 break
 
-        # ----------------------------------------------------
-        # No parts
-        # ----------------------------------------------------
+        if not all_parts:
 
-        if not uploaded_parts:
+            return jsonify({
+                "ok": False,
+                "error": "R2 has no uploaded parts."
+            }), 400
 
-            raise RuntimeError(
-                "R2 में कोई uploaded part नहीं मिला."
-            )
-
-        # ----------------------------------------------------
-        # Sort
-        # ----------------------------------------------------
-
-        uploaded_parts.sort(
-            key=lambda item: item["PartNumber"]
-        )
-
-        # ----------------------------------------------------
-        # Verify sequential parts
-        # ----------------------------------------------------
-
-        actual_numbers = [
-            int(item["PartNumber"])
-            for item in uploaded_parts
-        ]
-
-        expected_numbers = list(
-            range(
-                1,
-                len(uploaded_parts) + 1
+        all_parts.sort(
+            key=lambda x: int(
+                x["PartNumber"]
             )
         )
 
-        if actual_numbers != expected_numbers:
-
-            raise RuntimeError(
-                "Multipart upload incomplete है. "
-                "कुछ parts missing हैं."
+        expected_part_count = (
+            (
+                expected_size
+                + PART_SIZE
+                - 1
             )
-
-        # ----------------------------------------------------
-        # Verify total size
-        # ----------------------------------------------------
-
-        total_size = sum(
-            int(item.get("Size", 0))
-            for item in uploaded_parts
+            // PART_SIZE
         )
 
-        if total_size != expected_size:
+        if len(all_parts) != expected_part_count:
 
-            raise RuntimeError(
-                "Uploaded size mismatch: "
-                + str(total_size)
-                + " / "
-                + str(expected_size)
-            )
+            return jsonify({
+                "ok": False,
+                "error": (
+                    f"R2 parts mismatch. "
+                    f"Expected {expected_part_count}, "
+                    f"found {len(all_parts)}."
+                )
+            }), 400
 
-        # ----------------------------------------------------
-        # Build complete list using REAL R2 ETags
-        # ----------------------------------------------------
+        total_size = 0
 
         complete_parts = []
 
-        for item in uploaded_parts:
+        for index, part in enumerate(
+            all_parts,
+            start=1
+        ):
+
+            part_number = int(
+                part["PartNumber"]
+            )
+
+            if part_number != index:
+
+                return jsonify({
+                    "ok": False,
+                    "error": "R2 parts are not sequential."
+                }), 400
+
+            size = int(
+                part.get("Size", 0)
+            )
+
+            total_size += size
+
+            etag = part.get("ETag")
+
+            if not etag:
+
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        f"Missing ETag for part "
+                        f"{part_number}."
+                    )
+                }), 400
 
             complete_parts.append({
-                "PartNumber": int(
-                    item["PartNumber"]
-                ),
-                "ETag": item["ETag"],
+                "PartNumber": part_number,
+                "ETag": etag
             })
 
-        # ----------------------------------------------------
-        # Complete multipart
-        # ----------------------------------------------------
+        if total_size != expected_size:
 
-        client.complete_multipart_upload(
-            Bucket=get_r2_bucket(),
+            return jsonify({
+                "ok": False,
+                "error": (
+                    f"R2 size mismatch. "
+                    f"Expected {expected_size} bytes, "
+                    f"found {total_size} bytes."
+                )
+            }), 400
+
+        result = client.complete_multipart_upload(
+            Bucket=R2_BUCKET,
             Key=key,
             UploadId=upload_id,
             MultipartUpload={
                 "Parts": complete_parts
-            },
+            }
         )
 
-        # ----------------------------------------------------
-        # Final verification
-        # ----------------------------------------------------
-
+        # Verify final object.
         head = client.head_object(
-            Bucket=get_r2_bucket(),
+            Bucket=R2_BUCKET,
             Key=key
         )
 
         final_size = int(
-            head.get(
-                "ContentLength",
-                0
-            )
+            head.get("ContentLength", 0)
         )
 
         if final_size != expected_size:
 
-            raise RuntimeError(
-                "Final R2 size mismatch: "
-                + str(final_size)
-                + " / "
-                + str(expected_size)
-            )
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "Final R2 object size mismatch."
+                )
+            }), 500
 
         return jsonify({
             "ok": True,
             "key": key,
-            "url": get_public_url(key),
+            "url": r2_public_url(key),
             "size": final_size,
             "parts": len(complete_parts),
+            "etag": result.get("ETag", "")
         })
 
-    except Exception as error:
+    except Exception as e:
 
         return jsonify({
             "ok": False,
-            "error": str(error)
+            "error": (
+                "R2 multipart complete failed: "
+                + str(e)
+            )
         }), 500
 
 
-# ============================================================
+# =========================================================
 # R2 MULTIPART ABORT
-# ============================================================
+# =========================================================
 
-@app.post("/api/r2/multipart/abort")
+@app.route(
+    "/api/r2/multipart/abort",
+    methods=["POST"]
+)
 @admin_required
-def abort_multipart():
-
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    upload_id = data.get(
-        "upload_id"
-    )
-
-    key = data.get(
-        "key"
-    )
-
-    if not upload_id:
-
-        return jsonify({
-            "ok": False,
-            "error": "Upload ID missing"
-        }), 400
-
-    if not is_valid_r2_key(key):
-
-        return jsonify({
-            "ok": False,
-            "error": "Invalid R2 key"
-        }), 400
+def r2_multipart_abort():
 
     try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        upload_id = (
+            data.get("upload_id")
+            or ""
+        ).strip()
+
+        key = (
+            data.get("key")
+            or ""
+        ).strip()
+
+        if not upload_id:
+            return jsonify({
+                "ok": False,
+                "error": "Upload ID is required."
+            }), 400
+
+        if not valid_r2_key(key):
+
+            return jsonify({
+                "ok": False,
+                "error": "Invalid R2 object key."
+            }), 400
 
         client = get_r2_client()
 
         client.abort_multipart_upload(
-            Bucket=get_r2_bucket(),
+            Bucket=R2_BUCKET,
             Key=key,
-            UploadId=upload_id,
+            UploadId=upload_id
         )
 
         return jsonify({
             "ok": True
         })
 
-    except Exception as error:
+    except Exception as e:
 
         return jsonify({
             "ok": False,
-            "error": str(error)
+            "error": (
+                "R2 multipart abort failed: "
+                + str(e)
+            )
         }), 500
 
 
-# ============================================================
-# R2 OBJECT DELETE
-# ============================================================
+# =========================================================
+# DELETE R2 OBJECT
+# =========================================================
 
-@app.post("/api/r2/object/delete")
+@app.route(
+    "/api/r2/object/delete",
+    methods=["POST"]
+)
 @admin_required
-def delete_r2_object_api():
-
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    key = data.get(
-        "key"
-    )
-
-    if not is_valid_r2_key(key):
-
-        return jsonify({
-            "ok": False,
-            "error": "Invalid R2 key"
-        }), 400
+def r2_object_delete():
 
     try:
 
-        delete_r2_object(key)
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        key = (
+            data.get("key")
+            or ""
+        ).strip()
+
+        if not valid_r2_key(key):
+
+            return jsonify({
+                "ok": False,
+                "error": "Invalid R2 object key."
+            }), 400
+
+        r2_delete(key)
 
         return jsonify({
             "ok": True
         })
 
-    except Exception as error:
+    except Exception as e:
 
         return jsonify({
             "ok": False,
-            "error": str(error)
+            "error": str(e)
         }), 500
 
 
-# ============================================================
+# =========================================================
 # SAVE MOVIE
-# ============================================================
+# =========================================================
 
-@app.post("/api/movie/save")
+@app.route(
+    "/api/movie/save",
+    methods=["POST"]
+)
 @admin_required
 def save_movie():
 
-    data = request.get_json(
-        silent=True
-    ) or {}
+    video_key = ""
 
-    title = (
-        data.get("title")
-        or ""
-    ).strip()
+    poster_key = ""
 
-    category = (
-        data.get("category")
-        or ""
-    ).strip()
+    try:
 
-    description = (
-        data.get("description")
-        or ""
-    ).strip()
+        data = request.get_json(
+            silent=True
+        ) or {}
 
-    video_key = data.get(
-        "video"
-    )
+        title = (
+            data.get("title")
+            or ""
+        ).strip()
 
-    poster_key = (
-        data.get("poster")
-        or ""
-    )
+        category = (
+            data.get("category")
+            or ""
+        ).strip()
 
-    # --------------------------------------------------------
-    # Video validation
-    # --------------------------------------------------------
+        description = (
+            data.get("description")
+            or ""
+        ).strip()
 
-    if not title:
+        video_key = (
+            data.get("video")
+            or ""
+        ).strip()
 
-        return jsonify({
-            "ok": False,
-            "error": "Movie title डालें."
-        }), 400
+        poster_key = (
+            data.get("poster")
+            or ""
+        ).strip()
 
-    if not video_key:
+        if not title:
 
-        return jsonify({
-            "ok": False,
-            "error": "Uploaded video missing."
-        }), 400
+            return jsonify({
+                "ok": False,
+                "error": "Movie title is required."
+            }), 400
 
-    if (
-        not is_valid_r2_key(video_key)
-        or not video_key.startswith("videos/")
-    ):
+        if not valid_r2_key(video_key):
 
-        return jsonify({
-            "ok": False,
-            "error": "Invalid video R2 key."
-        }), 400
+            return jsonify({
+                "ok": False,
+                "error": "Invalid video R2 key."
+            }), 400
 
-    # --------------------------------------------------------
-    # Poster validation
-    # --------------------------------------------------------
-
-    if poster_key:
-
-        if (
-            not is_valid_r2_key(poster_key)
-            or not poster_key.startswith("posters/")
+        if not video_key.startswith(
+            "videos/"
         ):
 
             return jsonify({
                 "ok": False,
-                "error": "Invalid poster R2 key."
+                "error": "Invalid video object."
             }), 400
 
-    # --------------------------------------------------------
-    # Verify R2 objects
-    # --------------------------------------------------------
+        if poster_key:
 
-    try:
+            if not valid_r2_key(
+                poster_key
+            ):
 
-        client = get_r2_client()
+                return jsonify({
+                    "ok": False,
+                    "error": "Invalid poster R2 key."
+                }), 400
 
-        video_head = client.head_object(
-            Bucket=get_r2_bucket(),
-            Key=video_key
+            if not poster_key.startswith(
+                "posters/"
+            ):
+
+                return jsonify({
+                    "ok": False,
+                    "error": "Invalid poster object."
+                }), 400
+
+        # Verify video exists.
+        video_head = r2_head(
+            video_key
         )
 
         video_size = int(
@@ -1335,202 +1432,163 @@ def save_movie():
 
         if video_size <= 0:
 
-            raise RuntimeError(
-                "Video R2 object empty है."
-            )
+            return jsonify({
+                "ok": False,
+                "error": "Video object is empty."
+            }), 400
 
+        # Verify poster if supplied.
         if poster_key:
 
-            client.head_object(
-                Bucket=get_r2_bucket(),
-                Key=poster_key
+            poster_head = r2_head(
+                poster_key
             )
 
-    except Exception as error:
-
-        return jsonify({
-            "ok": False,
-            "error": (
-                "R2 object verification failed: "
-                + str(error)
+            poster_size = int(
+                poster_head.get(
+                    "ContentLength",
+                    0
+                )
             )
-        }), 400
 
-    # --------------------------------------------------------
-    # Save PostgreSQL record
-    # --------------------------------------------------------
+            if poster_size <= 0:
 
-    try:
+                return jsonify({
+                    "ok": False,
+                    "error": "Poster object is empty."
+                }), 400
 
-        row = db.fetchone(
-            """
-            INSERT INTO movies (
-                title,
-                category,
-                description,
-                poster,
-                video
+        conn = get_db()
+
+        try:
+
+            cur = conn.cursor()
+
+            cur.execute(
+                """
+                INSERT INTO movies
+                (
+                    title,
+                    category,
+                    description,
+                    poster,
+                    video,
+                    views
+                )
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    0
+                )
+                RETURNING id
+                """,
+                (
+                    title,
+                    category,
+                    description,
+                    poster_key,
+                    video_key
+                )
             )
-            VALUES (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-            )
-            RETURNING id
-            """,
-            (
-                title,
-                category,
-                description,
-                poster_key,
-                video_key,
-            )
-        )
+
+            movie_id = cur.fetchone()[0]
+
+            conn.commit()
+
+            cur.close()
+
+        finally:
+            conn.close()
 
         return jsonify({
             "ok": True,
-            "id": row["id"]
+            "id": movie_id,
+            "message": "Movie published successfully."
         })
 
-    except Exception as error:
+    except Exception as e:
 
         return jsonify({
             "ok": False,
             "error": (
-                "Database save failed: "
-                + str(error)
+                "Movie save failed: "
+                + str(e)
             )
         }), 500
 
 
-# ============================================================
-# ADS SETTINGS
-# ============================================================
-
-@app.post("/admin/ads")
-@admin_required
-def save_ads():
-
-    fields = [
-        "top_ad",
-        "player_ad",
-        "bottom_ad",
-    ]
-
-    for key in fields:
-
-        value = request.form.get(
-            key,
-            ""
-        )
-
-        db.execute(
-            """
-            INSERT INTO settings(key,value)
-            VALUES(%s,%s)
-            ON CONFLICT(key)
-            DO UPDATE SET value=EXCLUDED.value
-            """,
-            (
-                key,
-                value,
-            )
-        )
-
-    flash(
-        "Ads settings saved",
-        "success"
-    )
-
-    return redirect(
-        url_for("admin")
-    )
-
-
-# ============================================================
+# =========================================================
 # DELETE MOVIE
-# ============================================================
+# =========================================================
 
-@app.post("/admin/delete/<int:movie_id>")
+@app.route(
+    "/admin/delete/<int:movie_id>",
+    methods=["POST", "GET"]
+)
 @admin_required
 def delete_movie(movie_id):
 
-    movie_data = db.fetchone(
-        """
-        SELECT video, poster
-        FROM movies
-        WHERE id=%s
-        """,
-        (movie_id,)
-    )
+    video_key = ""
+    poster_key = ""
 
-    if not movie_data:
+    conn = get_db()
 
-        flash(
-            "Movie not found",
-            "error"
+    try:
+
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT video, poster
+            FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
         )
 
-        return redirect(
-            url_for("admin")
+        movie = cur.fetchone()
+
+        if not movie:
+
+            flash(
+                "Movie not found.",
+                "error"
+            )
+
+            return redirect(
+                url_for("admin")
+            )
+
+        video_key = movie[0]
+        poster_key = movie[1]
+
+        cur.execute(
+            """
+            DELETE FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
         )
 
-    # --------------------------------------------------------
-    # Delete video
-    # --------------------------------------------------------
+        conn.commit()
 
-    video_key = movie_data.get(
-        "video"
-    )
+        cur.close()
+
+    finally:
+        conn.close()
 
     if video_key:
-
-        try:
-            delete_r2_object(
-                video_key
-            )
-        except Exception as error:
-            print(
-                "Video delete warning:",
-                error
-            )
-
-    # --------------------------------------------------------
-    # Delete poster
-    # --------------------------------------------------------
-
-    poster_key = movie_data.get(
-        "poster"
-    )
+        r2_delete(video_key)
 
     if poster_key:
-
-        try:
-            delete_r2_object(
-                poster_key
-            )
-        except Exception as error:
-            print(
-                "Poster delete warning:",
-                error
-            )
-
-    # --------------------------------------------------------
-    # Delete DB record
-    # --------------------------------------------------------
-
-    db.execute(
-        """
-        DELETE FROM movies
-        WHERE id=%s
-        """,
-        (movie_id,)
-    )
+        r2_delete(poster_key)
 
     flash(
-        "Movie deleted",
+        "Movie deleted successfully.",
         "success"
     )
 
@@ -1539,9 +1597,121 @@ def delete_movie(movie_id):
     )
 
 
-# ============================================================
-# STARTUP DATABASE
-# ============================================================
+# =========================================================
+# ADS SETTINGS
+# =========================================================
+
+@app.route(
+    "/admin/ads",
+    methods=["POST"]
+)
+@admin_required
+def admin_ads():
+
+    top_ad = request.form.get(
+        "top_ad",
+        ""
+    )
+
+    player_ad = request.form.get(
+        "player_ad",
+        ""
+    )
+
+    bottom_ad = request.form.get(
+        "bottom_ad",
+        ""
+    )
+
+    conn = get_db()
+
+    try:
+
+        cur = conn.cursor()
+
+        values = {
+            "top_ad": top_ad,
+            "player_ad": player_ad,
+            "bottom_ad": bottom_ad
+        }
+
+        for key, value in values.items():
+
+            cur.execute(
+                """
+                INSERT INTO settings
+                (
+                    key,
+                    value
+                )
+                VALUES
+                (
+                    %s,
+                    %s
+                )
+                ON CONFLICT (key)
+                DO UPDATE SET
+                    value = EXCLUDED.value
+                """,
+                (key, value)
+            )
+
+        conn.commit()
+
+        cur.close()
+
+    finally:
+        conn.close()
+
+    flash(
+        "Ads settings saved.",
+        "success"
+    )
+
+    return redirect(
+        url_for("admin")
+    )
+
+
+# =========================================================
+# ERROR HANDLERS
+# =========================================================
+
+@app.errorhandler(413)
+def too_large(error):
+
+    if request.path.startswith("/api/"):
+
+        return jsonify({
+            "ok": False,
+            "error": "File is too large."
+        }), 413
+
+    return (
+        "File is too large.",
+        413
+    )
+
+
+@app.errorhandler(500)
+def server_error(error):
+
+    if request.path.startswith("/api/"):
+
+        return jsonify({
+            "ok": False,
+            "error": "Internal server error."
+        }), 500
+
+    return (
+        "Internal Server Error",
+        500
+    )
+
+
+# =========================================================
+# STARTUP
+# =========================================================
 
 try:
 
@@ -1550,21 +1720,21 @@ try:
 except Exception as startup_error:
 
     print(
-        "Database init warning:",
+        "Database initialization warning:",
         startup_error
     )
 
 
-# ============================================================
+# =========================================================
 # LOCAL RUN
-# ============================================================
+# =========================================================
 
 if __name__ == "__main__":
 
     port = int(
         os.environ.get(
             "PORT",
-            5000
+            "5000"
         )
     )
 
