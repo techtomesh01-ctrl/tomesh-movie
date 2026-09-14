@@ -1,1706 +1,1642 @@
-{% extends "base.html" %}
+import os
+import re
+import math
+import mimetypes
+import secrets
+from functools import wraps
+from urllib.parse import quote
 
-{% block title %}{{ movie.title }} - Tomesh Movies{% endblock %}
+import boto3
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from botocore.client import Config
 
-{% block content %}
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    flash,
+    abort,
+    Response,
+    jsonify,
+)
 
-<div class="tm-movie-page">
+from werkzeug.utils import secure_filename
 
-    <!-- TOP BAR -->
-    <header class="tm-topbar">
 
-        <a href="{{ url_for('home') }}" class="tm-brand">
-            <div class="tm-logo">
-                TM
-                <span>▶</span>
-            </div>
+# =========================================================
+# TOMESH MOVIES - COMPLETE APP.PY
+# PostgreSQL + Cloudflare R2 + Direct Multipart Upload
+# =========================================================
 
-            <div class="tm-brand-text">
-                <strong>TOMESH</strong>
-                <small>MOVIES</small>
-            </div>
-        </a>
+app = Flask(__name__)
 
-        <a href="{{ url_for('home') }}" class="tm-back">
-            ← Back to Movies
-        </a>
+app.secret_key = os.environ.get("SECRET_KEY", "tomesh-movies-secret-key")
 
-    </header>
+# ---------------------------------------------------------
+# BASIC SETTINGS
+# ---------------------------------------------------------
 
+app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024  # 4 GB
 
-    <!-- HERO -->
-    <section class="tm-hero">
+ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "change-me-now")
 
-        <div class="tm-hero-content">
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
-            <div class="tm-now">
-                <span></span>
-                NOW PLAYING
-            </div>
+R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID", "").strip()
+R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
+R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
+R2_BUCKET = os.environ.get("R2_BUCKET", "tomesh-movies").strip()
+R2_ENDPOINT = os.environ.get("R2_ENDPOINT", "").strip().rstrip("/")
+R2_PUBLIC_URL = os.environ.get("R2_PUBLIC_URL", "").strip().rstrip("/")
 
-            <h1>{{ movie.title }}</h1>
 
-            <div class="tm-title-line"></div>
+# ---------------------------------------------------------
+# ALLOWED FILE TYPES
+# ---------------------------------------------------------
 
-            <div class="tm-meta">
+ALLOWED_VIDEOS = {
+    "mp4",
+    "mkv",
+    "webm",
+    "mov",
+}
 
-                {% if movie.category %}
-                <span class="tm-category">
-                    🎬 {{ movie.category }}
-                </span>
-                {% endif %}
+ALLOWED_POSTERS = {
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+}
 
-                <span class="tm-views">
-                    👁 {{ movie.views or 0 }} Views
-                </span>
 
-                <span class="tm-hd">
-                    HD
-                </span>
+# ---------------------------------------------------------
+# R2 MULTIPART SETTINGS
+# ---------------------------------------------------------
 
-            </div>
+PART_SIZE = 10 * 1024 * 1024       # 10 MB
+MAX_PARTS = 10000
+PRESIGNED_EXPIRES = 3600
 
-            {% if movie.description %}
-            <p class="tm-description">{{ movie.description }}</p>
-            {% else %}
-            <p class="tm-description">
-                अपनी पसंदीदा Movie को Tomesh Movies पर देखें और Enjoy करें।
-            </p>
-            {% endif %}
 
-        </div>
+# =========================================================
+# HELPERS
+# =========================================================
 
+def allowed_file(filename, allowed_extensions):
+    if not filename:
+        return False
 
-        <div class="tm-popcorn">
+    filename = filename.lower().strip()
 
-            <div class="tm-popcorn-glow"></div>
+    if "." not in filename:
+        return False
 
-            <div class="tm-popcorn-card">
+    extension = filename.rsplit(".", 1)[1]
 
-                <span class="tm-tonight">
-                    TONIGHT ★
-                </span>
+    return extension in allowed_extensions
+
 
-                <div class="tm-watch">
-                    <small>NOW</small>
-                    <strong>WATCH</strong>
-                </div>
+def get_extension(filename):
+    if not filename or "." not in filename:
+        return ""
 
-                <div class="tm-popcorn-icon">
-                    🍿
-                </div>
+    return filename.rsplit(".", 1)[1].lower()
 
-                <strong>
-                    Grab Your Popcorn!
-                </strong>
 
-                <small>
-                    Movie time starts now
-                </small>
+def clean_text(value):
+    if value is None:
+        return ""
 
-            </div>
+    return str(value).strip()
 
-        </div>
 
-    </section>
+def login_required(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        if not session.get("admin_logged_in"):
+            return redirect(url_for("login"))
 
+        return function(*args, **kwargs)
 
-    <!-- TOP AD -->
-    {% if ads and ads.ad_top %}
-    <div class="tm-ad tm-ad-top">
-        {{ ads.ad_top | safe }}
-    </div>
-    {% endif %}
+    return wrapper
 
 
-    <!-- VIDEO PLAYER -->
-    {% if movie.video_url %}
+# =========================================================
+# DATABASE
+# =========================================================
 
-    <section class="tm-player-section">
+def get_db():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not configured")
 
-        <div class="tm-player-header">
+    return psycopg2.connect(
+        DATABASE_URL,
+        cursor_factory=RealDictCursor
+    )
 
-            <div class="tm-player-title">
 
-                <div class="tm-play-icon">
-                    ▶
-                </div>
+def init_db():
+    """
+    Creates required tables if they do not exist.
+    """
 
-                <div>
-                    <small>TOMESH MOVIES</small>
-                    <strong>Watch Now</strong>
-                </div>
+    db = get_db()
 
-            </div>
+    try:
+        cur = db.cursor()
 
-            <div class="tm-status">
-                <span id="tmStatusDot"></span>
-                <span id="tmStatus">LOADING</span>
-            </div>
-
-        </div>
-
-
-        <div class="tm-video-frame">
-
-            <div class="tm-video-box">
-
-                <video
-                    id="tmVideo"
-                    class="tm-video"
-                    controls
-                    playsinline
-                    preload="metadata"
-                    poster="{{ movie.poster_url or '' }}"
-                >
-
-                    <source
-                        src="{{ movie.video_url }}"
-                        type="{{ movie.video_mime or 'video/mp4' }}"
-                    >
-
-                    आपका browser इस video को play नहीं कर सकता।
-
-                </video>
-
-
-                <!-- LOADING -->
-                <div id="tmLoading" class="tm-loading">
-
-                    <div class="tm-spinner"></div>
-
-                    <strong>
-                        Video Loading...
-                    </strong>
-
-                    <small>
-                        Please wait
-                    </small>
-
-                </div>
-
-
-                <!-- ERROR -->
-                <div id="tmError" class="tm-error" hidden>
-
-                    <div class="tm-error-icon">
-                        ⚠
-                    </div>
-
-                    <strong>
-                        Video Play नहीं हो पाई
-                    </strong>
-
-                    <small id="tmErrorText">
-                        Video format या connection में समस्या हो सकती है।
-                    </small>
-
-                    <button
-                        type="button"
-                        onclick="tmRetryVideo()"
-                    >
-                        ↻ Retry
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- ACTIONS -->
-        <div class="tm-actions">
-
-            <button
-                type="button"
-                onclick="tmFullscreen()"
-            >
-                ⛶ Fullscreen
-            </button>
-
-            <button
-                type="button"
-                onclick="tmRestart()"
-            >
-                ↻ Restart
-            </button>
-
-        </div>
-
-    </section>
-
-    {% else %}
-
-    <section class="tm-no-video">
-
-        <div>
-            🎬
-        </div>
-
-        <strong>
-            Video अभी उपलब्ध नहीं है
-        </strong>
-
-        <small>
-            इस movie के लिए video file नहीं मिली।
-        </small>
-
-    </section>
-
-    {% endif %}
-
-
-    <!-- PLAYER AD -->
-    {% if ads and ads.ad_player %}
-    <div class="tm-ad tm-ad-player">
-        {{ ads.ad_player | safe }}
-    </div>
-    {% endif %}
-
-
-    <!-- DETAILS -->
-    <section class="tm-details">
-
-        <div class="tm-detail">
-
-            <span>🎬</span>
-
-            <div>
-                <small>MOVIE</small>
-                <strong>{{ movie.title }}</strong>
-            </div>
-
-        </div>
-
-
-        {% if movie.category %}
-
-        <div class="tm-detail">
-
-            <span>🏷️</span>
-
-            <div>
-                <small>CATEGORY</small>
-                <strong>{{ movie.category }}</strong>
-            </div>
-
-        </div>
-
-        {% endif %}
-
-
-        <div class="tm-detail">
-
-            <span>👁</span>
-
-            <div>
-                <small>VIEWS</small>
-                <strong>{{ movie.views or 0 }}</strong>
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <!-- BOTTOM AD -->
-    {% if ads and ads.ad_bottom %}
-    <div class="tm-ad tm-ad-bottom">
-        {{ ads.ad_bottom | safe }}
-    </div>
-    {% endif %}
-
-
-    <!-- FOOTER -->
-    <footer class="tm-footer">
-
-        <div class="tm-footer-logo">
-            TM
-        </div>
-
-        <div>
-            <strong>TOMESH MOVIES</strong>
-            <small>Your Cinematic World</small>
-        </div>
-
-        <span>
-            © Tomesh Movies
-        </span>
-
-    </footer>
-
-</div>
-
-
-<style>
-
-/* ===============================
-   PAGE
-================================ */
-
-.tm-movie-page {
-    min-height: 100vh;
-    padding: 0 20px 50px;
-    color: #fff;
-
-    background:
-        radial-gradient(
-            circle at 80% 5%,
-            rgba(139, 92, 246, .14),
-            transparent 30%
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS movies (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                category TEXT DEFAULT '',
+                description TEXT DEFAULT '',
+                poster TEXT DEFAULT '',
+                video TEXT DEFAULT '',
+                views INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ads (
+                id SERIAL PRIMARY KEY,
+                ad_top TEXT DEFAULT '',
+                ad_player TEXT DEFAULT '',
+                ad_bottom TEXT DEFAULT ''
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            SELECT id
+            FROM ads
+            ORDER BY id
+            LIMIT 1
+            """
+        )
+
+        ad = cur.fetchone()
+
+        if not ad:
+            cur.execute(
+                """
+                INSERT INTO ads (ad_top, ad_player, ad_bottom)
+                VALUES ('', '', '')
+                """
+            )
+
+        db.commit()
+
+    finally:
+        db.close()
+
+
+def get_ads():
+    try:
+        db = get_db()
+
+        try:
+            cur = db.cursor()
+
+            cur.execute(
+                """
+                SELECT *
+                FROM ads
+                ORDER BY id
+                LIMIT 1
+                """
+            )
+
+            row = cur.fetchone()
+
+            if row:
+                return row
+
+            return {
+                "ad_top": "",
+                "ad_player": "",
+                "ad_bottom": "",
+            }
+
+        finally:
+            db.close()
+
+    except Exception:
+        return {
+            "ad_top": "",
+            "ad_player": "",
+            "ad_bottom": "",
+        }
+
+
+# =========================================================
+# R2
+# =========================================================
+
+def get_r2_client():
+    if not R2_ENDPOINT:
+        raise RuntimeError("R2_ENDPOINT is not configured")
+
+    if not R2_ACCESS_KEY_ID:
+        raise RuntimeError("R2_ACCESS_KEY_ID is not configured")
+
+    if not R2_SECRET_ACCESS_KEY:
+        raise RuntimeError("R2_SECRET_ACCESS_KEY is not configured")
+
+    return boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+        config=Config(
+            signature_version="s3v4",
+            s3={
+                "addressing_style": "path"
+            }
         ),
-        radial-gradient(
-            circle at 10% 40%,
-            rgba(255, 193, 7, .05),
-            transparent 25%
-        ),
-        #050507;
-}
-
-.tm-movie-page *,
-.tm-movie-page *::before,
-.tm-movie-page *::after {
-    box-sizing: border-box;
-}
-
-
-/* ===============================
-   TOP BAR
-================================ */
-
-.tm-topbar {
-    max-width: 1150px;
-    height: 76px;
-    margin: auto;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    border-bottom: 1px solid rgba(255,255,255,.07);
-}
-
-.tm-brand {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-
-    color: #fff;
-    text-decoration: none;
-}
-
-.tm-logo {
-    width: 44px;
-    height: 44px;
-
-    position: relative;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 12px;
-
-    color: #111;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ffc107,
-            #ff8a00,
-            #ef233c
-        );
-
-    font-weight: 1000;
-}
-
-.tm-logo span {
-    position: absolute;
-
-    right: -6px;
-    bottom: -5px;
-
-    width: 20px;
-    height: 20px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 50%;
-
-    background: #fff;
-
-    font-size: 8px;
-}
-
-.tm-brand-text {
-    display: flex;
-    flex-direction: column;
-}
-
-.tm-brand-text strong {
-    font-size: 15px;
-    letter-spacing: 1.5px;
-}
-
-.tm-brand-text small {
-    margin-top: 4px;
-
-    color: #ffc107;
-
-    font-size: 8px;
-    letter-spacing: 3px;
-    font-weight: 900;
-}
-
-.tm-back {
-    padding: 9px 14px;
-
-    color: #9297a2;
-
-    text-decoration: none;
-
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 9px;
-
-    background: rgba(255,255,255,.025);
-
-    font-size: 10px;
-    font-weight: 800;
-}
-
-.tm-back:hover {
-    color: #ffc107;
-    border-color: rgba(255,193,7,.3);
-}
-
-
-/* ===============================
-   HERO
-================================ */
-
-.tm-hero {
-    max-width: 1150px;
-    min-height: 420px;
-
-    margin: auto;
-    padding: 55px 0 40px;
-
-    display: grid;
-    grid-template-columns: minmax(0,1fr) 300px;
-
-    gap: 50px;
-
-    align-items: center;
-}
-
-.tm-hero-content {
-    min-width: 0;
-}
-
-.tm-now {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-
-    color: #ffc107;
-
-    font-size: 9px;
-    font-weight: 900;
-
-    letter-spacing: 3px;
-}
-
-.tm-now span {
-    width: 7px;
-    height: 7px;
-
-    border-radius: 50%;
-
-    background: #ef233c;
-
-    box-shadow: 0 0 12px #ef233c;
-}
-
-.tm-hero h1 {
-    margin: 15px 0 0;
-
-    max-width: 850px;
-
-    font-size: clamp(38px, 5.5vw, 70px);
-    line-height: 1;
-
-    letter-spacing: -2px;
-
-    overflow-wrap: anywhere;
-
-    background:
-        linear-gradient(
-            100deg,
-            #fff,
-            #d1d4da
-        );
-
-    -webkit-background-clip: text;
-    background-clip: text;
-
-    color: transparent;
-}
-
-.tm-title-line {
-    width: 80px;
-    height: 3px;
-
-    margin-top: 18px;
-
-    border-radius: 5px;
-
-    background:
-        linear-gradient(
-            90deg,
-            #ffc107,
-            #ef233c
-        );
-}
-
-.tm-meta {
-    margin-top: 18px;
-
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-
-    gap: 9px;
-}
-
-.tm-category {
-    padding: 7px 12px;
-
-    border-radius: 8px;
-
-    color: #111;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ffc107,
-            #ff9f00
-        );
-
-    font-size: 10px;
-    font-weight: 900;
-}
-
-.tm-views {
-    color: #777e8a;
-    font-size: 11px;
-}
-
-.tm-hd {
-    padding: 5px 7px;
-
-    color: #aaa;
-
-    border: 1px solid rgba(255,255,255,.1);
-    border-radius: 5px;
-
-    font-size: 8px;
-    font-weight: 900;
-}
-
-.tm-description {
-    max-width: 700px;
-
-    margin: 20px 0 0;
-
-    color: #9096a1;
-
-    font-size: 13px;
-    line-height: 1.8;
-
-    white-space: pre-wrap;
-}
-
-
-/* ===============================
-   POPCORN
-================================ */
-
-.tm-popcorn {
-    position: relative;
-}
-
-.tm-popcorn-glow {
-    position: absolute;
-
-    width: 240px;
-    height: 240px;
-
-    left: 50%;
-    top: 50%;
-
-    transform: translate(-50%,-50%);
-
-    border-radius: 50%;
-
-    background:
-        radial-gradient(
-            circle,
-            rgba(255,193,7,.2),
-            transparent 68%
-        );
-
-    filter: blur(25px);
-}
-
-.tm-popcorn-card {
-    position: relative;
-
-    padding: 27px 20px;
-
-    text-align: center;
-
-    border: 1px solid rgba(255,255,255,.09);
-    border-radius: 22px;
-
-    background:
-        linear-gradient(
-            145deg,
-            #181920,
-            #090a0d
-        );
-
-    box-shadow:
-        0 25px 70px rgba(0,0,0,.45);
-}
-
-.tm-tonight {
-    color: #666d78;
-
-    font-size: 7px;
-    letter-spacing: 2px;
-}
-
-.tm-watch {
-    margin-top: 10px;
-
-    display: flex;
-    flex-direction: column;
-}
-
-.tm-watch small {
-    color: #ffc107;
-
-    font-size: 9px;
-    letter-spacing: 4px;
-    font-weight: 900;
-}
-
-.tm-watch strong {
-    margin-top: 3px;
-
-    font-size: 28px;
-    letter-spacing: 2px;
-}
-
-.tm-popcorn-icon {
-    margin: 18px 0;
-
-    font-size: 70px;
-
-    animation: tmPopcorn 2.8s ease-in-out infinite;
-}
-
-@keyframes tmPopcorn {
-
-    0%,100% {
-        transform: translateY(0) rotate(-2deg);
-    }
-
-    50% {
-        transform: translateY(-8px) rotate(3deg);
-    }
-
-}
-
-.tm-popcorn-card > strong {
-    display: block;
-    font-size: 14px;
-}
-
-.tm-popcorn-card > small {
-    display: block;
-
-    margin-top: 5px;
-
-    color: #666d78;
-
-    font-size: 9px;
-}
-
-
-/* ===============================
-   ADS
-================================ */
-
-.tm-ad {
-    max-width: 1150px;
-
-    margin: 20px auto;
-
-    text-align: center;
-
-    overflow: hidden;
-}
-
-
-/* ===============================
-   PLAYER
-================================ */
-
-.tm-player-section {
-    max-width: 1150px;
-
-    margin: 20px auto 30px;
-}
-
-.tm-player-header {
-    margin-bottom: 13px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.tm-player-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.tm-play-icon {
-    width: 35px;
-    height: 35px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 10px;
-
-    color: #111;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ffc107,
-            #ff9f00
-        );
-
-    font-size: 11px;
-}
-
-.tm-player-title div:last-child {
-    display: flex;
-    flex-direction: column;
-}
-
-.tm-player-title small {
-    color: #565d68;
-
-    font-size: 7px;
-    letter-spacing: 2px;
-}
-
-.tm-player-title strong {
-    margin-top: 3px;
-
-    font-size: 17px;
-}
-
-.tm-status {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-
-    color: #777e89;
-
-    font-size: 8px;
-    font-weight: 900;
-    letter-spacing: 1px;
-}
-
-#tmStatusDot {
-    width: 7px;
-    height: 7px;
-
-    border-radius: 50%;
-
-    background: #ffc107;
-
-    box-shadow: 0 0 10px rgba(255,193,7,.7);
-}
-
-
-/* ===============================
-   VIDEO FRAME
-================================ */
-
-.tm-video-frame {
-    padding: 2px;
-
-    border-radius: 19px;
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(255,193,7,.4),
-            rgba(139,92,246,.3),
-            rgba(239,35,60,.25)
-        );
-
-    box-shadow:
-        0 30px 80px rgba(0,0,0,.5);
-}
-
-.tm-video-box {
-    position: relative;
-
-    width: 100%;
-
-    overflow: hidden;
-
-    border-radius: 17px;
-
-    background: #000;
-}
-
-.tm-video {
-    display: block;
-
-    width: 100%;
-
-    height: auto;
-
-    min-height: 300px;
-    max-height: 700px;
-
-    background: #000;
-
-    object-fit: contain;
-}
-
-
-/* ===============================
-   LOADING
-================================ */
-
-.tm-loading {
-    position: absolute;
-
-    inset: 0;
-
-    z-index: 5;
-
-    display: flex;
-
-    flex-direction: column;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 8px;
-
-    background: rgba(0,0,0,.75);
-
-    color: #aaa;
-
-    transition: .25s;
-}
-
-.tm-loading.hidden {
-    opacity: 0;
-    visibility: hidden;
-}
-
-.tm-loading strong {
-    color: #ddd;
-
-    font-size: 12px;
-}
-
-.tm-loading small {
-    color: #666;
-
-    font-size: 9px;
-}
-
-.tm-spinner {
-    width: 38px;
-    height: 38px;
-
-    border: 3px solid rgba(255,255,255,.12);
-
-    border-top-color: #ffc107;
-
-    border-radius: 50%;
-
-    animation: tmSpin .8s linear infinite;
-}
-
-@keyframes tmSpin {
-
-    to {
-        transform: rotate(360deg);
-    }
-
-}
-
-
-/* ===============================
-   ERROR
-================================ */
-
-.tm-error {
-    position: absolute;
-
-    inset: 0;
-
-    z-index: 10;
-
-    display: flex;
-
-    flex-direction: column;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 9px;
-
-    padding: 20px;
-
-    text-align: center;
-
-    background: rgba(0,0,0,.9);
-}
-
-.tm-error[hidden] {
-    display: none;
-}
-
-.tm-error-icon {
-    width: 50px;
-    height: 50px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 50%;
-
-    color: #fff;
-
-    background: rgba(239,35,60,.15);
-
-    border: 1px solid rgba(239,35,60,.3);
-
-    font-size: 22px;
-}
-
-.tm-error strong {
-    font-size: 14px;
-}
-
-.tm-error small {
-    max-width: 350px;
-
-    color: #777e89;
-
-    font-size: 10px;
-    line-height: 1.6;
-}
-
-.tm-error button {
-    margin-top: 5px;
-
-    padding: 9px 16px;
-
-    border: 0;
-    border-radius: 8px;
-
-    color: #111;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ffc107,
-            #ff9f00
-        );
-
-    cursor: pointer;
-
-    font-size: 10px;
-    font-weight: 900;
-}
-
-
-/* ===============================
-   ACTIONS
-================================ */
-
-.tm-actions {
-    margin-top: 12px;
-
-    display: flex;
-    justify-content: flex-end;
-
-    gap: 8px;
-}
-
-.tm-actions button {
-    padding: 9px 14px;
-
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 8px;
-
-    color: #8b929d;
-
-    background: #101218;
-
-    cursor: pointer;
-
-    font-size: 9px;
-    font-weight: 800;
-}
-
-.tm-actions button:hover {
-    color: #fff;
-
-    border-color: rgba(255,193,7,.3);
-}
-
-
-/* ===============================
-   NO VIDEO
-================================ */
-
-.tm-no-video {
-    max-width: 1150px;
-
-    margin: 30px auto;
-
-    padding: 60px 20px;
-
-    display: flex;
-
-    flex-direction: column;
-
-    align-items: center;
-
-    gap: 10px;
-
-    text-align: center;
-
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 18px;
-
-    background: #0b0d11;
-}
-
-.tm-no-video > div {
-    font-size: 45px;
-}
-
-.tm-no-video strong {
-    font-size: 16px;
-}
-
-.tm-no-video small {
-    color: #707782;
-    font-size: 10px;
-}
-
-
-/* ===============================
-   DETAILS
-================================ */
-
-.tm-details {
-    max-width: 1150px;
-
-    margin: 25px auto;
-
-    display: grid;
-
-    grid-template-columns:
-        repeat(3, 1fr);
-
-    gap: 12px;
-}
-
-.tm-detail {
-    min-width: 0;
-
-    display: flex;
-    align-items: center;
-
-    gap: 12px;
-
-    padding: 16px;
-
-    border: 1px solid rgba(255,255,255,.065);
-    border-radius: 14px;
-
-    background:
-        linear-gradient(
-            145deg,
-            #101218,
-            #090b0f
-        );
-}
-
-.tm-detail > span {
-    width: 42px;
-    height: 42px;
-
-    flex-shrink: 0;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 10px;
-
-    background: rgba(255,193,7,.07);
+    )
 
-    font-size: 18px;
-}
-
-.tm-detail > div {
-    min-width: 0;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 5px;
-}
-
-.tm-detail small {
-    color: #555c67;
-
-    font-size: 7px;
-    font-weight: 900;
-
-    letter-spacing: 1.5px;
-}
-
-.tm-detail strong {
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    color: #ddd;
-
-    font-size: 12px;
-}
-
-
-/* ===============================
-   FOOTER
-================================ */
-
-.tm-footer {
-    max-width: 1150px;
-
-    margin: 45px auto 0;
-    padding-top: 20px;
-
-    display: flex;
-    align-items: center;
-
-    gap: 12px;
-
-    border-top: 1px solid rgba(255,255,255,.06);
-}
-
-.tm-footer-logo {
-    width: 38px;
-    height: 38px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 9px;
-
-    color: #111;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ffc107,
-            #ff9f00
-        );
-
-    font-size: 11px;
-    font-weight: 1000;
-}
-
-.tm-footer div:nth-child(2) {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.tm-footer strong {
-    font-size: 10px;
-    letter-spacing: 1px;
-}
-
-.tm-footer small {
-    color: #555c67;
-    font-size: 8px;
-}
-
-.tm-footer > span {
-    margin-left: auto;
-
-    color: #414751;
-
-    font-size: 8px;
-}
-
-
-/* ===============================
-   TABLET
-================================ */
-
-@media (max-width: 900px) {
-
-    .tm-hero {
-        grid-template-columns: 1fr;
-        gap: 35px;
-    }
-
-    .tm-popcorn {
-        width: 320px;
-        max-width: 100%;
-        margin: auto;
-    }
-
-}
-
-
-/* ===============================
-   MOBILE
-================================ */
-
-@media (max-width: 600px) {
-
-    .tm-movie-page {
-        padding: 0 12px 35px;
-    }
-
-    .tm-topbar {
-        height: 62px;
-    }
-
-    .tm-logo {
-        width: 38px;
-        height: 38px;
-    }
-
-    .tm-brand-text strong {
-        font-size: 13px;
-    }
-
-    .tm-brand-text small {
-        font-size: 7px;
-    }
-
-    .tm-back {
-        padding: 7px 10px;
-        font-size: 9px;
-    }
 
-    .tm-hero {
-        min-height: auto;
+def r2_object_url(key):
+    if not key:
+        return ""
 
-        padding: 35px 0 30px;
+    key = str(key).lstrip("/")
 
-        gap: 30px;
-    }
+    if R2_PUBLIC_URL:
+        return f"{R2_PUBLIC_URL}/{quote(key, safe='/')}"
 
-    .tm-hero h1 {
-        font-size: 32px;
-        letter-spacing: -1px;
-    }
+    return ""
 
-    .tm-description {
-        font-size: 12px;
-    }
 
-    .tm-popcorn {
-        max-width: 310px;
-    }
+def r2_presigned_url(key, expires=PRESIGNED_EXPIRES):
+    if not key:
+        return ""
 
-    .tm-player-title strong {
-        font-size: 15px;
-    }
+    client = get_r2_client()
 
-    .tm-video-frame {
-        border-radius: 12px;
-    }
+    return client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": R2_BUCKET,
+            "Key": key,
+        },
+        ExpiresIn=expires,
+    )
 
-    .tm-video-box {
-        border-radius: 10px;
-    }
 
-    .tm-video {
-        min-height: 210px;
-        max-height: 450px;
-    }
+def delete_r2_object(key):
+    if not key:
+        return
 
-    .tm-actions {
-        justify-content: stretch;
-    }
+    try:
+        client = get_r2_client()
 
-    .tm-actions button {
-        flex: 1;
-    }
+        client.delete_object(
+            Bucket=R2_BUCKET,
+            Key=key,
+        )
 
-    .tm-details {
-        grid-template-columns: 1fr;
-    }
+    except Exception as exc:
+        print("R2 delete error:", exc)
 
-    .tm-footer > span {
-        display: none;
-    }
 
-}
+def r2_key_is_allowed(key):
+    if not key:
+        return False
 
+    key = str(key).lstrip("/")
 
-/* ===============================
-   SMALL MOBILE
-================================ */
+    if len(key) > 1024:
+        return False
 
-@media (max-width: 380px) {
+    return (
+        key.startswith("videos/")
+        or
+        key.startswith("posters/")
+    )
 
-    .tm-brand-text {
-        display: none;
-    }
 
-    .tm-hero h1 {
-        font-size: 28px;
-    }
+# =========================================================
+# MIME TYPES
+# =========================================================
 
-    .tm-video {
-        min-height: 190px;
-    }
-
+VIDEO_MIME_TYPES = {
+    "mp4": "video/mp4",
+    "m4v": "video/mp4",
+    "webm": "video/webm",
+    "mov": "video/quicktime",
+    "mkv": "video/x-matroska",
 }
-
-</style>
-
-
-<script>
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    const video = document.getElementById("tmVideo");
-    const loading = document.getElementById("tmLoading");
-    const errorBox = document.getElementById("tmError");
-    const status = document.getElementById("tmStatus");
-    const dot = document.getElementById("tmStatusDot");
-
-    if (!video) {
-        return;
-    }
-
-
-    function setStatus(text) {
-
-        if (status) {
-            status.textContent = text;
-        }
-
-    }
-
-
-    function hideLoading() {
-
-        if (loading) {
-            loading.classList.add("hidden");
-        }
-
-    }
-
-
-    function showLoading() {
-
-        if (loading) {
-            loading.classList.remove("hidden");
-        }
-
-        if (errorBox) {
-            errorBox.hidden = true;
-        }
-
-        setStatus("LOADING");
-
-    }
-
-
-    function showError() {
-
-        hideLoading();
-
-        if (errorBox) {
-            errorBox.hidden = false;
-        }
-
-        setStatus("ERROR");
-
-        if (dot) {
-            dot.style.background = "#ef233c";
-            dot.style.boxShadow = "0 0 10px rgba(239,35,60,.8)";
-        }
 
-    }
 
+def get_video_mime(filename_or_key):
+    extension = get_extension(filename_or_key)
 
-    function showReady() {
+    if extension in VIDEO_MIME_TYPES:
+        return VIDEO_MIME_TYPES[extension]
 
-        hideLoading();
+    guessed, _ = mimetypes.guess_type(filename_or_key or "")
 
-        if (errorBox) {
-            errorBox.hidden = true;
-        }
+    return guessed or "video/mp4"
 
-        setStatus("READY");
 
-        if (dot) {
-            dot.style.background = "#ffc107";
-            dot.style.boxShadow = "0 0 10px rgba(255,193,7,.7)";
-        }
+# =========================================================
+# HOME
+# =========================================================
 
-    }
+@app.route("/")
+def index():
 
+    db = get_db()
 
-    showLoading();
+    try:
+        cur = db.cursor()
 
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            ORDER BY created_at DESC, id DESC
+            """
+        )
 
-    video.addEventListener("loadstart", function () {
-        showLoading();
-    });
+        movies = cur.fetchall()
 
+        for movie in movies:
 
-    video.addEventListener("loadedmetadata", function () {
+            if movie.get("poster"):
+                movie["poster_url"] = r2_object_url(movie["poster"])
 
-        console.log(
-            "Tomesh Movies: metadata loaded"
-        );
+            else:
+                movie["poster_url"] = ""
 
-        console.log(
-            "Duration:",
-            video.duration
-        );
+        ads = get_ads()
 
-        showReady();
+        return render_template(
+            "index.html",
+            movies=movies,
+            ads=ads,
+        )
 
-    });
+    finally:
+        db.close()
 
 
-    video.addEventListener("canplay", function () {
+# =========================================================
+# MOVIE PAGE
+# =========================================================
 
-        showReady();
+@app.route("/movie/<int:movie_id>")
+def movie(movie_id):
 
-    });
+    db = get_db()
 
+    try:
+        cur = db.cursor()
 
-    video.addEventListener("playing", function () {
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
 
-        hideLoading();
+        movie_data = cur.fetchone()
 
-        setStatus("PLAYING");
+        if not movie_data:
+            abort(404)
 
-    });
+        cur.execute(
+            """
+            UPDATE movies
+            SET views = COALESCE(views, 0) + 1
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
 
+        db.commit()
 
-    video.addEventListener("waiting", function () {
+    finally:
+        db.close()
 
-        setStatus("BUFFERING");
+    movie_data["video_url"] = ""
 
-    });
+    if movie_data.get("video"):
 
+        try:
+            movie_data["video_url"] = r2_presigned_url(
+                movie_data["video"],
+                expires=3600
+            )
 
-    video.addEventListener("pause", function () {
+        except Exception as exc:
+            print("Presigned video URL error:", exc)
 
-        if (!video.ended) {
-            setStatus("PAUSED");
-        }
+            movie_data["video_url"] = r2_object_url(
+                movie_data["video"]
+            )
 
-    });
+    movie_data["video_mime"] = get_video_mime(
+        movie_data.get("video", "")
+    )
 
+    if movie_data.get("poster"):
+        movie_data["poster_url"] = r2_object_url(
+            movie_data["poster"]
+        )
+    else:
+        movie_data["poster_url"] = ""
 
-    video.addEventListener("ended", function () {
+    return render_template(
+        "movie.html",
+        movie=movie_data,
+        ads=get_ads(),
+    )
 
-        setStatus("ENDED");
 
-    });
+# =========================================================
+# HEALTH
+# =========================================================
 
+@app.route("/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "service": "tomesh-movie",
+    })
 
-    video.addEventListener("error", function () {
 
-        console.error(
-            "Tomesh Movies video error:",
-            video.error
-        );
+@app.route("/r2-health")
+def r2_health():
 
-        showError();
+    try:
 
-    });
+        client = get_r2_client()
 
+        client.head_bucket(
+            Bucket=R2_BUCKET
+        )
 
-    video.addEventListener("stalled", function () {
+        return jsonify({
+            "status": "ok",
+            "message": "R2 OK",
+            "bucket": R2_BUCKET,
+        })
 
-        console.log(
-            "Tomesh Movies: video stalled"
-        );
+    except Exception as exc:
 
-    });
+        return jsonify({
+            "status": "error",
+            "message": str(exc),
+            "bucket": R2_BUCKET,
+        }), 500
 
 
-    /*
-     * Important:
-     * Force browser to load the R2 presigned URL.
-     */
+# =========================================================
+# LOGIN
+# =========================================================
 
-    try {
+@app.route("/login", methods=["GET", "POST"])
+def login():
 
-        video.load();
+    if request.method == "POST":
 
-    } catch (e) {
+        username = clean_text(
+            request.form.get("username")
+        )
 
-        console.error(
-            "Video load error:",
-            e
-        );
+        password = request.form.get(
+            "password",
+            ""
+        )
 
-        showError();
+        if (
+            username == ADMIN_USER
+            and
+            password == ADMIN_PASSWORD
+        ):
 
-    }
+            session["admin_logged_in"] = True
 
-});
+            return redirect(
+                url_for("admin")
+            )
 
+        flash(
+            "Invalid username or password.",
+            "error"
+        )
 
-/* ===============================
-   RETRY
-================================ */
+    return render_template(
+        "login.html"
+    )
 
-function tmRetryVideo() {
 
-    const video =
-        document.getElementById("tmVideo");
+@app.route("/logout")
+def logout():
 
-    const loading =
-        document.getElementById("tmLoading");
+    session.clear()
 
-    const errorBox =
-        document.getElementById("tmError");
+    return redirect(
+        url_for("login")
+    )
 
-    if (!video) {
-        return;
-    }
 
-    if (loading) {
-        loading.classList.remove("hidden");
-    }
+# =========================================================
+# ADMIN DASHBOARD
+# =========================================================
 
-    if (errorBox) {
-        errorBox.hidden = true;
-    }
+@app.route("/admin")
+@login_required
+def admin():
 
-    try {
+    db = get_db()
 
-        video.pause();
+    try:
 
-    } catch (e) {}
+        cur = db.cursor()
 
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            ORDER BY created_at DESC, id DESC
+            """
+        )
 
-    try {
+        movies = cur.fetchall()
 
-        video.load();
+        cur.execute(
+            """
+            SELECT
+                COUNT(*) AS total_movies,
+                COALESCE(SUM(views), 0) AS total_views
+            FROM movies
+            """
+        )
 
-    } catch (e) {
+        stats = cur.fetchone()
 
-        console.error(
-            "Retry failed:",
-            e
-        );
+        return render_template(
+            "admin.html",
+            movies=movies,
+            stats=stats,
+            ads=get_ads(),
+        )
 
-    }
+    finally:
+        db.close()
 
-}
-
-
-/* ===============================
-   FULLSCREEN
-================================ */
-
-function tmFullscreen() {
-
-    const video =
-        document.getElementById("tmVideo");
-
-    if (!video) {
-        return;
-    }
-
-    if (document.fullscreenElement) {
-
-        document.exitFullscreen();
-
-        return;
-    }
-
-    if (video.requestFullscreen) {
-
-        video.requestFullscreen();
-
-    } else if (video.webkitEnterFullscreen) {
-
-        video.webkitEnterFullscreen();
-
-    }
 
-}
-
-
-/* ===============================
-   RESTART
-================================ */
-
-function tmRestart() {
-
-    const video =
-        document.getElementById("tmVideo");
-
-    if (!video) {
-        return;
-    }
-
-    try {
-
-        video.currentTime = 0;
-
-        video.play().catch(function () {});
-
-    } catch (e) {
-
-        console.log(e);
-
-    }
-
-}
+# =========================================================
+# ADD MOVIE - NORMAL FORM COMPATIBILITY
+# =========================================================
 
-</script>
+@app.route("/admin/add", methods=["GET", "POST"])
+@login_required
+def admin_add():
+
+    if request.method == "GET":
 
-{% endblock %}
+        return render_template(
+            "admin.html",
+            movies=[],
+            stats={
+                "total_movies": 0,
+                "total_views": 0,
+            },
+            ads=get_ads(),
+        )
+
+    title = clean_text(
+        request.form.get("title")
+    )
+
+    category = clean_text(
+        request.form.get("category")
+    )
+
+    description = clean_text(
+        request.form.get("description")
+    )
+
+    poster_file = request.files.get("poster")
+    video_file = request.files.get("video")
+
+    if not title:
+        flash(
+            "Movie title required.",
+            "error"
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    if not poster_file or not poster_file.filename:
+        flash(
+            "Poster required.",
+            "error"
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    if not video_file or not video_file.filename:
+        flash(
+            "Video required.",
+            "error"
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    if not allowed_file(
+        poster_file.filename,
+        ALLOWED_POSTERS
+    ):
+        flash(
+            "Poster must be JPG, JPEG, PNG or WEBP.",
+            "error"
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    if not allowed_file(
+        video_file.filename,
+        ALLOWED_VIDEOS
+    ):
+        flash(
+            "Video must be MP4, MKV, WebM or MOV.",
+            "error"
+        )
+
+        return redirect(
+            url_for("admin")
+        )
+
+    poster_ext = get_extension(
+        poster_file.filename
+    )
+
+    video_ext = get_extension(
+        video_file.filename
+    )
+
+    poster_key = (
+        "posters/"
+        +
+        secrets.token_hex(16)
+        +
+        "."
+        +
+        poster_ext
+    )
+
+    video_key = (
+        "videos/"
+        +
+        secrets.token_hex(16)
+        +
+        "."
+        +
+        video_ext
+    )
+
+    client = get_r2_client()
+
+    try:
+
+        poster_file.stream.seek(0)
+
+        client.upload_fileobj(
+            poster_file.stream,
+            R2_BUCKET,
+            poster_key,
+            ExtraArgs={
+                "ContentType": (
+                    mimetypes.guess_type(
+                        poster_file.filename
+                    )[0]
+                    or
+                    "application/octet-stream"
+                )
+            }
+        )
+
+        video_file.stream.seek(0)
+
+        client.upload_fileobj(
+            video_file.stream,
+            R2_BUCKET,
+            video_key,
+            ExtraArgs={
+                "ContentType": get_video_mime(
+                    video_file.filename
+                )
+            }
+        )
+
+        db = get_db()
+
+        try:
+
+            cur = db.cursor()
+
+            cur.execute(
+                """
+                INSERT INTO movies
+                (
+                    title,
+                    category,
+                    description,
+                    poster,
+                    video,
+                    views
+                )
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    0
+                )
+                """,
+                (
+                    title,
+                    category,
+                    description,
+                    poster_key,
+                    video_key,
+                )
+            )
+
+            db.commit()
+
+        finally:
+            db.close()
+
+        flash(
+            "Movie added successfully.",
+            "success"
+        )
+
+    except Exception as exc:
+
+        print("Movie upload error:", exc)
+
+        delete_r2_object(poster_key)
+        delete_r2_object(video_key)
+
+        flash(
+            "Movie upload failed: " + str(exc),
+            "error"
+        )
+
+    return redirect(
+        url_for("admin")
+    )
+
+
+# =========================================================
+# DELETE MOVIE
+# =========================================================
+
+@app.route(
+    "/admin/delete/<int:movie_id>",
+    methods=["GET", "POST"]
+)
+@login_required
+def admin_delete(movie_id):
+
+    db = get_db()
+
+    movie_data = None
+
+    try:
+
+        cur = db.cursor()
+
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
+
+        movie_data = cur.fetchone()
+
+        if not movie_data:
+            flash(
+                "Movie not found.",
+                "error"
+            )
+
+            return redirect(
+                url_for("admin")
+            )
+
+        cur.execute(
+            """
+            DELETE FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
+
+        db.commit()
+
+    finally:
+        db.close()
+
+    delete_r2_object(
+        movie_data.get("video")
+    )
+
+    delete_r2_object(
+        movie_data.get("poster")
+    )
+
+    flash(
+        "Movie deleted successfully.",
+        "success"
+    )
+
+    return redirect(
+        url_for("admin")
+    )
+
+
+# =========================================================
+# ADS SETTINGS
+# =========================================================
+
+@app.route(
+    "/admin/ads",
+    methods=["POST"]
+)
+@login_required
+def admin_ads():
+
+    ad_top = request.form.get(
+        "ad_top",
+        ""
+    )
+
+    ad_player = request.form.get(
+        "ad_player",
+        ""
+    )
+
+    ad_bottom = request.form.get(
+        "ad_bottom",
+        ""
+    )
+
+    db = get_db()
+
+    try:
+
+        cur = db.cursor()
+
+        cur.execute(
+            """
+            SELECT id
+            FROM ads
+            ORDER BY id
+            LIMIT 1
+            """
+        )
+
+        row = cur.fetchone()
+
+        if row:
+
+            cur.execute(
+                """
+                UPDATE ads
+                SET
+                    ad_top = %s,
+                    ad_player = %s,
+                    ad_bottom = %s
+                WHERE id = %s
+                """,
+                (
+                    ad_top,
+                    ad_player,
+                    ad_bottom,
+                    row["id"],
+                )
+            )
+
+        else:
+
+            cur.execute(
+                """
+                INSERT INTO ads
+                (
+                    ad_top,
+                    ad_player,
+                    ad_bottom
+                )
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s
+                )
+                """,
+                (
+                    ad_top,
+                    ad_player,
+                    ad_bottom,
+                )
+            )
+
+        db.commit()
+
+    finally:
+        db.close()
+
+    flash(
+        "Ads settings saved.",
+        "success"
+    )
+
+    return redirect(
+        url_for("admin")
+    )
+
+
+# =========================================================
+# R2 MULTIPART CREATE
+# =========================================================
+
+@app.route(
+    "/api/r2/multipart/create",
+    methods=["POST"]
+)
+@login_required
+def r2_multipart_create():
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        filename = clean_text(
+            data.get("filename")
+        )
+
+        file_type = clean_text(
+            data.get("file_type")
+        ).lower()
+
+        if not filename:
+            return jsonify({
+                "ok": False,
+                "error": "Filename missing."
+            }), 400
+
+        if file_type == "poster":
+
+            if not allowed_file(
+                filename,
+                ALLOWED_POSTERS
+            ):
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Poster must be "
+                        "JPG, JPEG, PNG or WEBP."
+                    )
+                }), 400
+
+            prefix = "posters/"
+
+        else:
+
+            if not allowed_file(
+                filename,
+                ALLOWED_VIDEOS
+            ):
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Video must be "
+                        "MP4, MKV, WebM or MOV."
+                    )
+                }), 400
+
+            prefix = "videos/"
+
+        extension = get_extension(
+            filename
+        )
+
+        safe_name = secure_filename(
+            filename
+        )
+
+        base_name = os.path.splitext(
+            safe_name
+        )[0]
+
+        base_name = re.sub(
+            r"[^a-zA-Z0-9_-]+",
+            "-",
+            base_name
+        ).strip("-")
+
+        if not base_name:
+            base_name = "file"
+
+        key = (
+            prefix
+            +
+            base_name
+            +
+            "-"
+            +
+            secrets.token_hex(12)
+            +
+            "."
+            +
+            extension
+        )
+
+        client = get_r2_client()
+
+        content_type = (
+            clean_text(
+                data.get("content_type")
+            )
+            or
+            get_video_mime(filename)
+        )
+
+        response = client.create_multipart_upload(
+            Bucket=R2_BUCKET,
+            Key=key,
+            ContentType=content_type,
+        )
+
+        upload_id = response["UploadId"]
+
+        return jsonify({
+            "ok": True,
+            "key": key,
+            "upload_id": upload_id,
+            "part_size": PART_SIZE,
+            "max_parts": MAX_PARTS,
+            "content_type": content_type,
+        })
+
+    except Exception as exc:
+
+        print(
+            "R2 multipart create failed:",
+            repr(exc)
+        )
+
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 500
+
+
+# =========================================================
+# R2 MULTIPART PRESIGNED URLS
+# =========================================================
+
+@app.route(
+    "/api/r2/multipart/urls",
+    methods=["POST"]
+)
+@login_required
+def r2_multipart_urls():
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        key = clean_text(
+            data.get("key")
+        ).lstrip("/")
+
+        upload_id = clean_text(
+            data.get("upload_id")
+        )
+
+        part_numbers = data.get(
+            "part_numbers"
+        )
+
+        if not r2_key_is_allowed(key):
+            return jsonify({
+                "ok": False,
+                "error": "Invalid R2 key."
+            }), 400
+
+        if not upload_id:
+            return jsonify({
+                "ok": False,
+                "error": "Upload ID missing."
+            }), 400
+
+        if not isinstance(
+            part_numbers,
+            list
+        ):
+            return jsonify({
+                "ok": False,
+                "error": "part_numbers must be an array."
+            }), 400
+
+        if len(part_numbers) > MAX_PARTS:
+            return jsonify({
+                "ok": False,
+                "error": "Too many parts."
+            }), 400
+
+        client = get_r2_client()
+
+        urls = []
+
+        for number in part_numbers:
+
+            try:
+                number = int(number)
+            except Exception:
+                return jsonify({
+                    "ok": False,
+                    "error": "Invalid part number."
+                }), 400
+
+            if number < 1 or number > MAX_PARTS:
+                return jsonify({
+                    "ok": False,
+                    "error": "Invalid part number."
+                }), 400
+
+            url = client.generate_presigned_url(
+                "upload_part",
+                Params={
+                    "Bucket": R2_BUCKET,
+                    "Key": key,
+                    "UploadId": upload_id,
+                    "PartNumber": number,
+                },
+                ExpiresIn=PRESIGNED_EXPIRES,
+            )
+
+            urls.append({
+                "part_number": number,
+                "url": url,
+            })
+
+        return jsonify({
+            "ok": True,
+            "urls": urls,
+        })
+
+    except Exception as exc:
+
+        print(
+            "R2 multipart URL error:",
+            repr(exc)
+        )
+
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 500
+
+
+# =========================================================
+# R2 MULTIPART COMPLETE
+# =========================================================
+
+@app.route(
+    "/api/r2/multipart/complete",
+    methods=["POST"]
+)
+@login_required
+def r2_multipart_complete():
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        key = clean_text(
+            data.get("key")
+        ).lstrip("/")
+
+        upload_id = clean_text(
+            data.get("upload_id")
+        )
+
+        parts = data.get(
+            "parts"
+        )
+
+        if not r2_key_is_allowed(key):
+            return jsonify({
+                "ok": False,
+                "error": "Invalid R2 key."
+            }), 400
+
+        if not upload_id:
+            return jsonify({
+                "ok": False,
+                "error": "Upload ID missing."
+            }), 400
+
+        if not isinstance(
+            parts,
+            list
+        ) or not parts:
+            return jsonify({
+                "ok": False,
+                "error": "Parts missing."
+            }), 400
+
+        clean_parts = []
+
+        for part in parts:
+
+            if not isinstance(
+                part,
+                dict
+            ):
+                continue
+
+            part_number = part.get(
+                "PartNumber"
+            )
+
+            etag = part.get(
+                "ETag"
+            )
+
+            if part_number is None:
+                part_number = part.get(
+                    "part_number"
+                )
+
+            if not etag:
+                etag = part.get(
+                    "etag"
+                )
+
+            if part_number is None or not etag:
+                continue
+
+            clean_parts.append({
+                "PartNumber": int(
+                    part_number
+                ),
+                "ETag": str(
+                    etag
+                ),
+            })
+
+        if not clean_parts:
+            return jsonify({
+                "ok": False,
+                "error": "No valid parts."
+            }), 400
+
+        clean_parts.sort(
+            key=lambda item: item["PartNumber"]
+        )
+
+        client = get_r2_client()
+
+        response = client.complete_multipart_upload(
+            Bucket=R2_BUCKET,
+            Key=key,
+            UploadId=upload_id,
+            MultipartUpload={
+                "Parts": clean_parts
+            },
+        )
+
+        return jsonify({
+            "ok": True,
+            "key": key,
+            "location": response.get(
+                "Location",
+                ""
+            ),
+            "etag": response.get(
+                "ETag",
+                ""
+            ),
+        })
+
+    except Exception as exc:
+
+        print(
+            "R2 multipart complete failed:",
+            repr(exc)
+        )
+
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 500
+
+
+# =========================================================
+# R2 MULTIPART ABORT
+# =========================================================
+
+@app.route(
+    "/api/r2/multipart/abort",
+    methods=["POST"]
+)
+@login_required
+def r2_multipart_abort():
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        key = clean_text(
+            data.get("key")
+        ).lstrip("/")
+
+        upload_id = clean_text(
+            data.get("upload_id")
+        )
+
+        if not r2_key_is_allowed(key):
+            return jsonify({
+                "ok": False,
+                "error": "Invalid R2 key."
+            }), 400
+
+        if not upload_id:
+            return jsonify({
+                "ok": False,
+                "error": "Upload ID missing."
+            }), 400
+
+        client = get_r2_client()
+
+        client.abort_multipart_upload(
+            Bucket=R2_BUCKET,
+            Key=key,
+            UploadId=upload_id,
+        )
+
+        return jsonify({
+            "ok": True,
+            "message": "Multipart upload aborted.",
+        })
+
+    except Exception as exc:
+
+        print(
+            "R2 multipart abort failed:",
+            repr(exc)
+        )
+
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 500
+
+
+# =========================================================
+# SAVE MOVIE AFTER DIRECT R2 UPLOAD
+# =========================================================
+
+@app.route(
+    "/api/movie/save",
+    methods=["POST"]
+)
+@login_required
+def api_movie_save():
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        title = clean_text(
+            data.get("title")
+        )
+
+        category = clean_text(
+            data.get("category")
+        )
+
+        description = clean_text(
+            data.get("description")
+        )
+
+        poster = clean_text(
+            data.get("poster")
+        ).lstrip("/")
+
+        video = clean_text(
+            data.get("video")
+        ).lstrip("/")
+
+        if not title:
+            return jsonify({
+                "ok": False,
+                "error": "Movie title required."
+            }), 400
+
+        if not video:
+            return jsonify({
+                "ok": False,
+                "error": "Video key missing."
+            }), 400
+
+        if not video.startswith(
+            "videos/"
+        ):
+            return jsonify({
+                "ok": False,
+                "error": "Invalid video key."
+            }), 400
+
+        if poster and not poster.startswith(
+            "posters/"
+        ):
+            return jsonify({
+                "ok": False,
+                "error": "Invalid poster key."
+            }), 400
+
+        db = get_db()
+
+        try:
+
+            cur = db.cursor()
+
+            cur.execute(
+                """
+                INSERT INTO movies
+                (
+                    title,
+                    category,
+                    description,
+                    poster,
+                    video,
+                    views
+                )
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    0
+                )
+                RETURNING id
+                """,
+                (
+                    title,
+                    category,
+                    description,
+                    poster,
+                    video,
+                )
+            )
+
+            movie_row = cur.fetchone()
+
+            db.commit()
+
+        finally:
+            db.close()
+
+        return jsonify({
+            "ok": True,
+            "message": "Movie saved successfully.",
+            "movie_id": movie_row["id"],
+        })
+
+    except Exception as exc:
+
+        print(
+            "Movie save failed:",
+            repr(exc)
+        )
+
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+        }), 500
+
+
+# =========================================================
+# ADS.TXT
+# =========================================================
+
+@app.route("/ads.txt")
+def ads_txt():
+
+    return Response(
+        "google.com, pub-8697157365303435, DIRECT, f08c47fec0942fa0\n",
+        mimetype="text/plain"
+    )
+
+
+# =========================================================
+# ERROR HANDLERS
+# =========================================================
+
+@app.errorhandler(413)
+def file_too_large(error):
+
+    return jsonify({
+        "ok": False,
+        "error": "File is larger than 4 GB."
+    }), 413
+
+
+@app.errorhandler(404)
+def not_found(error):
+
+    if request.path.startswith("/api/"):
+        return jsonify({
+            "ok": False,
+            "error": "Not found."
+        }), 404
+
+    return render_template(
+        "base.html"
+    ), 404
+
+
+# =========================================================
+# STARTUP
+# =========================================================
+
+try:
+    init_db()
+    print("PostgreSQL initialized successfully.")
+
+except Exception as exc:
+    print(
+        "Database initialization warning:",
+        repr(exc)
+    )
+
+
+# =========================================================
+# LOCAL RUN
+# =========================================================
+
+if __name__ == "__main__":
+
+    port = int(
+        os.environ.get(
+            "PORT",
+            "5000"
+        )
+    )
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False,
+    )
