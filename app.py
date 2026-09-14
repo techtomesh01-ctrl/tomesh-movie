@@ -947,6 +947,10 @@ def cashfree_request(
     "/api/payment/create",
     methods=["POST"],
 )
+@app.route(
+    "/api/payment/create",
+    methods=["POST"],
+)
 def create_payment():
 
     data = (
@@ -956,9 +960,7 @@ def create_payment():
         or {}
     )
 
-    movie_id = data.get(
-        "movie_id"
-    )
+    movie_id = data.get("movie_id")
 
     payment_type = str(
         data.get(
@@ -1033,21 +1035,27 @@ def create_payment():
         )
 
     if payment_type == "watch":
+
         amount = WATCH_PRICE
+
         description = (
             "Watch - "
             + movie["title"]
         )
 
     elif payment_type == "download":
+
         amount = DOWNLOAD_PRICE
+
         description = (
             "Download - "
             + movie["title"]
         )
 
     else:
+
         amount = PREMIUM_PRICE
+
         description = (
             "Tomesh Movies 1 Year Premium"
         )
@@ -1062,16 +1070,9 @@ def create_payment():
         + "_"
         + secrets.token_hex(8)
     )
-"order_meta": {
-    "return_url": return_url,
-    "upi_app_priority": [
-        "gpay",
-        "phonepe",
-        "paytm",
-        "bhim",
-    ],
-},
-    
+
+    return_url = url_for(
+        "cashfree_return",
         movie_id=movie_id,
         _external=True,
     )
@@ -1080,14 +1081,18 @@ def create_payment():
         "order_id": order_id,
         "order_amount": amount,
         "order_currency": "INR",
+
         "customer_details": {
             "customer_id": customer_id,
             "customer_phone": phone,
         },
+
         "order_meta": {
             "return_url": return_url,
         },
+
         "order_note": description,
+
         "order_tags": {
             "movie_id": str(movie_id),
             "payment_type": payment_type,
@@ -1107,6 +1112,7 @@ def create_payment():
         )
 
         if not payment_session_id:
+
             return json_error(
                 "Cashfree did not return payment session.",
                 502,
@@ -1143,6 +1149,7 @@ def create_payment():
             )
 
             conn.commit()
+
             cur.close()
 
         finally:
@@ -1166,7 +1173,6 @@ def create_payment():
             str(exc),
             500,
         )
-
 
 # ============================================================
 # CASHFREE RETURN / VERIFY
