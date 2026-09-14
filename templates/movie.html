@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 
 {% block title %}{{ movie.title }} | Tomesh Movies{% endblock %}
@@ -5,854 +6,245 @@
 {% block content %}
 
 <style>
-/* =========================================================
-   TOMESH MOVIES — MOVIE WATCH PAGE
-   ========================================================= */
-
-.tm-movie-page{
+.tm-watch-page{
     min-height:100vh;
+    padding:20px 14px 50px;
     background:
-        radial-gradient(circle at 15% 10%, rgba(120,40,180,.18), transparent 30%),
-        radial-gradient(circle at 85% 20%, rgba(255,0,70,.12), transparent 30%),
-        #07070a;
+        radial-gradient(circle at 10% 5%,rgba(120,40,180,.22),transparent 30%),
+        radial-gradient(circle at 90% 15%,rgba(220,30,70,.16),transparent 30%),
+        #080808;
     color:#fff;
-    padding-bottom:60px;
 }
 
-.tm-movie-wrap{
-    width:min(1250px,94%);
-    margin:0 auto;
-    padding:28px 0 50px;
-}
-
-/* TOP NAV */
-.tm-movie-nav{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:15px;
-    margin-bottom:25px;
-}
-
-.tm-brand{
-    text-decoration:none;
-    color:#fff;
-    font-size:22px;
-    font-weight:900;
-    letter-spacing:.5px;
-}
-
-.tm-brand span{
-    color:#ffb000;
+.tm-watch-wrap{
+    max-width:1200px;
+    margin:auto;
 }
 
 .tm-back{
     display:inline-flex;
     align-items:center;
     gap:8px;
-    padding:10px 17px;
-    border-radius:12px;
-    text-decoration:none;
-    color:#fff;
-    background:rgba(255,255,255,.07);
+    margin-bottom:16px;
+    padding:9px 14px;
     border:1px solid rgba(255,255,255,.12);
-    font-weight:700;
-    transition:.2s ease;
+    border-radius:10px;
+    color:#fff;
+    text-decoration:none;
+    background:rgba(255,255,255,.05);
 }
 
-.tm-back:hover{
-    background:rgba(255,176,0,.15);
-    border-color:rgba(255,176,0,.45);
-    transform:translateY(-1px);
-}
-
-/* VIDEO */
 .tm-player-box{
     position:relative;
     width:100%;
     background:#000;
-    border-radius:20px;
+    border-radius:16px;
     overflow:hidden;
-    border:1px solid rgba(255,255,255,.10);
-    box-shadow:
-        0 25px 70px rgba(0,0,0,.55),
-        0 0 50px rgba(120,40,180,.08);
+    box-shadow:0 15px 50px rgba(0,0,0,.6);
 }
 
-.tm-player{
+.tm-video{
     display:block;
     width:100%;
-    max-height:720px;
+    height:auto;
     min-height:300px;
+    max-height:75vh;
     background:#000;
-    object-fit:contain;
 }
 
-/* VIDEO FALLBACK */
-.tm-video-error{
-    display:none;
-    min-height:320px;
-    align-items:center;
-    justify-content:center;
-    flex-direction:column;
-    text-align:center;
-    padding:30px;
-    background:#050505;
-}
-
-.tm-video-error-icon{
-    font-size:48px;
-    margin-bottom:12px;
-}
-
-.tm-video-error h3{
-    margin:0 0 8px;
-    font-size:22px;
-}
-
-.tm-video-error p{
-    margin:0;
-    color:#aaa;
-}
-
-/* MOVIE INFO */
 .tm-info{
-    margin-top:28px;
-    display:grid;
-    grid-template-columns:220px 1fr;
-    gap:28px;
-    align-items:start;
-}
-
-.tm-poster-box{
-    width:100%;
-    aspect-ratio:2/3;
-    border-radius:18px;
-    overflow:hidden;
-    background:#111;
-    border:1px solid rgba(255,255,255,.10);
-    box-shadow:0 15px 40px rgba(0,0,0,.45);
-}
-
-.tm-poster{
-    width:100%;
-    height:100%;
-    display:block;
-    object-fit:cover;
-}
-
-.tm-details{
-    min-width:0;
-}
-
-.tm-category{
-    display:inline-flex;
-    align-items:center;
-    padding:7px 12px;
-    border-radius:999px;
-    background:rgba(255,176,0,.12);
-    border:1px solid rgba(255,176,0,.28);
-    color:#ffc44d;
-    font-size:13px;
-    font-weight:800;
-    margin-bottom:12px;
+    padding:20px 4px;
 }
 
 .tm-title{
-    margin:0;
-    font-size:clamp(28px,5vw,48px);
-    line-height:1.08;
-    font-weight:950;
-    letter-spacing:-.8px;
+    margin:0 0 8px;
+    font-size:clamp(24px,4vw,40px);
+    font-weight:800;
 }
 
 .tm-meta{
     display:flex;
     flex-wrap:wrap;
-    gap:10px;
-    margin:17px 0;
+    gap:8px;
+    margin-bottom:14px;
 }
 
-.tm-meta-item{
-    color:#c9c9c9;
-    font-size:14px;
-    padding:7px 11px;
-    border-radius:10px;
-    background:rgba(255,255,255,.055);
-    border:1px solid rgba(255,255,255,.08);
+.tm-badge{
+    padding:6px 10px;
+    border-radius:999px;
+    background:rgba(255,255,255,.08);
+    color:#ddd;
+    font-size:13px;
 }
 
 .tm-description{
-    color:#c7c7c7;
-    line-height:1.8;
-    font-size:16px;
-    max-width:850px;
-    margin:18px 0 0;
-    white-space:pre-line;
-}
-
-/* ACTIONS */
-.tm-actions{
-    display:flex;
-    flex-wrap:wrap;
-    gap:12px;
-    margin-top:23px;
-}
-
-.tm-action{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    min-height:46px;
-    padding:0 19px;
-    border-radius:12px;
-    text-decoration:none;
-    font-weight:850;
-    transition:.2s ease;
-}
-
-.tm-action-primary{
-    background:linear-gradient(135deg,#ffb000,#ff6b00);
-    color:#090909;
-    box-shadow:0 10px 25px rgba(255,145,0,.18);
-}
-
-.tm-action-primary:hover{
-    transform:translateY(-2px);
-    box-shadow:0 14px 32px rgba(255,145,0,.28);
-}
-
-.tm-action-secondary{
-    color:#fff;
-    background:rgba(255,255,255,.07);
-    border:1px solid rgba(255,255,255,.12);
-}
-
-.tm-action-secondary:hover{
-    background:rgba(255,255,255,.12);
-}
-
-/* AD */
-.tm-ad{
-    margin:30px 0;
-    min-height:90px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    color:#666;
-    border-radius:16px;
-    border:1px dashed rgba(255,255,255,.08);
-    background:rgba(255,255,255,.02);
-}
-
-/* SECTION */
-.tm-section{
-    margin-top:42px;
-}
-
-.tm-section-head{
-    display:flex;
-    align-items:end;
-    justify-content:space-between;
-    gap:15px;
-    margin-bottom:17px;
-}
-
-.tm-section-title{
-    margin:0;
-    font-size:24px;
-    font-weight:900;
-}
-
-.tm-section-line{
-    height:3px;
-    width:55px;
-    margin-top:9px;
-    border-radius:10px;
-    background:linear-gradient(90deg,#ffb000,#ff2d55);
-}
-
-/* RELATED */
-.tm-related{
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:18px;
-}
-
-.tm-card{
-    min-width:0;
-    overflow:hidden;
-    border-radius:16px;
-    background:#101014;
-    border:1px solid rgba(255,255,255,.08);
-    transition:.25s ease;
-}
-
-.tm-card:hover{
-    transform:translateY(-5px);
-    border-color:rgba(255,176,0,.3);
-    box-shadow:0 15px 35px rgba(0,0,0,.35);
-}
-
-.tm-card-link{
-    display:block;
-    color:inherit;
-    text-decoration:none;
-}
-
-.tm-card-poster{
-    width:100%;
-    aspect-ratio:2/3;
-    object-fit:cover;
-    display:block;
-    background:#171717;
-}
-
-.tm-card-info{
-    padding:12px;
-}
-
-.tm-card-title{
-    margin:0;
+    color:#bbb;
+    line-height:1.7;
     font-size:15px;
-    font-weight:800;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
 }
 
-.tm-card-category{
-    margin-top:6px;
-    color:#999;
-    font-size:12px;
+.tm-status{
+    margin-top:12px;
+    padding:10px 12px;
+    border-radius:9px;
+    background:#151515;
+    color:#aaa;
+    font-size:13px;
+    display:none;
 }
 
-/* EMPTY */
-.tm-empty{
-    padding:35px;
-    text-align:center;
-    border-radius:16px;
-    background:rgba(255,255,255,.03);
-    border:1px solid rgba(255,255,255,.08);
-    color:#999;
+.tm-poster{
+    max-width:220px;
+    border-radius:12px;
+    margin-top:20px;
 }
 
-/* MOBILE */
-@media(max-width:800px){
-
-    .tm-movie-wrap{
-        width:94%;
-        padding-top:18px;
-    }
-
-    .tm-movie-nav{
-        margin-bottom:18px;
-    }
-
-    .tm-brand{
-        font-size:19px;
-    }
-
-    .tm-back{
-        padding:9px 12px;
-        font-size:13px;
+@media(max-width:600px){
+    .tm-watch-page{
+        padding:12px 8px 40px;
     }
 
     .tm-player-box{
-        border-radius:14px;
+        border-radius:10px;
     }
 
-    .tm-player{
+    .tm-video{
         min-height:220px;
-        max-height:500px;
-    }
-
-    .tm-info{
-        grid-template-columns:120px 1fr;
-        gap:16px;
-        margin-top:20px;
-    }
-
-    .tm-poster-box{
-        border-radius:12px;
-    }
-
-    .tm-title{
-        font-size:25px;
-    }
-
-    .tm-category{
-        font-size:11px;
-        padding:6px 9px;
-    }
-
-    .tm-meta{
-        gap:6px;
-        margin:10px 0;
-    }
-
-    .tm-meta-item{
-        font-size:11px;
-        padding:6px 8px;
-    }
-
-    .tm-description{
-        grid-column:1/-1;
-        font-size:14px;
-        line-height:1.7;
-        margin-top:0;
-    }
-
-    .tm-actions{
-        grid-column:1/-1;
-        margin-top:5px;
-    }
-
-    .tm-action{
-        flex:1;
-        min-width:140px;
-        min-height:43px;
-        font-size:13px;
-    }
-
-    .tm-related{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:12px;
-    }
-
-    .tm-section{
-        margin-top:32px;
-    }
-
-    .tm-section-title{
-        font-size:20px;
-    }
-}
-
-@media(max-width:430px){
-
-    .tm-info{
-        grid-template-columns:100px 1fr;
-        gap:13px;
-    }
-
-    .tm-title{
-        font-size:21px;
-    }
-
-    .tm-meta-item:nth-child(n+3){
-        display:none;
-    }
-
-    .tm-related{
-        gap:10px;
-    }
-
-    .tm-card-info{
-        padding:9px;
-    }
-
-    .tm-card-title{
-        font-size:13px;
     }
 }
 </style>
 
+<div class="tm-watch-page">
+    <div class="tm-watch-wrap">
 
-<div class="tm-movie-page">
+        <a href="{{ url_for('home') }}" class="tm-back">
+            ← Back
+        </a>
 
-    <div class="tm-movie-wrap">
+        <div class="tm-player-box">
 
-        <!-- TOP -->
-        <div class="tm-movie-nav">
+            <video
+                id="tmVideo"
+                class="tm-video"
+                controls
+                playsinline
+                preload="metadata"
+                poster="{{ movie.poster_url or movie.poster or '' }}"
+            >
+                <source
+                    src="{{ movie.video_url or movie.video }}"
+                    type="{{ movie.video_mime or 'video/mp4' }}"
+                >
 
-            <a href="{{ url_for('index') }}" class="tm-brand">
-                TOMESH <span>MOVIES</span>
-            </a>
-
-            <a href="{{ url_for('index') }}" class="tm-back">
-                ← Home
-            </a>
+                Your browser does not support HTML5 video.
+            </video>
 
         </div>
 
+        <div id="tmVideoStatus" class="tm-status"></div>
 
-        <!-- VIDEO PLAYER -->
-        <div class="tm-player-box">
+        <div class="tm-info">
 
-            {% if movie.video_url %}
+            <h1 class="tm-title">
+                {{ movie.title }}
+            </h1>
 
-                <video
-                    id="tmVideoPlayer"
-                    class="tm-player"
-                    controls
-                    playsinline
-                    preload="metadata"
-                    poster="{{ movie.poster_url or movie.poster or '' }}"
-                >
-                    <source
-                        src="{{ movie.video_url }}"
-                        type="{{ movie.video_mime or 'video/mp4' }}"
-                    >
+            <div class="tm-meta">
 
-                    Your browser does not support HTML5 video.
+                {% if movie.category %}
+                <span class="tm-badge">
+                    {{ movie.category }}
+                </span>
+                {% endif %}
 
-                </video>
+                <span class="tm-badge">
+                    👁 {{ movie.views or 0 }} Views
+                </span>
 
-            {% elif movie.video %}
+            </div>
 
-                <video
-                    id="tmVideoPlayer"
-                    class="tm-player"
-                    controls
-                    playsinline
-                    preload="metadata"
-                    poster="{{ movie.poster_url or movie.poster or '' }}"
-                >
-                    <source
-                        src="{{ movie.video }}"
-                        type="{{ movie.video_mime or 'video/mp4' }}"
-                    >
+            {% if movie.description %}
+            <div class="tm-description">
+                {{ movie.description }}
+            </div>
+            {% endif %}
 
-                    Your browser does not support HTML5 video.
-
-                </video>
-
-            {% elif movie.video_key and movie.video_public_url %}
-
-                <video
-                    id="tmVideoPlayer"
-                    class="tm-player"
-                    controls
-                    playsinline
-                    preload="metadata"
-                    poster="{{ movie.poster_url or movie.poster or '' }}"
-                >
-                    <source
-                        src="{{ movie.video_public_url }}"
-                        type="{{ movie.video_mime or 'video/mp4' }}"
-                    >
-
-                    Your browser does not support HTML5 video.
-
-                </video>
-
-            {% else %}
-
-                <div class="tm-video-error" style="display:flex;">
-                    <div class="tm-video-error-icon">🎬</div>
-                    <h3>Video अभी उपलब्ध नहीं है</h3>
-                    <p>इस movie की video file अभी सही तरह से connected नहीं है.</p>
-                </div>
-
+            {% if movie.poster_url or movie.poster %}
+            <img
+                class="tm-poster"
+                src="{{ movie.poster_url or movie.poster }}"
+                alt="{{ movie.title }}"
+                loading="lazy"
+            >
             {% endif %}
 
         </div>
 
-
-        <!-- AD / PLAYER AD -->
-        <div class="tm-ad">
-            Advertisement
-        </div>
-
-
-        <!-- MOVIE INFORMATION -->
-        <div class="tm-info">
-
-            <!-- POSTER -->
-            <div class="tm-poster-box">
-
-                {% if movie.poster_url %}
-
-                    <img
-                        class="tm-poster"
-                        src="{{ movie.poster_url }}"
-                        alt="{{ movie.title }}"
-                        loading="lazy"
-                    >
-
-                {% elif movie.poster %}
-
-                    <img
-                        class="tm-poster"
-                        src="{{ movie.poster }}"
-                        alt="{{ movie.title }}"
-                        loading="lazy"
-                    >
-
-                {% else %}
-
-                    <div
-                        class="tm-poster"
-                        style="
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            font-size:50px;
-                        "
-                    >
-                        🎬
-                    </div>
-
-                {% endif %}
-
-            </div>
-
-
-            <!-- DETAILS -->
-            <div class="tm-details">
-
-                {% if movie.category %}
-                    <div class="tm-category">
-                        {{ movie.category }}
-                    </div>
-                {% endif %}
-
-                <h1 class="tm-title">
-                    {{ movie.title }}
-                </h1>
-
-
-                <div class="tm-meta">
-
-                    {% if movie.category %}
-                        <div class="tm-meta-item">
-                            🎭 {{ movie.category }}
-                        </div>
-                    {% endif %}
-
-                    {% if movie.year %}
-                        <div class="tm-meta-item">
-                            📅 {{ movie.year }}
-                        </div>
-                    {% endif %}
-
-                    {% if movie.language %}
-                        <div class="tm-meta-item">
-                            🌐 {{ movie.language }}
-                        </div>
-                    {% endif %}
-
-                    {% if movie.views is defined %}
-                        <div class="tm-meta-item">
-                            👁️ {{ movie.views }} views
-                        </div>
-                    {% endif %}
-
-                </div>
-
-
-                {% if movie.description %}
-
-                    <div class="tm-description">
-                        {{ movie.description }}
-                    </div>
-
-                {% else %}
-
-                    <div class="tm-description">
-                        {{ movie.title }} देखें Tomesh Movies पर। अपनी और licensed movies के लिए movie portal.
-                    </div>
-
-                {% endif %}
-
-
-                <div class="tm-actions">
-
-                    <a
-                        href="#tmVideoPlayer"
-                        class="tm-action tm-action-primary"
-                        onclick="startMovie(event)"
-                    >
-                        ▶ Watch Now
-                    </a>
-
-                    <a
-                        href="{{ url_for('index') }}"
-                        class="tm-action tm-action-secondary"
-                    >
-                        ← More Movies
-                    </a>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- BOTTOM AD -->
-        <div class="tm-ad">
-            Advertisement
-        </div>
-
-
-        <!-- RELATED MOVIES -->
-        {% if related_movies %}
-
-            <section class="tm-section">
-
-                <div class="tm-section-head">
-
-                    <div>
-                        <h2 class="tm-section-title">
-                            🎬 More Movies
-                        </h2>
-
-                        <div class="tm-section-line"></div>
-                    </div>
-
-                </div>
-
-
-                <div class="tm-related">
-
-                    {% for m in related_movies %}
-
-                        <article class="tm-card">
-
-                            <a
-                                href="{{ url_for('movie', movie_id=m.id) }}"
-                                class="tm-card-link"
-                            >
-
-                                {% if m.poster_url %}
-
-                                    <img
-                                        class="tm-card-poster"
-                                        src="{{ m.poster_url }}"
-                                        alt="{{ m.title }}"
-                                        loading="lazy"
-                                    >
-
-                                {% elif m.poster %}
-
-                                    <img
-                                        class="tm-card-poster"
-                                        src="{{ m.poster }}"
-                                        alt="{{ m.title }}"
-                                        loading="lazy"
-                                    >
-
-                                {% else %}
-
-                                    <div
-                                        class="tm-card-poster"
-                                        style="
-                                            display:flex;
-                                            align-items:center;
-                                            justify-content:center;
-                                            font-size:40px;
-                                        "
-                                    >
-                                        🎬
-                                    </div>
-
-                                {% endif %}
-
-
-                                <div class="tm-card-info">
-
-                                    <h3 class="tm-card-title">
-                                        {{ m.title }}
-                                    </h3>
-
-                                    {% if m.category %}
-                                        <div class="tm-card-category">
-                                            {{ m.category }}
-                                        </div>
-                                    {% endif %}
-
-                                </div>
-
-                            </a>
-
-                        </article>
-
-                    {% endfor %}
-
-                </div>
-
-            </section>
-
-        {% endif %}
-
-
-        <!-- IF NO RELATED MOVIES -->
-        {% if related_movies is not defined %}
-
-            <section class="tm-section">
-
-                <div class="tm-section-head">
-                    <div>
-                        <h2 class="tm-section-title">
-                            🍿 Keep Watching
-                        </h2>
-                        <div class="tm-section-line"></div>
-                    </div>
-                </div>
-
-            </section>
-
-        {% endif %}
-
     </div>
-
 </div>
 
-
 <script>
-function startMovie(event){
+(function(){
 
-    event.preventDefault();
+    const video = document.getElementById("tmVideo");
+    const status = document.getElementById("tmVideoStatus");
 
-    const video = document.getElementById("tmVideoPlayer");
+    if (!video) return;
 
-    if(!video){
-        return;
-    }
-
-    video.scrollIntoView({
-        behavior:"smooth",
-        block:"center"
+    video.addEventListener("loadstart", function(){
+        if(status){
+            status.style.display = "block";
+            status.textContent = "Video loading...";
+        }
     });
 
-    setTimeout(function(){
-
-        try{
-            const promise = video.play();
-
-            if(promise !== undefined){
-                promise.catch(function(){
-                    /* Browser autoplay restriction */
-                });
-            }
-        }catch(e){
-            /* Ignore autoplay errors */
+    video.addEventListener("canplay", function(){
+        if(status){
+            status.style.display = "none";
         }
+    });
 
-    },500);
-}
+    video.addEventListener("playing", function(){
+        if(status){
+            status.style.display = "none";
+        }
+    });
 
-
-/* Video error handling */
-document.addEventListener("DOMContentLoaded", function(){
-
-    const video = document.getElementById("tmVideoPlayer");
-
-    if(!video){
-        return;
-    }
+    video.addEventListener("waiting", function(){
+        if(status){
+            status.style.display = "block";
+            status.textContent = "Video buffering...";
+        }
+    });
 
     video.addEventListener("error", function(){
 
-        console.log("Tomesh Movies: video loading error", video.error);
+        if(!status) return;
+
+        status.style.display = "block";
+
+        const error = video.error;
+
+        if(error){
+            if(error.code === 1){
+                status.textContent = "Video loading cancelled.";
+            }else if(error.code === 2){
+                status.textContent = "Network error while loading video.";
+            }else if(error.code === 3){
+                status.textContent = "Video decoding error.";
+            }else if(error.code === 4){
+                status.textContent = "This video format/source is not supported.";
+            }else{
+                status.textContent = "Unable to play this video.";
+            }
+        }else{
+            status.textContent = "Unable to play this video.";
+        }
 
     });
 
-});
+})();
 </script>
 
 {% endblock %}
+```
