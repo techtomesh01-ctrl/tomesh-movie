@@ -1,6 +1,5 @@
 import os
 import re
-import math
 import mimetypes
 import secrets
 from functools import wraps
@@ -28,36 +27,74 @@ from werkzeug.utils import secure_filename
 
 
 # =========================================================
-# TOMESH MOVIES - COMPLETE APP.PY
+# TOMESH MOVIES
 # PostgreSQL + Cloudflare R2 + Direct Multipart Upload
 # =========================================================
 
 app = Flask(__name__)
 
-app.secret_key = os.environ.get("SECRET_KEY", "tomesh-movies-secret-key")
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "tomesh-movies-secret-key"
+)
 
-# ---------------------------------------------------------
+# =========================================================
 # BASIC SETTINGS
-# ---------------------------------------------------------
+# =========================================================
 
-app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024  # 4 GB
+# Flask normal upload compatibility.
+# Direct R2 upload is used by the Admin Panel.
+app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
-ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "change-me-now")
+ADMIN_USER = os.environ.get(
+    "ADMIN_USER",
+    "admin"
+)
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+ADMIN_PASSWORD = os.environ.get(
+    "ADMIN_PASSWORD",
+    "change-me-now"
+)
 
-R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID", "").strip()
-R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
-R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
-R2_BUCKET = os.environ.get("R2_BUCKET", "tomesh-movies").strip()
-R2_ENDPOINT = os.environ.get("R2_ENDPOINT", "").strip().rstrip("/")
-R2_PUBLIC_URL = os.environ.get("R2_PUBLIC_URL", "").strip().rstrip("/")
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    ""
+).strip()
+
+R2_ACCOUNT_ID = os.environ.get(
+    "R2_ACCOUNT_ID",
+    ""
+).strip()
+
+R2_ACCESS_KEY_ID = os.environ.get(
+    "R2_ACCESS_KEY_ID",
+    ""
+).strip()
+
+R2_SECRET_ACCESS_KEY = os.environ.get(
+    "R2_SECRET_ACCESS_KEY",
+    ""
+).strip()
+
+R2_BUCKET = os.environ.get(
+    "R2_BUCKET",
+    "tomesh-movies"
+).strip()
+
+R2_ENDPOINT = os.environ.get(
+    "R2_ENDPOINT",
+    ""
+).strip().rstrip("/")
+
+R2_PUBLIC_URL = os.environ.get(
+    "R2_PUBLIC_URL",
+    ""
+).strip().rstrip("/")
 
 
-# ---------------------------------------------------------
-# ALLOWED FILE TYPES
-# ---------------------------------------------------------
+# =========================================================
+# FILE TYPES
+# =========================================================
 
 ALLOWED_VIDEOS = {
     "mp4",
@@ -74,11 +111,11 @@ ALLOWED_POSTERS = {
 }
 
 
-# ---------------------------------------------------------
-# R2 MULTIPART SETTINGS
-# ---------------------------------------------------------
+# =========================================================
+# R2 MULTIPART
+# =========================================================
 
-PART_SIZE = 10 * 1024 * 1024       # 10 MB
+PART_SIZE = 10 * 1024 * 1024
 MAX_PARTS = 10000
 PRESIGNED_EXPIRES = 3600
 
@@ -91,7 +128,7 @@ def allowed_file(filename, allowed_extensions):
     if not filename:
         return False
 
-    filename = filename.lower().strip()
+    filename = str(filename).lower().strip()
 
     if "." not in filename:
         return False
@@ -102,7 +139,12 @@ def allowed_file(filename, allowed_extensions):
 
 
 def get_extension(filename):
-    if not filename or "." not in filename:
+    if not filename:
+        return ""
+
+    filename = str(filename).strip()
+
+    if "." not in filename:
         return ""
 
     return filename.rsplit(".", 1)[1].lower()
@@ -132,7 +174,9 @@ def login_required(function):
 
 def get_db():
     if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL is not configured")
+        raise RuntimeError(
+            "DATABASE_URL is not configured"
+        )
 
     return psycopg2.connect(
         DATABASE_URL,
@@ -141,10 +185,6 @@ def get_db():
 
 
 def init_db():
-    """
-    Creates required tables if they do not exist.
-    """
-
     db = get_db()
 
     try:
@@ -190,8 +230,18 @@ def init_db():
         if not ad:
             cur.execute(
                 """
-                INSERT INTO ads (ad_top, ad_player, ad_bottom)
-                VALUES ('', '', '')
+                INSERT INTO ads
+                (
+                    ad_top,
+                    ad_player,
+                    ad_bottom
+                )
+                VALUES
+                (
+                    '',
+                    '',
+                    ''
+                )
                 """
             )
 
@@ -231,7 +281,12 @@ def get_ads():
         finally:
             db.close()
 
-    except Exception:
+    except Exception as exc:
+        print(
+            "Get ads error:",
+            repr(exc)
+        )
+
         return {
             "ad_top": "",
             "ad_player": "",
@@ -240,18 +295,25 @@ def get_ads():
 
 
 # =========================================================
-# R2
+# R2 CLIENT
 # =========================================================
 
 def get_r2_client():
+
     if not R2_ENDPOINT:
-        raise RuntimeError("R2_ENDPOINT is not configured")
+        raise RuntimeError(
+            "R2_ENDPOINT is not configured"
+        )
 
     if not R2_ACCESS_KEY_ID:
-        raise RuntimeError("R2_ACCESS_KEY_ID is not configured")
+        raise RuntimeError(
+            "R2_ACCESS_KEY_ID is not configured"
+        )
 
     if not R2_SECRET_ACCESS_KEY:
-        raise RuntimeError("R2_SECRET_ACCESS_KEY is not configured")
+        raise RuntimeError(
+            "R2_SECRET_ACCESS_KEY is not configured"
+        )
 
     return boto3.client(
         "s3",
@@ -268,19 +330,42 @@ def get_r2_client():
     )
 
 
+# =========================================================
+# R2 PUBLIC URL
+# =========================================================
+
 def r2_object_url(key):
+
     if not key:
         return ""
 
-    key = str(key).lstrip("/")
+    key = str(key).strip().lstrip("/")
 
-    if R2_PUBLIC_URL:
-        return f"{R2_PUBLIC_URL}/{quote(key, safe='/')}"
+    if not key:
+        return ""
 
-    return ""
+    if not R2_PUBLIC_URL:
+        return ""
+
+    return (
+        R2_PUBLIC_URL
+        + "/"
+        + quote(
+            key,
+            safe="/"
+        )
+    )
 
 
-def r2_presigned_url(key, expires=PRESIGNED_EXPIRES):
+# =========================================================
+# R2 PRESIGNED URL
+# =========================================================
+
+def r2_presigned_url(
+    key,
+    expires=PRESIGNED_EXPIRES
+):
+
     if not key:
         return ""
 
@@ -296,27 +381,75 @@ def r2_presigned_url(key, expires=PRESIGNED_EXPIRES):
     )
 
 
+# =========================================================
+# BEST VIDEO URL
+# =========================================================
+
+def get_video_url(key):
+
+    if not key:
+        return ""
+
+    # IMPORTANT:
+    # Public R2 URL is preferred for browser playback.
+    public_url = r2_object_url(key)
+
+    if public_url:
+        return public_url
+
+    # Fallback to presigned URL if public URL is not configured.
+    try:
+        return r2_presigned_url(
+            key,
+            expires=PRESIGNED_EXPIRES
+        )
+
+    except Exception as exc:
+
+        print(
+            "Presigned video URL error:",
+            repr(exc)
+        )
+
+        return ""
+
+
+# =========================================================
+# R2 DELETE
+# =========================================================
+
 def delete_r2_object(key):
+
     if not key:
         return
 
     try:
+
         client = get_r2_client()
 
         client.delete_object(
             Bucket=R2_BUCKET,
-            Key=key,
+            Key=str(key).lstrip("/")
         )
 
     except Exception as exc:
-        print("R2 delete error:", exc)
 
+        print(
+            "R2 delete error:",
+            repr(exc)
+        )
+
+
+# =========================================================
+# R2 KEY VALIDATION
+# =========================================================
 
 def r2_key_is_allowed(key):
+
     if not key:
         return False
 
-    key = str(key).lstrip("/")
+    key = str(key).strip().lstrip("/")
 
     if len(key) > 1024:
         return False
@@ -342,12 +475,17 @@ VIDEO_MIME_TYPES = {
 
 
 def get_video_mime(filename_or_key):
-    extension = get_extension(filename_or_key)
+
+    extension = get_extension(
+        filename_or_key
+    )
 
     if extension in VIDEO_MIME_TYPES:
         return VIDEO_MIME_TYPES[extension]
 
-    guessed, _ = mimetypes.guess_type(filename_or_key or "")
+    guessed, _ = mimetypes.guess_type(
+        filename_or_key or ""
+    )
 
     return guessed or "video/mp4"
 
@@ -362,6 +500,7 @@ def index():
     db = get_db()
 
     try:
+
         cur = db.cursor()
 
         cur.execute(
@@ -374,13 +513,15 @@ def index():
 
         movies = cur.fetchall()
 
-        for movie in movies:
+        for movie_data in movies:
 
-            if movie.get("poster"):
-                movie["poster_url"] = r2_object_url(movie["poster"])
-
-            else:
-                movie["poster_url"] = ""
+            movie_data["poster_url"] = (
+                r2_object_url(
+                    movie_data.get("poster")
+                )
+                or
+                ""
+            )
 
         ads = get_ads()
 
@@ -398,12 +539,15 @@ def index():
 # MOVIE PAGE
 # =========================================================
 
-@app.route("/movie/<int:movie_id>")
+@app.route(
+    "/movie/<int:movie_id>"
+)
 def movie(movie_id):
 
     db = get_db()
 
     try:
+
         cur = db.cursor()
 
         cur.execute(
@@ -420,6 +564,7 @@ def movie(movie_id):
         if not movie_data:
             abort(404)
 
+        # Count view
         cur.execute(
             """
             UPDATE movies
@@ -434,37 +579,121 @@ def movie(movie_id):
     finally:
         db.close()
 
-    movie_data["video_url"] = ""
 
-    if movie_data.get("video"):
+    # =====================================================
+    # VIDEO URL
+    # =====================================================
 
-        try:
-            movie_data["video_url"] = r2_presigned_url(
-                movie_data["video"],
-                expires=3600
-            )
+    video_key = clean_text(
+        movie_data.get("video")
+    ).lstrip("/")
 
-        except Exception as exc:
-            print("Presigned video URL error:", exc)
-
-            movie_data["video_url"] = r2_object_url(
-                movie_data["video"]
-            )
-
-    movie_data["video_mime"] = get_video_mime(
-        movie_data.get("video", "")
+    movie_data["video_url"] = get_video_url(
+        video_key
     )
 
-    if movie_data.get("poster"):
-        movie_data["poster_url"] = r2_object_url(
-            movie_data["poster"]
+
+    # =====================================================
+    # VIDEO MIME
+    # =====================================================
+
+    movie_data["video_mime"] = get_video_mime(
+        video_key
+    )
+
+
+    # =====================================================
+    # POSTER URL
+    # =====================================================
+
+    poster_key = clean_text(
+        movie_data.get("poster")
+    ).lstrip("/")
+
+    movie_data["poster_url"] = r2_object_url(
+        poster_key
+    )
+
+
+    # =====================================================
+    # RELATED MOVIES
+    # =====================================================
+
+    related_movies = []
+
+    db2 = get_db()
+
+    try:
+
+        cur2 = db2.cursor()
+
+        category = clean_text(
+            movie_data.get("category")
         )
-    else:
-        movie_data["poster_url"] = ""
+
+        if category:
+
+            cur2.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE id != %s
+                  AND category = %s
+                ORDER BY created_at DESC, id DESC
+                LIMIT 8
+                """,
+                (
+                    movie_id,
+                    category,
+                )
+            )
+
+        else:
+
+            cur2.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE id != %s
+                ORDER BY created_at DESC, id DESC
+                LIMIT 8
+                """,
+                (movie_id,)
+            )
+
+        related_movies = cur2.fetchall()
+
+        for related in related_movies:
+
+            related["poster_url"] = (
+                r2_object_url(
+                    related.get("poster")
+                )
+                or
+                ""
+            )
+
+    except Exception as exc:
+
+        print(
+            "Related movies error:",
+            repr(exc)
+        )
+
+        related_movies = []
+
+    finally:
+        db2.close()
+
+
+    # =====================================================
+    # RENDER
+    # =====================================================
 
     return render_template(
         "movie.html",
         movie=movie_data,
+        related_movies=related_movies,
         ads=get_ads(),
     )
 
@@ -475,11 +704,16 @@ def movie(movie_id):
 
 @app.route("/health")
 def health():
+
     return jsonify({
         "status": "ok",
         "service": "tomesh-movie",
     })
 
+
+# =========================================================
+# R2 HEALTH
+# =========================================================
 
 @app.route("/r2-health")
 def r2_health():
@@ -511,7 +745,10 @@ def r2_health():
 # LOGIN
 # =========================================================
 
-@app.route("/login", methods=["GET", "POST"])
+@app.route(
+    "/login",
+    methods=["GET", "POST"]
+)
 def login():
 
     if request.method == "POST":
@@ -547,6 +784,10 @@ def login():
     )
 
 
+# =========================================================
+# LOGOUT
+# =========================================================
+
 @app.route("/logout")
 def logout():
 
@@ -581,11 +822,32 @@ def admin():
 
         movies = cur.fetchall()
 
+        for movie_data in movies:
+
+            movie_data["poster_url"] = (
+                r2_object_url(
+                    movie_data.get("poster")
+                )
+                or
+                ""
+            )
+
+            movie_data["video_url"] = (
+                r2_object_url(
+                    movie_data.get("video")
+                )
+                or
+                ""
+            )
+
         cur.execute(
             """
             SELECT
                 COUNT(*) AS total_movies,
-                COALESCE(SUM(views), 0) AS total_views
+                COALESCE(
+                    SUM(views),
+                    0
+                ) AS total_views
             FROM movies
             """
         )
@@ -604,10 +866,13 @@ def admin():
 
 
 # =========================================================
-# ADD MOVIE - NORMAL FORM COMPATIBILITY
+# ADMIN ADD - NORMAL FORM
 # =========================================================
 
-@app.route("/admin/add", methods=["GET", "POST"])
+@app.route(
+    "/admin/add",
+    methods=["GET", "POST"]
+)
 @login_required
 def admin_add():
 
@@ -623,6 +888,7 @@ def admin_add():
             ads=get_ads(),
         )
 
+
     title = clean_text(
         request.form.get("title")
     )
@@ -635,10 +901,17 @@ def admin_add():
         request.form.get("description")
     )
 
-    poster_file = request.files.get("poster")
-    video_file = request.files.get("video")
+    poster_file = request.files.get(
+        "poster"
+    )
+
+    video_file = request.files.get(
+        "video"
+    )
+
 
     if not title:
+
         flash(
             "Movie title required.",
             "error"
@@ -648,7 +921,9 @@ def admin_add():
             url_for("admin")
         )
 
+
     if not poster_file or not poster_file.filename:
+
         flash(
             "Poster required.",
             "error"
@@ -658,7 +933,9 @@ def admin_add():
             url_for("admin")
         )
 
+
     if not video_file or not video_file.filename:
+
         flash(
             "Video required.",
             "error"
@@ -668,10 +945,12 @@ def admin_add():
             url_for("admin")
         )
 
+
     if not allowed_file(
         poster_file.filename,
         ALLOWED_POSTERS
     ):
+
         flash(
             "Poster must be JPG, JPEG, PNG or WEBP.",
             "error"
@@ -681,10 +960,12 @@ def admin_add():
             url_for("admin")
         )
 
+
     if not allowed_file(
         video_file.filename,
         ALLOWED_VIDEOS
     ):
+
         flash(
             "Video must be MP4, MKV, WebM or MOV.",
             "error"
@@ -694,6 +975,7 @@ def admin_add():
             url_for("admin")
         )
 
+
     poster_ext = get_extension(
         poster_file.filename
     )
@@ -701,6 +983,7 @@ def admin_add():
     video_ext = get_extension(
         video_file.filename
     )
+
 
     poster_key = (
         "posters/"
@@ -712,6 +995,7 @@ def admin_add():
         poster_ext
     )
 
+
     video_key = (
         "videos/"
         +
@@ -722,7 +1006,9 @@ def admin_add():
         video_ext
     )
 
+
     client = get_r2_client()
+
 
     try:
 
@@ -733,15 +1019,15 @@ def admin_add():
             R2_BUCKET,
             poster_key,
             ExtraArgs={
-                "ContentType": (
+                "ContentType":
                     mimetypes.guess_type(
                         poster_file.filename
                     )[0]
                     or
                     "application/octet-stream"
-                )
             }
         )
+
 
         video_file.stream.seek(0)
 
@@ -750,11 +1036,13 @@ def admin_add():
             R2_BUCKET,
             video_key,
             ExtraArgs={
-                "ContentType": get_video_mime(
-                    video_file.filename
-                )
+                "ContentType":
+                    get_video_mime(
+                        video_file.filename
+                    )
             }
         )
+
 
         db = get_db()
 
@@ -797,22 +1085,34 @@ def admin_add():
         finally:
             db.close()
 
+
         flash(
             "Movie added successfully.",
             "success"
         )
 
+
     except Exception as exc:
 
-        print("Movie upload error:", exc)
+        print(
+            "Movie upload error:",
+            repr(exc)
+        )
 
-        delete_r2_object(poster_key)
-        delete_r2_object(video_key)
+        delete_r2_object(
+            poster_key
+        )
+
+        delete_r2_object(
+            video_key
+        )
 
         flash(
-            "Movie upload failed: " + str(exc),
+            "Movie upload failed: "
+            + str(exc),
             "error"
         )
+
 
     return redirect(
         url_for("admin")
@@ -825,7 +1125,8 @@ def admin_add():
 
 @app.route(
     "/admin/delete/<int:movie_id>",
-    methods=["GET", "POST"]
+    methods=["GET", "POST"],
+    endpoint="admin_delete_movie"
 )
 @login_required
 def admin_delete(movie_id):
@@ -850,6 +1151,7 @@ def admin_delete(movie_id):
         movie_data = cur.fetchone()
 
         if not movie_data:
+
             flash(
                 "Movie not found.",
                 "error"
@@ -858,6 +1160,7 @@ def admin_delete(movie_id):
             return redirect(
                 url_for("admin")
             )
+
 
         cur.execute(
             """
@@ -872,6 +1175,7 @@ def admin_delete(movie_id):
     finally:
         db.close()
 
+
     delete_r2_object(
         movie_data.get("video")
     )
@@ -879,6 +1183,7 @@ def admin_delete(movie_id):
     delete_r2_object(
         movie_data.get("poster")
     )
+
 
     flash(
         "Movie deleted successfully.",
@@ -916,6 +1221,7 @@ def admin_ads():
         ""
     )
 
+
     db = get_db()
 
     try:
@@ -932,6 +1238,7 @@ def admin_ads():
         )
 
         row = cur.fetchone()
+
 
         if row:
 
@@ -976,10 +1283,12 @@ def admin_ads():
                 )
             )
 
+
         db.commit()
 
     finally:
         db.close()
+
 
     flash(
         "Ads settings saved.",
@@ -1008,6 +1317,7 @@ def r2_multipart_create():
             silent=True
         ) or {}
 
+
         filename = clean_text(
             data.get("filename")
         )
@@ -1016,11 +1326,14 @@ def r2_multipart_create():
             data.get("file_type")
         ).lower()
 
+
         if not filename:
+
             return jsonify({
                 "ok": False,
                 "error": "Filename missing."
             }), 400
+
 
         if file_type == "poster":
 
@@ -1028,12 +1341,12 @@ def r2_multipart_create():
                 filename,
                 ALLOWED_POSTERS
             ):
+
                 return jsonify({
                     "ok": False,
-                    "error": (
+                    "error":
                         "Poster must be "
                         "JPG, JPEG, PNG or WEBP."
-                    )
                 }), 400
 
             prefix = "posters/"
@@ -1044,15 +1357,16 @@ def r2_multipart_create():
                 filename,
                 ALLOWED_VIDEOS
             ):
+
                 return jsonify({
                     "ok": False,
-                    "error": (
+                    "error":
                         "Video must be "
                         "MP4, MKV, WebM or MOV."
-                    )
                 }), 400
 
             prefix = "videos/"
+
 
         extension = get_extension(
             filename
@@ -1066,14 +1380,17 @@ def r2_multipart_create():
             safe_name
         )[0]
 
+
         base_name = re.sub(
             r"[^a-zA-Z0-9_-]+",
             "-",
             base_name
         ).strip("-")
 
+
         if not base_name:
             base_name = "file"
+
 
         key = (
             prefix
@@ -1089,15 +1406,33 @@ def r2_multipart_create():
             extension
         )
 
+
+        content_type = clean_text(
+            data.get("content_type")
+        )
+
+
+        if not content_type:
+
+            if file_type == "poster":
+
+                content_type = (
+                    mimetypes.guess_type(
+                        filename
+                    )[0]
+                    or
+                    "application/octet-stream"
+                )
+
+            else:
+
+                content_type = get_video_mime(
+                    filename
+                )
+
+
         client = get_r2_client()
 
-        content_type = (
-            clean_text(
-                data.get("content_type")
-            )
-            or
-            get_video_mime(filename)
-        )
 
         response = client.create_multipart_upload(
             Bucket=R2_BUCKET,
@@ -1105,7 +1440,9 @@ def r2_multipart_create():
             ContentType=content_type,
         )
 
+
         upload_id = response["UploadId"]
+
 
         return jsonify({
             "ok": True,
@@ -1115,6 +1452,7 @@ def r2_multipart_create():
             "max_parts": MAX_PARTS,
             "content_type": content_type,
         })
+
 
     except Exception as exc:
 
@@ -1146,6 +1484,7 @@ def r2_multipart_urls():
             silent=True
         ) or {}
 
+
         key = clean_text(
             data.get("key")
         ).lstrip("/")
@@ -1158,52 +1497,68 @@ def r2_multipart_urls():
             "part_numbers"
         )
 
+
         if not r2_key_is_allowed(key):
+
             return jsonify({
                 "ok": False,
                 "error": "Invalid R2 key."
             }), 400
 
+
         if not upload_id:
+
             return jsonify({
                 "ok": False,
                 "error": "Upload ID missing."
             }), 400
 
+
         if not isinstance(
             part_numbers,
             list
         ):
+
             return jsonify({
                 "ok": False,
-                "error": "part_numbers must be an array."
+                "error":
+                    "part_numbers must be an array."
             }), 400
 
+
         if len(part_numbers) > MAX_PARTS:
+
             return jsonify({
                 "ok": False,
                 "error": "Too many parts."
             }), 400
 
+
         client = get_r2_client()
 
         urls = []
+
 
         for number in part_numbers:
 
             try:
                 number = int(number)
+
             except Exception:
+
                 return jsonify({
                     "ok": False,
                     "error": "Invalid part number."
                 }), 400
 
+
             if number < 1 or number > MAX_PARTS:
+
                 return jsonify({
                     "ok": False,
                     "error": "Invalid part number."
                 }), 400
+
 
             url = client.generate_presigned_url(
                 "upload_part",
@@ -1216,15 +1571,18 @@ def r2_multipart_urls():
                 ExpiresIn=PRESIGNED_EXPIRES,
             )
 
+
             urls.append({
                 "part_number": number,
                 "url": url,
             })
 
+
         return jsonify({
             "ok": True,
             "urls": urls,
         })
+
 
     except Exception as exc:
 
@@ -1256,6 +1614,7 @@ def r2_multipart_complete():
             silent=True
         ) or {}
 
+
         key = clean_text(
             data.get("key")
         ).lstrip("/")
@@ -1268,28 +1627,36 @@ def r2_multipart_complete():
             "parts"
         )
 
+
         if not r2_key_is_allowed(key):
+
             return jsonify({
                 "ok": False,
                 "error": "Invalid R2 key."
             }), 400
 
+
         if not upload_id:
+
             return jsonify({
                 "ok": False,
                 "error": "Upload ID missing."
             }), 400
 
+
         if not isinstance(
             parts,
             list
         ) or not parts:
+
             return jsonify({
                 "ok": False,
                 "error": "Parts missing."
             }), 400
 
+
         clean_parts = []
+
 
         for part in parts:
 
@@ -1299,6 +1666,7 @@ def r2_multipart_complete():
             ):
                 continue
 
+
             part_number = part.get(
                 "PartNumber"
             )
@@ -1307,39 +1675,70 @@ def r2_multipart_complete():
                 "ETag"
             )
 
+
             if part_number is None:
+
                 part_number = part.get(
                     "part_number"
                 )
 
+
             if not etag:
+
                 etag = part.get(
                     "etag"
                 )
 
-            if part_number is None or not etag:
+
+            if (
+                part_number is None
+                or
+                not etag
+            ):
                 continue
 
-            clean_parts.append({
-                "PartNumber": int(
+
+            try:
+
+                part_number = int(
                     part_number
-                ),
-                "ETag": str(
-                    etag
-                ),
+                )
+
+            except Exception:
+
+                continue
+
+
+            if (
+                part_number < 1
+                or
+                part_number > MAX_PARTS
+            ):
+                continue
+
+
+            clean_parts.append({
+                "PartNumber": part_number,
+                "ETag": str(etag),
             })
 
+
         if not clean_parts:
+
             return jsonify({
                 "ok": False,
                 "error": "No valid parts."
             }), 400
 
+
         clean_parts.sort(
-            key=lambda item: item["PartNumber"]
+            key=lambda item:
+                item["PartNumber"]
         )
 
+
         client = get_r2_client()
+
 
         response = client.complete_multipart_upload(
             Bucket=R2_BUCKET,
@@ -1350,18 +1749,24 @@ def r2_multipart_complete():
             },
         )
 
+
         return jsonify({
             "ok": True,
             "key": key,
-            "location": response.get(
-                "Location",
-                ""
-            ),
-            "etag": response.get(
-                "ETag",
-                ""
-            ),
+            "location":
+                response.get(
+                    "Location",
+                    ""
+                ),
+            "etag":
+                response.get(
+                    "ETag",
+                    ""
+                ),
+            "public_url":
+                r2_object_url(key),
         })
+
 
     except Exception as exc:
 
@@ -1393,6 +1798,7 @@ def r2_multipart_abort():
             silent=True
         ) or {}
 
+
         key = clean_text(
             data.get("key")
         ).lstrip("/")
@@ -1401,19 +1807,25 @@ def r2_multipart_abort():
             data.get("upload_id")
         )
 
+
         if not r2_key_is_allowed(key):
+
             return jsonify({
                 "ok": False,
                 "error": "Invalid R2 key."
             }), 400
 
+
         if not upload_id:
+
             return jsonify({
                 "ok": False,
                 "error": "Upload ID missing."
             }), 400
 
+
         client = get_r2_client()
+
 
         client.abort_multipart_upload(
             Bucket=R2_BUCKET,
@@ -1421,10 +1833,13 @@ def r2_multipart_abort():
             UploadId=upload_id,
         )
 
+
         return jsonify({
             "ok": True,
-            "message": "Multipart upload aborted.",
+            "message":
+                "Multipart upload aborted.",
         })
+
 
     except Exception as exc:
 
@@ -1456,6 +1871,7 @@ def api_movie_save():
             silent=True
         ) or {}
 
+
         title = clean_text(
             data.get("title")
         )
@@ -1476,33 +1892,46 @@ def api_movie_save():
             data.get("video")
         ).lstrip("/")
 
+
         if not title:
+
             return jsonify({
                 "ok": False,
-                "error": "Movie title required."
+                "error":
+                    "Movie title required."
             }), 400
 
+
         if not video:
+
             return jsonify({
                 "ok": False,
-                "error": "Video key missing."
+                "error":
+                    "Video key missing."
             }), 400
+
 
         if not video.startswith(
             "videos/"
         ):
+
             return jsonify({
                 "ok": False,
-                "error": "Invalid video key."
+                "error":
+                    "Invalid video key."
             }), 400
+
 
         if poster and not poster.startswith(
             "posters/"
         ):
+
             return jsonify({
                 "ok": False,
-                "error": "Invalid poster key."
+                "error":
+                    "Invalid poster key."
             }), 400
+
 
         db = get_db()
 
@@ -1541,6 +1970,7 @@ def api_movie_save():
                 )
             )
 
+
             movie_row = cur.fetchone()
 
             db.commit()
@@ -1548,11 +1978,21 @@ def api_movie_save():
         finally:
             db.close()
 
+
         return jsonify({
             "ok": True,
-            "message": "Movie saved successfully.",
-            "movie_id": movie_row["id"],
+            "message":
+                "Movie saved successfully.",
+            "movie_id":
+                movie_row["id"],
+            "video_key":
+                video,
+            "video_url":
+                r2_object_url(video),
+            "poster_url":
+                r2_object_url(poster),
         })
+
 
     except Exception as exc:
 
@@ -1581,7 +2021,7 @@ def ads_txt():
 
 
 # =========================================================
-# ERROR HANDLERS
+# ERROR 413
 # =========================================================
 
 @app.errorhandler(413)
@@ -1589,63 +2029,166 @@ def file_too_large(error):
 
     return jsonify({
         "ok": False,
-        "error": "File is larger than 4 GB."
+        "error":
+            "File is larger than 4 GB."
     }), 413
 
 
+# =========================================================
+# ERROR 404
+# =========================================================
+
 @app.errorhandler(404)
 def not_found(error):
+
     if request.path.startswith("/api/"):
+
         return jsonify({
             "ok": False,
             "error": "Not found."
         }), 404
 
+
     return """
     <!doctype html>
     <html>
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <meta
+            name="viewport"
+            content="width=device-width,initial-scale=1"
+        >
         <title>404 | Tomesh Movies</title>
         <style>
-            body{margin:0;background:#09090d;color:#fff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center}
-            .box{max-width:600px;padding:40px 24px}
-            h1{font-size:72px;margin:0 0 10px}
-            p{color:#aaa;line-height:1.6}
-            a{display:inline-block;margin-top:18px;padding:12px 22px;border-radius:10px;background:#8e24aa;color:#fff;text-decoration:none;font-weight:700}
+            body{
+                margin:0;
+                background:#09090d;
+                color:#fff;
+                font-family:Arial,sans-serif;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                min-height:100vh;
+                text-align:center
+            }
+            .box{
+                max-width:600px;
+                padding:40px 24px
+            }
+            h1{
+                font-size:72px;
+                margin:0 0 10px
+            }
+            p{
+                color:#aaa;
+                line-height:1.6
+            }
+            a{
+                display:inline-block;
+                margin-top:18px;
+                padding:12px 22px;
+                border-radius:10px;
+                background:#8e24aa;
+                color:#fff;
+                text-decoration:none;
+                font-weight:700
+            }
         </style>
     </head>
-    <body><div class="box"><h1>404</h1><h2>Page Not Found</h2><p>The page you requested could not be found.</p><a href="/">Back to Home</a></div></body>
+    <body>
+        <div class="box">
+            <h1>404</h1>
+            <h2>Page Not Found</h2>
+            <p>
+                The page you requested could not be found.
+            </p>
+            <a href="/">Back to Home</a>
+        </div>
+    </body>
     </html>
     """, 404
 
 
+# =========================================================
+# ERROR 500
+# =========================================================
+
 @app.errorhandler(500)
 def internal_server_error(error):
-    # Never render 500.html here: a missing template would create another 500.
+
     if request.path.startswith("/api/"):
+
         return jsonify({
             "ok": False,
-            "error": "Internal server error."
+            "error":
+                "Internal server error."
         }), 500
+
 
     return """
     <!doctype html>
     <html>
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <meta
+            name="viewport"
+            content="width=device-width,initial-scale=1"
+        >
         <title>500 | Tomesh Movies</title>
         <style>
-            body{margin:0;background:#09090d;color:#fff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center}
-            .box{max-width:600px;padding:40px 24px}
-            h1{font-size:72px;margin:0 0 10px;color:#ff3b3b}
-            p{color:#aaa;line-height:1.6}
-            a{display:inline-block;margin-top:18px;padding:12px 22px;border-radius:10px;background:linear-gradient(90deg,#ff1744,#8e24aa);color:#fff;text-decoration:none;font-weight:700}
+            body{
+                margin:0;
+                background:#09090d;
+                color:#fff;
+                font-family:Arial,sans-serif;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                min-height:100vh;
+                text-align:center
+            }
+            .box{
+                max-width:600px;
+                padding:40px 24px
+            }
+            h1{
+                font-size:72px;
+                margin:0 0 10px;
+                color:#ff3b3b
+            }
+            p{
+                color:#aaa;
+                line-height:1.6
+            }
+            a{
+                display:inline-block;
+                margin-top:18px;
+                padding:12px 22px;
+                border-radius:10px;
+                background:
+                    linear-gradient(
+                        90deg,
+                        #ff1744,
+                        #8e24aa
+                    );
+                color:#fff;
+                text-decoration:none;
+                font-weight:700
+            }
         </style>
     </head>
-    <body><div class="box"><h1>500</h1><h2>Something Went Wrong</h2><p>Tomesh Movies encountered a temporary server error. Please try again.</p><a href="/">Back to Home</a></div></body>
+    <body>
+        <div class="box">
+            <h1>500</h1>
+            <h2>Something Went Wrong</h2>
+            <p>
+                Tomesh Movies encountered
+                a temporary server error.
+                Please try again.
+            </p>
+            <a href="/">Back to Home</a>
+        </div>
+    </body>
     </html>
     """, 500
 
@@ -1655,10 +2198,15 @@ def internal_server_error(error):
 # =========================================================
 
 try:
+
     init_db()
-    print("PostgreSQL initialized successfully.")
+
+    print(
+        "PostgreSQL initialized successfully."
+    )
 
 except Exception as exc:
+
     print(
         "Database initialization warning:",
         repr(exc)
