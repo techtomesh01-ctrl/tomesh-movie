@@ -1382,22 +1382,53 @@ def cashfree_return():
 
 @app.route("/")
 def home():
+    q = request.args.get("q", "").strip()
+    category = request.args.get("category", "").strip()
 
-    conn = get_db(
-        dict_rows=True
-    )
+    conn = get_db(dict_rows=True)
 
     try:
-
         cur = conn.cursor()
 
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            ORDER BY id DESC
-            """
-        )
+        if q:
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE
+                    title ILIKE %s
+                    OR category ILIKE %s
+                    OR description ILIKE %s
+                ORDER BY id DESC
+                """,
+                (
+                    f"%{q}%",
+                    f"%{q}%",
+                    f"%{q}%",
+                )
+            )
+
+        elif category:
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                WHERE category ILIKE %s
+                ORDER BY id DESC
+                """,
+                (
+                    f"%{category}%",
+                )
+            )
+
+        else:
+            cur.execute(
+                """
+                SELECT *
+                FROM movies
+                ORDER BY id DESC
+                """
+            )
 
         movies = cur.fetchall()
         cur.close()
@@ -1406,16 +1437,11 @@ def home():
         conn.close()
 
     for movie in movies:
-
-        poster_key = movie.get(
-            "poster"
-        )
+        poster_key = movie.get("poster")
 
         try:
             movie["poster_url"] = (
-                media_url(
-                    poster_key
-                )
+                media_url(poster_key)
                 if poster_key
                 else None
             )
@@ -1426,21 +1452,20 @@ def home():
         "index.html",
         movies=movies,
         ads=get_ads(),
+        q=q,
+        category=category,
     )
 
 
 try:
-
     app.add_url_rule(
         "/",
         endpoint="index",
         view_func=home,
     )
-
 except AssertionError:
     pass
-
-
+    
 # ============================================================
 # MOVIE PAGE
 # ============================================================
