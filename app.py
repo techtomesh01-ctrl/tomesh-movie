@@ -817,7 +817,7 @@ def get_customer_access(movie_id):
 # HOME
 # =========================================================
 
-@app.route("/")
+@app.route("/", endpoint="home")
 def index():
 
     conn = get_db()
