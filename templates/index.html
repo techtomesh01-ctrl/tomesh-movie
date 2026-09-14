@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
 <title>
-    {% if q %}
-        Search: {{ q }} | Tomesh Movies
-    {% elif category %}
-        {{ category }} Movies | Tomesh Movies
-    {% else %}
-        Tomesh Movies | Premium Streaming
-    {% endif %}
+{% if q %}
+Search: {{ q }} | Tomesh Movies
+{% elif category %}
+{{ category }} Movies | Tomesh Movies
+{% else %}
+Tomesh Movies | Premium Streaming
+{% endif %}
 </title>
 
 <meta
@@ -62,7 +62,7 @@ input{
 }
 
 /* =========================================================
-   NAV
+   NAVBAR
 ========================================================= */
 
 .tm-nav{
@@ -77,8 +77,8 @@ input{
     align-items:center;
     background:linear-gradient(
         180deg,
-        rgba(5,5,6,.96),
-        rgba(5,5,6,.60),
+        rgba(5,5,6,.97),
+        rgba(5,5,6,.70),
         transparent
     );
     transition:.25s ease;
@@ -93,7 +93,6 @@ input{
 .tm-brand{
     font-size:23px;
     font-weight:900;
-    letter-spacing:.3px;
     white-space:nowrap;
 }
 
@@ -124,29 +123,28 @@ input{
     gap:10px;
 }
 
-/* REAL SEARCH FORM */
+/* SEARCH */
 
 .tm-search{
-    width:255px;
+    width:260px;
     height:40px;
     display:flex;
     align-items:center;
-    gap:8px;
-    padding:0 8px 0 13px;
+    gap:7px;
+    padding:0 7px 0 13px;
     border-radius:999px;
-    background:rgba(255,255,255,.06);
-    border:1px solid var(--line);
-    transition:.2s ease;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.10);
 }
 
 .tm-search:focus-within{
-    border-color:rgba(243,189,50,.45);
-    background:rgba(255,255,255,.09);
+    border-color:rgba(243,189,50,.50);
     box-shadow:0 0 0 3px rgba(243,189,50,.06);
 }
 
 .tm-search input{
     width:100%;
+    min-width:0;
     height:100%;
     border:0;
     outline:0;
@@ -160,16 +158,16 @@ input{
 }
 
 .tm-search-btn{
-    width:30px;
-    height:30px;
-    border:0;
-    border-radius:50%;
+    width:31px;
+    height:31px;
+    flex:0 0 31px;
     display:grid;
     place-items:center;
+    border:0;
+    border-radius:50%;
     background:rgba(255,255,255,.08);
     color:#fff;
     cursor:pointer;
-    transition:.2s ease;
 }
 
 .tm-search-btn:hover{
@@ -180,6 +178,7 @@ input{
 .tm-user{
     width:38px;
     height:38px;
+    flex:0 0 38px;
     display:grid;
     place-items:center;
     border-radius:50%;
@@ -193,13 +192,12 @@ input{
 ========================================================= */
 
 .tm-search-state{
-    padding:96px 5% 12px;
-    background:
-        linear-gradient(
-            180deg,
-            rgba(15,15,18,.98),
-            rgba(6,6,7,.96)
-        );
+    padding:96px 5% 14px;
+    background:linear-gradient(
+        180deg,
+        rgba(15,15,18,.98),
+        rgba(6,6,7,.96)
+    );
     border-bottom:1px solid rgba(255,255,255,.05);
 }
 
@@ -220,7 +218,6 @@ input{
     margin-top:7px;
     font-size:28px;
     font-weight:900;
-    line-height:1.15;
 }
 
 .tm-search-title span{
@@ -314,7 +311,6 @@ input{
     line-height:1;
     letter-spacing:-1.8px;
     font-weight:900;
-    max-width:650px;
 }
 
 .tm-meta{
@@ -359,7 +355,6 @@ input{
     font-size:14px;
     font-weight:800;
     transition:.2s ease;
-    border:0;
 }
 
 .tm-btn:hover{
@@ -369,7 +364,6 @@ input{
 .tm-watch{
     background:linear-gradient(135deg,var(--gold2),var(--gold));
     color:#111;
-    box-shadow:0 10px 30px rgba(243,189,50,.14);
 }
 
 .tm-info{
@@ -389,9 +383,7 @@ input{
     border-radius:14px;
     overflow:hidden;
     border:1px solid rgba(255,255,255,.14);
-    box-shadow:
-        0 30px 80px rgba(0,0,0,.55),
-        0 0 50px rgba(104,45,110,.12);
+    box-shadow:0 30px 80px rgba(0,0,0,.55);
     background:#111;
 }
 
@@ -420,7 +412,6 @@ input{
     padding:7px 9px;
     border-radius:7px;
     background:rgba(0,0,0,.68);
-    backdrop-filter:blur(8px);
     font-size:12px;
     font-weight:800;
 }
@@ -480,10 +471,7 @@ input{
     background:var(--card);
     border:1px solid var(--line);
     box-shadow:0 10px 30px rgba(0,0,0,.20);
-    transition:
-        transform .25s ease,
-        box-shadow .25s ease,
-        border-color .25s ease;
+    transition:.25s ease;
 }
 
 .tm-card:hover{
@@ -504,7 +492,7 @@ input{
     height:100%;
     display:block;
     object-fit:cover;
-    transition:transform .35s ease;
+    transition:.35s ease;
 }
 
 .tm-card:hover .tm-card-img img{
@@ -586,14 +574,12 @@ input{
     max-width:500px;
     padding:35px 25px;
     border-radius:18px;
-    background:
-        linear-gradient(
-            145deg,
-            rgba(255,255,255,.045),
-            rgba(255,255,255,.018)
-        );
+    background:linear-gradient(
+        145deg,
+        rgba(255,255,255,.045),
+        rgba(255,255,255,.018)
+    );
     border:1px solid rgba(255,255,255,.07);
-    box-shadow:0 20px 50px rgba(0,0,0,.22);
 }
 
 .tm-no-icon{
@@ -603,7 +589,6 @@ input{
 
 .tm-no-results h2{
     font-size:23px;
-    font-weight:900;
 }
 
 .tm-no-results p{
@@ -695,7 +680,7 @@ input{
 }
 
 /* =========================================================
-   MOBILE
+   TABLET
 ========================================================= */
 
 @media(max-width:1000px){
@@ -714,45 +699,67 @@ input{
     }
 }
 
+/* =========================================================
+   MOBILE
+========================================================= */
+
 @media(max-width:760px){
 
     .tm-nav{
         height:63px;
-        padding:0 15px;
+        padding:0 10px;
     }
 
     .tm-brand{
-        font-size:19px;
+        font-size:17px;
     }
 
     .tm-menu{
         display:none;
     }
 
+    /*
+       MOBILE SEARCH IS VISIBLE
+    */
+
+    .tm-nav-right{
+        gap:6px;
+    }
+
     .tm-search{
-        width:40px;
-        height:36px;
-        justify-content:center;
-        padding:0 5px;
+        width:155px;
+        height:38px;
+        padding:0 5px 0 10px;
+        gap:4px;
     }
 
     .tm-search input{
-        display:none;
+        display:block !important;
+        width:100%;
+        min-width:0;
+        font-size:12px;
+    }
+
+    .tm-search input::placeholder{
+        color:#909098;
     }
 
     .tm-search-btn{
-        width:34px;
-        height:34px;
-        background:transparent;
+        width:29px;
+        height:29px;
+        flex:0 0 29px;
+        font-size:13px;
     }
 
     .tm-user{
-        width:36px;
-        height:36px;
+        width:34px;
+        height:34px;
+        flex:0 0 34px;
+        font-size:13px;
     }
 
     .tm-search-state{
-        padding:84px 15px 15px;
+        padding:83px 15px 15px;
     }
 
     .tm-search-title{
@@ -811,7 +818,6 @@ input{
         top:106px;
         transform:none;
         border-radius:10px;
-        opacity:.96;
     }
 
     .tm-kicker{
@@ -908,17 +914,13 @@ input{
         right:10px;
         bottom:10px;
         z-index:1100;
-
         display:grid;
         grid-template-columns:repeat(4,1fr);
-
         padding:8px 5px;
         border-radius:17px;
-
         background:rgba(18,18,21,.94);
         backdrop-filter:blur(18px);
         border:1px solid rgba(255,255,255,.09);
-
         box-shadow:0 18px 48px rgba(0,0,0,.48);
     }
 
@@ -939,6 +941,30 @@ input{
     .tm-bottom a.active{
         color:var(--gold2);
     }
+}
+
+/* =========================================================
+   VERY SMALL MOBILE
+========================================================= */
+
+@media(max-width:430px){
+
+    .tm-brand{
+        font-size:15px;
+    }
+
+    .tm-search{
+        width:145px;
+    }
+
+    .tm-search input{
+        font-size:11px;
+    }
+
+    .tm-user{
+        display:none;
+    }
+
 }
 </style>
 </head>
@@ -977,7 +1003,6 @@ input{
 
     <div class="tm-nav-right">
 
-        <!-- REAL SERVER SEARCH -->
         <form
             class="tm-search"
             action="{{ url_for('home') }}"
@@ -1006,7 +1031,6 @@ input{
         <a
             href="{{ url_for('home') }}"
             class="tm-user"
-            aria-label="Home"
         >
             ◉
         </a>
@@ -1017,7 +1041,7 @@ input{
 
 
 <!-- =======================================================
-     SEARCH / CATEGORY STATE
+     SEARCH / CATEGORY RESULT
 ======================================================= -->
 
 {% if q or category %}
@@ -1028,25 +1052,25 @@ input{
 
         {% if q %}
 
-            <div class="tm-search-label">
-                Search Results
-            </div>
+        <div class="tm-search-label">
+            Search Results
+        </div>
 
-            <div class="tm-search-title">
-                Results for:
-                <span>{{ q }}</span>
-            </div>
+        <div class="tm-search-title">
+            Results for:
+            <span>{{ q }}</span>
+        </div>
 
         {% elif category %}
 
-            <div class="tm-search-label">
-                Category
-            </div>
+        <div class="tm-search-label">
+            Category
+        </div>
 
-            <div class="tm-search-title">
-                <span>{{ category }}</span>
-                Movies
-            </div>
+        <div class="tm-search-title">
+            <span>{{ category }}</span>
+            Movies
+        </div>
 
         {% endif %}
 
@@ -1121,33 +1145,22 @@ input{
             <div class="tm-meta">
 
                 {% if hero.category %}
-                <span>
-                    {{ hero.category }}
-                </span>
+                <span>{{ hero.category }}</span>
                 {% endif %}
 
-                <span>
-                    HD
-                </span>
-
-                <span>
-                    Premium
-                </span>
+                <span>HD</span>
+                <span>Premium</span>
 
             </div>
 
             <p class="tm-description">
 
                 {% if hero.description %}
-
                     {{ hero.description }}
-
                 {% else %}
-
                     Watch your favourite movies with
                     a smooth cinematic experience on
                     Tomesh Movies.
-
                 {% endif %}
 
             </p>
@@ -1227,17 +1240,13 @@ input{
 {% if ads and ads.get("top") %}
 
 <section class="tm-section">
-
     {{ ads.get("top") | safe }}
-
 </section>
 
 {% endif %}
 
 
-<!-- =======================================================
-     MOVIE RESULTS
-======================================================= -->
+<!-- MOVIES -->
 
 <section
     class="tm-section"
@@ -1249,17 +1258,11 @@ input{
         <h2 class="tm-section-title">
 
             {% if q %}
-
                 Search Results
-
             {% elif category %}
-
                 {{ category }} Movies
-
             {% else %}
-
                 Trending Now
-
             {% endif %}
 
         </h2>
@@ -1285,7 +1288,7 @@ input{
         {% for movie in movies %}
 
         <a
-            class="tm-card tm-movie"
+            class="tm-card"
             href="{{ url_for(
                 'movie_page',
                 movie_id=movie.id
@@ -1360,17 +1363,17 @@ input{
 
                 {% if q %}
 
-                    We couldn't find any movie matching
-                    "<strong>{{ q }}</strong>".
+                We couldn't find any movie matching
+                "<strong>{{ q }}</strong>".
 
                 {% elif category %}
 
-                    There are no movies available in
-                    "<strong>{{ category }}</strong>".
+                There are no movies available in
+                "<strong>{{ category }}</strong>".
 
                 {% else %}
 
-                    अभी कोई movie available नहीं है।
+                अभी कोई movie available नहीं है।
 
                 {% endif %}
 
@@ -1392,9 +1395,7 @@ input{
 </section>
 
 
-<!-- =======================================================
-     LATEST MOVIES
-======================================================= -->
+<!-- LATEST -->
 
 {% if not q and not category and movies %}
 
@@ -1420,7 +1421,7 @@ input{
         {% for movie in movies[:10] %}
 
         <a
-            class="tm-card tm-movie"
+            class="tm-card"
             href="{{ url_for(
                 'movie_page',
                 movie_id=movie.id
@@ -1478,9 +1479,7 @@ input{
 {% endif %}
 
 
-<!-- =======================================================
-     CATEGORIES
-======================================================= -->
+<!-- CATEGORIES -->
 
 {% if not q and not category %}
 
@@ -1497,22 +1496,21 @@ input{
 
     </div>
 
-    <div style="
-        display:flex;
-        flex-wrap:wrap;
-        gap:8px;
-    ">
+    <div
+        style="
+            display:flex;
+            flex-wrap:wrap;
+            gap:8px;
+        "
+    >
 
         {% set seen = [] %}
 
         {% for movie in movies %}
 
-            {% if movie.category
-                  and movie.category not in seen %}
+            {% if movie.category and movie.category not in seen %}
 
-                {% set _ =
-                    seen.append(movie.category)
-                %}
+                {% set _ = seen.append(movie.category) %}
 
                 <a
                     href="{{ url_for(
@@ -1543,9 +1541,7 @@ input{
 {% endif %}
 
 
-<!-- =======================================================
-     PREMIUM
-======================================================= -->
+<!-- PREMIUM -->
 
 <section
     class="tm-premium"
@@ -1593,9 +1589,7 @@ input{
 {% if ads and ads.get("bottom") %}
 
 <section class="tm-section">
-
     {{ ads.get("bottom") | safe }}
-
 </section>
 
 {% endif %}
@@ -1613,7 +1607,7 @@ input{
 
 
 <!-- =======================================================
-     MOBILE NAV
+     MOBILE BOTTOM NAV
 ======================================================= -->
 
 <nav class="tm-bottom">
@@ -1631,9 +1625,7 @@ input{
         <span>Movies</span>
     </a>
 
-    <a
-        href="{{ url_for('home') }}#movies"
-    >
+    <a href="#movies">
         <span>⌕</span>
         <span>Search</span>
     </a>
@@ -1647,7 +1639,6 @@ input{
 
 
 <script>
-
 /* =========================================================
    NAV SCROLL
 ========================================================= */
@@ -1656,67 +1647,44 @@ const nav = document.getElementById("tmNav");
 
 window.addEventListener(
     "scroll",
-    () => {
+    function(){
 
         if(window.scrollY > 20){
-
             nav.classList.add("scrolled");
-
         }else{
-
             nav.classList.remove("scrolled");
-
         }
 
     },
-    { passive:true }
+    {passive:true}
 );
 
 
 /* =========================================================
    SEARCH
-   FORM SUBMITS TO FLASK BACKEND.
-   NO CLIENT-SIDE HIDING.
 ========================================================= */
 
+const searchForm = document.querySelector(".tm-search");
 const searchInput = document.getElementById("tmSearch");
 
-if(searchInput){
+if(searchForm && searchInput){
 
-    searchInput.addEventListener(
-        "keydown",
+    searchForm.addEventListener(
+        "submit",
         function(event){
 
-            if(event.key === "Enter"){
+            const value = searchInput.value.trim();
 
+            if(!value){
                 event.preventDefault();
-
-                const value =
-                    this.value.trim();
-
-                if(value){
-
-                    const url =
-                        "{{ url_for('home') }}" +
-                        "?q=" +
-                        encodeURIComponent(value);
-
-                    window.location.href = url;
-
-                }else{
-
-                    window.location.href =
-                        "{{ url_for('home') }}";
-
-                }
-
+                window.location.href =
+                    "{{ url_for('home') }}";
             }
 
         }
     );
 
 }
-
 </script>
 
 </body>
