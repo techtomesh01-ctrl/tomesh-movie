@@ -36,6 +36,7 @@ app.secret_key = (
     or secrets.token_hex(32)
 )
 
+# Maximum request size: 4 GB
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
 
@@ -84,9 +85,16 @@ MAX_POSTER_SIZE = 25 * 1024 * 1024
 # CLOUDFLARE R2 SETTINGS
 # ============================================================
 
+# 10 MB per multipart part
 PART_SIZE = 10 * 1024 * 1024
+
+# Browser upload concurrency
 PARALLEL_PARTS = 3
+
+# Presigned URL validity
 PRESIGNED_EXPIRES = 3600
+
+# S3/R2 maximum multipart parts
 MAX_MULTIPART_PARTS = 10000
 
 VIDEO_PREFIX = "videos/"
@@ -378,6 +386,7 @@ def validate_r2_key(
 # ============================================================
 
 def get_db(dict_rows=False):
+
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL environment variable is missing."
@@ -397,6 +406,7 @@ def get_db(dict_rows=False):
 
 
 def init_db():
+
     conn = get_db()
 
     try:
@@ -427,6 +437,7 @@ def init_db():
         )
 
         conn.commit()
+
         cur.close()
 
     finally:
@@ -437,8 +448,14 @@ def init_db():
 # SETTINGS
 # ============================================================
 
-def get_setting(key, default=""):
-    conn = get_db(dict_rows=True)
+def get_setting(
+    key,
+    default=""
+):
+
+    conn = get_db(
+        dict_rows=True
+    )
 
     try:
         cur = conn.cursor()
@@ -453,6 +470,7 @@ def get_setting(key, default=""):
         )
 
         row = cur.fetchone()
+
         cur.close()
 
         if row and row.get("value") is not None:
@@ -464,7 +482,11 @@ def get_setting(key, default=""):
         conn.close()
 
 
-def set_setting(key, value):
+def set_setting(
+    key,
+    value
+):
+
     conn = get_db()
 
     try:
@@ -473,13 +495,18 @@ def set_setting(key, value):
         cur.execute(
             """
             INSERT INTO settings
-            (key, value)
+            (
+                key,
+                value
+            )
             VALUES
-            (%s, %s)
-
+            (
+                %s,
+                %s
+            )
             ON CONFLICT (key)
             DO UPDATE SET
-            value = EXCLUDED.value
+                value = EXCLUDED.value
             """,
             (
                 key,
@@ -488,6 +515,7 @@ def set_setting(key, value):
         )
 
         conn.commit()
+
         cur.close()
 
     finally:
@@ -495,10 +523,20 @@ def set_setting(key, value):
 
 
 def get_ads():
+
     return {
-        "top": get_setting("ad_top", ""),
-        "player": get_setting("ad_player", ""),
-        "bottom": get_setting("ad_bottom", "")
+        "top": get_setting(
+            "ad_top",
+            ""
+        ),
+        "player": get_setting(
+            "ad_player",
+            ""
+        ),
+        "bottom": get_setting(
+            "ad_bottom",
+            ""
+        )
     }
 
 
@@ -551,7 +589,9 @@ def r2_public_url(key):
     if not key:
         return None
 
-    key = str(key).strip()
+    key = str(
+        key
+    ).strip()
 
     if (
         key.startswith("http://")
@@ -581,7 +621,9 @@ def media_url(value):
     if not value:
         return None
 
-    value = str(value).strip()
+    value = str(
+        value
+    ).strip()
 
     if (
         value.startswith("http://")
@@ -600,7 +642,9 @@ def r2_presigned_url(
     if not key:
         return None
 
-    key = str(key).strip()
+    key = str(
+        key
+    ).strip()
 
     if (
         key.startswith("http://")
@@ -625,6 +669,7 @@ def r2_presigned_url(
 # ============================================================
 
 def r2_head(key):
+
     client = get_r2_client()
 
     return client.head_object(
@@ -674,11 +719,17 @@ def admin_required(view):
 # HOME
 #
 # IMPORTANT:
-# endpoint="index" keeps url_for('index') working
-# with the existing index.html.
+# Endpoint is "home".
+#
+# index.html currently uses:
+#     url_for('home')
+#
+# We also create an "index" alias below
+# so old templates using url_for('index')
+# continue working.
 # ============================================================
 
-@app.route("/", endpoint="index")
+@app.route("/")
 def home():
 
     conn = get_db(
@@ -686,6 +737,7 @@ def home():
     )
 
     try:
+
         cur = conn.cursor()
 
         cur.execute(
@@ -697,21 +749,27 @@ def home():
         )
 
         movies = cur.fetchall()
+
         cur.close()
 
     finally:
         conn.close()
 
     for movie in movies:
+
         try:
+
             movie["poster_url"] = media_url(
                 movie.get("poster")
             )
+
         except Exception as e:
+
             print(
                 "HOME POSTER URL ERROR:",
                 repr(e)
             )
+
             movie["poster_url"] = None
 
     return render_template(
@@ -719,6 +777,22 @@ def home():
         movies=movies,
         ads=get_ads()
     )
+
+
+# ============================================================
+# HOME ALIAS
+#
+# Allows old templates:
+#     url_for('index')
+#
+# to point to "/".
+# ============================================================
+
+app.add_url_rule(
+    "/",
+    endpoint="index",
+    view_func=home
+)
 
 
 # ============================================================
@@ -735,6 +809,7 @@ def movie_page(movie_id):
     )
 
     try:
+
         cur = conn.cursor()
 
         cur.execute(
@@ -749,7 +824,9 @@ def movie_page(movie_id):
         movie = cur.fetchone()
 
         if not movie:
+
             cur.close()
+
             abort(404)
 
         cur.execute(
@@ -763,6 +840,7 @@ def movie_page(movie_id):
         )
 
         conn.commit()
+
         cur.close()
 
     finally:
@@ -771,9 +849,14 @@ def movie_page(movie_id):
     video_key = movie.get("video")
     poster_key = movie.get("poster")
 
+    # --------------------------------------------------------
+    # VIDEO
+    # --------------------------------------------------------
+
     if video_key:
 
         try:
+
             movie["video_url"] = r2_presigned_url(
                 video_key,
                 expires=3600
@@ -787,10 +870,13 @@ def movie_page(movie_id):
             )
 
             try:
+
                 movie["video_url"] = media_url(
                     video_key
                 )
+
             except Exception:
+
                 movie["video_url"] = None
 
         movie["video_mime"] = content_type_for_key(
@@ -802,9 +888,14 @@ def movie_page(movie_id):
         movie["video_url"] = None
         movie["video_mime"] = "video/mp4"
 
+    # --------------------------------------------------------
+    # POSTER
+    # --------------------------------------------------------
+
     if poster_key:
 
         try:
+
             movie["poster_url"] = media_url(
                 poster_key
             )
@@ -861,6 +952,7 @@ def login():
         ):
 
             session.clear()
+
             session["admin_logged_in"] = True
             session["admin_user"] = username
 
@@ -905,6 +997,7 @@ def admin():
     )
 
     try:
+
         cur = conn.cursor()
 
         cur.execute(
@@ -916,6 +1009,7 @@ def admin():
         )
 
         movies = cur.fetchall()
+
         cur.close()
 
     finally:
@@ -924,10 +1018,13 @@ def admin():
     for movie in movies:
 
         try:
+
             movie["poster_url"] = media_url(
                 movie.get("poster")
             )
+
         except Exception:
+
             movie["poster_url"] = None
 
     total_movies = len(movies)
@@ -960,6 +1057,7 @@ def admin():
 def admin_add():
 
     if request.method == "GET":
+
         return render_template(
             "admin_add.html"
         )
@@ -979,8 +1077,13 @@ def admin_add():
         ""
     ).strip()
 
-    poster = request.files.get("poster")
-    video = request.files.get("video")
+    poster = request.files.get(
+        "poster"
+    )
+
+    video = request.files.get(
+        "video"
+    )
 
     if not title:
 
@@ -1004,7 +1107,9 @@ def admin_add():
             url_for("admin_add")
         )
 
-    if not allowed_video(video.filename):
+    if not allowed_video(
+        video.filename
+    ):
 
         flash(
             "Video केवल MP4, MKV, WebM या MOV होनी चाहिए.",
@@ -1048,6 +1153,7 @@ def admin_add():
             if not allowed_poster(
                 poster.filename
             ):
+
                 raise ValueError(
                     "Poster केवल JPG, JPEG, PNG या WEBP होनी चाहिए."
                 )
@@ -1108,6 +1214,7 @@ def admin_add():
             )
 
             conn.commit()
+
             cur.close()
 
         finally:
@@ -1130,14 +1237,18 @@ def admin_add():
         )
 
         try:
+
             if video_key:
                 r2_delete(video_key)
+
         except Exception:
             pass
 
         try:
+
             if poster_key:
                 r2_delete(poster_key)
+
         except Exception:
             pass
 
@@ -1194,7 +1305,9 @@ def api_r2_multipart_create():
             ContentType=content_type
         )
 
-        upload_id = response.get("UploadId")
+        upload_id = response.get(
+            "UploadId"
+        )
 
         if not upload_id:
 
@@ -1297,8 +1410,11 @@ def api_r2_multipart_urls():
         for part in part_numbers:
 
             try:
+
                 number = int(part)
+
             except Exception:
+
                 continue
 
             if number < 1:
@@ -1307,7 +1423,9 @@ def api_r2_multipart_urls():
             if number > MAX_MULTIPART_PARTS:
                 continue
 
-            clean_parts.append(number)
+            clean_parts.append(
+                number
+            )
 
         clean_parts = sorted(
             set(clean_parts)
@@ -1408,7 +1526,9 @@ def api_r2_multipart_complete():
             or ""
         ).strip()
 
-        parts = data.get("parts") or []
+        parts = data.get(
+            "parts"
+        ) or []
 
         key = validate_r2_key(
             key,
@@ -1424,7 +1544,10 @@ def api_r2_multipart_complete():
                 "Upload ID is required."
             )
 
-        if not isinstance(parts, list):
+        if not isinstance(
+            parts,
+            list
+        ):
 
             return json_error(
                 "parts must be an array."
@@ -1440,7 +1563,10 @@ def api_r2_multipart_complete():
 
         for item in parts:
 
-            if not isinstance(item, dict):
+            if not isinstance(
+                item,
+                dict
+            ):
                 continue
 
             part_number = (
@@ -1461,8 +1587,13 @@ def api_r2_multipart_complete():
                 continue
 
             try:
-                part_number = int(part_number)
+
+                part_number = int(
+                    part_number
+                )
+
             except Exception:
+
                 continue
 
             if part_number < 1:
@@ -1516,7 +1647,9 @@ def api_r2_multipart_complete():
             }
         )
 
-        location = response.get("Location")
+        location = response.get(
+            "Location"
+        )
 
         try:
 
@@ -1746,7 +1879,9 @@ def api_movie_save():
                 ]
             )
 
-        video_head = r2_head(video)
+        video_head = r2_head(
+            video
+        )
 
         video_size = int(
             video_head.get(
@@ -1811,6 +1946,7 @@ def api_movie_save():
             )
 
             conn.commit()
+
             cur.close()
 
         finally:
@@ -1850,7 +1986,9 @@ def api_movie_save():
     methods=["POST", "GET"]
 )
 @admin_required
-def admin_delete_movie(movie_id):
+def admin_delete_movie(
+    movie_id
+):
 
     conn = get_db(
         dict_rows=True
@@ -1887,8 +2025,13 @@ def admin_delete_movie(movie_id):
                 url_for("admin")
             )
 
-        video_key = movie.get("video")
-        poster_key = movie.get("poster")
+        video_key = movie.get(
+            "video"
+        )
+
+        poster_key = movie.get(
+            "poster"
+        )
 
         cur.execute(
             """
@@ -1899,6 +2042,7 @@ def admin_delete_movie(movie_id):
         )
 
         conn.commit()
+
         cur.close()
 
     finally:
@@ -1907,8 +2051,13 @@ def admin_delete_movie(movie_id):
     if video_key:
 
         try:
-            r2_delete(video_key)
+
+            r2_delete(
+                video_key
+            )
+
         except Exception as e:
+
             print(
                 "VIDEO R2 DELETE ERROR:",
                 repr(e)
@@ -1917,8 +2066,13 @@ def admin_delete_movie(movie_id):
     if poster_key:
 
         try:
-            r2_delete(poster_key)
+
+            r2_delete(
+                poster_key
+            )
+
         except Exception as e:
+
             print(
                 "POSTER R2 DELETE ERROR:",
                 repr(e)
@@ -2192,6 +2346,7 @@ def page_not_found(error):
             <meta name="viewport"
                   content="width=device-width,initial-scale=1">
             <title>Tomesh Movies - Page Not Found</title>
+
             <style>
                 body{
                     margin:0;
@@ -2204,6 +2359,7 @@ def page_not_found(error):
                     font-family:Arial,sans-serif;
                     text-align:center;
                 }
+
                 .box{
                     width:min(90%,600px);
                     padding:40px 25px;
@@ -2211,14 +2367,17 @@ def page_not_found(error):
                     border-radius:20px;
                     background:#111;
                 }
+
                 h1{
                     font-size:32px;
                     margin:0 0 15px;
                 }
+
                 p{
                     color:#aaa;
                     line-height:1.6;
                 }
+
                 a{
                     display:inline-block;
                     margin-top:15px;
@@ -2231,14 +2390,23 @@ def page_not_found(error):
                 }
             </style>
         </head>
+
         <body>
+
             <div class="box">
+
                 <h1>🎬 Page Not Found</h1>
+
                 <p>
                     यह page Tomesh Movies पर नहीं मिला।
                 </p>
-                <a href="/">← Home पर जाएँ</a>
+
+                <a href="/">
+                    ← Home पर जाएँ
+                </a>
+
             </div>
+
         </body>
         </html>
         """,
@@ -2248,10 +2416,6 @@ def page_not_found(error):
 
 # ============================================================
 # 500
-#
-# IMPORTANT:
-# Do NOT render 500.html here.
-# This prevents the error handler itself from crashing.
 # ============================================================
 
 @app.errorhandler(500)
@@ -2266,12 +2430,20 @@ def internal_server_error(error):
         """
         <!doctype html>
         <html lang="hi">
+
         <head>
+
             <meta charset="utf-8">
+
             <meta name="viewport"
                   content="width=device-width,initial-scale=1">
-            <title>Tomesh Movies - Server Error</title>
+
+            <title>
+                Tomesh Movies - Server Error
+            </title>
+
             <style>
+
                 body{
                     margin:0;
                     min-height:100vh;
@@ -2283,6 +2455,7 @@ def internal_server_error(error):
                     font-family:Arial,sans-serif;
                     text-align:center;
                 }
+
                 .box{
                     width:min(90%,600px);
                     padding:40px 25px;
@@ -2292,14 +2465,17 @@ def internal_server_error(error):
                     box-shadow:
                         0 20px 60px rgba(0,0,0,.5);
                 }
+
                 h1{
                     margin:0 0 15px;
                     font-size:32px;
                 }
+
                 p{
                     color:#bbb;
                     line-height:1.6;
                 }
+
                 a{
                     display:inline-block;
                     margin-top:15px;
@@ -2310,18 +2486,32 @@ def internal_server_error(error):
                     text-decoration:none;
                     font-weight:700;
                 }
+
             </style>
+
         </head>
+
         <body>
+
             <div class="box">
-                <h1>🎬 Something went wrong</h1>
+
+                <h1>
+                    🎬 Something went wrong
+                </h1>
+
                 <p>
                     Tomesh Movies में temporary server error आया है.
                     कृपया थोड़ी देर बाद फिर कोशिश करें।
                 </p>
-                <a href="/">← Home पर जाएँ</a>
+
+                <a href="/">
+                    ← Home पर जाएँ
+                </a>
+
             </div>
+
         </body>
+
         </html>
         """,
         500
