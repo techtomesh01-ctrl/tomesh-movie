@@ -92,6 +92,12 @@
     border-color:#d51f42;
 }
 
+.tm-btn:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+    transform:none;
+}
+
 .tm-grid{
     display:grid;
     grid-template-columns:repeat(3,1fr);
@@ -409,15 +415,15 @@
     .tm-upload-actions .tm-btn{
         width:100%;
     }
-
 }
 </style>
+
 
 <div class="tm-admin-page">
 
 <div class="tm-admin-wrap">
 
-```
+
 <!-- HEADER -->
 
 <div class="tm-admin-top">
@@ -435,8 +441,6 @@
     </div>
 
     <div class="tm-actions">
-
-        <!-- FIXED: home -> index -->
 
         <a
             href="{{ url_for('index') }}"
@@ -530,6 +534,7 @@
 
         <div class="tm-form-grid">
 
+
             <!-- TITLE -->
 
             <div class="tm-field">
@@ -601,8 +606,7 @@
                         id="posterInfo"
                         class="tm-file-info"
                     >
-                        JPG / JPEG / PNG / WEBP
-                        — Maximum 25 MB
+                        JPG / JPEG / PNG / WEBP — Maximum 25 MB
                     </div>
 
                 </div>
@@ -630,8 +634,7 @@
                         id="videoInfo"
                         class="tm-file-info"
                     >
-                        MP4 / MKV / WebM / MOV
-                        — Maximum 4 GB
+                        MP4 / MKV / WebM / MOV — Maximum 4 GB
                     </div>
 
                 </div>
@@ -888,30 +891,34 @@
     </div>
 
 </div>
-```
+
 
 </div>
-
 </div>
+
 
 <script>
 
+/* =========================================================
+   TOMESH MOVIES - DIRECT CLOUDFLARE R2 UPLOAD
+   ========================================================= */
+
 const PART_SIZE = 10 * 1024 * 1024;
-
 const PARALLEL = 3;
-
 const MAX_RETRIES = 4;
+const MAX_VIDEO_SIZE = 4 * 1024 * 1024 * 1024;
+const MAX_POSTER_SIZE = 25 * 1024 * 1024;
 
 let uploadCancelled = false;
-
 let currentUploadId = null;
-
 let currentUploadKey = null;
-
 let activeXhrs = [];
-
 let currentUploadStarted = 0;
 
+
+/* =========================================================
+   ELEMENTS
+   ========================================================= */
 
 const videoInput =
     document.getElementById("videoFile");
@@ -953,12 +960,15 @@ const videoInfo =
     document.getElementById("videoInfo");
 
 
+/* =========================================================
+   FILE INFO
+   ========================================================= */
+
 videoInput.addEventListener(
     "change",
     function(){
 
-        const file =
-            this.files[0];
+        const file = this.files[0];
 
         if(!file){
 
@@ -983,8 +993,7 @@ posterInput.addEventListener(
     "change",
     function(){
 
-        const file =
-            this.files[0];
+        const file = this.files[0];
 
         if(!file){
 
@@ -1003,6 +1012,10 @@ posterInput.addEventListener(
 );
 
 
+/* =========================================================
+   EXTENSION
+   ========================================================= */
+
 function getExtension(name){
 
     const parts =
@@ -1017,6 +1030,10 @@ function getExtension(name){
     return parts.pop();
 }
 
+
+/* =========================================================
+   VALIDATION
+   ========================================================= */
 
 function isAllowedVideo(file){
 
@@ -1052,6 +1069,10 @@ function isAllowedPoster(file){
 }
 
 
+/* =========================================================
+   CONTENT TYPE
+   ========================================================= */
+
 function getContentType(file){
 
     const ext =
@@ -1073,10 +1094,7 @@ function getContentType(file){
         return "video/quicktime";
     }
 
-    if(
-        ext === "jpg"
-        || ext === "jpeg"
-    ){
+    if(ext === "jpg" || ext === "jpeg"){
         return "image/jpeg";
     }
 
@@ -1093,24 +1111,37 @@ function getContentType(file){
 }
 
 
-function createObjectKey(
-    prefix,
-    file
-){
+/* =========================================================
+   OBJECT KEY
+   ========================================================= */
+
+function createObjectKey(prefix, file){
 
     const ext =
         getExtension(file.name);
 
-    const random =
-        crypto.randomUUID
-        ? crypto.randomUUID()
-        : (
+    let random;
+
+    if(
+        window.crypto
+        &&
+        typeof window.crypto.randomUUID === "function"
+    ){
+
+        random =
+            window.crypto.randomUUID();
+
+    }
+    else{
+
+        random =
             Date.now()
             + "-"
             + Math.random()
                 .toString(16)
-                .slice(2)
-        );
+                .slice(2);
+
+    }
 
     return (
         prefix
@@ -1121,10 +1152,11 @@ function createObjectKey(
 }
 
 
-function setStatus(
-    message,
-    type
-){
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+function setStatus(message, type){
 
     statusText.textContent =
         message;
@@ -1133,12 +1165,17 @@ function setStatus(
         "tm-status";
 
     if(type){
+
         statusText.classList.add(
             type
         );
     }
 }
 
+
+/* =========================================================
+   PROGRESS
+   ========================================================= */
 
 function setProgress(
     percent,
@@ -1177,12 +1214,17 @@ function setProgress(
 }
 
 
+/* =========================================================
+   FORMAT
+   ========================================================= */
+
 function formatBytes(bytes){
 
     bytes =
         Number(bytes || 0);
 
     if(bytes < 1024){
+
         return bytes.toFixed(0)
             + " B";
     }
@@ -1242,8 +1284,10 @@ function formatTime(seconds){
 
     if(
         !isFinite(seconds)
-        || seconds < 0
+        ||
+        seconds < 0
     ){
+
         return "--";
     }
 
@@ -1251,6 +1295,7 @@ function formatTime(seconds){
         Math.round(seconds);
 
     if(seconds < 60){
+
         return seconds + "s";
     }
 
@@ -1286,6 +1331,29 @@ function formatTime(seconds){
 }
 
 
+/* =========================================================
+   SLEEP
+   ========================================================= */
+
+function sleep(ms){
+
+    return new Promise(
+        function(resolve){
+
+            setTimeout(
+                resolve,
+                ms
+            );
+
+        }
+    );
+}
+
+
+/* =========================================================
+   JSON REQUEST
+   ========================================================= */
+
 async function jsonRequest(
     url,
     options = {}
@@ -1302,6 +1370,7 @@ async function jsonRequest(
             }
         );
 
+
     let data = null;
 
     try{
@@ -1310,31 +1379,42 @@ async function jsonRequest(
             await response.json();
 
     }
-    catch(e){
+    catch(error){
 
         throw new Error(
             "Server ने valid JSON response नहीं दिया."
         );
     }
 
+
     if(
         !response.ok
-        || data.ok === false
+        ||
+        data.ok === false
     ){
 
         throw new Error(
             data.error
-            || data.message
-            || (
+            ||
+            data.message
+            ||
+            (
                 "Request failed: "
                 + response.status
             )
         );
     }
 
+
     return data;
 }
 
+
+/* =========================================================
+   CREATE MULTIPART
+   IMPORTANT:
+   backend receives filename + size + content_type
+   ========================================================= */
 
 async function createMultipart(
     key,
@@ -1356,12 +1436,19 @@ async function createMultipart(
 
                     key:key,
 
+                    filename:
+                        file.name,
+
+                    size:
+                        file.size,
+
                     content_type:
                         getContentType(file)
 
                 })
             }
         );
+
 
     if(!data.upload_id){
 
@@ -1370,9 +1457,16 @@ async function createMultipart(
         );
     }
 
+
     return data;
 }
 
+
+/* =========================================================
+   GET PART URLS
+   IMPORTANT:
+   backend receives parts
+   ========================================================= */
 
 async function getPartURLs(
     key,
@@ -1398,6 +1492,10 @@ async function getPartURLs(
                     upload_id:
                         uploadId,
 
+                    parts:
+                        partNumbers,
+
+                    /* compatibility */
                     part_numbers:
                         partNumbers
 
@@ -1407,14 +1505,19 @@ async function getPartURLs(
 
 
     const raw =
-        data.urls || {};
+        data.urls
+        ||
+        data.part_urls
+        ||
+        data.presigned_urls
+        ||
+        {};
+
 
     const urlMap = {};
 
 
-    if(
-        Array.isArray(raw)
-    ){
+    if(Array.isArray(raw)){
 
         raw.forEach(
             function(item){
@@ -1432,14 +1535,17 @@ async function getPartURLs(
                         item.part
                     );
 
+
                 const url =
                     item.url
                     ??
                     item.URL;
 
+
                 if(
                     number
-                    && url
+                    &&
+                    url
                 ){
 
                     urlMap[number] =
@@ -1469,7 +1575,8 @@ async function getPartURLs(
 
                 if(
                     n
-                    && url
+                    &&
+                    url
                 ){
 
                     urlMap[n] =
@@ -1493,16 +1600,21 @@ async function getPartURLs(
         ){
 
             throw new Error(
-                "R2 presigned part URL missing for part "
+                "R2 presigned URL missing for part "
                 + partNumber
             );
         }
+
     }
 
 
     return urlMap;
 }
 
+
+/* =========================================================
+   UPLOAD ONE PART
+   ========================================================= */
 
 function uploadPart(
     url,
@@ -1529,9 +1641,14 @@ function uploadPart(
             const xhr =
                 new XMLHttpRequest();
 
-            activeXhrs.push(xhr);
 
-            let settled = false;
+            activeXhrs.push(
+                xhr
+            );
+
+
+            let settled =
+                false;
 
 
             function cleanup(){
@@ -1547,19 +1664,20 @@ function uploadPart(
                         index,
                         1
                     );
+
                 }
+
             }
 
 
-            function finishError(
-                message
-            ){
+            function finishError(message){
 
                 if(settled){
                     return;
                 }
 
-                settled = true;
+                settled =
+                    true;
 
                 cleanup();
 
@@ -1586,7 +1704,9 @@ function uploadPart(
                         onProgress(
                             event.loaded
                         );
+
                     }
+
                 };
 
 
@@ -1596,6 +1716,7 @@ function uploadPart(
                     if(settled){
                         return;
                     }
+
 
                     if(
                         xhr.status >= 200
@@ -1608,20 +1729,24 @@ function uploadPart(
                                 "ETag"
                             );
 
+
                         if(!etag){
 
                             finishError(
                                 "Part "
                                 + partNumber
-                                + " का ETag नहीं मिला."
+                                + " upload हो गया लेकिन ETag नहीं मिला. R2 CORS में ExposeHeaders में ETag डालना जरूरी है."
                             );
 
                             return;
                         }
 
-                        settled = true;
+
+                        settled =
+                            true;
 
                         cleanup();
+
 
                         resolve({
 
@@ -1642,7 +1767,9 @@ function uploadPart(
                             + " failed. HTTP "
                             + xhr.status
                         );
+
                     }
+
                 };
 
 
@@ -1654,6 +1781,7 @@ function uploadPart(
                         + partNumber
                         + " network error."
                     );
+
                 };
 
 
@@ -1663,15 +1791,22 @@ function uploadPart(
                     finishError(
                         "Upload cancelled."
                     );
+
                 };
 
 
-            xhr.send(blob);
+            xhr.send(
+                blob
+            );
 
         }
     );
 }
 
+
+/* =========================================================
+   RETRY
+   ========================================================= */
 
 async function uploadPartWithRetry(
     url,
@@ -1680,7 +1815,9 @@ async function uploadPartWithRetry(
     onProgress
 ){
 
-    let lastError = null;
+    let lastError =
+        null;
+
 
     for(
         let attempt = 1;
@@ -1699,9 +1836,9 @@ async function uploadPartWithRetry(
         try{
 
             setStatus(
-                "Uploading part "
+                "☁️ Part "
                 + partNumber
-                + " • Attempt "
+                + " upload • Attempt "
                 + attempt
                 + "/"
                 + MAX_RETRIES
@@ -1721,39 +1858,48 @@ async function uploadPartWithRetry(
             lastError =
                 error;
 
+
             if(uploadCancelled){
+
                 throw error;
             }
+
 
             if(
                 attempt < MAX_RETRIES
             ){
 
-                await sleep(
-                    attempt * 1200
+                setStatus(
+                    "⚠️ Part "
+                    + partNumber
+                    + " retry हो रहा है..."
                 );
+
+
+                await sleep(
+                    attempt * 1500
+                );
+
             }
+
         }
+
     }
 
-    throw lastError
-        || new Error(
+
+    throw (
+        lastError
+        ||
+        new Error(
             "Part upload failed."
-        );
-}
-
-
-function sleep(ms){
-
-    return new Promise(
-        resolve =>
-            setTimeout(
-                resolve,
-                ms
-            )
+        )
     );
 }
 
+
+/* =========================================================
+   UPLOAD FILE TO R2
+   ========================================================= */
 
 async function uploadFileToR2(
     file,
@@ -1764,8 +1910,12 @@ async function uploadFileToR2(
         Date.now();
 
 
+    currentUploadKey =
+        key;
+
+
     setStatus(
-        "R2 multipart upload create हो रहा है..."
+        "☁️ R2 multipart upload create हो रहा है..."
     );
 
 
@@ -1779,14 +1929,12 @@ async function uploadFileToR2(
     currentUploadId =
         created.upload_id;
 
-    currentUploadKey =
-        key;
-
 
     const partSize =
         Number(
             created.part_size
-            || PART_SIZE
+            ||
+            PART_SIZE
         );
 
 
@@ -1808,7 +1956,7 @@ async function uploadFileToR2(
     if(totalParts > 10000){
 
         throw new Error(
-            "File बहुत बड़ी है: multipart parts 10000 से ज्यादा हो रहे हैं."
+            "File बहुत बड़ी है: parts 10000 से ज्यादा हो रहे हैं."
         );
     }
 
@@ -1828,7 +1976,7 @@ async function uploadFileToR2(
 
 
     setStatus(
-        "R2 presigned URLs मिल रहे हैं..."
+        "☁️ R2 presigned URLs मिल रहे हैं..."
     );
 
 
@@ -1841,16 +1989,22 @@ async function uploadFileToR2(
 
 
     const partLoaded =
-        new Array(totalParts)
-        .fill(0);
+        new Array(
+            totalParts
+        ).fill(0);
+
 
     const completedParts =
-        new Array(totalParts);
+        new Array(
+            totalParts
+        );
 
 
     function updateOverall(){
 
-        let uploaded = 0;
+        let uploaded =
+            0;
+
 
         for(
             const value
@@ -1858,7 +2012,9 @@ async function uploadFileToR2(
         ){
 
             uploaded +=
-                Number(value || 0);
+                Number(
+                    value || 0
+                );
 
         }
 
@@ -1889,17 +2045,22 @@ async function uploadFileToR2(
 
         const remaining =
             speed > 0
-            ? remainingBytes / speed
-            : Infinity;
+            ?
+            remainingBytes /
+            speed
+            :
+            Infinity;
 
 
         const percent =
             file.size > 0
-            ? (
+            ?
+            (
                 uploaded /
                 file.size
             ) * 100
-            : 0;
+            :
+            0;
 
 
         setProgress(
@@ -1909,10 +2070,12 @@ async function uploadFileToR2(
             speed,
             remaining
         );
+
     }
 
 
-    let nextIndex = 0;
+    let nextIndex =
+        0;
 
 
     async function worker(){
@@ -1931,7 +2094,11 @@ async function uploadFileToR2(
                 nextIndex++;
 
 
-            if(index >= totalParts){
+            if(
+                index >=
+                totalParts
+            ){
+
                 return;
             }
 
@@ -1970,7 +2137,7 @@ async function uploadFileToR2(
                 throw new Error(
                     "Part "
                     + partNumber
-                    + " का presigned URL नहीं मिला."
+                    + " का URL नहीं मिला."
                 );
             }
 
@@ -1994,20 +2161,24 @@ async function uploadFileToR2(
             completedParts[index] =
                 result;
 
+
             partLoaded[index] =
                 blob.size;
+
 
             updateOverall();
 
 
             setStatus(
-                "Part "
+                "✅ Part "
                 + partNumber
                 + " / "
                 + totalParts
                 + " complete"
             );
+
         }
+
     }
 
 
@@ -2030,6 +2201,7 @@ async function uploadFileToR2(
         workers.push(
             worker()
         );
+
     }
 
 
@@ -2071,12 +2243,27 @@ async function uploadFileToR2(
                 -
                 b.PartNumber
             );
+
         }
     );
 
 
+    /* =====================================================
+       VERY IMPORTANT
+       R2 MULTIPART COMPLETE
+       ===================================================== */
+
+    setProgress(
+        100,
+        file.size,
+        file.size,
+        0,
+        0
+    );
+
+
     setStatus(
-        "100% uploaded. R2 multipart Complete हो रहा है..."
+        "🔗 100% हो गया. अब Cloudflare R2 multipart Complete हो रहा है..."
     );
 
 
@@ -2106,31 +2293,56 @@ async function uploadFileToR2(
         );
 
 
-    if(!completed.ok){
+    if(
+        !completed
+        ||
+        completed.ok === false
+    ){
 
         throw new Error(
-            "R2 multipart complete failed."
+            "Cloudflare R2 multipart Complete failed."
         );
     }
 
 
-    const resultKey =
-        key;
-
+    /*
+       Complete successful.
+       Do NOT abort after this.
+    */
 
     currentUploadId =
         null;
+
 
     currentUploadKey =
         null;
 
 
+    setStatus(
+        "✅ R2 object successfully finalized.",
+        "success"
+    );
+
+
     return {
-        key:resultKey,
-        parts:finalParts
+
+        key:key,
+
+        parts:
+            finalParts,
+
+        public_url:
+            completed.public_url
+            ||
+            null
+
     };
 }
 
+
+/* =========================================================
+   CANCEL
+   ========================================================= */
 
 async function cancelUpload(){
 
@@ -2142,15 +2354,18 @@ async function cancelUpload(){
         function(xhr){
 
             try{
+
                 xhr.abort();
+
             }
-            catch(e){}
+            catch(error){}
 
         }
     );
 
 
-    activeXhrs = [];
+    activeXhrs =
+        [];
 
 
     if(
@@ -2158,6 +2373,20 @@ async function cancelUpload(){
         &&
         currentUploadKey
     ){
+
+        const abortKey =
+            currentUploadKey;
+
+        const abortUploadId =
+            currentUploadId;
+
+
+        currentUploadId =
+            null;
+
+        currentUploadKey =
+            null;
+
 
         try{
 
@@ -2174,35 +2403,30 @@ async function cancelUpload(){
                     body:JSON.stringify({
 
                         key:
-                            currentUploadKey,
+                            abortKey,
 
                         upload_id:
-                            currentUploadId
+                            abortUploadId
 
                     })
                 }
             );
 
         }
-        catch(e){
+        catch(error){
 
             console.error(
                 "R2 abort error:",
-                e
+                error
             );
+
         }
+
     }
 
 
-    currentUploadId =
-        null;
-
-    currentUploadKey =
-        null;
-
-
     setStatus(
-        "Upload cancelled.",
+        "❌ Upload cancelled.",
         "error"
     );
 
@@ -2210,14 +2434,21 @@ async function cancelUpload(){
     cancelBtn.style.display =
         "none";
 
+
     startBtn.disabled =
         false;
+
 }
 
+
+/* =========================================================
+   START MOVIE UPLOAD
+   ========================================================= */
 
 async function startMovieUpload(){
 
     if(startBtn.disabled){
+
         return;
     }
 
@@ -2255,8 +2486,13 @@ async function startMovieUpload(){
 
     const poster =
         posterInput.files[0]
-        || null;
+        ||
+        null;
 
+
+    /* =====================================================
+       VALIDATION
+       ===================================================== */
 
     if(!title){
 
@@ -2298,10 +2534,7 @@ async function startMovieUpload(){
     }
 
 
-    if(
-        video.size >
-        4 * 1024 * 1024 * 1024
-    ){
+    if(video.size > MAX_VIDEO_SIZE){
 
         alert(
             "Video maximum 4 GB हो सकती है."
@@ -2325,7 +2558,7 @@ async function startMovieUpload(){
 
         if(
             poster.size >
-            25 * 1024 * 1024
+            MAX_POSTER_SIZE
         ){
 
             alert(
@@ -2334,17 +2567,25 @@ async function startMovieUpload(){
 
             return;
         }
+
     }
 
+
+    /* =====================================================
+       UI START
+       ===================================================== */
 
     uploadCancelled =
         false;
 
+
     startBtn.disabled =
         true;
 
+
     cancelBtn.style.display =
         "inline-flex";
+
 
     progressWrap.style.display =
         "block";
@@ -2359,14 +2600,19 @@ async function startMovieUpload(){
     );
 
 
-    let videoKey = null;
+    let videoKey =
+        null;
 
-    let posterKey = null;
+
+    let posterKey =
+        null;
 
 
     try{
 
-        /* VIDEO */
+        /* =================================================
+           VIDEO
+           ================================================= */
 
         videoKey =
             createObjectKey(
@@ -2395,7 +2641,15 @@ async function startMovieUpload(){
         );
 
 
-        /* POSTER */
+        setStatus(
+            "✅ Video R2 पर पूरी तरह finalize हो गई.",
+            "success"
+        );
+
+
+        /* =================================================
+           POSTER
+           ================================================= */
 
         if(poster){
 
@@ -2415,10 +2669,19 @@ async function startMovieUpload(){
                 poster,
                 posterKey
             );
+
+
+            setStatus(
+                "✅ Poster R2 पर finalize हो गई.",
+                "success"
+            );
+
         }
 
 
-        /* DATABASE */
+        /* =================================================
+           DATABASE
+           ================================================= */
 
         setStatus(
             "💾 Movie database में save हो रही है..."
@@ -2451,13 +2714,19 @@ async function startMovieUpload(){
 
                         poster:
                             posterKey
+                            ||
+                            ""
 
                     })
                 }
             );
 
 
-        if(!saved.movie_id){
+        if(
+            !saved
+            ||
+            !saved.movie_id
+        ){
 
             throw new Error(
                 "Movie ID नहीं मिला. Database save verify नहीं हुआ."
@@ -2465,27 +2734,43 @@ async function startMovieUpload(){
         }
 
 
-        setStatus(
-            "✅ Movie successfully uploaded और save हो गई.",
-            "success"
+        /* =================================================
+           SUCCESS
+           ================================================= */
+
+        setProgress(
+            100,
+            video.size,
+            video.size,
+            0,
+            0
         );
 
 
         progressPercent.textContent =
             "100%";
 
+
         progressFill.style.width =
             "100%";
 
+
+        setStatus(
+            "🎉 Movie successfully uploaded, R2 में finalized और database में save हो गई.",
+            "success"
+        );
+
+
         cancelBtn.style.display =
             "none";
+
 
         startBtn.disabled =
             false;
 
 
         alert(
-            "Movie successfully upload और save हो गई."
+            "✅ Movie successfully upload और save हो गई."
         );
 
 
@@ -2495,23 +2780,25 @@ async function startMovieUpload(){
                 window.location.reload();
 
             },
-            700
+            800
         );
 
     }
     catch(error){
 
         console.error(
-            "UPLOAD ERROR:",
+            "TOMESH UPLOAD ERROR:",
             error
         );
 
 
         setStatus(
             "❌ "
-            + (
+            +
+            (
                 error.message
-                || "Upload failed."
+                ||
+                "Upload failed."
             ),
             "error"
         );
@@ -2520,15 +2807,23 @@ async function startMovieUpload(){
         cancelBtn.style.display =
             "none";
 
+
         startBtn.disabled =
             false;
+
     }
+
 }
 
+
+/* =========================================================
+   RESET
+   ========================================================= */
 
 function resetForm(){
 
     if(startBtn.disabled){
+
         return;
     }
 
@@ -2560,9 +2855,22 @@ function resetForm(){
         "0%";
 
 
+    uploadedText.textContent =
+        "0 MB";
+
+
+    speedText.textContent =
+        "0 KB/s";
+
+
+    remainingText.textContent =
+        "--";
+
+
     setStatus(
         "Ready."
     );
+
 }
 
 </script>
