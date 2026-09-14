@@ -29,32 +29,7 @@
         crossorigin="anonymous">
     </script>
 
-       <!doctype html>
-<html lang="hi">
-<head>
-
-    <meta charset="utf-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width,initial-scale=1,viewport-fit=cover"
-    >
-
-    <title>
-        {% block title %}Tomesh Movies{% endblock %}
-    </title>
-
-    <meta
-        name="description"
-        content="Tomesh Movies - Movies, entertainment and latest stories."
-    >
-
-    <meta
-        name="theme-color"
-        content="#050505"
-    >
-
-    <link
+       <link
         rel="stylesheet"
         href="{{ url_for('static', filename='style.css') }}"
     >
@@ -67,15 +42,1192 @@
 
     <style>
 
-        /* =====================================================
-           GLOBAL TOMESH PREMIUM LAYOUT
-        ===================================================== */
+
+    <style>
 
         /* =====================================================
            GLOBAL TOMESH PREMIUM LAYOUT
         ===================================================== */
 
         html{
+            scroll-behavior:smooth;
+        }
+
+        body{
+            margin:0;
+            min-height:100vh;
+            background:#050505;
+            color:#fff;
+        }
+
+        body.tm-page{
+            overflow-x:hidden;
+        }
+
+
+        /* =====================================================
+           PREMIUM TOP HEADER
+        ===================================================== */
+
+        .tm-site-header{
+            position:sticky;
+            top:0;
+            z-index:5000;
+
+            width:100%;
+
+            background:
+                linear-gradient(
+                    180deg,
+                    rgba(5,5,5,.97),
+                    rgba(5,5,5,.90)
+                );
+
+            border-bottom:
+                1px solid rgba(255,255,255,.07);
+
+            backdrop-filter:blur(18px);
+            -webkit-backdrop-filter:blur(18px);
+        }
+
+
+        .tm-header-inner{
+            width:100%;
+            max-width:1400px;
+            min-height:68px;
+
+            margin:0 auto;
+            padding:0 22px;
+
+            box-sizing:border-box;
+
+            display:flex;
+            align-items:center;
+            gap:22px;
+        }
+
+
+        /* =====================================================
+           LOGO
+        ===================================================== */
+
+        .tm-site-logo{
+            flex:0 0 auto;
+
+            display:inline-flex;
+            align-items:center;
+            gap:9px;
+
+            color:#fff;
+            text-decoration:none;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            font-size:18px;
+            font-weight:950;
+
+            letter-spacing:1.3px;
+            text-transform:uppercase;
+        }
+
+
+        .tm-site-logo-icon{
+            width:35px;
+            height:35px;
+
+            display:flex;
+            align-items:center;
+            justify-content:center;
+
+            border-radius:10px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #7b20ba,
+                    #d42f56
+                );
+
+            box-shadow:
+                0 8px 22px rgba(129,27,180,.28);
+
+            font-size:17px;
+        }
+
+
+        .tm-site-logo span{
+            color:#ffc107;
+        }
+
+
+        /* =====================================================
+           DESKTOP NAV
+        ===================================================== */
+
+        .tm-main-nav{
+            display:flex;
+            align-items:center;
+            gap:4px;
+
+            margin-left:10px;
+        }
+
+
+        .tm-main-nav a{
+            display:inline-flex;
+            align-items:center;
+
+            min-height:39px;
+            padding:8px 13px;
+
+            border-radius:10px;
+
+            color:#bdbdbd;
+            text-decoration:none;
+
+            font-size:13px;
+            font-weight:800;
+
+            transition:
+                background .2s ease,
+                color .2s ease,
+                transform .2s ease;
+        }
+
+
+        .tm-main-nav a:hover{
+            color:#fff;
+            background:rgba(255,255,255,.06);
+            transform:translateY(-1px);
+        }
+
+
+        .tm-main-nav a.active{
+            color:#fff;
+            background:rgba(255,255,255,.07);
+        }
+
+
+        /* =====================================================
+           SEARCH
+        ===================================================== */
+
+        .tm-header-search{
+            margin-left:auto;
+
+            display:flex;
+            align-items:center;
+            gap:7px;
+
+            width:min(280px,30vw);
+        }
+
+
+        .tm-search-box{
+            width:100%;
+            min-width:0;
+
+            height:40px;
+
+            box-sizing:border-box;
+
+            padding:0 13px;
+
+            border-radius:11px;
+
+            border:1px solid
+                rgba(255,255,255,.10);
+
+            outline:none;
+
+            color:#fff;
+
+            background:
+                rgba(255,255,255,.045);
+
+            font-size:12px;
+
+            transition:
+                border-color .2s ease,
+                background .2s ease;
+        }
+
+
+        .tm-search-box::placeholder{
+            color:#737373;
+        }
+
+
+        .tm-search-box:focus{
+            border-color:
+                rgba(165,68,218,.65);
+
+            background:
+                rgba(255,255,255,.065);
+        }
+
+
+        .tm-search-btn{
+            flex:0 0 auto;
+
+            width:40px;
+            height:40px;
+
+            display:flex;
+            align-items:center;
+            justify-content:center;
+
+            border:0;
+            border-radius:11px;
+
+            cursor:pointer;
+
+            color:#fff;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #7322ad,
+                    #cc2f55
+                );
+
+            font-size:15px;
+
+            transition:
+                transform .2s ease,
+                filter .2s ease;
+        }
+
+
+        .tm-search-btn:hover{
+            transform:translateY(-1px);
+            filter:brightness(1.08);
+        }
+
+
+        /* =====================================================
+           HEADER ACTION
+        ===================================================== */
+
+        .tm-premium-link{
+            flex:0 0 auto;
+
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+
+            min-height:40px;
+
+            padding:0 14px;
+
+            border-radius:11px;
+
+            color:#181208;
+            text-decoration:none;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #b78210,
+                    #f1bd42,
+                    #a96e05
+                );
+
+            box-shadow:
+                0 9px 24px rgba(197,143,21,.18);
+
+            font-size:11px;
+            font-weight:950;
+
+            white-space:nowrap;
+
+            transition:
+                transform .2s ease,
+                filter .2s ease;
+        }
+
+
+        .tm-premium-link:hover{
+            transform:translateY(-1px);
+            filter:brightness(1.06);
+        }
+
+
+        /* =====================================================
+           FLASH MESSAGES
+        ===================================================== */
+
+        .flash-wrap{
+            position:fixed;
+            top:82px;
+            left:50%;
+
+            z-index:8000;
+
+            width:min(520px,calc(100% - 24px));
+
+            transform:translateX(-50%);
+
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+
+            pointer-events:none;
+        }
+
+
+        .flash-message{
+            padding:12px 15px;
+
+            border-radius:12px;
+
+            background:
+                rgba(22,22,22,.96);
+
+            border:
+                1px solid rgba(255,255,255,.10);
+
+            color:#eee;
+
+            box-shadow:
+                0 18px 45px rgba(0,0,0,.40);
+
+            font-size:13px;
+            font-weight:700;
+
+            text-align:center;
+        }
+
+
+        /* =====================================================
+           MAIN PAGE
+        ===================================================== */
+
+        .tm-main{
+            position:relative;
+            z-index:1;
+            min-height:calc(100vh - 68px);
+        }
+
+
+        /* =====================================================
+           FOOTER
+        ===================================================== */
+
+        .tm-site-footer{
+            margin-top:40px;
+            padding:36px 18px 100px;
+
+            background:
+                linear-gradient(
+                    180deg,
+                    #070707,
+                    #030303
+                );
+
+            border-top:
+                1px solid rgba(255,255,255,.06);
+        }
+
+
+        .tm-footer-inner{
+            width:100%;
+            max-width:1200px;
+
+            margin:0 auto;
+
+            display:grid;
+            grid-template-columns:
+                minmax(0,1.4fr)
+                minmax(180px,.7fr)
+                minmax(180px,.7fr);
+
+            gap:30px;
+        }
+
+
+        .tm-footer-brand{
+            color:#fff;
+
+            font-size:17px;
+            font-weight:950;
+
+            letter-spacing:1px;
+            text-transform:uppercase;
+        }
+
+
+        .tm-footer-brand span{
+            color:#ffc107;
+        }
+
+
+        .tm-footer-text{
+            max-width:430px;
+
+            margin-top:11px;
+
+            color:#777;
+
+            font-size:12px;
+            line-height:1.7;
+        }
+
+
+        .tm-footer-title{
+            margin-bottom:11px;
+
+            color:#ddd;
+
+            font-size:12px;
+            font-weight:900;
+
+            text-transform:uppercase;
+            letter-spacing:.8px;
+        }
+
+
+        .tm-footer-links{
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+        }
+
+
+        .tm-footer-links a{
+            width:max-content;
+
+            color:#858585;
+            text-decoration:none;
+
+            font-size:12px;
+
+            transition:
+                color .2s ease,
+                transform .2s ease;
+        }
+
+
+        .tm-footer-links a:hover{
+            color:#fff;
+            transform:translateX(2px);
+        }
+
+
+        .tm-footer-bottom{
+            width:100%;
+            max-width:1200px;
+
+            margin:28px auto 0;
+            padding-top:18px;
+
+            border-top:
+                1px solid rgba(255,255,255,.06);
+
+            color:#555;
+
+            font-size:11px;
+
+            display:flex;
+            justify-content:space-between;
+            gap:15px;
+            flex-wrap:wrap;
+        }
+
+
+        /* =====================================================
+           MOBILE BOTTOM NAV
+        ===================================================== */
+
+        .tm-mobile-nav{
+            display:none;
+        }
+
+
+        .tm-mobile-nav-inner{
+            width:100%;
+
+            padding:
+                8px
+                10px
+                calc(8px + env(safe-area-inset-bottom));
+
+            box-sizing:border-box;
+
+            display:grid;
+            grid-template-columns:
+                repeat(4,1fr);
+
+            gap:6px;
+        }
+
+
+        .tm-mobile-nav a{
+            min-height:48px;
+
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            flex-direction:column;
+
+            gap:3px;
+
+            border-radius:11px;
+
+            color:#818181;
+            text-decoration:none;
+
+            font-size:9px;
+            font-weight:800;
+
+            transition:
+                background .2s ease,
+                color .2s ease;
+        }
+
+
+        .tm-mobile-nav a strong{
+            font-size:17px;
+            line-height:1;
+        }
+
+
+        .tm-mobile-nav a:hover,
+        .tm-mobile-nav a.active{
+            color:#fff;
+            background:
+                rgba(255,255,255,.055);
+        }
+
+
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
+
+        @media(max-width:900px){
+
+            .tm-header-inner{
+                min-height:62px;
+                padding:0 14px;
+                gap:12px;
+            }
+
+
+            .tm-main-nav{
+                gap:0;
+                margin-left:0;
+            }
+
+
+            .tm-main-nav a{
+                padding:8px 9px;
+                font-size:11px;
+            }
+
+
+            .tm-header-search{
+                width:190px;
+            }
+
+
+            .tm-premium-link{
+                padding:0 11px;
+                font-size:10px;
+            }
+
+        }
+
+
+        @media(max-width:700px){
+
+            .tm-site-header{
+                position:sticky;
+                top:0;
+            }
+
+
+            .tm-header-inner{
+                min-height:58px;
+
+                padding:
+                    0
+                    11px;
+
+                gap:8px;
+            }
+
+
+            .tm-site-logo{
+                font-size:14px;
+                letter-spacing:.8px;
+            }
+
+
+            .tm-site-logo-icon{
+                width:31px;
+                height:31px;
+
+                border-radius:9px;
+
+                font-size:15px;
+            }
+
+
+            .tm-main-nav{
+                display:none;
+            }
+
+
+            .tm-header-search{
+                width:auto;
+                flex:1;
+                margin-left:auto;
+            }
+
+
+            .tm-search-box{
+                height:37px;
+                padding:0 10px;
+                font-size:11px;
+            }
+
+
+            .tm-search-btn{
+                width:37px;
+                height:37px;
+            }
+
+
+            .tm-premium-link{
+                min-height:37px;
+                padding:0 10px;
+                border-radius:10px;
+                font-size:9px;
+            }
+
+
+            .tm-main{
+                min-height:calc(100vh - 58px);
+            }
+
+
+            .tm-site-footer{
+                padding-bottom:100px;
+            }
+
+
+            .tm-footer-inner{
+                grid-template-columns:1fr;
+                gap:23px;
+            }
+
+
+            .tm-footer-bottom{
+                flex-direction:column;
+                gap:7px;
+            }
+
+
+            .tm-mobile-nav{
+                position:fixed;
+                left:0;
+                right:0;
+                bottom:0;
+
+                z-index:7000;
+
+                display:block;
+
+                background:
+                    rgba(7,7,7,.95);
+
+                border-top:
+                    1px solid rgba(255,255,255,.08);
+
+                backdrop-filter:blur(18px);
+                -webkit-backdrop-filter:blur(18px);
+            }
+
+        }
+
+
+        @media(max-width:420px){
+
+            .tm-site-logo span{
+                display:none;
+            }
+
+
+            .tm-site-logo{
+                font-size:0;
+            }
+
+
+            .tm-site-logo-icon{
+                width:32px;
+                height:32px;
+            }
+
+
+            .tm-premium-link{
+                padding:0 8px;
+            }
+
+        }
+
+
+        /* =====================================================
+           REDUCED MOTION
+        ===================================================== */
+
+        @media(prefers-reduced-motion:reduce){
+
+            html{
+                scroll-behavior:auto;
+            }
+
+            *{
+                transition:none !important;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body class="tm-page">
+
+
+<!-- =========================================================
+     TOMESH MOVIES ULTRA PREMIUM INTRO
+========================================================= -->
+
+<div id="tm-intro">
+
+    <div class="tm-big-glow"></div>
+
+    <div class="tm-ring"></div>
+    <div class="tm-ring r2"></div>
+    <div class="tm-ring r3"></div>
+
+    <div class="tm-beam b1"></div>
+    <div class="tm-beam b2"></div>
+    <div class="tm-beam b3"></div>
+
+    <div class="tm-particle tm-p1"></div>
+    <div class="tm-particle tm-p2"></div>
+    <div class="tm-particle tm-p3"></div>
+    <div class="tm-particle tm-p4"></div>
+    <div class="tm-particle tm-p5"></div>
+    <div class="tm-particle tm-p6"></div>
+
+    <div class="tm-intro-content">
+
+        <div class="tm-film-icon">
+            🎬
+        </div>
+
+        <h1 class="tm-intro-title">
+            TOMESH <span>MOVIES</span>
+        </h1>
+
+        <div class="tm-intro-subtitle">
+            YOUR CINEMATIC WORLD
+        </div>
+
+        <div class="tm-intro-line"></div>
+
+        <div class="tm-loading">
+
+            <div class="tm-loading-track">
+                <div class="tm-loading-fill"></div>
+            </div>
+
+            <div class="tm-loading-text">
+                ENTERING CINEMA
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="tm-vignette"></div>
+
+</div>
+
+
+<!-- =========================================================
+     PREMIUM SITE HEADER
+========================================================= -->
+
+<header class="tm-site-header">
+
+    <div class="tm-header-inner">
+
+
+        <!-- LOGO -->
+
+        <a
+            href="{{ url_for('home') }}"
+            class="tm-site-logo"
+            aria-label="Tomesh Movies Home"
+        >
+
+            <span class="tm-site-logo-icon">
+                🎬
+            </span>
+
+            <span>
+                TOMESH <span>MOVIES</span>
+            </span>
+
+        </a>
+
+
+        <!-- DESKTOP NAV -->
+
+        <nav class="tm-main-nav">
+
+            <a
+                href="{{ url_for('home') }}"
+                class="active"
+            >
+                Home
+            </a>
+
+            <a
+                href="{{ url_for('home') }}"
+            >
+                Movies
+            </a>
+
+            <a
+                href="{{ url_for('home') }}"
+            >
+                Categories
+            </a>
+
+        </nav>
+
+
+        <!-- SEARCH -->
+
+        <form
+            class="tm-header-search"
+            action="{{ url_for('home') }}"
+            method="get"
+        >
+
+            <input
+                type="search"
+                name="q"
+                class="tm-search-box"
+                placeholder="Search movies..."
+                autocomplete="off"
+            >
+
+            <button
+                type="submit"
+                class="tm-search-btn"
+                aria-label="Search"
+            >
+                🔍
+            </button>
+
+        </form>
+
+
+        <!-- PREMIUM -->
+
+        <a
+            href="{{ url_for('home') }}"
+            class="tm-premium-link"
+        >
+            👑 PREMIUM
+        </a>
+
+
+    </div>
+
+</header>
+
+
+<!-- =========================================================
+     FLASH MESSAGES
+========================================================= -->
+
+{% with messages = get_flashed_messages() %}
+
+    {% if messages %}
+
+        <div class="flash-wrap">
+
+            {% for message in messages %}
+
+                <div class="flash-message">
+                    {{ message }}
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% endif %}
+
+{% endwith %}
+
+
+<!-- =========================================================
+     MAIN CONTENT
+========================================================= -->
+
+<main class="tm-main">
+
+    {% block content %}{% endblock %}
+
+</main>
+
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer class="tm-site-footer">
+
+    <div class="tm-footer-inner">
+
+
+        <div>
+
+            <div class="tm-footer-brand">
+                TOMESH <span>MOVIES</span>
+            </div>
+
+            <div class="tm-footer-text">
+                Your cinematic world for movies and entertainment.
+                Tomesh Movies is designed for a fast, premium and
+                mobile-friendly viewing experience.
+            </div>
+
+        </div>
+
+
+        <div>
+
+            <div class="tm-footer-title">
+                Explore
+            </div>
+
+            <div class="tm-footer-links">
+
+                <a href="{{ url_for('home') }}">
+                    Home
+                </a>
+
+                <a href="{{ url_for('home') }}">
+                    Movies
+                </a>
+
+                <a href="{{ url_for('home') }}">
+                    Categories
+                </a>
+
+            </div>
+
+        </div>
+
+
+        <div>
+
+            <div class="tm-footer-title">
+                Tomesh
+            </div>
+
+            <div class="tm-footer-links">
+
+                <a href="{{ url_for('home') }}">
+                    Premium
+                </a>
+
+                <a href="/ads.txt">
+                    Ads
+                </a>
+
+                <a href="{{ url_for('home') }}">
+                    Back to Home
+                </a>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+    <div class="tm-footer-bottom">
+
+        <span>
+            © 2026 Tomesh Movies
+        </span>
+
+        <span>
+            Made for a cinematic experience
+        </span>
+
+    </div>
+
+</footer>
+
+
+<!-- =========================================================
+     MOBILE BOTTOM NAV
+========================================================= -->
+
+<nav
+    class="tm-mobile-nav"
+    aria-label="Mobile navigation"
+>
+
+    <div class="tm-mobile-nav-inner">
+
+        <a
+            href="{{ url_for('home') }}"
+            class="active"
+        >
+            <strong>⌂</strong>
+            Home
+        </a>
+
+        <a
+            href="{{ url_for('home') }}"
+        >
+            <strong>🎬</strong>
+            Movies
+        </a>
+
+        <a
+            href="{{ url_for('home') }}"
+        >
+            <strong>▦</strong>
+            Categories
+        </a>
+
+        <a
+            href="{{ url_for('home') }}"
+        >
+            <strong>👑</strong>
+            Premium
+        </a>
+
+    </div>
+
+</nav>
+
+
+<script>
+
+    /* =====================================================
+       REMOVE INTRO AFTER ANIMATION
+    ===================================================== */
+
+    window.addEventListener(
+        "load",
+        function(){
+
+            setTimeout(
+                function(){
+
+                    const intro =
+                        document.getElementById(
+                            "tm-intro"
+                        );
+
+                    if(intro){
+                        intro.remove();
+                    }
+
+                },
+                4700
+            );
+
+        }
+    );
+
+
+    /* =====================================================
+       SAFETY FALLBACK
+       Never leave intro stuck on screen.
+    ===================================================== */
+
+    setTimeout(
+        function(){
+
+            const intro =
+                document.getElementById(
+                    "tm-intro"
+                );
+
+            if(intro){
+
+                intro.style.display =
+                    "none";
+
+            }
+
+        },
+        6000
+    );
+
+
+    /* =====================================================
+       SEARCH UX
+    ===================================================== */
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        function(){
+
+            const search =
+                document.querySelector(
+                    ".tm-search-box"
+                );
+
+            if(!search){
+                return;
+            }
+
+
+            search.addEventListener(
+                "keydown",
+                function(event){
+
+                    if(
+                        event.key === "Enter"
+                        &&
+                        !search.value.trim()
+                    ){
+
+                        event.preventDefault();
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+</script>
+
+
+</body>
+</html>
             scroll-behavior:smooth;
         }
 
