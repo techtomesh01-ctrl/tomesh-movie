@@ -4,10 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
-<title>Tomesh Movies | Premium Streaming</title>
+<title>
+    {% if q %}
+        Search: {{ q }} | Tomesh Movies
+    {% elif category %}
+        {{ category }} Movies | Tomesh Movies
+    {% else %}
+        Tomesh Movies | Premium Streaming
+    {% endif %}
+</title>
 
-<meta name="description"
-      content="Tomesh Movies - Premium movie streaming experience.">
+<meta
+    name="description"
+    content="Tomesh Movies - Premium movie streaming experience."
+>
 
 <style>
 *{
@@ -44,6 +54,11 @@ body{
 a{
     color:inherit;
     text-decoration:none;
+}
+
+button,
+input{
+    font-family:inherit;
 }
 
 /* =========================================================
@@ -109,20 +124,30 @@ a{
     gap:10px;
 }
 
+/* REAL SEARCH FORM */
+
 .tm-search{
-    width:225px;
-    height:38px;
+    width:255px;
+    height:40px;
     display:flex;
     align-items:center;
     gap:8px;
-    padding:0 13px;
+    padding:0 8px 0 13px;
     border-radius:999px;
     background:rgba(255,255,255,.06);
     border:1px solid var(--line);
+    transition:.2s ease;
+}
+
+.tm-search:focus-within{
+    border-color:rgba(243,189,50,.45);
+    background:rgba(255,255,255,.09);
+    box-shadow:0 0 0 3px rgba(243,189,50,.06);
 }
 
 .tm-search input{
     width:100%;
+    height:100%;
     border:0;
     outline:0;
     background:transparent;
@@ -134,6 +159,24 @@ a{
     color:#85858b;
 }
 
+.tm-search-btn{
+    width:30px;
+    height:30px;
+    border:0;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    cursor:pointer;
+    transition:.2s ease;
+}
+
+.tm-search-btn:hover{
+    background:var(--gold);
+    color:#111;
+}
+
 .tm-user{
     width:38px;
     height:38px;
@@ -143,6 +186,51 @@ a{
     background:#161619;
     border:1px solid var(--line);
     color:#ddd;
+}
+
+/* =========================================================
+   SEARCH RESULT BAR
+========================================================= */
+
+.tm-search-state{
+    padding:96px 5% 12px;
+    background:
+        linear-gradient(
+            180deg,
+            rgba(15,15,18,.98),
+            rgba(6,6,7,.96)
+        );
+    border-bottom:1px solid rgba(255,255,255,.05);
+}
+
+.tm-search-state-inner{
+    max-width:1400px;
+    margin:auto;
+}
+
+.tm-search-label{
+    color:#85858d;
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:1px;
+}
+
+.tm-search-title{
+    margin-top:7px;
+    font-size:28px;
+    font-weight:900;
+    line-height:1.15;
+}
+
+.tm-search-title span{
+    color:var(--gold2);
+}
+
+.tm-result-count{
+    margin-top:7px;
+    color:#8f8f97;
+    font-size:13px;
 }
 
 /* =========================================================
@@ -271,6 +359,7 @@ a{
     font-size:14px;
     font-weight:800;
     transition:.2s ease;
+    border:0;
 }
 
 .tm-btn:hover{
@@ -344,6 +433,10 @@ a{
     position:relative;
     z-index:5;
     margin-top:-35px;
+}
+
+.tm-content.tm-search-content{
+    margin-top:0;
 }
 
 .tm-section{
@@ -477,6 +570,68 @@ a{
 }
 
 /* =========================================================
+   NO RESULTS
+========================================================= */
+
+.tm-no-results{
+    min-height:300px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:35px 20px;
+}
+
+.tm-no-results-box{
+    max-width:500px;
+    padding:35px 25px;
+    border-radius:18px;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,.045),
+            rgba(255,255,255,.018)
+        );
+    border:1px solid rgba(255,255,255,.07);
+    box-shadow:0 20px 50px rgba(0,0,0,.22);
+}
+
+.tm-no-icon{
+    font-size:42px;
+    margin-bottom:12px;
+}
+
+.tm-no-results h2{
+    font-size:23px;
+    font-weight:900;
+}
+
+.tm-no-results p{
+    margin-top:8px;
+    color:#888890;
+    line-height:1.6;
+    font-size:13px;
+}
+
+.tm-clear-btn{
+    margin-top:17px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:42px;
+    padding:0 18px;
+    border-radius:9px;
+    background:linear-gradient(
+        135deg,
+        var(--gold2),
+        var(--gold)
+    );
+    color:#111;
+    font-size:13px;
+    font-weight:900;
+}
+
+/* =========================================================
    PREMIUM
 ========================================================= */
 
@@ -575,19 +730,33 @@ a{
     }
 
     .tm-search{
-        width:39px;
+        width:40px;
         height:36px;
         justify-content:center;
-        padding:0;
+        padding:0 5px;
     }
 
     .tm-search input{
         display:none;
     }
 
+    .tm-search-btn{
+        width:34px;
+        height:34px;
+        background:transparent;
+    }
+
     .tm-user{
         width:36px;
         height:36px;
+    }
+
+    .tm-search-state{
+        padding:84px 15px 15px;
+    }
+
+    .tm-search-title{
+        font-size:22px;
     }
 
     .tm-hero{
@@ -666,6 +835,10 @@ a{
 
     .tm-content{
         margin-top:-18px;
+    }
+
+    .tm-content.tm-search-content{
+        margin-top:0;
     }
 
     .tm-section{
@@ -778,30 +951,65 @@ a{
 
 <header class="tm-nav" id="tmNav">
 
-    <a href="/" class="tm-brand">
+    <a href="{{ url_for('home') }}" class="tm-brand">
         TOMESH <span>MOVIES</span>
     </a>
 
     <nav class="tm-menu">
-        <a href="/">Home</a>
-        <a href="#movies">Movies</a>
-        <a href="#categories">Categories</a>
-        <a href="#premium">Premium</a>
+
+        <a href="{{ url_for('home') }}">
+            Home
+        </a>
+
+        <a href="#movies">
+            Movies
+        </a>
+
+        <a href="#categories">
+            Categories
+        </a>
+
+        <a href="#premium">
+            Premium
+        </a>
+
     </nav>
 
     <div class="tm-nav-right">
 
-        <label class="tm-search">
-            <span>⌕</span>
+        <!-- REAL SERVER SEARCH -->
+        <form
+            class="tm-search"
+            action="{{ url_for('home') }}"
+            method="get"
+        >
+
             <input
                 id="tmSearch"
                 type="search"
-                placeholder="Search"
+                name="q"
+                value="{{ q or '' }}"
+                placeholder="Search movies..."
                 autocomplete="off"
             >
-        </label>
 
-        <a href="/" class="tm-user">◉</a>
+            <button
+                type="submit"
+                class="tm-search-btn"
+                aria-label="Search"
+            >
+                🔍
+            </button>
+
+        </form>
+
+        <a
+            href="{{ url_for('home') }}"
+            class="tm-user"
+            aria-label="Home"
+        >
+            ◉
+        </a>
 
     </div>
 
@@ -809,10 +1017,61 @@ a{
 
 
 <!-- =======================================================
+     SEARCH / CATEGORY STATE
+======================================================= -->
+
+{% if q or category %}
+
+<section class="tm-search-state">
+
+    <div class="tm-search-state-inner">
+
+        {% if q %}
+
+            <div class="tm-search-label">
+                Search Results
+            </div>
+
+            <div class="tm-search-title">
+                Results for:
+                <span>{{ q }}</span>
+            </div>
+
+        {% elif category %}
+
+            <div class="tm-search-label">
+                Category
+            </div>
+
+            <div class="tm-search-title">
+                <span>{{ category }}</span>
+                Movies
+            </div>
+
+        {% endif %}
+
+        <div class="tm-result-count">
+
+            {% if movies|length == 1 %}
+                1 movie found
+            {% else %}
+                {{ movies|length }} movies found
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</section>
+
+{% endif %}
+
+
+<!-- =======================================================
      HERO
 ======================================================= -->
 
-{% if movies %}
+{% if not q and not category and movies %}
 
 {% set hero = movies[0] %}
 
@@ -862,11 +1121,18 @@ a{
             <div class="tm-meta">
 
                 {% if hero.category %}
-                <span>{{ hero.category }}</span>
+                <span>
+                    {{ hero.category }}
+                </span>
                 {% endif %}
 
-                <span>HD</span>
-                <span>Premium</span>
+                <span>
+                    HD
+                </span>
+
+                <span>
+                    Premium
+                </span>
 
             </div>
 
@@ -890,14 +1156,20 @@ a{
 
                 <a
                     class="tm-btn tm-watch"
-                    href="{{ url_for('movie_page', movie_id=hero.id) }}"
+                    href="{{ url_for(
+                        'movie_page',
+                        movie_id=hero.id
+                    ) }}"
                 >
                     ▶ Watch ₹1
                 </a>
 
                 <a
                     class="tm-btn tm-info"
-                    href="{{ url_for('movie_page', movie_id=hero.id) }}"
+                    href="{{ url_for(
+                        'movie_page',
+                        movie_id=hero.id
+                    ) }}"
                 >
                     More Info
                 </a>
@@ -910,7 +1182,7 @@ a{
 
 </section>
 
-{% else %}
+{% elif not q and not category %}
 
 <section class="tm-hero">
 
@@ -945,30 +1217,66 @@ a{
      MAIN
 ======================================================= -->
 
-<main class="tm-content">
+<main
+    class="tm-content
+    {% if q or category %}
+    tm-search-content
+    {% endif %}"
+>
 
 {% if ads and ads.get("top") %}
+
 <section class="tm-section">
+
     {{ ads.get("top") | safe }}
+
 </section>
+
 {% endif %}
 
 
-<!-- MOVIES -->
+<!-- =======================================================
+     MOVIE RESULTS
+======================================================= -->
 
-<section class="tm-section" id="movies">
+<section
+    class="tm-section"
+    id="movies"
+>
 
     <div class="tm-section-head">
 
         <h2 class="tm-section-title">
-            Trending Now
+
+            {% if q %}
+
+                Search Results
+
+            {% elif category %}
+
+                {{ category }} Movies
+
+            {% else %}
+
+                Trending Now
+
+            {% endif %}
+
         </h2>
 
-        <span class="tm-section-link">
+        {% if not q and not category %}
+
+        <a
+            class="tm-section-link"
+            href="#movies"
+        >
             Explore →
-        </span>
+        </a>
+
+        {% endif %}
 
     </div>
+
 
     {% if movies %}
 
@@ -978,9 +1286,10 @@ a{
 
         <a
             class="tm-card tm-movie"
-            href="{{ url_for('movie_page', movie_id=movie.id) }}"
-            data-title="{{ movie.title|lower }}"
-            data-category="{{ (movie.category or '')|lower }}"
+            href="{{ url_for(
+                'movie_page',
+                movie_id=movie.id
+            ) }}"
         >
 
             <div class="tm-card-img">
@@ -1012,7 +1321,11 @@ a{
                 <div class="tm-card-meta">
 
                     {% if movie.category %}
-                    <span>{{ movie.category }}</span>
+
+                    <span>
+                        {{ movie.category }}
+                    </span>
+
                     {% endif %}
 
                     <span class="tm-gold">
@@ -1031,12 +1344,47 @@ a{
 
     {% else %}
 
-    <div style="
-        padding:50px 10px;
-        text-align:center;
-        color:#888;
-    ">
-        अभी कोई movie available नहीं है।
+    <div class="tm-no-results">
+
+        <div class="tm-no-results-box">
+
+            <div class="tm-no-icon">
+                🔍
+            </div>
+
+            <h2>
+                No movies found
+            </h2>
+
+            <p>
+
+                {% if q %}
+
+                    We couldn't find any movie matching
+                    "<strong>{{ q }}</strong>".
+
+                {% elif category %}
+
+                    There are no movies available in
+                    "<strong>{{ category }}</strong>".
+
+                {% else %}
+
+                    अभी कोई movie available नहीं है।
+
+                {% endif %}
+
+            </p>
+
+            <a
+                href="{{ url_for('home') }}"
+                class="tm-clear-btn"
+            >
+                ← Back to Home
+            </a>
+
+        </div>
+
     </div>
 
     {% endif %}
@@ -1044,7 +1392,11 @@ a{
 </section>
 
 
-<!-- LATEST -->
+<!-- =======================================================
+     LATEST MOVIES
+======================================================= -->
+
+{% if not q and not category and movies %}
 
 <section class="tm-section">
 
@@ -1054,13 +1406,14 @@ a{
             Latest Movies
         </h2>
 
-        <span class="tm-section-link">
+        <a
+            class="tm-section-link"
+            href="#movies"
+        >
             Latest →
-        </span>
+        </a>
 
     </div>
-
-    {% if movies %}
 
     <div class="tm-row">
 
@@ -1068,9 +1421,10 @@ a{
 
         <a
             class="tm-card tm-movie"
-            href="{{ url_for('movie_page', movie_id=movie.id) }}"
-            data-title="{{ movie.title|lower }}"
-            data-category="{{ (movie.category or '')|lower }}"
+            href="{{ url_for(
+                'movie_page',
+                movie_id=movie.id
+            ) }}"
         >
 
             <div class="tm-card-img">
@@ -1119,12 +1473,16 @@ a{
 
     </div>
 
-    {% endif %}
-
 </section>
 
+{% endif %}
 
-<!-- CATEGORIES -->
+
+<!-- =======================================================
+     CATEGORIES
+======================================================= -->
+
+{% if not q and not category %}
 
 <section
     class="tm-section"
@@ -1157,7 +1515,10 @@ a{
                 %}
 
                 <a
-                    href="/?category={{ movie.category|urlencode }}"
+                    href="{{ url_for(
+                        'home',
+                        category=movie.category
+                    ) }}"
                     style="
                         padding:10px 14px;
                         border-radius:999px;
@@ -1179,8 +1540,12 @@ a{
 
 </section>
 
+{% endif %}
 
-<!-- PREMIUM -->
+
+<!-- =======================================================
+     PREMIUM
+======================================================= -->
 
 <section
     class="tm-premium"
@@ -1226,9 +1591,13 @@ a{
 
 
 {% if ads and ads.get("bottom") %}
+
 <section class="tm-section">
+
     {{ ads.get("bottom") | safe }}
+
 </section>
+
 {% endif %}
 
 </main>
@@ -1249,7 +1618,10 @@ a{
 
 <nav class="tm-bottom">
 
-    <a href="/" class="active">
+    <a
+        href="{{ url_for('home') }}"
+        class="active"
+    >
         <span>⌂</span>
         <span>Home</span>
     </a>
@@ -1259,7 +1631,9 @@ a{
         <span>Movies</span>
     </a>
 
-    <a href="#categories">
+    <a
+        href="{{ url_for('home') }}#movies"
+    >
         <span>⌕</span>
         <span>Search</span>
     </a>
@@ -1273,46 +1647,76 @@ a{
 
 
 <script>
-/* NAV */
-const nav=document.getElementById("tmNav");
 
-window.addEventListener("scroll",()=>{
-    if(window.scrollY>20){
-        nav.classList.add("scrolled");
-    }else{
-        nav.classList.remove("scrolled");
-    }
-},{passive:true});
+/* =========================================================
+   NAV SCROLL
+========================================================= */
+
+const nav = document.getElementById("tmNav");
+
+window.addEventListener(
+    "scroll",
+    () => {
+
+        if(window.scrollY > 20){
+
+            nav.classList.add("scrolled");
+
+        }else{
+
+            nav.classList.remove("scrolled");
+
+        }
+
+    },
+    { passive:true }
+);
 
 
-/* SEARCH */
-const search=document.getElementById("tmSearch");
+/* =========================================================
+   SEARCH
+   FORM SUBMITS TO FLASK BACKEND.
+   NO CLIENT-SIDE HIDING.
+========================================================= */
 
-if(search){
+const searchInput = document.getElementById("tmSearch");
 
-    search.addEventListener("input",function(){
+if(searchInput){
 
-        const value=this.value.trim().toLowerCase();
+    searchInput.addEventListener(
+        "keydown",
+        function(event){
 
-        document
-            .querySelectorAll(".tm-movie")
-            .forEach(card=>{
+            if(event.key === "Enter"){
 
-                const title=card.dataset.title || "";
-                const category=card.dataset.category || "";
+                event.preventDefault();
 
-                card.style.display =
-                    !value ||
-                    title.includes(value) ||
-                    category.includes(value)
-                    ? ""
-                    : "none";
+                const value =
+                    this.value.trim();
 
-            });
+                if(value){
 
-    });
+                    const url =
+                        "{{ url_for('home') }}" +
+                        "?q=" +
+                        encodeURIComponent(value);
+
+                    window.location.href = url;
+
+                }else{
+
+                    window.location.href =
+                        "{{ url_for('home') }}";
+
+                }
+
+            }
+
+        }
+    );
 
 }
+
 </script>
 
 </body>
