@@ -1,1312 +1,1703 @@
-import os
-import secrets
-import mimetypes
-from functools import wraps
-from urllib.parse import quote
+{% extends "base.html" %}
 
-import boto3
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from botocore.client import Config
+{% block title %}Admin Dashboard | Tomesh Movies{% endblock %}
 
-from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    session,
-    flash,
-    abort,
-    Response,
-    jsonify,
-)
+{% block content %}
 
-from werkzeug.utils import secure_filename
+<style>
+*{box-sizing:border-box}
 
-
-# ============================================================
-# APP
-# ============================================================
-
-app = Flask(__name__)
-
-app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
-
-app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
-
-
-# ============================================================
-# ADMIN
-# ============================================================
-
-ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "change-me-now")
-
-
-# ============================================================
-# DATABASE
-# ============================================================
-
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-
-
-def get_db():
-    if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL is not configured")
-
-    return psycopg2.connect(
-        DATABASE_URL,
-        cursor_factory=RealDictCursor,
-        sslmode="require",
-    )
-
-
-def init_db():
-    conn = get_db()
-
-    try:
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS movies (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                category TEXT DEFAULT 'Other',
-                description TEXT DEFAULT '',
-                poster TEXT DEFAULT '',
-                video TEXT NOT NULL,
-                views INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ads (
-                id SERIAL PRIMARY KEY,
-                slot TEXT UNIQUE NOT NULL,
-                code TEXT DEFAULT ''
-            )
-            """
-        )
-
-        for slot in ("top", "player", "bottom"):
-            cur.execute(
-                """
-                INSERT INTO ads (slot, code)
-                VALUES (%s, '')
-                ON CONFLICT (slot) DO NOTHING
-                """,
-                (slot,),
-            )
-
-        conn.commit()
-
-    finally:
-        conn.close()
-
-
-# ============================================================
-# R2 CONFIG
-# ============================================================
-
-R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID", "")
-R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "")
-R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
-
-R2_BUCKET = os.environ.get("R2_BUCKET", "tomesh-movies")
-
-R2_ENDPOINT = os.environ.get(
-    "R2_ENDPOINT",
-    f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
-).rstrip("/")
-
-R2_PUBLIC_URL = os.environ.get("R2_PUBLIC_URL", "").rstrip("/")
-
-
-ALLOWED_VIDEOS = {
-    "mp4",
-    "mkv",
-    "webm",
-    "mov",
+.tm-admin{
+    min-height:100vh;
+    padding:22px 12px 60px;
+    color:#fff;
+    background:
+        radial-gradient(circle at 10% 0%,rgba(130,40,200,.30),transparent 30%),
+        radial-gradient(circle at 90% 10%,rgba(255,0,70,.20),transparent 28%),
+        linear-gradient(135deg,#07070b,#100913 50%,#07070b);
 }
 
-ALLOWED_POSTERS = {
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
+.tm-wrap{
+    max-width:1200px;
+    margin:auto;
+}
+
+.tm-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    padding:18px 20px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:20px;
+    background:rgba(15,15,22,.82);
+    backdrop-filter:blur(15px);
+    box-shadow:0 15px 50px rgba(0,0,0,.35);
+    margin-bottom:20px;
+}
+
+.tm-brand{
+    font-size:22px;
+    font-weight:900;
+    letter-spacing:.5px;
+}
+
+.tm-brand span{
+    color:#d8a84e;
+}
+
+.tm-sub{
+    margin-top:4px;
+    color:#aaa;
+    font-size:12px;
+}
+
+.tm-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.tm-btn{
+    border:0;
+    text-decoration:none;
+    color:#fff;
+    padding:11px 16px;
+    border-radius:11px;
+    cursor:pointer;
+    font-weight:800;
+    background:#24242d;
+}
+
+.tm-btn:hover{
+    filter:brightness(1.2);
+}
+
+.tm-gold{
+    background:linear-gradient(135deg,#d6a646,#8e621b);
+}
+
+.tm-red{
+    background:linear-gradient(135deg,#e53935,#9b1010);
+}
+
+.tm-stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin-bottom:20px;
+}
+
+.tm-stat{
+    padding:18px;
+    border-radius:18px;
+    background:rgba(20,20,28,.86);
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.tm-stat-label{
+    color:#999;
+    font-size:12px;
+    margin-bottom:8px;
+}
+
+.tm-stat-value{
+    font-size:27px;
+    font-weight:900;
+}
+
+.tm-card{
+    background:rgba(16,16,23,.90);
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:20px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 15px 50px rgba(0,0,0,.25);
+}
+
+.tm-title{
+    font-size:20px;
+    font-weight:900;
+    margin-bottom:5px;
+}
+
+.tm-note{
+    color:#999;
+    font-size:13px;
+    margin-bottom:18px;
+}
+
+.tm-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:15px;
+}
+
+.tm-field{
+    margin-bottom:14px;
+}
+
+.tm-field.full{
+    grid-column:1/-1;
+}
+
+.tm-field label{
+    display:block;
+    font-size:13px;
+    font-weight:800;
+    margin-bottom:7px;
+    color:#ddd;
+}
+
+.tm-field input,
+.tm-field select,
+.tm-field textarea{
+    width:100%;
+    border:1px solid rgba(255,255,255,.12);
+    outline:none;
+    border-radius:12px;
+    padding:13px 14px;
+    background:#0c0c12;
+    color:#fff;
+    font-size:14px;
+}
+
+.tm-field textarea{
+    min-height:100px;
+    resize:vertical;
+}
+
+.tm-field input:focus,
+.tm-field select:focus,
+.tm-field textarea:focus{
+    border-color:#b57bff;
+    box-shadow:0 0 0 3px rgba(181,123,255,.10);
+}
+
+.file-box{
+    padding:15px;
+    border:1px dashed rgba(255,255,255,.18);
+    border-radius:14px;
+    background:#0b0b10;
+}
+
+.file-box input{
+    border:0;
+    padding:0;
+    background:none;
+}
+
+.file-info{
+    margin-top:8px;
+    color:#999;
+    font-size:12px;
+    word-break:break-all;
+}
+
+.tm-upload{
+    margin-top:15px;
+    display:none;
+}
+
+.progress-head{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:8px;
+    font-size:13px;
+    font-weight:800;
+}
+
+.progress-track{
+    width:100%;
+    height:12px;
+    border-radius:20px;
+    overflow:hidden;
+    background:#292933;
+}
+
+.progress-bar{
+    width:0%;
+    height:100%;
+    border-radius:20px;
+    background:linear-gradient(90deg,#7c3aed,#d946ef,#ef4444);
+    transition:width .2s ease;
+}
+
+.progress-meta{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+    margin-top:12px;
+}
+
+.meta{
+    background:#0a0a0f;
+    border-radius:10px;
+    padding:10px;
+}
+
+.meta small{
+    display:block;
+    color:#777;
+    margin-bottom:3px;
+}
+
+.meta b{
+    font-size:13px;
+}
+
+.tm-upload-buttons{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+}
+
+.tm-submit{
+    width:100%;
+    margin-top:8px;
+    padding:14px;
+    border:0;
+    border-radius:13px;
+    cursor:pointer;
+    color:#fff;
+    font-size:15px;
+    font-weight:900;
+    background:linear-gradient(135deg,#d6a646,#8f5f15);
+}
+
+.tm-submit:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+}
+
+.tm-cancel{
+    padding:12px 18px;
+    border:0;
+    border-radius:12px;
+    color:#fff;
+    background:#9b1515;
+    cursor:pointer;
+    font-weight:800;
+}
+
+.tm-status{
+    display:none;
+    margin-top:13px;
+    padding:12px 14px;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:700;
+}
+
+.tm-success{
+    display:block;
+    background:rgba(0,180,100,.12);
+    border:1px solid rgba(0,220,120,.25);
+    color:#63e6a0;
+}
+
+.tm-error{
+    display:block;
+    background:rgba(220,30,30,.12);
+    border:1px solid rgba(255,50,50,.25);
+    color:#ff8585;
+}
+
+.tm-info{
+    display:block;
+    background:rgba(80,100,255,.12);
+    border:1px solid rgba(100,120,255,.25);
+    color:#aeb8ff;
+}
+
+.movie-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.movie-table th,
+.movie-table td{
+    padding:12px 9px;
+    border-bottom:1px solid rgba(255,255,255,.07);
+    text-align:left;
+    font-size:13px;
+}
+
+.movie-table th{
+    color:#999;
+    font-size:11px;
+    text-transform:uppercase;
+}
+
+.poster-mini{
+    width:48px;
+    height:64px;
+    object-fit:cover;
+    border-radius:7px;
+    background:#222;
+}
+
+.delete-btn{
+    display:inline-block;
+    padding:7px 10px;
+    border-radius:8px;
+    color:#fff;
+    text-decoration:none;
+    background:#921515;
+    font-size:11px;
+    font-weight:800;
+}
+
+.empty{
+    text-align:center;
+    color:#777;
+    padding:30px;
+}
+
+@media(max-width:800px){
+    .tm-stats{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .tm-grid{
+        grid-template-columns:1fr;
+    }
+
+    .tm-field.full{
+        grid-column:auto;
+    }
+
+    .progress-meta{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .movie-table{
+        min-width:700px;
+    }
+
+    .table-scroll{
+        overflow-x:auto;
+    }
+
+    .tm-head{
+        align-items:flex-start;
+        flex-direction:column;
+    }
+}
+
+@media(max-width:480px){
+    .tm-admin{
+        padding:12px 8px 40px;
+    }
+
+    .tm-card{
+        padding:14px;
+    }
+
+    .tm-stats{
+        gap:8px;
+    }
+
+    .tm-stat{
+        padding:13px;
+    }
+
+    .tm-stat-value{
+        font-size:21px;
+    }
+
+    .tm-upload-buttons{
+        flex-direction:column;
+    }
+}
+</style>
+
+<div class="tm-admin">
+<div class="tm-wrap">
+
+    <div class="tm-head">
+        <div>
+            <div class="tm-brand">TOMESH <span>MOVIES</span></div>
+            <div class="tm-sub">COLORFUL PREMIUM ADMIN PANEL • CONTROL CENTER</div>
+        </div>
+
+        <div class="tm-actions">
+            <a href="{{ url_for('admin') }}" class="tm-btn">Dashboard</a>
+            <a href="{{ url_for('logout') }}" class="tm-btn tm-red">Logout</a>
+        </div>
+    </div>
+
+
+    <div class="tm-stats">
+
+        <div class="tm-stat">
+            <div class="tm-stat-label">TOTAL MOVIES</div>
+            <div class="tm-stat-value">{{ movies|length if movies else 0 }}</div>
+        </div>
+
+        <div class="tm-stat">
+            <div class="tm-stat-label">R2 STORAGE</div>
+            <div class="tm-stat-value">LIVE</div>
+        </div>
+
+        <div class="tm-stat">
+            <div class="tm-stat-label">UPLOAD MODE</div>
+            <div class="tm-stat-value">R2</div>
+        </div>
+
+        <div class="tm-stat">
+            <div class="tm-stat-label">VIDEO LIMIT</div>
+            <div class="tm-stat-value">4 GB</div>
+        </div>
+
+    </div>
+
+
+    <div class="tm-card">
+
+        <div class="tm-title">🎬 Add New Movie</div>
+
+        <div class="tm-note">
+            Video सीधे Cloudflare R2 पर multipart upload होगी.
+            Render server के through video नहीं जाएगी.
+        </div>
+
+        <form id="movieForm">
+
+            <div class="tm-grid">
+
+                <div class="tm-field">
+                    <label>Movie Title</label>
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        placeholder="Movie title"
+                        required
+                    >
+                </div>
+
+                <div class="tm-field">
+                    <label>Category</label>
+                    <input
+                        type="text"
+                        id="category"
+                        name="category"
+                        placeholder="Action, Drama, Hindi..."
+                        required
+                    >
+                </div>
+
+                <div class="tm-field full">
+                    <label>Description</label>
+                    <textarea
+                        id="description"
+                        name="description"
+                        placeholder="Movie description..."
+                    ></textarea>
+                </div>
+
+
+                <div class="tm-field">
+                    <label>Poster</label>
+
+                    <div class="file-box">
+                        <input
+                            type="file"
+                            id="poster"
+                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                        >
+
+                        <div class="file-info" id="posterInfo">
+                            JPG / JPEG / PNG / WEBP
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="tm-field">
+                    <label>Video</label>
+
+                    <div class="file-box">
+                        <input
+                            type="file"
+                            id="video"
+                            accept=".mp4,.mkv,.webm,.mov,video/mp4,video/webm,video/quicktime"
+                            required
+                        >
+
+                        <div class="file-info" id="videoInfo">
+                            MP4 / MKV / WebM / MOV — Maximum 4 GB
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <div class="tm-upload" id="uploadBox">
+
+                <div class="progress-head">
+                    <span id="uploadStatus">Preparing upload...</span>
+                    <span id="uploadPercent">0%</span>
+                </div>
+
+                <div class="progress-track">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+
+                <div class="progress-meta">
+
+                    <div class="meta">
+                        <small>Uploaded</small>
+                        <b id="uploadedText">0 MB / 0 MB</b>
+                    </div>
+
+                    <div class="meta">
+                        <small>Speed</small>
+                        <b id="speedText">0 KB/s</b>
+                    </div>
+
+                    <div class="meta">
+                        <small>Remaining</small>
+                        <b id="remainingText">--</b>
+                    </div>
+
+                    <div class="meta">
+                        <small>Mode</small>
+                        <b>☁️ Direct R2</b>
+                    </div>
+
+                </div>
+
+                <div class="tm-upload-buttons">
+                    <button
+                        type="button"
+                        class="tm-cancel"
+                        id="cancelBtn"
+                    >
+                        Cancel Upload
+                    </button>
+                </div>
+
+            </div>
+
+
+            <div id="statusBox" class="tm-status"></div>
+
+            <button
+                type="submit"
+                class="tm-submit"
+                id="uploadBtn"
+            >
+                🚀 Upload Movie
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <div class="tm-card">
+
+        <div class="tm-title">📢 Advertisement Settings</div>
+
+        <div class="tm-note">
+            Ads settings dashboard.
+        </div>
+
+        <a
+            href="{{ url_for('admin_ads') }}"
+            class="tm-btn tm-gold"
+        >
+            Open Ads Settings
+        </a>
+
+    </div>
+
+
+    <div class="tm-card">
+
+        <div class="tm-title">🎥 Movies</div>
+
+        <div class="tm-note">
+            Uploaded movies and management controls.
+        </div>
+
+        <div class="table-scroll">
+
+            {% if movies %}
+
+            <table class="movie-table">
+
+                <thead>
+                    <tr>
+                        <th>Poster</th>
+                        <th>Movie</th>
+                        <th>Category</th>
+                        <th>Views</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                {% for movie in movies %}
+
+                    <tr>
+
+                        <td>
+                            {% if movie.poster %}
+                                <img
+                                    class="poster-mini"
+                                    src="{{ movie.poster }}"
+                                    alt=""
+                                >
+                            {% else %}
+                                <div class="poster-mini"></div>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <strong>{{ movie.title }}</strong>
+                        </td>
+
+                        <td>
+                            {{ movie.category or 'Uncategorized' }}
+                        </td>
+
+                        <td>
+                            {{ movie.views or 0 }}
+                        </td>
+
+                        <td>
+                            <a
+                                href="{{ url_for('delete_movie', movie_id=movie.id) }}"
+                                class="delete-btn"
+                                onclick="return confirm('Delete this movie? R2 video और poster भी delete होंगे.')"
+                            >
+                                DELETE
+                            </a>
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+            {% else %}
+
+                <div class="empty">
+                    अभी कोई movie नहीं है.
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+
+<script>
+(function(){
+
+"use strict";
+
+
+const PART_SIZE = 10 * 1024 * 1024;
+const PARALLEL = 3;
+const MAX_RETRIES = 4;
+const MAX_VIDEO_SIZE = 4 * 1024 * 1024 * 1024;
+
+
+let currentUploadId = null;
+let currentUploadKey = null;
+let cancelled = false;
+let activeXHRs = [];
+
+
+const form = document.getElementById("movieForm");
+const videoInput = document.getElementById("video");
+const posterInput = document.getElementById("poster");
+
+const uploadBtn = document.getElementById("uploadBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+
+const uploadBox = document.getElementById("uploadBox");
+const progressBar = document.getElementById("progressBar");
+
+const uploadStatus = document.getElementById("uploadStatus");
+const uploadPercent = document.getElementById("uploadPercent");
+
+const uploadedText = document.getElementById("uploadedText");
+const speedText = document.getElementById("speedText");
+const remainingText = document.getElementById("remainingText");
+
+const statusBox = document.getElementById("statusBox");
+
+const posterInfo = document.getElementById("posterInfo");
+const videoInfo = document.getElementById("videoInfo");
+
+
+function escapeText(value){
+    return String(value || "");
 }
 
 
-PART_SIZE = 10 * 1024 * 1024
-MAX_PARTS = 10000
-PARALLEL_PARTS = 3
-PRESIGNED_EXPIRES = 3600
+function formatBytes(bytes){
+
+    if (!bytes || bytes <= 0){
+        return "0 MB";
+    }
+
+    const units = ["B","KB","MB","GB"];
+    let i = 0;
+    let n = bytes;
+
+    while(n >= 1024 && i < units.length - 1){
+        n /= 1024;
+        i++;
+    }
+
+    return n.toFixed(i === 0 ? 0 : 1) + " " + units[i];
+}
 
 
-r2 = None
+function formatSpeed(bytesPerSecond){
 
-if (
-    R2_ACCOUNT_ID
-    and R2_ACCESS_KEY_ID
-    and R2_SECRET_ACCESS_KEY
-):
-    r2 = boto3.client(
-        "s3",
-        endpoint_url=R2_ENDPOINT,
-        aws_access_key_id=R2_ACCESS_KEY_ID,
-        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-        region_name="auto",
-        config=Config(
-            signature_version="s3v4",
-            s3={"addressing_style": "path"},
-        ),
-    )
+    return formatBytes(bytesPerSecond) + "/s";
+}
 
 
-# ============================================================
-# HELPERS
-# ============================================================
+function formatTime(seconds){
 
-def admin_required(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if not session.get("admin_logged_in"):
-            return redirect(url_for("login"))
+    if (!isFinite(seconds) || seconds < 0){
+        return "--";
+    }
 
-        return func(*args, **kwargs)
+    seconds = Math.round(seconds);
 
-    return wrapper
+    if(seconds < 60){
+        return seconds + "s";
+    }
 
+    const min = Math.floor(seconds / 60);
+    const sec = seconds % 60;
 
-def extension(filename):
-    filename = filename or ""
+    if(min < 60){
+        return min + "m " + sec + "s";
+    }
 
-    if "." not in filename:
-        return ""
+    const hour = Math.floor(min / 60);
+    const mins = min % 60;
 
-    return filename.rsplit(".", 1)[1].lower()
-
-
-def r2_required():
-    if r2 is None:
-        raise RuntimeError(
-            "Cloudflare R2 environment variables are missing"
-        )
+    return hour + "h " + mins + "m";
+}
 
 
-def validate_r2_key(key):
-    if not key or not isinstance(key, str):
-        abort(400, "Invalid R2 key")
+function setStatus(message, type){
 
-    if ".." in key:
-        abort(400, "Invalid R2 key")
+    statusBox.className = "tm-status";
 
-    if not (
-        key.startswith("videos/")
-        or key.startswith("posters/")
-    ):
-        abort(400, "Invalid R2 key")
+    if(type === "success"){
+        statusBox.classList.add("tm-success");
+    }
+    else if(type === "error"){
+        statusBox.classList.add("tm-error");
+    }
+    else{
+        statusBox.classList.add("tm-info");
+    }
 
-    return key
-
-
-def r2_object_url(key):
-    if not key:
-        return ""
-
-    if R2_PUBLIC_URL:
-        return f"{R2_PUBLIC_URL}/{quote(key, safe='/')}"
-
-    return ""
+    statusBox.textContent = message;
+}
 
 
-def object_exists(key):
-    if not key:
-        return False
+function setProgress(percent, uploaded, total, speed, remaining){
 
-    r2_required()
+    percent = Math.max(0, Math.min(100, percent));
 
-    try:
-        r2.head_object(
-            Bucket=R2_BUCKET,
-            Key=key,
-        )
-        return True
+    progressBar.style.width = percent + "%";
+    uploadPercent.textContent = Math.round(percent) + "%";
 
-    except Exception:
-        return False
+    uploadedText.textContent =
+        formatBytes(uploaded) + " / " + formatBytes(total);
 
+    speedText.textContent = formatSpeed(speed);
 
-def delete_object(key):
-    if not key:
-        return
-
-    if r2 is None:
-        return
-
-    try:
-        r2.delete_object(
-            Bucket=R2_BUCKET,
-            Key=key,
-        )
-    except Exception:
-        pass
+    remainingText.textContent = formatTime(remaining);
+}
 
 
-def movie_video_url(movie):
-    video = movie.get("video", "")
+function sleep(ms){
 
-    if not video:
-        return ""
+    return new Promise(resolve => setTimeout(resolve, ms));
 
-    if video.startswith("http://") or video.startswith("https://"):
-        return video
-
-    return r2_object_url(video)
+}
 
 
-def movie_poster_url(movie):
-    poster = movie.get("poster", "")
+async function jsonFetch(url, options){
 
-    if not poster:
-        return ""
+    const response = await fetch(url, {
+        credentials: "same-origin",
+        ...options
+    });
 
-    if poster.startswith("http://") or poster.startswith("https://"):
-        return poster
+    let data = null;
 
-    return r2_object_url(poster)
+    try{
+        data = await response.json();
+    }
+    catch(e){
+        throw new Error("Server ने invalid response दिया.");
+    }
+
+    if(!response.ok || !data || data.ok === false){
+
+        throw new Error(
+            data && (data.error || data.message)
+            ? (data.error || data.message)
+            : "Request failed: HTTP " + response.status
+        );
+    }
+
+    return data;
+}
 
 
-def get_ads():
-    conn = get_db()
+function xhrPut(url, blob, partNumber){
 
-    try:
-        cur = conn.cursor()
+    return new Promise((resolve, reject) => {
 
-        cur.execute(
-            """
-            SELECT slot, code
-            FROM ads
-            ORDER BY id
-            """
-        )
-
-        rows = cur.fetchall()
-
-        return {
-            row["slot"]: row["code"] or ""
-            for row in rows
+        if(cancelled){
+            reject(new Error("Upload cancelled."));
+            return;
         }
 
-    finally:
-        conn.close()
+        const xhr = new XMLHttpRequest();
 
+        activeXHRs.push(xhr);
 
-# ============================================================
-# HOME
-# ============================================================
+        xhr.open("PUT", url, true);
 
-@app.route("/")
-def index():
-    conn = get_db()
+        /*
+         * IMPORTANT:
+         * Presigned R2 URL में Content-Type sign नहीं किया गया है.
+         * इसलिए यहाँ Content-Type manually set नहीं करना है.
+         */
 
-    try:
-        cur = conn.cursor()
+        xhr.upload.onprogress = function(e){
 
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            ORDER BY created_at DESC
-            """
-        )
+            if(e.lengthComputable){
+                if(typeof window.__partProgress === "object"){
+                    window.__partProgress[partNumber] = e.loaded;
+                }
+            }
 
-        movies = cur.fetchall()
+        };
 
-        for movie in movies:
-            movie["poster_url"] = movie_poster_url(movie)
 
-        ads = get_ads()
+        xhr.onload = function(){
 
-        return render_template(
-            "index.html",
-            movies=movies,
-            ads=ads,
-        )
+            activeXHRs = activeXHRs.filter(x => x !== xhr);
 
-    finally:
-        conn.close()
+            if(xhr.status >= 200 && xhr.status < 300){
 
+                /*
+                 * R2 multipart upload के लिए ETag जरूरी है.
+                 */
+                let etag = xhr.getResponseHeader("ETag");
 
-# ============================================================
-# MOVIE PAGE
-# ============================================================
+                if(!etag){
+                    etag = xhr.getResponseHeader("etag");
+                }
 
-@app.route("/movie/<int:movie_id>")
-def movie_page(movie_id):
-    conn = get_db()
+                if(!etag){
 
-    try:
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            WHERE id = %s
-            """,
-            (movie_id,),
-        )
-
-        movie = cur.fetchone()
-
-        if not movie:
-            abort(404)
-
-        cur.execute(
-            """
-            UPDATE movies
-            SET views = COALESCE(views, 0) + 1
-            WHERE id = %s
-            """,
-            (movie_id,),
-        )
-
-        conn.commit()
-
-        movie["views"] = (movie.get("views") or 0) + 1
-        movie["video_url"] = movie_video_url(movie)
-        movie["poster_url"] = movie_poster_url(movie)
-
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            WHERE id != %s
-            ORDER BY created_at DESC
-            LIMIT 12
-            """,
-            (movie_id,),
-        )
-
-        more_movies = cur.fetchall()
-
-        for item in more_movies:
-            item["poster_url"] = movie_poster_url(item)
-
-        ads = get_ads()
-
-        return render_template(
-            "movie.html",
-            movie=movie,
-            more_movies=more_movies,
-            ads=ads,
-        )
-
-    finally:
-        conn.close()
-
-
-# ============================================================
-# LOGIN
-# ============================================================
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form.get("username", "")
-        password = request.form.get("password", "")
-
-        if (
-            username == ADMIN_USER
-            and password == ADMIN_PASSWORD
-        ):
-            session["admin_logged_in"] = True
-
-            return redirect(url_for("admin"))
-
-        flash("Invalid username or password", "error")
-
-    return render_template("login.html")
-
-
-@app.route("/logout")
-def logout():
-    session.clear()
-
-    return redirect(url_for("login"))
-
-
-# ============================================================
-# ADMIN DASHBOARD
-# ============================================================
-
-@app.route("/admin")
-@admin_required
-def admin():
-    conn = get_db()
-
-    try:
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            ORDER BY created_at DESC
-            """
-        )
-
-        movies = cur.fetchall()
-
-        cur.execute(
-            """
-            SELECT
-                COUNT(*) AS total_movies,
-                COALESCE(SUM(views), 0) AS total_views
-            FROM movies
-            """
-        )
-
-        stats = cur.fetchone()
-
-        for movie in movies:
-            movie["poster_url"] = movie_poster_url(movie)
-
-        ads = get_ads()
-
-        return render_template(
-            "admin.html",
-            movies=movies,
-            stats=stats,
-            ads=ads,
-        )
-
-    finally:
-        conn.close()
-
-
-# ============================================================
-# OLD SERVER UPLOAD
-# ============================================================
-
-@app.route("/admin/add", methods=["GET", "POST"])
-@admin_required
-def admin_add():
-    if request.method == "GET":
-        return render_template("admin_add.html")
-
-    title = request.form.get("title", "").strip()
-    category = request.form.get("category", "Other").strip()
-    description = request.form.get("description", "").strip()
-
-    video_file = request.files.get("video")
-    poster_file = request.files.get("poster")
-
-    if not title:
-        flash("Movie title is required", "error")
-        return redirect(url_for("admin"))
-
-    if not video_file or not video_file.filename:
-        flash("Video is required", "error")
-        return redirect(url_for("admin"))
-
-    video_ext = extension(video_file.filename)
-
-    if video_ext not in ALLOWED_VIDEOS:
-        flash(
-            "Video only MP4, MKV, WebM or MOV is allowed",
-            "error",
-        )
-        return redirect(url_for("admin"))
-
-    r2_required()
-
-    video_key = (
-        "videos/"
-        f"{secrets.token_hex(16)}_"
-        f"{secure_filename(video_file.filename)}"
-    )
-
-    poster_key = ""
-
-    try:
-        r2.upload_fileobj(
-            video_file,
-            R2_BUCKET,
-            video_key,
-            ExtraArgs={
-                "ContentType": (
-                    video_file.mimetype
-                    or mimetypes.guess_type(
-                        video_file.filename
-                    )[0]
-                    or "application/octet-stream"
-                )
-            },
-        )
-
-        if poster_file and poster_file.filename:
-            poster_ext = extension(poster_file.filename)
-
-            if poster_ext in ALLOWED_POSTERS:
-                poster_key = (
-                    "posters/"
-                    f"{secrets.token_hex(16)}_"
-                    f"{secure_filename(poster_file.filename)}"
-                )
-
-                r2.upload_fileobj(
-                    poster_file,
-                    R2_BUCKET,
-                    poster_key,
-                    ExtraArgs={
-                        "ContentType": (
-                            poster_file.mimetype
-                            or "application/octet-stream"
+                    reject(
+                        new Error(
+                            "ETag नहीं मिला. Cloudflare R2 CORS में ExposeHeaders में ETag डालें."
                         )
-                    },
-                )
+                    );
 
-        conn = get_db()
+                    return;
+                }
 
-        try:
-            cur = conn.cursor()
+                resolve({
+                    PartNumber: partNumber,
+                    ETag: etag
+                });
 
-            cur.execute(
-                """
-                INSERT INTO movies
-                    (title, category, description, poster, video)
-                VALUES
-                    (%s, %s, %s, %s, %s)
-                """,
-                (
-                    title,
-                    category,
-                    description,
-                    poster_key,
-                    video_key,
-                ),
-            )
+            }
+            else{
 
-            conn.commit()
+                reject(
+                    new Error(
+                        "Part " + partNumber +
+                        " upload failed. HTTP " + xhr.status
+                    )
+                );
 
-        finally:
-            conn.close()
+            }
 
-        flash("Movie added successfully", "success")
+        };
 
-    except Exception as e:
-        delete_object(video_key)
-        delete_object(poster_key)
 
-        flash(
-            f"Upload failed: {str(e)}",
-            "error",
-        )
+        xhr.onerror = function(){
 
-    return redirect(url_for("admin"))
+            activeXHRs = activeXHRs.filter(x => x !== xhr);
 
+            reject(new Error("Network error on part " + partNumber));
 
-# ============================================================
-# DELETE MOVIE
-# ============================================================
+        };
 
-@app.route("/admin/delete/<int:movie_id>", methods=["POST", "GET"])
-@admin_required
-def admin_delete(movie_id):
-    conn = get_db()
 
-    try:
-        cur = conn.cursor()
+        xhr.onabort = function(){
 
-        cur.execute(
-            """
-            SELECT video, poster
-            FROM movies
-            WHERE id = %s
-            """,
-            (movie_id,),
-        )
+            activeXHRs = activeXHRs.filter(x => x !== xhr);
 
-        movie = cur.fetchone()
+            reject(new Error("Upload cancelled."));
 
-        if not movie:
-            abort(404)
+        };
 
-        cur.execute(
-            """
-            DELETE FROM movies
-            WHERE id = %s
-            """,
-            (movie_id,),
-        )
 
-        conn.commit()
+        xhr.send(blob);
 
-    finally:
-        conn.close()
+    });
 
-    delete_object(movie.get("video"))
-    delete_object(movie.get("poster"))
+}
 
-    flash("Movie deleted", "success")
 
-    return redirect(url_for("admin"))
+async function uploadPartWithRetry(url, blob, partNumber){
 
+    let lastError = null;
 
-# ============================================================
-# ADS
-# ============================================================
+    for(let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++){
 
-@app.route("/admin/ads", methods=["POST"])
-@admin_required
-def admin_ads():
-    conn = get_db()
+        if(cancelled){
+            throw new Error("Upload cancelled.");
+        }
 
-    try:
-        cur = conn.cursor()
-
-        for slot in ("top", "player", "bottom"):
-            value = request.form.get(slot, "")
+        try{
 
-            cur.execute(
-                """
-                INSERT INTO ads (slot, code)
-                VALUES (%s, %s)
-                ON CONFLICT (slot)
-                DO UPDATE SET code = EXCLUDED.code
-                """,
-                (slot, value),
-            )
-
-        conn.commit()
-
-    finally:
-        conn.close()
-
-    flash("Ads settings saved", "success")
-
-    return redirect(url_for("admin"))
-
-
-# ============================================================
-# R2 HEALTH
-# ============================================================
-
-@app.route("/r2-health")
-def r2_health():
-    try:
-        r2_required()
-
-        r2.head_bucket(
-            Bucket=R2_BUCKET
-        )
-
-        return jsonify({
-            "ok": True,
-            "message": "R2 OK",
-            "bucket": R2_BUCKET,
-        })
-
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-        }), 500
-
-
-# ============================================================
-# APP HEALTH
-# ============================================================
-
-@app.route("/health")
-def health():
-    try:
-        conn = get_db()
-
-        try:
-            cur = conn.cursor()
-            cur.execute("SELECT 1")
-            cur.fetchone()
-
-        finally:
-            conn.close()
-
-        return jsonify({
-            "ok": True,
-            "database": "OK",
-        })
-
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-        }), 500
-
-
-# ============================================================
-# R2 MULTIPART CREATE
-# ============================================================
-
-@app.route(
-    "/api/r2/multipart/create",
-    methods=["POST"],
-)
-@admin_required
-def multipart_create():
-    try:
-        r2_required()
-
-        data = request.get_json(silent=True) or {}
-
-        filename = str(
-            data.get("filename", "")
-        ).strip()
-
-        content_type = str(
-            data.get("content_type")
-            or "application/octet-stream"
-        ).strip()
-
-        size = int(
-            data.get("size", 0)
-        )
-
-        if not filename:
-            return jsonify({
-                "ok": False,
-                "error": "Filename missing",
-            }), 400
-
-        if size <= 0:
-            return jsonify({
-                "ok": False,
-                "error": "Invalid file size",
-            }), 400
-
-        ext = extension(filename)
-
-        if ext not in ALLOWED_VIDEOS:
-            return jsonify({
-                "ok": False,
-                "error": (
-                    "Video only MP4, MKV, WebM "
-                    "or MOV is allowed"
-                ),
-            }), 400
-
-        clean_name = secure_filename(filename)
-
-        if not clean_name:
-            clean_name = "video"
-
-        key = (
-            "videos/"
-            f"{secrets.token_hex(16)}_"
-            f"{clean_name}"
-        )
-
-        parts = (
-            size + PART_SIZE - 1
-        ) // PART_SIZE
-
-        if parts > MAX_PARTS:
-            return jsonify({
-                "ok": False,
-                "error": "Too many multipart parts",
-            }), 400
-
-        result = r2.create_multipart_upload(
-            Bucket=R2_BUCKET,
-            Key=key,
-            ContentType=content_type,
-        )
-
-        upload_id = result["UploadId"]
-
-        return jsonify({
-            "ok": True,
-            "key": key,
-            "upload_id": upload_id,
-            "part_size": PART_SIZE,
-            "parts": parts,
-            "content_type": content_type,
-        })
-
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-        }), 500
-
-
-# ============================================================
-# R2 MULTIPART PRESIGNED URLs
-# ============================================================
-
-@app.route(
-    "/api/r2/multipart/urls",
-    methods=["POST"],
-)
-@admin_required
-def multipart_urls():
-    try:
-        r2_required()
-
-        data = request.get_json(silent=True) or {}
-
-        key = data.get("key")
-        upload_id = data.get("upload_id")
-        parts = data.get("parts")
-
-        if not key or not upload_id:
-            return jsonify({
-                "ok": False,
-                "error": "Missing key or upload_id",
-            }), 400
-
-        if not isinstance(parts, int):
-            try:
-                parts = int(parts)
-            except Exception:
-                return jsonify({
-                    "ok": False,
-                    "error": "Invalid parts",
-                }), 400
-
-        validate_r2_key(key)
-
-        if not key.startswith("videos/"):
-            return jsonify({
-                "ok": False,
-                "error": "Only video multipart is allowed",
-            }), 400
-
-        if parts < 1 or parts > MAX_PARTS:
-            return jsonify({
-                "ok": False,
-                "error": "Invalid part count",
-            }), 400
-
-        urls = []
-
-        for number in range(1, parts + 1):
-            url = r2.generate_presigned_url(
-                "upload_part",
-                Params={
-                    "Bucket": R2_BUCKET,
-                    "Key": key,
-                    "UploadId": upload_id,
-                    "PartNumber": number,
-                },
-                ExpiresIn=PRESIGNED_EXPIRES,
-            )
-
-            urls.append({
-                "part_number": number,
-                "url": url,
-            })
-
-        return jsonify({
-            "ok": True,
-            "urls": urls,
-        })
-
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-        }), 500
-
-
-# ============================================================
-# R2 MULTIPART COMPLETE
-# ============================================================
-
-@app.route(
-    "/api/r2/multipart/complete",
-    methods=["POST"],
-)
-@admin_required
-def multipart_complete():
-    try:
-        r2_required()
-
-        data = request.get_json(silent=True) or {}
-
-        key = data.get("key")
-        upload_id = data.get("upload_id")
-        parts = data.get("parts")
-
-        if not key or not upload_id:
-            return jsonify({
-                "ok": False,
-                "error": "Missing key or upload_id",
-            }), 400
-
-        if not isinstance(parts, list) or not parts:
-            return jsonify({
-                "ok": False,
-                "error": "Parts missing",
-            }), 400
-
-        validate_r2_key(key)
-
-        if not key.startswith("videos/"):
-            return jsonify({
-                "ok": False,
-                "error": "Invalid video key",
-            }), 400
-
-        final_parts = []
-
-        for item in parts:
-            try:
-                number = int(
-                    item["PartNumber"]
-                )
-                etag = str(
-                    item["ETag"]
-                ).strip()
-
-            except Exception:
-                return jsonify({
-                    "ok": False,
-                    "error": "Invalid part data",
-                }), 400
-
-            if number < 1 or number > MAX_PARTS:
-                return jsonify({
-                    "ok": False,
-                    "error": "Invalid part number",
-                }), 400
-
-            if not etag:
-                return jsonify({
-                    "ok": False,
-                    "error": (
-                        f"Missing ETag for part {number}"
-                    ),
-                }), 400
-
-            if not (
-                etag.startswith('"')
-                and etag.endswith('"')
-            ):
-                etag = f'"{etag}"'
-
-            final_parts.append({
-                "PartNumber": number,
-                "ETag": etag,
-            })
-
-        final_parts.sort(
-            key=lambda x: x["PartNumber"]
-        )
-
-        r2.complete_multipart_upload(
-            Bucket=R2_BUCKET,
-            Key=key,
-            UploadId=upload_id,
-            MultipartUpload={
-                "Parts": final_parts
+            uploadStatus.textContent =
+                "Uploading part " +
+                partNumber +
+                " • Attempt " +
+                attempt;
+
+            return await xhrPut(url, blob, partNumber);
+
+        }
+        catch(error){
+
+            lastError = error;
+
+            if(cancelled){
+                throw error;
+            }
+
+            if(attempt <= MAX_RETRIES){
+
+                uploadStatus.textContent =
+                    "Retrying part " +
+                    partNumber +
+                    " (" + attempt + "/" + MAX_RETRIES + ")";
+
+                await sleep(Math.min(3000, 700 * attempt));
+
+            }
+
+        }
+
+    }
+
+    throw lastError || new Error("Part upload failed.");
+
+}
+
+
+async function createMultipart(file){
+
+    const data = await jsonFetch(
+        "/api/r2/multipart/create",
+        {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
             },
-        )
+            body:JSON.stringify({
+                filename:file.name,
+                content_type:file.type || "application/octet-stream",
+                size:file.size
+            })
+        }
+    );
 
-        head = r2.head_object(
-            Bucket=R2_BUCKET,
-            Key=key,
-        )
+    if(!data.upload_id || !data.key){
+        throw new Error("Multipart upload ID/key नहीं मिला.");
+    }
 
-        object_size = int(
-            head.get("ContentLength", 0)
-        )
-
-        if object_size <= 0:
-            return jsonify({
-                "ok": False,
-                "error": "Completed object is empty",
-            }), 500
-
-        return jsonify({
-            "ok": True,
-            "key": key,
-            "url": r2_object_url(key),
-            "size": object_size,
-        })
-
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-        }), 500
+    return data;
+}
 
 
-# ============================================================
-# R2 MULTIPART ABORT
-# ============================================================
+async function getPartURLs(key, uploadId, partNumbers){
 
-@app.route(
-    "/api/r2/multipart/abort",
-    methods=["POST"],
-)
-@admin_required
-def multipart_abort():
-    try:
-        r2_required()
+    return await jsonFetch(
+        "/api/r2/multipart/urls",
+        {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                key:key,
+                upload_id:uploadId,
+                parts:partNumbers,
+                part_numbers:partNumbers
+            })
+        }
+    );
 
-        data = request.get_json(silent=True) or {}
-
-        key = data.get("key")
-        upload_id = data.get("upload_id")
-
-        if not key or not upload_id:
-            return jsonify({
-                "ok": False,
-                "error": "Missing key or upload_id",
-            }), 400
-
-        validate_r2_key(key)
-
-        if not key.startswith("videos/"):
-            return jsonify({
-                "ok": False,
-                "error": "Invalid video key",
-            }), 400
-
-        r2.abort_multipart_upload(
-            Bucket=R2_BUCKET,
-            Key=key,
-            UploadId=upload_id,
-        )
-
-        return jsonify({
-            "ok": True,
-        })
-
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-        }), 500
+}
 
 
-# ============================================================
-# R2 DELETE API
-# ============================================================
+async function completeMultipart(key, uploadId, parts){
 
-@app.route(
-    "/api/r2/delete",
-    methods=["POST"],
-)
-@admin_required
-def r2_delete_api():
-    try:
-        r2_required()
+    parts.sort(function(a,b){
+        return a.PartNumber - b.PartNumber;
+    });
 
-        data = request.get_json(silent=True) or {}
+    return await jsonFetch(
+        "/api/r2/multipart/complete",
+        {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                key:key,
+                upload_id:uploadId,
+                parts:parts
+            })
+        }
+    );
 
-        key = data.get("key")
-
-        validate_r2_key(key)
-
-        r2.delete_object(
-            Bucket=R2_BUCKET,
-            Key=key,
-        )
-
-        return jsonify({
-            "ok": True,
-        })
-
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-        }), 500
+}
 
 
-# ============================================================
-# SAVE MOVIE AFTER DIRECT R2 UPLOAD
-# ============================================================
+async function abortMultipart(key, uploadId){
 
-@app.route(
-    "/api/movie/save",
-    methods=["POST"],
-)
-@admin_required
-def save_movie():
-    try:
-        data = request.get_json(silent=True) or {}
+    if(!key || !uploadId){
+        return;
+    }
 
-        title = str(
-            data.get("title", "")
-        ).strip()
+    try{
 
-        category = str(
-            data.get("category", "Other")
-        ).strip()
+        await fetch(
+            "/api/r2/multipart/abort",
+            {
+                method:"POST",
+                credentials:"same-origin",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    key:key,
+                    upload_id:uploadId
+                })
+            }
+        );
 
-        description = str(
-            data.get("description", "")
-        ).strip()
+    }
+    catch(e){
+        console.log("Abort error:",e);
+    }
 
-        video_key = str(
-            data.get("video_key", "")
-        ).strip()
-
-        poster_key = str(
-            data.get("poster_key", "")
-        ).strip()
-
-        if not title:
-            return jsonify({
-                "ok": False,
-                "error": "Movie title is required",
-            }), 400
-
-        if not video_key:
-            return jsonify({
-                "ok": False,
-                "error": "Video key is required",
-            }), 400
-
-        if not video_key.startswith("videos/"):
-            return jsonify({
-                "ok": False,
-                "error": "Invalid video key",
-            }), 400
-
-        if not object_exists(video_key):
-            return jsonify({
-                "ok": False,
-                "error": (
-                    "Video is not completed in R2"
-                ),
-            }), 400
-
-        if poster_key:
-            if not poster_key.startswith("posters/"):
-                return jsonify({
-                    "ok": False,
-                    "error": "Invalid poster key",
-                }), 400
-
-            if not object_exists(poster_key):
-                return jsonify({
-                    "ok": False,
-                    "error": (
-                        "Poster is not completed in R2"
-                    ),
-                }), 400
-
-        conn = get_db()
-
-        try:
-            cur = conn.cursor()
-
-            cur.execute(
-                """
-                INSERT INTO movies
-                    (title, category, description, poster, video)
-                VALUES
-                    (%s, %s, %s, %s, %s)
-                RETURNING id
-                """,
-                (
-                    title,
-                    category,
-                    description,
-                    poster_key,
-                    video_key,
-                ),
-            )
-
-            movie = cur.fetchone()
-
-            conn.commit()
-
-        finally:
-            conn.close()
-
-        return jsonify({
-            "ok": True,
-            "movie_id": movie["id"],
-            "video_key": video_key,
-            "poster_key": poster_key,
-        })
-
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-        }), 500
+}
 
 
-# ============================================================
-# ADS.TXT
-# ============================================================
+async function uploadVideo(file){
 
-@app.route("/ads.txt")
-def ads_txt():
-    return Response(
-        "google.com, pub-8697157365303435, DIRECT, f08c47fec0942fa0\n",
-        mimetype="text/plain",
-    )
+    cancelled = false;
+
+    const created = await createMultipart(file);
+
+    currentUploadId = created.upload_id;
+    currentUploadKey = created.key;
+
+    const partSize =
+        Number(created.part_size) || PART_SIZE;
+
+    const totalParts =
+        Math.ceil(file.size / partSize);
+
+    if(totalParts > 10000){
+        throw new Error("File बहुत बड़ा है. Multipart parts 10000 से ज्यादा हो रहे हैं.");
+    }
+
+    const partNumbers =
+        Array.from(
+            {length:totalParts},
+            (_,i) => i + 1
+        );
+
+    const urlsData =
+        await getPartURLs(
+            currentUploadKey,
+            currentUploadId,
+            partNumbers
+        );
+
+    if(!urlsData.urls || !urlsData.urls.length){
+        throw new Error("R2 presigned URLs नहीं मिले.");
+    }
+
+    const urlMap = {};
+
+    urlsData.urls.forEach(function(item){
+
+        const number =
+            Number(
+                item.part_number ||
+                item.PartNumber ||
+                item.part
+            );
+
+        const url =
+            item.url ||
+            item.presigned_url;
+
+        if(number && url){
+            urlMap[number] = url;
+        }
+
+    });
 
 
-# ============================================================
-# ERROR HANDLERS
-# ============================================================
+    for(let i = 1; i <= totalParts; i++){
 
-@app.errorhandler(404)
-def not_found(error):
-    try:
-        return render_template("404.html"), 404
-    except Exception:
-        return "404 Not Found", 404
+        if(!urlMap[i]){
+            throw new Error(
+                "Part " + i + " का upload URL नहीं मिला."
+            );
+        }
 
-
-@app.errorhandler(500)
-def server_error(error):
-    try:
-        return render_template("500.html"), 500
-    except Exception:
-        return "500 Internal Server Error", 500
+    }
 
 
-# ============================================================
-# STARTUP
-# ============================================================
+    window.__partProgress = {};
 
-try:
-    init_db()
-    print("PostgreSQL initialized successfully.")
+    const completedParts = [];
 
-except Exception as e:
-    print(
-        "Database initialization warning:",
-        str(e),
-    )
+    let nextPart = 1;
+
+    const startedAt = Date.now();
 
 
-# ============================================================
-# LOCAL RUN
-# ============================================================
+    async function worker(){
 
-if __name__ == "__main__":
-    port = int(
-        os.environ.get("PORT", "5000")
-    )
+        while(true){
 
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=False,
-    )
+            if(cancelled){
+                throw new Error("Upload cancelled.");
+            }
+
+            const partNumber = nextPart++;
+
+            if(partNumber > totalParts){
+                return;
+            }
+
+            const start =
+                (partNumber - 1) * partSize;
+
+            const end =
+                Math.min(start + partSize, file.size);
+
+            const blob =
+                file.slice(start,end);
+
+            window.__partProgress[partNumber] = 0;
+
+            const result =
+                await uploadPartWithRetry(
+                    urlMap[partNumber],
+                    blob,
+                    partNumber
+                );
+
+            completedParts.push(result);
+
+        }
+
+    }
+
+
+    const progressTimer =
+        setInterval(function(){
+
+            let uploaded = 0;
+
+            Object.keys(window.__partProgress).forEach(function(key){
+
+                uploaded +=
+                    Number(window.__partProgress[key]) || 0;
+
+            });
+
+            /*
+             * Completed parts की progress भी जोड़ें.
+             */
+            const completedNumbers =
+                completedParts.map(x => x.PartNumber);
+
+            completedNumbers.forEach(function(partNumber){
+
+                const start =
+                    (partNumber - 1) * partSize;
+
+                const end =
+                    Math.min(start + partSize, file.size);
+
+                window.__partProgress[partNumber] =
+                    end - start;
+
+            });
+
+
+            uploaded = 0;
+
+            Object.keys(window.__partProgress).forEach(function(key){
+
+                uploaded +=
+                    Number(window.__partProgress[key]) || 0;
+
+            });
+
+            uploaded =
+                Math.min(uploaded,file.size);
+
+            const elapsed =
+                (Date.now() - startedAt) / 1000;
+
+            const speed =
+                elapsed > 0
+                ? uploaded / elapsed
+                : 0;
+
+            const remaining =
+                speed > 0
+                ? (file.size - uploaded) / speed
+                : Infinity;
+
+            const percent =
+                file.size > 0
+                ? (uploaded / file.size) * 100
+                : 0;
+
+            setProgress(
+                percent,
+                uploaded,
+                file.size,
+                speed,
+                remaining
+            );
+
+        },200);
+
+
+    try{
+
+        const workers = [];
+
+        for(let i = 0; i < Math.min(PARALLEL,totalParts); i++){
+            workers.push(worker());
+        }
+
+        await Promise.all(workers);
+
+    }
+    finally{
+
+        clearInterval(progressTimer);
+
+    }
+
+
+    if(cancelled){
+        throw new Error("Upload cancelled.");
+    }
+
+
+    setProgress(
+        100,
+        file.size,
+        file.size,
+        0,
+        0
+    );
+
+    uploadStatus.textContent =
+        "100% complete • Finalizing R2 object...";
+
+
+    const completed =
+        await completeMultipart(
+            currentUploadKey,
+            currentUploadId,
+            completedParts
+        );
+
+
+    if(!completed.url && !completed.public_url){
+        /*
+         * Backend completion successful है तो URL होना चाहिए.
+         * लेकिन DB save के लिए key भी usable है.
+         */
+    }
+
+
+    const finalKey = currentUploadKey;
+
+    currentUploadId = null;
+    currentUploadKey = null;
+
+    return {
+        key:finalKey,
+        url:
+            completed.url ||
+            completed.public_url ||
+            ""
+    };
+
+}
+
+
+function validateFiles(){
+
+    const video =
+        videoInput.files[0];
+
+    const poster =
+        posterInput.files[0];
+
+
+    if(!video){
+        throw new Error("Video select करो.");
+    }
+
+
+    const videoName =
+        video.name.toLowerCase();
+
+    const videoExt =
+        videoName.split(".").pop();
+
+
+    if(!["mp4","mkv","webm","mov"].includes(videoExt)){
+        throw new Error(
+            "Video केवल MP4, MKV, WebM या MOV होनी चाहिए."
+        );
+    }
+
+
+    if(video.size > MAX_VIDEO_SIZE){
+        throw new Error(
+            "Video maximum 4 GB तक हो सकती है."
+        );
+    }
+
+
+    if(poster){
+
+        const posterName =
+            poster.name.toLowerCase();
+
+        const posterExt =
+            posterName.split(".").pop();
+
+        if(!["jpg","jpeg","png","webp"].includes(posterExt)){
+            throw new Error(
+                "Poster केवल JPG, JPEG, PNG या WEBP होना चाहिए."
+            );
+        }
+
+    }
+
+}
+
+
+videoInput.addEventListener("change",function(){
+
+    const file = videoInput.files[0];
+
+    if(!file){
+        videoInfo.textContent =
+            "MP4 / MKV / WebM / MOV — Maximum 4 GB";
+        return;
+    }
+
+    videoInfo.textContent =
+        file.name + " • " + formatBytes(file.size);
+
+});
+
+
+posterInput.addEventListener("change",function(){
+
+    const file = posterInput.files[0];
+
+    if(!file){
+        posterInfo.textContent =
+            "JPG / JPEG / PNG / WEBP";
+        return;
+    }
+
+    posterInfo.textContent =
+        file.name + " • " + formatBytes(file.size);
+
+});
+
+
+cancelBtn.addEventListener("click",async function(){
+
+    cancelled = true;
+
+    activeXHRs.forEach(function(xhr){
+
+        try{
+            xhr.abort();
+        }
+        catch(e){}
+
+    });
+
+    activeXHRs = [];
+
+    uploadStatus.textContent =
+        "Cancelling...";
+
+    if(currentUploadKey && currentUploadId){
+
+        await abortMultipart(
+            currentUploadKey,
+            currentUploadId
+        );
+
+    }
+
+    currentUploadId = null;
+    currentUploadKey = null;
+
+    uploadBox.style.display = "none";
+
+    uploadBtn.disabled = false;
+
+    setStatus(
+        "Upload cancel कर दिया गया.",
+        "error"
+    );
+
+});
+
+
+form.addEventListener("submit",async function(event){
+
+    event.preventDefault();
+
+
+    if(uploadBtn.disabled){
+        return;
+    }
+
+
+    try{
+
+        validateFiles();
+
+        const title =
+            document.getElementById("title").value.trim();
+
+        const category =
+            document.getElementById("category").value.trim();
+
+        const description =
+            document.getElementById("description").value.trim();
+
+        const video =
+            videoInput.files[0];
+
+
+        if(!title){
+            throw new Error("Movie title डालो.");
+        }
+
+        if(!category){
+            throw new Error("Category डालो.");
+        }
+
+
+        cancelled = false;
+
+        uploadBtn.disabled = true;
+
+        uploadBox.style.display = "block";
+
+        statusBox.style.display = "none";
+
+        setStatus(
+            "Video upload शुरू हो रही है...",
+            "info"
+        );
+
+
+        setProgress(
+            0,
+            0,
+            video.size,
+            0,
+            Infinity
+        );
+
+
+        /*
+         * VIDEO DIRECT R2
+         */
+        const videoResult =
+            await uploadVideo(video);
+
+
+        if(cancelled){
+            throw new Error("Upload cancelled.");
+        }
+
+
+        setStatus(
+            "Video R2 में successfully complete हो गई. Movie save हो रही है...",
+            "info"
+        );
+
+
+        /*
+         * IMPORTANT:
+         * Current app.py में /api/r2/multipart/create केवल VIDEO
+         * accept करता है.
+         *
+         * इसलिए poster अभी optional रखा गया है.
+         *
+         * Poster खाली होने पर movie save हो जाएगी.
+         */
+
+
+        let posterUrl = "";
+
+
+        if(posterInput.files[0]){
+
+            setStatus(
+                "Video upload complete है. Poster को current backend के compatible तरीके से save करने के लिए movie save किया जा रहा है.",
+                "info"
+            );
+
+        }
+
+
+        /*
+         * SAVE MOVIE
+         */
+        const saveData =
+            await jsonFetch(
+                "/api/movie/save",
+                {
+                    method:"POST",
+                    headers:{
+                        "Content-Type":"application/json"
+                    },
+                    body:JSON.stringify({
+                        title:title,
+                        category:category,
+                        description:description,
+                        video:videoResult.url || videoResult.key,
+                        video_url:videoResult.url || "",
+                        video_key:videoResult.key,
+                        poster:posterUrl,
+                        poster_url:posterUrl
+                    })
+                }
+            );
+
+
+        setProgress(
+            100,
+            video.size,
+            video.size,
+            0,
+            0
+        );
+
+
+        setStatus(
+            saveData.message ||
+            "Movie successfully save हो गई.",
+            "success"
+        );
+
+
+        uploadStatus.textContent =
+            "✅ Movie saved successfully";
+
+
+        setTimeout(function(){
+
+            window.location.href =
+                "{{ url_for('admin') }}";
+
+        },1200);
+
+
+    }
+    catch(error){
+
+        console.error(error);
+
+        if(currentUploadKey && currentUploadId){
+
+            await abortMultipart(
+                currentUploadKey,
+                currentUploadId
+            );
+
+        }
+
+        currentUploadId = null;
+        currentUploadKey = null;
+
+
+        uploadBox.style.display = "none";
+
+        uploadBtn.disabled = false;
+
+
+        setStatus(
+            "❌ " + (error.message || "Upload failed."),
+            "error"
+        );
+
+    }
+
+});
+
+
+})();
+</script>
+
+{% endblock %}
