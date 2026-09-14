@@ -36,7 +36,6 @@ app.secret_key = (
     or secrets.token_hex(32)
 )
 
-# Maximum request size: 4 GB
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
 
@@ -82,19 +81,12 @@ MAX_POSTER_SIZE = 25 * 1024 * 1024
 
 
 # ============================================================
-# CLOUDFLARE R2 SETTINGS
+# R2 SETTINGS
 # ============================================================
 
-# 10 MB per multipart part
 PART_SIZE = 10 * 1024 * 1024
-
-# Browser upload concurrency
 PARALLEL_PARTS = 3
-
-# Presigned URL validity
 PRESIGNED_EXPIRES = 3600
-
-# S3/R2 maximum multipart parts
 MAX_MULTIPART_PARTS = 10000
 
 VIDEO_PREFIX = "videos/"
@@ -106,6 +98,7 @@ POSTER_PREFIX = "posters/"
 # ============================================================
 
 def clean_env_value(value):
+
     if value is None:
         return ""
 
@@ -116,6 +109,7 @@ def clean_env_value(value):
     value = value.strip()
 
     if len(value) >= 2:
+
         if (
             value.startswith('"')
             and value.endswith('"')
@@ -123,6 +117,7 @@ def clean_env_value(value):
             value.startswith("'")
             and value.endswith("'")
         ):
+
             value = value[1:-1].strip()
 
     value = value.replace("\r", "")
@@ -133,6 +128,7 @@ def clean_env_value(value):
 
 
 def clean_endpoint(value):
+
     value = clean_env_value(value)
 
     if not value:
@@ -152,6 +148,7 @@ def clean_endpoint(value):
     if value.lower().endswith(
         suffix.lower()
     ):
+
         value = value[
             :-len(suffix)
         ]
@@ -214,6 +211,7 @@ R2_PUBLIC_URL = clean_env_value(
 # ============================================================
 
 def json_ok(**kwargs):
+
     data = {
         "ok": True
     }
@@ -228,6 +226,7 @@ def json_error(
     status=400,
     **kwargs
 ):
+
     data = {
         "ok": False,
         "error": str(message)
@@ -243,6 +242,7 @@ def json_error(
 # ============================================================
 
 def get_extension(filename):
+
     if not filename:
         return ""
 
@@ -260,6 +260,7 @@ def get_extension(filename):
 
 
 def allowed_video(filename):
+
     return (
         get_extension(filename)
         in ALLOWED_VIDEOS
@@ -267,6 +268,7 @@ def allowed_video(filename):
 
 
 def allowed_poster(filename):
+
     return (
         get_extension(filename)
         in ALLOWED_POSTERS
@@ -274,6 +276,7 @@ def allowed_poster(filename):
 
 
 def safe_filename(filename):
+
     original = secure_filename(
         filename or "file"
     )
@@ -283,6 +286,7 @@ def safe_filename(filename):
     )
 
     if ext:
+
         return (
             secrets.token_hex(16)
             + "."
@@ -297,6 +301,7 @@ def safe_filename(filename):
 # ============================================================
 
 def content_type_for_key(key):
+
     key = str(
         key or ""
     ).strip()
@@ -345,6 +350,7 @@ def validate_r2_key(
     key,
     allowed_prefixes=None
 ):
+
     if not key:
         raise ValueError(
             "R2 object key is required."
@@ -370,10 +376,12 @@ def validate_r2_key(
         )
 
     if allowed_prefixes:
+
         if not any(
             key.startswith(prefix)
             for prefix in allowed_prefixes
         ):
+
             raise ValueError(
                 "Invalid R2 object key prefix."
             )
@@ -388,11 +396,13 @@ def validate_r2_key(
 def get_db(dict_rows=False):
 
     if not DATABASE_URL:
+
         raise RuntimeError(
             "DATABASE_URL environment variable is missing."
         )
 
     if dict_rows:
+
         return psycopg2.connect(
             DATABASE_URL,
             sslmode="require",
@@ -410,6 +420,7 @@ def init_db():
     conn = get_db()
 
     try:
+
         cur = conn.cursor()
 
         cur.execute(
@@ -441,6 +452,7 @@ def init_db():
         cur.close()
 
     finally:
+
         conn.close()
 
 
@@ -458,6 +470,7 @@ def get_setting(
     )
 
     try:
+
         cur = conn.cursor()
 
         cur.execute(
@@ -479,6 +492,7 @@ def get_setting(
         return default
 
     finally:
+
         conn.close()
 
 
@@ -490,6 +504,7 @@ def set_setting(
     conn = get_db()
 
     try:
+
         cur = conn.cursor()
 
         cur.execute(
@@ -519,6 +534,7 @@ def set_setting(
         cur.close()
 
     finally:
+
         conn.close()
 
 
@@ -547,16 +563,19 @@ def get_ads():
 def get_r2_client():
 
     if not R2_ENDPOINT:
+
         raise RuntimeError(
             "R2_ENDPOINT is missing."
         )
 
     if not R2_ACCESS_KEY_ID:
+
         raise RuntimeError(
             "R2_ACCESS_KEY_ID is missing."
         )
 
     if not R2_SECRET_ACCESS_KEY:
+
         raise RuntimeError(
             "R2_SECRET_ACCESS_KEY is missing."
         )
@@ -597,9 +616,11 @@ def r2_public_url(key):
         key.startswith("http://")
         or key.startswith("https://")
     ):
+
         return key
 
     if not R2_PUBLIC_URL:
+
         raise RuntimeError(
             "R2_PUBLIC_URL is missing."
         )
@@ -629,6 +650,7 @@ def media_url(value):
         value.startswith("http://")
         or value.startswith("https://")
     ):
+
         return value
 
     return r2_public_url(value)
@@ -650,6 +672,7 @@ def r2_presigned_url(
         key.startswith("http://")
         or key.startswith("https://")
     ):
+
         return key
 
     client = get_r2_client()
@@ -703,6 +726,7 @@ def admin_required(view):
         if not session.get(
             "admin_logged_in"
         ):
+
             return redirect(
                 url_for("login")
             )
@@ -717,16 +741,6 @@ def admin_required(view):
 
 # ============================================================
 # HOME
-#
-# IMPORTANT:
-# Endpoint is "home".
-#
-# index.html currently uses:
-#     url_for('home')
-#
-# We also create an "index" alias below
-# so old templates using url_for('index')
-# continue working.
 # ============================================================
 
 @app.route("/")
@@ -753,6 +767,7 @@ def home():
         cur.close()
 
     finally:
+
         conn.close()
 
     for movie in movies:
@@ -781,11 +796,6 @@ def home():
 
 # ============================================================
 # HOME ALIAS
-#
-# Allows old templates:
-#     url_for('index')
-#
-# to point to "/".
 # ============================================================
 
 app.add_url_rule(
@@ -844,43 +854,26 @@ def movie_page(movie_id):
         cur.close()
 
     finally:
+
         conn.close()
 
     video_key = movie.get("video")
     poster_key = movie.get("poster")
 
-    # --------------------------------------------------------
-    # VIDEO
-    # --------------------------------------------------------
-
+    # IMPORTANT:
+    # Browser will use our own streaming endpoint.
+    # That endpoint supports HTTP Range requests.
     if video_key:
 
-        try:
+        movie["video_url"] = url_for(
+            "stream_movie",
+            movie_id=movie_id
+        )
 
-            movie["video_url"] = r2_presigned_url(
-                video_key,
-                expires=3600
+        movie["video_mime"] = (
+            content_type_for_key(
+                video_key
             )
-
-        except Exception as e:
-
-            print(
-                "VIDEO PRESIGNED URL ERROR:",
-                repr(e)
-            )
-
-            try:
-
-                movie["video_url"] = media_url(
-                    video_key
-                )
-
-            except Exception:
-
-                movie["video_url"] = None
-
-        movie["video_mime"] = content_type_for_key(
-            video_key
         )
 
     else:
@@ -888,10 +881,7 @@ def movie_page(movie_id):
         movie["video_url"] = None
         movie["video_mime"] = "video/mp4"
 
-    # --------------------------------------------------------
-    # POSTER
-    # --------------------------------------------------------
-
+    # Poster remains direct R2 URL.
     if poster_key:
 
         try:
@@ -922,6 +912,375 @@ def movie_page(movie_id):
         movie=movie,
         ads=get_ads()
     )
+
+
+# ============================================================
+# VIDEO STREAMING WITH HTTP RANGE SUPPORT
+# ============================================================
+
+@app.route(
+    "/stream/<int:movie_id>"
+)
+def stream_movie(movie_id):
+
+    conn = get_db(
+        dict_rows=True
+    )
+
+    try:
+
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT
+                id,
+                video,
+                title
+            FROM movies
+            WHERE id = %s
+            """,
+            (movie_id,)
+        )
+
+        movie = cur.fetchone()
+
+        cur.close()
+
+    finally:
+
+        conn.close()
+
+    if not movie:
+
+        abort(404)
+
+    video_key = str(
+        movie.get("video") or ""
+    ).strip()
+
+    if not video_key:
+
+        abort(404)
+
+    try:
+
+        video_key = validate_r2_key(
+            video_key,
+            [
+                VIDEO_PREFIX
+            ]
+        )
+
+    except Exception:
+
+        abort(404)
+
+    try:
+
+        client = get_r2_client()
+
+        # Get object metadata first.
+        head = client.head_object(
+            Bucket=R2_BUCKET,
+            Key=video_key
+        )
+
+        total_size = int(
+            head.get(
+                "ContentLength",
+                0
+            ) or 0
+        )
+
+        if total_size <= 0:
+
+            abort(404)
+
+        content_type = (
+            head.get("ContentType")
+            or content_type_for_key(
+                video_key
+            )
+        )
+
+        range_header = request.headers.get(
+            "Range"
+        )
+
+        # ----------------------------------------------------
+        # NO RANGE
+        # ----------------------------------------------------
+
+        if not range_header:
+
+            r2_object = client.get_object(
+                Bucket=R2_BUCKET,
+                Key=video_key
+            )
+
+            body = r2_object["Body"]
+
+            def generate_full():
+
+                try:
+
+                    while True:
+
+                        chunk = body.read(
+                            1024 * 1024
+                        )
+
+                        if not chunk:
+                            break
+
+                        yield chunk
+
+                finally:
+
+                    try:
+                        body.close()
+                    except Exception:
+                        pass
+
+            response = Response(
+                generate_full(),
+                status=200,
+                mimetype=content_type
+            )
+
+            response.headers["Accept-Ranges"] = "bytes"
+            response.headers["Content-Length"] = str(
+                total_size
+            )
+            response.headers["Cache-Control"] = (
+                "public, max-age=3600"
+            )
+
+            return response
+
+        # ----------------------------------------------------
+        # RANGE REQUEST
+        # ----------------------------------------------------
+
+        if not range_header.startswith("bytes="):
+
+            return Response(
+                "Invalid Range",
+                status=416
+            )
+
+        range_value = range_header[
+            6:
+        ].split(",", 1)[0].strip()
+
+        if "-" not in range_value:
+
+            return Response(
+                "Invalid Range",
+                status=416
+            )
+
+        start_text, end_text = (
+            range_value.split(
+                "-",
+                1
+            )
+        )
+
+        # bytes=-500000
+        if start_text == "":
+
+            try:
+
+                suffix_length = int(
+                    end_text
+                )
+
+            except Exception:
+
+                return Response(
+                    "Invalid Range",
+                    status=416
+                )
+
+            if suffix_length <= 0:
+
+                return Response(
+                    "Invalid Range",
+                    status=416
+                )
+
+            if suffix_length > total_size:
+
+                suffix_length = total_size
+
+            start = (
+                total_size
+                - suffix_length
+            )
+
+            end = total_size - 1
+
+        else:
+
+            try:
+
+                start = int(
+                    start_text
+                )
+
+            except Exception:
+
+                return Response(
+                    "Invalid Range",
+                    status=416
+                )
+
+            if start < 0:
+
+                return Response(
+                    "Invalid Range",
+                    status=416
+                )
+
+            if start >= total_size:
+
+                response = Response(
+                    status=416
+                )
+
+                response.headers[
+                    "Content-Range"
+                ] = (
+                    "bytes */"
+                    + str(total_size)
+                )
+
+                return response
+
+            if end_text == "":
+
+                end = total_size - 1
+
+            else:
+
+                try:
+
+                    end = int(
+                        end_text
+                    )
+
+                except Exception:
+
+                    return Response(
+                        "Invalid Range",
+                        status=416
+                    )
+
+                if end < start:
+
+                    return Response(
+                        "Invalid Range",
+                        status=416
+                    )
+
+                if end >= total_size:
+
+                    end = total_size - 1
+
+        content_length = (
+            end
+            - start
+            + 1
+        )
+
+        r2_object = client.get_object(
+            Bucket=R2_BUCKET,
+            Key=video_key,
+            Range=(
+                "bytes="
+                + str(start)
+                + "-"
+                + str(end)
+            )
+        )
+
+        body = r2_object["Body"]
+
+        def generate_range():
+
+            remaining = content_length
+
+            try:
+
+                while remaining > 0:
+
+                    chunk_size = min(
+                        1024 * 1024,
+                        remaining
+                    )
+
+                    chunk = body.read(
+                        chunk_size
+                    )
+
+                    if not chunk:
+                        break
+
+                    remaining -= len(
+                        chunk
+                    )
+
+                    yield chunk
+
+            finally:
+
+                try:
+                    body.close()
+                except Exception:
+                    pass
+
+        response = Response(
+            generate_range(),
+            status=206,
+            mimetype=content_type
+        )
+
+        response.headers["Accept-Ranges"] = "bytes"
+
+        response.headers["Content-Range"] = (
+            "bytes "
+            + str(start)
+            + "-"
+            + str(end)
+            + "/"
+            + str(total_size)
+        )
+
+        response.headers["Content-Length"] = str(
+            content_length
+        )
+
+        response.headers["Cache-Control"] = (
+            "public, max-age=3600"
+        )
+
+        return response
+
+    except Exception as e:
+
+        print(
+            "VIDEO STREAM ERROR:",
+            repr(e)
+        )
+
+        return Response(
+            "Video streaming failed: "
+            + str(e),
+            status=500,
+            mimetype="text/plain"
+        )
 
 
 # ============================================================
@@ -1013,6 +1372,7 @@ def admin():
         cur.close()
 
     finally:
+
         conn.close()
 
     for movie in movies:
@@ -1218,6 +1578,7 @@ def admin_add():
             cur.close()
 
         finally:
+
             conn.close()
 
         flash(
@@ -1339,7 +1700,7 @@ def api_r2_multipart_create():
 
 
 # ============================================================
-# R2 MULTIPART PRESIGNED URLS
+# R2 MULTIPART URLS
 # ============================================================
 
 @app.route(
@@ -1455,13 +1816,6 @@ def api_r2_multipart_urls():
                 ExpiresIn=PRESIGNED_EXPIRES,
                 HttpMethod="PUT"
             )
-
-            if not presigned_url:
-
-                raise RuntimeError(
-                    "Presigned URL empty for part "
-                    + str(part_number)
-                )
 
             urls.append(
                 {
@@ -1815,7 +2169,7 @@ def api_r2_delete():
 
 
 # ============================================================
-# SAVE MOVIE AFTER R2 UPLOAD
+# SAVE MOVIE
 # ============================================================
 
 @app.route(
@@ -1950,6 +2304,7 @@ def api_movie_save():
             cur.close()
 
         finally:
+
             conn.close()
 
         return json_ok(
@@ -1957,9 +2312,9 @@ def api_movie_save():
             title=title,
             video=video,
             poster=poster or None,
-            video_url=r2_presigned_url(
-                video,
-                expires=3600
+            video_url=url_for(
+                "stream_movie",
+                movie_id=movie_id
             )
         )
 
@@ -2046,6 +2401,7 @@ def admin_delete_movie(
         cur.close()
 
     finally:
+
         conn.close()
 
     if video_key:
@@ -2341,13 +2697,22 @@ def page_not_found(error):
         """
         <!doctype html>
         <html lang="hi">
+
         <head>
+
             <meta charset="utf-8">
-            <meta name="viewport"
-                  content="width=device-width,initial-scale=1">
-            <title>Tomesh Movies - Page Not Found</title>
+
+            <meta
+                name="viewport"
+                content="width=device-width,initial-scale=1"
+            >
+
+            <title>
+                Tomesh Movies - Page Not Found
+            </title>
 
             <style>
+
                 body{
                     margin:0;
                     min-height:100vh;
@@ -2388,7 +2753,9 @@ def page_not_found(error):
                     text-decoration:none;
                     font-weight:700;
                 }
+
             </style>
+
         </head>
 
         <body>
@@ -2408,6 +2775,7 @@ def page_not_found(error):
             </div>
 
         </body>
+
         </html>
         """,
         404
@@ -2435,8 +2803,10 @@ def internal_server_error(error):
 
             <meta charset="utf-8">
 
-            <meta name="viewport"
-                  content="width=device-width,initial-scale=1">
+            <meta
+                name="viewport"
+                content="width=device-width,initial-scale=1"
+            >
 
             <title>
                 Tomesh Movies - Server Error
