@@ -9,20 +9,14 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 <div class="tm-layout">
 
 ```
-<!-- =====================================================
-     MOBILE SIDEBAR OVERLAY
-====================================================== -->
+<!-- MOBILE SIDEBAR OVERLAY -->
 <div class="tm-sidebar-overlay" id="tmSidebarOverlay"></div>
 
-
-<!-- =====================================================
-     SIDEBAR
-====================================================== -->
+<!-- SIDEBAR -->
 <aside class="tm-sidebar" id="tmSidebar">
 
     <div class="tm-brand">
-        <a href="{{ url_for('home') }}" class="tm-brand-link">
-
+        <a href="{{ url_for('index') }}" class="tm-brand-link">
             <div class="tm-logo">
                 <span class="tm-logo-t">T</span>
                 <span class="tm-logo-m">M</span>
@@ -33,16 +27,14 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                 <strong>TOMESH</strong>
                 <span>MOVIES</span>
             </div>
-
         </a>
     </div>
-
 
     <div class="tm-side-title">DISCOVER</div>
 
     <nav class="tm-nav">
 
-        <a href="{{ url_for('home') }}" class="tm-nav-link active">
+        <a href="{{ url_for('index') }}" class="tm-nav-link active">
             <span>⌂</span>
             <strong>Home</strong>
         </a>
@@ -69,29 +61,23 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     </nav>
 
-
     <div class="tm-side-title tm-admin-title">
         MANAGEMENT
     </div>
 
     <nav class="tm-nav">
-
         <a href="{{ url_for('admin') }}" class="tm-nav-link tm-admin-link">
             <span>⚙</span>
             <strong>Admin Panel</strong>
         </a>
-
     </nav>
-
 
     <div class="tm-side-bottom">
 
         <div class="tm-socials">
-
             <a href="#" aria-label="YouTube">▶</a>
             <a href="#" aria-label="Instagram">◎</a>
             <a href="#" aria-label="Telegram">✈</a>
-
         </div>
 
         <a href="#" class="tm-small-link">About</a>
@@ -106,16 +92,10 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
 </aside>
 
-
-<!-- =====================================================
-     MAIN
-====================================================== -->
+<!-- MAIN -->
 <main class="tm-main">
 
-
-    <!-- =================================================
-         MOBILE TOP BAR
-    ================================================== -->
+    <!-- MOBILE TOP BAR -->
     <div class="tm-mobile-bar">
 
         <button
@@ -127,7 +107,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
             ☰
         </button>
 
-        <a href="{{ url_for('home') }}" class="tm-mobile-logo">
+        <a href="{{ url_for('index') }}" class="tm-mobile-logo">
             <span>T</span>MOVIES
         </a>
 
@@ -137,25 +117,19 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     </div>
 
-
-    <!-- =================================================
-         TOP BAR
-    ================================================== -->
+    <!-- TOP BAR -->
     <header class="tm-topbar">
 
         <div class="tm-top-welcome">
-
             <span>WELCOME BACK</span>
 
             <strong>
                 Your cinematic world starts here.
             </strong>
-
         </div>
 
-
         <form
-            action="{{ url_for('home') }}"
+            action="{{ url_for('index') }}"
             method="get"
             class="tm-search"
         >
@@ -176,11 +150,11 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
         </form>
 
-
         <div class="tm-top-actions">
 
             <div class="tm-top-admin">
                 <span class="tm-top-admin-icon">♛</span>
+
                 <div>
                     <small>PREMIUM</small>
                     <strong>TOMESH</strong>
@@ -191,10 +165,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     </header>
 
-
-    <!-- =================================================
-         TOP AD
-    ================================================== -->
+    <!-- TOP AD -->
     {% if ads and ads.ad_top %}
 
     <div class="tm-ad-box">
@@ -203,10 +174,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     {% endif %}
 
-
-    <!-- =================================================
-         CINEMATIC HERO
-    ================================================== -->
+    <!-- HERO -->
     <section class="tm-hero" id="home">
 
         <div class="tm-hero-bg"></div>
@@ -243,7 +211,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                 explore करें और cinematic experience का मज़ा लें।
             </p>
 
-
             <div class="tm-hero-buttons">
 
                 <a href="#movies" class="tm-btn tm-btn-gold">
@@ -257,7 +224,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                 </a>
 
             </div>
-
 
             <div class="tm-hero-meta">
 
@@ -284,10 +250,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
         </div>
 
-
-        <!-- =============================================
-             HERO ART
-        ============================================== -->
+        <!-- HERO ART -->
         <div class="tm-hero-art">
 
             <div class="tm-art-glow"></div>
@@ -296,29 +259,20 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
             <div class="tm-hero-ring ring-two"></div>
             <div class="tm-hero-ring ring-three"></div>
 
-
-            <!-- Film Reel -->
             <div class="tm-reel">
-
                 <div></div>
                 <div></div>
                 <div></div>
                 <div></div>
                 <div></div>
                 <div></div>
-
                 <span>▶</span>
-
             </div>
 
-
-            <!-- Popcorn -->
             <div class="tm-popcorn">
                 🍿
             </div>
 
-
-            <!-- Clapper -->
             <div class="tm-clapper">
 
                 <div class="clapper-top">
@@ -334,18 +288,12 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
             </div>
 
-
-            <!-- Play Orb -->
             <div class="tm-play-orb">
-
                 <div class="tm-play-inner">
                     ▶
                 </div>
-
             </div>
 
-
-            <!-- Floating Film -->
             <div class="tm-film film-one">
                 🎞
             </div>
@@ -353,7 +301,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
             <div class="tm-film film-two">
                 🎬
             </div>
-
 
             <div class="tm-hero-dots">
                 <span></span>
@@ -367,65 +314,48 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     </section>
 
-
-    <!-- =================================================
-         BENEFITS
-    ================================================== -->
+    <!-- BENEFITS -->
     <section class="tm-benefits">
 
         <div class="tm-benefit">
-
             <span>🎬</span>
 
             <div>
                 <strong>Premium Collection</strong>
                 <small>Hand-picked entertainment</small>
             </div>
-
         </div>
 
-
         <div class="tm-benefit">
-
             <span>⚡</span>
 
             <div>
                 <strong>Fast Experience</strong>
                 <small>Simple & smooth browsing</small>
             </div>
-
         </div>
 
-
         <div class="tm-benefit">
-
             <span>☁</span>
 
             <div>
                 <strong>Cloud Powered</strong>
                 <small>Reliable media delivery</small>
             </div>
-
         </div>
 
-
         <div class="tm-benefit">
-
             <span>📱</span>
 
             <div>
                 <strong>Mobile Ready</strong>
                 <small>Watch on any screen</small>
             </div>
-
         </div>
 
     </section>
 
-
-    <!-- =================================================
-         CATEGORIES
-    ================================================== -->
+    <!-- CATEGORIES -->
     <section class="tm-section" id="categories">
 
         <div class="tm-section-heading">
@@ -446,7 +376,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
         </div>
 
-
         <div class="tm-genres">
 
             {% if categories %}
@@ -454,7 +383,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                 {% for category in categories %}
 
                 <a
-                    href="{{ url_for('home', category=category) }}"
+                    href="{{ url_for('index', category=category) }}"
                     class="tm-genre"
                 >
 
@@ -498,16 +427,12 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     </section>
 
-
-    <!-- =================================================
-         LATEST MOVIES
-    ================================================== -->
+    <!-- MOVIES -->
     <section class="tm-section" id="movies">
 
         <div class="tm-section-heading">
 
             <div>
-
                 <span class="tm-kicker">
                     LATEST RELEASES
                 </span>
@@ -515,7 +440,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                 <h2>
                     Latest Movies
                 </h2>
-
             </div>
 
             <span class="tm-count">
@@ -523,7 +447,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
             </span>
 
         </div>
-
 
         {% if movies %}
 
@@ -560,7 +483,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                     </span>
 
                 </a>
-
 
                 <div class="tm-movie-info">
 
@@ -618,10 +540,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     </section>
 
-
-    <!-- =================================================
-         TRENDING
-    ================================================== -->
+    <!-- TRENDING -->
     {% if movies %}
 
     <section class="tm-section" id="trending">
@@ -629,7 +548,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
         <div class="tm-section-heading">
 
             <div>
-
                 <span class="tm-kicker">
                     HOT RIGHT NOW
                 </span>
@@ -637,7 +555,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
                 <h2>
                     Trending Movies
                 </h2>
-
             </div>
 
             <span class="tm-live">
@@ -646,7 +563,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
             </span>
 
         </div>
-
 
         <div class="tm-trending-grid">
 
@@ -708,10 +624,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     {% endif %}
 
-
-    <!-- =================================================
-         FEATURED CINEMA
-    ================================================== -->
+    <!-- FEATURED -->
     <section class="tm-section" id="featured">
 
         <div class="tm-featured">
@@ -741,7 +654,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
             </div>
 
-
             <div class="tm-featured-art">
 
                 <div class="tm-featured-ring"></div>
@@ -760,10 +672,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     </section>
 
-
-    <!-- =================================================
-         TV SHOWS / COMING SOON
-    ================================================== -->
+    <!-- COMING SOON -->
     <section class="tm-section">
 
         <div class="tm-shows-box">
@@ -797,10 +706,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     </section>
 
-
-    <!-- =================================================
-         BOTTOM AD
-    ================================================== -->
+    <!-- BOTTOM AD -->
     {% if ads and ads.ad_bottom %}
 
     <div class="tm-ad-box tm-bottom-ad">
@@ -809,10 +715,7 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
     {% endif %}
 
-
-    <!-- =================================================
-         FOOTER
-    ================================================== -->
+    <!-- FOOTER -->
     <footer class="tm-footer">
 
         <div class="tm-footer-brand">
@@ -836,10 +739,9 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
         </div>
 
-
         <div class="tm-footer-links">
 
-            <a href="{{ url_for('home') }}">
+            <a href="{{ url_for('index') }}">
                 Home
             </a>
 
@@ -865,7 +767,6 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
         </div>
 
-
         <div class="tm-footer-copy">
 
             © {{ current_year if current_year else 2026 }}
@@ -881,64 +782,52 @@ Tomesh Movies — हर कहानी, एक नया अनुभव
 
 </div>
 
-<!-- =========================================================
-     MOBILE MENU SCRIPT
-========================================================== -->
+<!-- MOBILE MENU SCRIPT -->
 
 <script>
 
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener("DOMContentLoaded", function () {
 
     const menuBtn = document.getElementById("tmMenuBtn");
     const sidebar = document.getElementById("tmSidebar");
     const overlay = document.getElementById("tmSidebarOverlay");
 
-    if(menuBtn && sidebar && overlay){
+    if (menuBtn && sidebar && overlay) {
 
-        menuBtn.addEventListener("click", function(){
-
+        menuBtn.addEventListener("click", function () {
             sidebar.classList.toggle("open");
             overlay.classList.toggle("open");
-
         });
 
-
-        overlay.addEventListener("click", function(){
-
+        overlay.addEventListener("click", function () {
             sidebar.classList.remove("open");
             overlay.classList.remove("open");
-
         });
 
+        document.querySelectorAll(".tm-nav-link").forEach(function (link) {
 
-        document.querySelectorAll(".tm-nav-link").forEach(function(link){
-
-            link.addEventListener("click", function(){
-
+            link.addEventListener("click", function () {
                 sidebar.classList.remove("open");
                 overlay.classList.remove("open");
-
             });
 
         });
 
     }
 
+    document.querySelectorAll('a[href^="#"]').forEach(function (link) {
 
-    /* Smooth anchor scrolling */
-    document.querySelectorAll('a[href^="#"]').forEach(function(link){
-
-        link.addEventListener("click", function(e){
+        link.addEventListener("click", function (e) {
 
             const targetId = this.getAttribute("href");
 
-            if(!targetId || targetId === "#"){
+            if (!targetId || targetId === "#") {
                 return;
             }
 
             const target = document.querySelector(targetId);
 
-            if(target){
+            if (target) {
 
                 e.preventDefault();
 
@@ -953,14 +842,12 @@ document.addEventListener("DOMContentLoaded", function(){
 
     });
 
-
-    /* Subtle mouse movement on desktop hero */
     const hero = document.querySelector(".tm-hero");
     const heroArt = document.querySelector(".tm-hero-art");
 
-    if(hero && heroArt && window.innerWidth > 1000){
+    if (hero && heroArt && window.innerWidth > 1000) {
 
-        hero.addEventListener("mousemove", function(e){
+        hero.addEventListener("mousemove", function (e) {
 
             const rect = hero.getBoundingClientRect();
 
@@ -976,11 +863,8 @@ document.addEventListener("DOMContentLoaded", function(){
 
         });
 
-
-        hero.addEventListener("mouseleave", function(){
-
+        hero.addEventListener("mouseleave", function () {
             heroArt.style.transform = "";
-
         });
 
     }
