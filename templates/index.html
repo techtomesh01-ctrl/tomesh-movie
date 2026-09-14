@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 
 <title>
 {% if q %}
@@ -14,10 +14,7 @@ Tomesh Movies | Premium Streaming
 {% endif %}
 </title>
 
-<meta
-    name="description"
-    content="Tomesh Movies - Premium movie streaming experience."
->
+<meta name="description" content="Tomesh Movies - Premium movie streaming experience.">
 
 <style>
 *{
@@ -27,28 +24,42 @@ Tomesh Movies | Premium Streaming
 }
 
 :root{
-    --bg:#060607;
-    --card:#111113;
-    --gold:#f3bd32;
-    --gold2:#ffd968;
-    --text:#fff;
-    --muted:#a3a3ab;
-    --line:rgba(255,255,255,.08);
+    --bg:#050505;
+    --bg2:#090909;
+    --card:#111111;
+    --card2:#171717;
+    --gold:#f5bd32;
+    --gold2:#ffd86a;
+    --red:#e50914;
+    --white:#fff;
+    --muted:#999;
+    --muted2:#666;
+    --line:rgba(255,255,255,.09);
 }
 
 html{
     scroll-behavior:smooth;
-    background:var(--bg);
+    background:#050505;
 }
 
 body{
-    background:
-        radial-gradient(circle at 15% 0%,rgba(118,38,72,.15),transparent 25%),
-        radial-gradient(circle at 90% 10%,rgba(84,42,128,.12),transparent 25%),
-        var(--bg);
-    color:var(--text);
+    background:#050505;
+    color:#fff;
     font-family:Arial,Helvetica,sans-serif;
     overflow-x:hidden;
+}
+
+body::-webkit-scrollbar{
+    width:7px;
+}
+
+body::-webkit-scrollbar-track{
+    background:#050505;
+}
+
+body::-webkit-scrollbar-thumb{
+    background:#333;
+    border-radius:20px;
 }
 
 a{
@@ -70,30 +81,32 @@ input{
     top:0;
     left:0;
     right:0;
-    z-index:1000;
-    height:74px;
-    padding:0 5%;
+    z-index:9999;
+    height:70px;
+    padding:0 4.5%;
     display:flex;
     align-items:center;
+    gap:28px;
     background:linear-gradient(
         180deg,
-        rgba(5,5,6,.97),
-        rgba(5,5,6,.70),
+        rgba(0,0,0,.96),
+        rgba(0,0,0,.55),
         transparent
     );
-    transition:.25s ease;
+    transition:.3s ease;
 }
 
 .tm-nav.scrolled{
-    background:rgba(7,7,8,.96);
-    backdrop-filter:blur(15px);
-    border-bottom:1px solid var(--line);
+    background:rgba(5,5,5,.97);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid rgba(255,255,255,.06);
 }
 
 .tm-brand{
-    font-size:23px;
-    font-weight:900;
-    white-space:nowrap;
+    flex-shrink:0;
+    font-size:22px;
+    font-weight:950;
+    letter-spacing:-.5px;
 }
 
 .tm-brand span{
@@ -102,14 +115,15 @@ input{
 
 .tm-menu{
     display:flex;
-    gap:25px;
-    margin-left:38px;
+    align-items:center;
+    gap:24px;
 }
 
 .tm-menu a{
-    color:#c8c8cd;
+    color:#d1d1d1;
     font-size:14px;
-    font-weight:600;
+    font-weight:700;
+    transition:.2s ease;
 }
 
 .tm-menu a:hover{
@@ -120,26 +134,27 @@ input{
     margin-left:auto;
     display:flex;
     align-items:center;
-    gap:10px;
+    gap:9px;
 }
 
 /* SEARCH */
 
 .tm-search{
-    width:260px;
-    height:40px;
+    width:245px;
+    height:39px;
     display:flex;
     align-items:center;
-    gap:7px;
-    padding:0 7px 0 13px;
-    border-radius:999px;
-    background:rgba(255,255,255,.07);
-    border:1px solid rgba(255,255,255,.10);
+    gap:5px;
+    padding:0 5px 0 13px;
+    background:rgba(20,20,20,.86);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:7px;
+    transition:.25s ease;
 }
 
 .tm-search:focus-within{
-    border-color:rgba(243,189,50,.50);
-    box-shadow:0 0 0 3px rgba(243,189,50,.06);
+    border-color:rgba(255,255,255,.4);
+    background:#111;
 }
 
 .tm-search input{
@@ -154,80 +169,35 @@ input{
 }
 
 .tm-search input::placeholder{
-    color:#85858b;
+    color:#888;
 }
 
 .tm-search-btn{
     width:31px;
     height:31px;
-    flex:0 0 31px;
+    border:0;
+    border-radius:5px;
     display:grid;
     place-items:center;
-    border:0;
-    border-radius:50%;
-    background:rgba(255,255,255,.08);
+    background:transparent;
     color:#fff;
     cursor:pointer;
+    font-size:14px;
 }
 
 .tm-search-btn:hover{
-    background:var(--gold);
-    color:#111;
+    background:#292929;
 }
 
 .tm-user{
-    width:38px;
-    height:38px;
-    flex:0 0 38px;
+    width:37px;
+    height:37px;
+    border-radius:5px;
     display:grid;
     place-items:center;
-    border-radius:50%;
-    background:#161619;
-    border:1px solid var(--line);
+    background:linear-gradient(135deg,#333,#171717);
+    border:1px solid rgba(255,255,255,.12);
     color:#ddd;
-}
-
-/* =========================================================
-   SEARCH RESULT BAR
-========================================================= */
-
-.tm-search-state{
-    padding:96px 5% 14px;
-    background:linear-gradient(
-        180deg,
-        rgba(15,15,18,.98),
-        rgba(6,6,7,.96)
-    );
-    border-bottom:1px solid rgba(255,255,255,.05);
-}
-
-.tm-search-state-inner{
-    max-width:1400px;
-    margin:auto;
-}
-
-.tm-search-label{
-    color:#85858d;
-    font-size:12px;
-    font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:1px;
-}
-
-.tm-search-title{
-    margin-top:7px;
-    font-size:28px;
-    font-weight:900;
-}
-
-.tm-search-title span{
-    color:var(--gold2);
-}
-
-.tm-result-count{
-    margin-top:7px;
-    color:#8f8f97;
-    font-size:13px;
 }
 
 /* =========================================================
@@ -236,9 +206,9 @@ input{
 
 .tm-hero{
     position:relative;
-    min-height:720px;
+    min-height:730px;
     overflow:hidden;
-    background:#09090a;
+    background:#090909;
 }
 
 .tm-hero-bg{
@@ -248,143 +218,172 @@ input{
     background-size:cover;
     background-repeat:no-repeat;
     transform:scale(1.04);
-    filter:blur(2px) saturate(.9);
 }
 
-.tm-hero-blur{
+.tm-hero-bg:after{
+    content:"";
     position:absolute;
     inset:0;
     background:
         linear-gradient(
             90deg,
-            rgba(5,5,6,.99) 0%,
-            rgba(5,5,6,.90) 25%,
-            rgba(5,5,6,.54) 53%,
-            rgba(5,5,6,.20) 100%
+            #050505 0%,
+            rgba(5,5,5,.92) 22%,
+            rgba(5,5,5,.60) 48%,
+            rgba(5,5,5,.18) 75%,
+            rgba(5,5,5,.10)
         ),
         linear-gradient(
             0deg,
-            #060607 2%,
-            rgba(6,6,7,.86) 15%,
-            transparent 57%
+            #050505 0%,
+            transparent 30%,
+            rgba(0,0,0,.20) 100%
         );
 }
 
 .tm-hero-content{
     position:relative;
-    z-index:3;
-    min-height:720px;
-    padding:150px 5% 110px;
+    z-index:4;
+    min-height:730px;
+    padding:150px 5% 100px;
     display:flex;
     align-items:center;
 }
 
 .tm-hero-info{
-    width:min(640px,65%);
+    width:min(620px,62%);
 }
 
-.tm-kicker{
+.tm-featured{
     display:inline-flex;
     align-items:center;
     gap:8px;
-    padding:7px 12px;
-    border-radius:999px;
-    background:rgba(255,255,255,.07);
-    border:1px solid rgba(255,255,255,.08);
+    padding:7px 11px;
+    border-radius:5px;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.10);
     color:#ddd;
-    font-size:11px;
-    font-weight:800;
-    letter-spacing:.8px;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:1.1px;
 }
 
-.tm-dot{
+.tm-live-dot{
     width:7px;
     height:7px;
     border-radius:50%;
-    background:var(--gold);
-    box-shadow:0 0 12px rgba(243,189,50,.65);
+    background:#e50914;
+    box-shadow:0 0 12px rgba(229,9,20,.7);
 }
 
-.tm-title{
-    margin-top:20px;
-    font-size:clamp(42px,5vw,68px);
-    line-height:1;
-    letter-spacing:-1.8px;
-    font-weight:900;
+.tm-hero-title{
+    margin-top:18px;
+    font-size:clamp(44px,5.5vw,76px);
+    line-height:.98;
+    letter-spacing:-2.5px;
+    font-weight:950;
+    text-shadow:0 4px 25px rgba(0,0,0,.5);
 }
 
-.tm-meta{
-    margin-top:17px;
+.tm-hero-meta{
+    margin-top:19px;
     display:flex;
     flex-wrap:wrap;
+    align-items:center;
     gap:8px;
 }
 
-.tm-meta span{
-    padding:6px 9px;
-    border-radius:6px;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.06);
-    color:#d2d2d5;
+.tm-hero-meta span{
+    color:#d4d4d4;
     font-size:12px;
 }
 
-.tm-description{
-    margin-top:16px;
-    max-width:590px;
-    color:#bebec4;
-    font-size:14px;
-    line-height:1.7;
+.tm-meta-dot{
+    width:3px;
+    height:3px;
+    border-radius:50%;
+    background:#777;
 }
 
-.tm-actions{
-    margin-top:25px;
+.tm-hd{
+    color:#fff !important;
+    border:1px solid rgba(255,255,255,.35);
+    padding:2px 5px;
+    border-radius:3px;
+    font-size:10px !important;
+    font-weight:800;
+}
+
+.tm-hero-description{
+    margin-top:17px;
+    max-width:570px;
+    color:#c5c5c5;
+    font-size:14px;
+    line-height:1.7;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+
+.tm-hero-actions{
+    margin-top:26px;
     display:flex;
     flex-wrap:wrap;
     gap:10px;
 }
 
 .tm-btn{
-    min-height:46px;
-    padding:0 19px;
-    border-radius:9px;
+    min-height:45px;
+    padding:0 20px;
+    border-radius:5px;
     display:inline-flex;
     align-items:center;
     justify-content:center;
     gap:8px;
-    font-size:14px;
-    font-weight:800;
-    transition:.2s ease;
+    font-size:13px;
+    font-weight:900;
+    transition:.22s ease;
 }
 
 .tm-btn:hover{
     transform:translateY(-2px);
 }
 
-.tm-watch{
-    background:linear-gradient(135deg,var(--gold2),var(--gold));
+.tm-watch-btn{
+    background:#fff;
     color:#111;
 }
 
-.tm-info{
-    background:rgba(255,255,255,.08);
-    border:1px solid rgba(255,255,255,.10);
-    color:#fff;
+.tm-watch-btn:hover{
+    background:#e6e6e6;
 }
+
+.tm-info-btn{
+    background:rgba(80,80,80,.72);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.12);
+}
+
+.tm-info-btn:hover{
+    background:rgba(100,100,100,.8);
+}
+
+/* HERO POSTER */
 
 .tm-hero-poster{
     position:absolute;
-    z-index:2;
+    z-index:4;
     right:8%;
     top:50%;
-    transform:translateY(-43%);
-    width:270px;
+    transform:translateY(-44%);
+    width:255px;
     aspect-ratio:2/3;
-    border-radius:14px;
+    border-radius:9px;
     overflow:hidden;
-    border:1px solid rgba(255,255,255,.14);
-    box-shadow:0 30px 80px rgba(0,0,0,.55);
-    background:#111;
+    background:#151515;
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 30px 90px rgba(0,0,0,.65);
 }
 
 .tm-hero-poster img{
@@ -394,26 +393,28 @@ input{
     display:block;
 }
 
-.tm-poster-shade{
+.tm-hero-poster:after{
+    content:"";
     position:absolute;
     inset:0;
     background:linear-gradient(
         180deg,
-        transparent 50%,
-        rgba(0,0,0,.38)
+        transparent 55%,
+        rgba(0,0,0,.55)
     );
 }
 
-.tm-hero-rating{
+.tm-poster-badge{
     position:absolute;
-    left:14px;
-    bottom:14px;
-    z-index:4;
-    padding:7px 9px;
-    border-radius:7px;
-    background:rgba(0,0,0,.68);
-    font-size:12px;
-    font-weight:800;
+    z-index:5;
+    left:12px;
+    bottom:12px;
+    padding:6px 8px;
+    border-radius:4px;
+    background:rgba(0,0,0,.75);
+    color:#fff;
+    font-size:10px;
+    font-weight:900;
 }
 
 /* =========================================================
@@ -422,69 +423,141 @@ input{
 
 .tm-content{
     position:relative;
-    z-index:5;
-    margin-top:-35px;
+    z-index:10;
+    margin-top:-45px;
 }
 
-.tm-content.tm-search-content{
+.tm-search-content{
     margin-top:0;
 }
 
+/* =========================================================
+   SEARCH STATE
+========================================================= */
+
+.tm-search-state{
+    padding:105px 5% 30px;
+    background:
+        linear-gradient(
+            180deg,
+            #111 0%,
+            #080808 100%
+        );
+    border-bottom:1px solid rgba(255,255,255,.06);
+}
+
+.tm-search-inner{
+    max-width:1400px;
+    margin:auto;
+}
+
+.tm-search-label{
+    color:#888;
+    font-size:10px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+}
+
+.tm-search-title{
+    margin-top:8px;
+    font-size:30px;
+    font-weight:950;
+}
+
+.tm-search-title span{
+    color:var(--gold);
+}
+
+.tm-result-count{
+    margin-top:8px;
+    color:#777;
+    font-size:12px;
+}
+
+/* =========================================================
+   SECTIONS
+========================================================= */
+
 .tm-section{
-    padding:0 5% 38px;
+    padding:0 4.5% 40px;
 }
 
 .tm-section-head{
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin-bottom:15px;
+    margin-bottom:17px;
 }
 
 .tm-section-title{
-    font-size:22px;
-    font-weight:850;
+    font-size:21px;
+    font-weight:900;
+    letter-spacing:-.4px;
+}
+
+.tm-section-title:before{
+    content:"";
+    display:inline-block;
+    width:4px;
+    height:19px;
+    margin-right:9px;
+    vertical-align:-3px;
+    background:var(--gold);
+    border-radius:2px;
 }
 
 .tm-section-link{
-    color:#9999a1;
-    font-size:13px;
+    color:#999;
+    font-size:12px;
+    font-weight:700;
 }
 
 .tm-section-link:hover{
-    color:var(--gold);
+    color:#fff;
 }
 
 /* =========================================================
-   MOVIE CARDS
+   MOVIE GRID
 ========================================================= */
 
 .tm-row{
     display:grid;
     grid-template-columns:repeat(6,minmax(0,1fr));
-    gap:14px;
+    gap:13px;
 }
 
 .tm-card{
+    min-width:0;
+    position:relative;
     overflow:hidden;
-    border-radius:11px;
-    background:var(--card);
-    border:1px solid var(--line);
-    box-shadow:0 10px 30px rgba(0,0,0,.20);
-    transition:.25s ease;
+    border-radius:7px;
+    background:#111;
+    border:1px solid rgba(255,255,255,.06);
+    transition:
+        transform .25s ease,
+        box-shadow .25s ease,
+        border-color .25s ease;
 }
 
 .tm-card:hover{
-    transform:translateY(-6px);
-    border-color:rgba(243,189,50,.23);
-    box-shadow:0 18px 42px rgba(0,0,0,.40);
+    transform:scale(1.045) translateY(-5px);
+    z-index:20;
+    border-color:rgba(255,255,255,.20);
+    box-shadow:
+        0 18px 45px rgba(0,0,0,.65);
 }
 
 .tm-card-img{
     position:relative;
     aspect-ratio:2/3;
     overflow:hidden;
-    background:#17171a;
+    background:
+        linear-gradient(
+            135deg,
+            #181818,
+            #0c0c0c
+        );
 }
 
 .tm-card-img img{
@@ -496,17 +569,17 @@ input{
 }
 
 .tm-card:hover .tm-card-img img{
-    transform:scale(1.045);
+    transform:scale(1.07);
 }
 
-.tm-card-overlay{
+.tm-card-gradient{
     position:absolute;
     inset:0;
     background:
         linear-gradient(
             180deg,
-            transparent 50%,
-            rgba(0,0,0,.80)
+            transparent 48%,
+            rgba(0,0,0,.78) 100%
         );
 }
 
@@ -514,16 +587,16 @@ input{
     position:absolute;
     left:10px;
     bottom:10px;
-    width:36px;
-    height:36px;
+    width:34px;
+    height:34px;
     display:grid;
     place-items:center;
     border-radius:50%;
     background:#fff;
     color:#111;
-    font-weight:900;
+    font-size:12px;
     opacity:0;
-    transform:translateY(5px);
+    transform:translateY(7px);
     transition:.2s ease;
 }
 
@@ -533,87 +606,108 @@ input{
 }
 
 .tm-card-body{
-    padding:10px 10px 12px;
+    padding:9px 9px 11px;
 }
 
 .tm-card-title{
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    font-size:13px;
-    font-weight:750;
+    font-size:12px;
+    font-weight:800;
 }
 
 .tm-card-meta{
     margin-top:6px;
     display:flex;
-    gap:8px;
-    color:#85858c;
-    font-size:10px;
+    align-items:center;
+    gap:7px;
+    color:#777;
+    font-size:9px;
 }
 
-.tm-gold{
+.tm-card-rating{
     color:var(--gold);
-    font-weight:800;
+    font-weight:900;
 }
 
 /* =========================================================
-   NO RESULTS
+   EMPTY STATE
 ========================================================= */
 
-.tm-no-results{
-    min-height:300px;
+.tm-empty{
+    min-height:320px;
     display:flex;
     align-items:center;
     justify-content:center;
     text-align:center;
-    padding:35px 20px;
+    padding:30px 15px;
 }
 
-.tm-no-results-box{
-    max-width:500px;
+.tm-empty-box{
+    max-width:470px;
     padding:35px 25px;
-    border-radius:18px;
-    background:linear-gradient(
-        145deg,
-        rgba(255,255,255,.045),
-        rgba(255,255,255,.018)
-    );
-    border:1px solid rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:12px;
+    background:#111;
 }
 
-.tm-no-icon{
-    font-size:42px;
+.tm-empty-icon{
+    font-size:40px;
     margin-bottom:12px;
 }
 
-.tm-no-results h2{
-    font-size:23px;
+.tm-empty h2{
+    font-size:22px;
 }
 
-.tm-no-results p{
+.tm-empty p{
     margin-top:8px;
-    color:#888890;
-    line-height:1.6;
+    color:#858585;
     font-size:13px;
+    line-height:1.6;
 }
 
-.tm-clear-btn{
-    margin-top:17px;
+.tm-clear{
+    margin-top:18px;
     display:inline-flex;
+    min-height:40px;
     align-items:center;
     justify-content:center;
-    min-height:42px;
     padding:0 18px;
-    border-radius:9px;
-    background:linear-gradient(
-        135deg,
-        var(--gold2),
-        var(--gold)
-    );
+    border-radius:5px;
+    background:#fff;
     color:#111;
-    font-size:13px;
+    font-size:12px;
     font-weight:900;
+}
+
+/* =========================================================
+   CATEGORY BUTTONS
+========================================================= */
+
+.tm-categories{
+    display:flex;
+    flex-wrap:wrap;
+    gap:9px;
+}
+
+.tm-category{
+    padding:10px 15px;
+    border-radius:5px;
+    background:#121212;
+    border:1px solid rgba(255,255,255,.08);
+    color:#aaa;
+    font-size:11px;
+    font-weight:800;
+    transition:.2s ease;
+}
+
+.tm-category:hover{
+    color:#fff;
+    border-color:rgba(245,189,50,.5);
+    background:#181818;
+    transform:translateY(-2px);
 }
 
 /* =========================================================
@@ -621,20 +715,39 @@ input{
 ========================================================= */
 
 .tm-premium{
-    margin:0 5% 48px;
-    padding:27px;
-    border-radius:18px;
-    border:1px solid rgba(243,189,50,.16);
+    margin:5px 4.5% 45px;
+    padding:30px;
+    position:relative;
+    overflow:hidden;
+    border-radius:10px;
     background:
+        radial-gradient(
+            circle at 85% 50%,
+            rgba(245,189,50,.15),
+            transparent 32%
+        ),
         linear-gradient(
             120deg,
-            rgba(243,189,50,.13),
-            rgba(112,41,122,.11),
-            rgba(255,255,255,.025)
+            #161616,
+            #0d0d0d
         );
+    border:1px solid rgba(245,189,50,.18);
+}
+
+.tm-premium:after{
+    content:"";
+    position:absolute;
+    right:-90px;
+    top:-90px;
+    width:220px;
+    height:220px;
+    border-radius:50%;
+    border:1px solid rgba(245,189,50,.12);
 }
 
 .tm-premium-inner{
+    position:relative;
+    z-index:2;
     display:flex;
     align-items:center;
     justify-content:space-between;
@@ -642,22 +755,37 @@ input{
 }
 
 .tm-premium-title{
-    font-size:27px;
-    font-weight:900;
+    font-size:26px;
+    font-weight:950;
 }
 
 .tm-premium-text{
     margin-top:7px;
-    color:#a5a5ac;
-    font-size:13px;
+    max-width:580px;
+    color:#888;
+    font-size:12px;
     line-height:1.6;
 }
 
 .tm-premium-price{
-    margin-top:10px;
-    color:var(--gold2);
+    margin-top:9px;
+    color:var(--gold);
+    font-size:16px;
     font-weight:900;
-    font-size:17px;
+}
+
+.tm-premium-btn{
+    background:var(--gold);
+    color:#111;
+    min-width:145px;
+}
+
+/* =========================================================
+   ADS
+========================================================= */
+
+.tm-ad-section{
+    padding-top:5px;
 }
 
 /* =========================================================
@@ -665,10 +793,11 @@ input{
 ========================================================= */
 
 .tm-footer{
-    padding:5px 5% 90px;
+    padding:10px 5% 80px;
     text-align:center;
-    color:#707078;
-    font-size:12px;
+    color:#555;
+    font-size:11px;
+    border-top:1px solid rgba(255,255,255,.05);
 }
 
 /* =========================================================
@@ -683,19 +812,42 @@ input{
    TABLET
 ========================================================= */
 
-@media(max-width:1000px){
+@media(max-width:1100px){
+
+    .tm-row{
+        grid-template-columns:repeat(5,minmax(0,1fr));
+    }
 
     .tm-hero-poster{
-        right:4%;
-        width:225px;
+        right:5%;
+        width:220px;
     }
 
     .tm-hero-info{
         width:68%;
     }
+}
+
+@media(max-width:900px){
+
+    .tm-menu{
+        gap:15px;
+    }
+
+    .tm-menu a{
+        font-size:12px;
+    }
+
+    .tm-search{
+        width:190px;
+    }
 
     .tm-row{
         grid-template-columns:repeat(4,minmax(0,1fr));
+    }
+
+    .tm-hero-poster{
+        width:190px;
     }
 }
 
@@ -703,192 +855,205 @@ input{
    MOBILE
 ========================================================= */
 
-@media(max-width:760px){
+@media(max-width:700px){
 
     .tm-nav{
-        height:63px;
+        height:62px;
         padding:0 10px;
+        gap:8px;
     }
 
     .tm-brand{
-        font-size:17px;
+        font-size:16px;
     }
 
     .tm-menu{
         display:none;
     }
 
-    /*
-       MOBILE SEARCH IS VISIBLE
-    */
-
     .tm-nav-right{
-        gap:6px;
+        gap:5px;
     }
 
     .tm-search{
         width:155px;
-        height:38px;
-        padding:0 5px 0 10px;
-        gap:4px;
+        height:37px;
+        padding-left:9px;
     }
 
     .tm-search input{
-        display:block !important;
-        width:100%;
-        min-width:0;
-        font-size:12px;
-    }
-
-    .tm-search input::placeholder{
-        color:#909098;
+        font-size:11px;
     }
 
     .tm-search-btn{
-        width:29px;
-        height:29px;
-        flex:0 0 29px;
-        font-size:13px;
+        width:28px;
+        height:28px;
     }
 
     .tm-user{
         width:34px;
         height:34px;
-        flex:0 0 34px;
-        font-size:13px;
     }
 
-    .tm-search-state{
-        padding:83px 15px 15px;
-    }
-
-    .tm-search-title{
-        font-size:22px;
-    }
+    /* HERO */
 
     .tm-hero{
         min-height:650px;
     }
 
-    .tm-hero-content{
-        min-height:650px;
-        padding:100px 16px 70px;
-        align-items:flex-end;
-    }
-
     .tm-hero-bg{
-        filter:blur(7px) saturate(.85);
-        transform:scale(1.10);
+        transform:scale(1.08);
     }
 
-    .tm-hero-blur{
+    .tm-hero-bg:after{
         background:
             linear-gradient(
                 180deg,
-                rgba(5,5,6,.16),
-                rgba(5,5,6,.35) 28%,
-                rgba(5,5,6,.82) 56%,
-                #060607 87%
+                rgba(0,0,0,.18) 0%,
+                rgba(0,0,0,.35) 25%,
+                rgba(0,0,0,.78) 57%,
+                #050505 88%
             );
+    }
+
+    .tm-hero-content{
+        min-height:650px;
+        padding:90px 16px 65px;
+        align-items:flex-end;
     }
 
     .tm-hero-info{
         width:100%;
     }
 
-    .tm-title{
-        font-size:39px;
-        line-height:1.02;
-        max-width:95%;
-    }
-
-    .tm-description{
-        font-size:13px;
-        line-height:1.55;
-        max-width:100%;
-        display:-webkit-box;
-        -webkit-line-clamp:3;
-        -webkit-box-orient:vertical;
-        overflow:hidden;
-    }
-
     .tm-hero-poster{
-        width:135px;
-        right:18px;
-        top:106px;
+        width:125px;
+        right:17px;
+        top:92px;
         transform:none;
-        border-radius:10px;
+        border-radius:7px;
     }
 
-    .tm-kicker{
-        font-size:10px;
+    .tm-hero-title{
+        max-width:95%;
+        font-size:39px;
+        letter-spacing:-1.5px;
     }
 
-    .tm-meta{
-        max-width:82%;
+    .tm-hero-meta{
+        max-width:80%;
+        margin-top:13px;
     }
 
-    .tm-actions{
+    .tm-hero-description{
+        max-width:100%;
+        font-size:12px;
+        line-height:1.6;
+        -webkit-line-clamp:3;
+    }
+
+    .tm-hero-actions{
+        margin-top:18px;
         width:100%;
     }
 
     .tm-btn{
-        flex:1;
-        min-height:45px;
-        padding:0 12px;
-        font-size:13px;
+        min-height:43px;
+        padding:0 13px;
+        font-size:12px;
     }
+
+    .tm-hero-actions .tm-btn{
+        flex:1;
+    }
+
+    /* CONTENT */
 
     .tm-content{
-        margin-top:-18px;
-    }
-
-    .tm-content.tm-search-content{
-        margin-top:0;
+        margin-top:-20px;
     }
 
     .tm-section{
-        padding:0 15px 30px;
+        padding:0 14px 30px;
+    }
+
+    .tm-section-head{
+        margin-bottom:13px;
     }
 
     .tm-section-title{
-        font-size:19px;
+        font-size:18px;
     }
 
+    .tm-section-title:before{
+        width:3px;
+        height:16px;
+        margin-right:7px;
+    }
+
+    /* HORIZONTAL MOVIE ROW */
+
     .tm-row{
+        display:grid;
         grid-template-columns:none;
         grid-auto-flow:column;
-        grid-auto-columns:132px;
+        grid-auto-columns:128px;
         overflow-x:auto;
+        gap:9px;
+        padding:2px 2px 7px;
         scrollbar-width:none;
-        gap:10px;
-        padding-bottom:5px;
     }
 
     .tm-row::-webkit-scrollbar{
         display:none;
     }
 
+    .tm-card{
+        border-radius:6px;
+    }
+
+    .tm-card:hover{
+        transform:none;
+    }
+
     .tm-card-play{
         opacity:1;
         transform:none;
-        width:31px;
-        height:31px;
-        left:8px;
-        bottom:8px;
+        width:30px;
+        height:30px;
+        left:7px;
+        bottom:7px;
+        font-size:10px;
+    }
+
+    .tm-card-body{
+        padding:8px 7px 9px;
     }
 
     .tm-card-title{
-        font-size:11px;
+        font-size:10px;
     }
 
     .tm-card-meta{
-        font-size:9px;
+        font-size:8px;
     }
 
+    /* CATEGORIES */
+
+    .tm-categories{
+        gap:7px;
+    }
+
+    .tm-category{
+        padding:9px 12px;
+        font-size:10px;
+    }
+
+    /* PREMIUM */
+
     .tm-premium{
-        margin:0 15px 35px;
-        padding:21px 18px;
+        margin:0 14px 30px;
+        padding:22px 18px;
     }
 
     .tm-premium-inner{
@@ -897,74 +1062,113 @@ input{
     }
 
     .tm-premium-title{
-        font-size:23px;
+        font-size:22px;
     }
 
-    .tm-premium .tm-btn{
+    .tm-premium-text{
+        font-size:11px;
+    }
+
+    .tm-premium-btn{
         width:100%;
     }
 
     .tm-footer{
-        padding-bottom:100px;
+        padding-bottom:95px;
     }
+
+    /* BOTTOM NAV */
 
     .tm-bottom{
         position:fixed;
-        left:10px;
-        right:10px;
-        bottom:10px;
-        z-index:1100;
+        left:9px;
+        right:9px;
+        bottom:9px;
+        z-index:99999;
         display:grid;
         grid-template-columns:repeat(4,1fr);
-        padding:8px 5px;
-        border-radius:17px;
-        background:rgba(18,18,21,.94);
+        padding:7px 4px;
+        border-radius:15px;
+        background:rgba(20,20,20,.94);
         backdrop-filter:blur(18px);
-        border:1px solid rgba(255,255,255,.09);
-        box-shadow:0 18px 48px rgba(0,0,0,.48);
+        border:1px solid rgba(255,255,255,.10);
+        box-shadow:0 15px 45px rgba(0,0,0,.6);
     }
 
     .tm-bottom a{
         display:flex;
         flex-direction:column;
         align-items:center;
+        justify-content:center;
         gap:3px;
-        color:#888890;
-        font-size:10px;
-        font-weight:700;
+        color:#777;
+        font-size:9px;
+        font-weight:800;
     }
 
-    .tm-bottom a span:first-child{
-        font-size:17px;
+    .tm-bottom-icon{
+        font-size:16px;
+        line-height:1;
     }
 
     .tm-bottom a.active{
-        color:var(--gold2);
+        color:var(--gold);
     }
 }
 
 /* =========================================================
-   VERY SMALL MOBILE
+   SMALL MOBILE
 ========================================================= */
 
 @media(max-width:430px){
 
     .tm-brand{
-        font-size:15px;
+        font-size:14px;
     }
 
     .tm-search{
         width:145px;
     }
 
-    .tm-search input{
-        font-size:11px;
-    }
-
     .tm-user{
         display:none;
     }
 
+    .tm-hero{
+        min-height:620px;
+    }
+
+    .tm-hero-content{
+        min-height:620px;
+    }
+
+    .tm-hero-poster{
+        width:112px;
+    }
+
+    .tm-hero-title{
+        font-size:35px;
+    }
+
+    .tm-row{
+        grid-auto-columns:122px;
+    }
+}
+
+@media(max-width:360px){
+
+    .tm-search{
+        width:135px;
+    }
+
+    .tm-brand{
+        font-size:13px;
+    }
+
+    .tm-hero-poster{
+        width:100px;
+        right:12px;
+    }
 }
 </style>
 </head>
@@ -977,7 +1181,10 @@ input{
 
 <header class="tm-nav" id="tmNav">
 
-    <a href="{{ url_for('home') }}" class="tm-brand">
+    <a
+        href="{{ url_for('home') }}"
+        class="tm-brand"
+    >
         TOMESH <span>MOVIES</span>
     </a>
 
@@ -1031,6 +1238,7 @@ input{
         <a
             href="{{ url_for('home') }}"
             class="tm-user"
+            aria-label="Home"
         >
             ◉
         </a>
@@ -1041,14 +1249,14 @@ input{
 
 
 <!-- =======================================================
-     SEARCH / CATEGORY RESULT
+     SEARCH / CATEGORY HEADER
 ======================================================= -->
 
 {% if q or category %}
 
 <section class="tm-search-state">
 
-    <div class="tm-search-state-inner">
+    <div class="tm-search-inner">
 
         {% if q %}
 
@@ -1061,7 +1269,7 @@ input{
             <span>{{ q }}</span>
         </div>
 
-        {% elif category %}
+        {% else %}
 
         <div class="tm-search-label">
             Category
@@ -1108,90 +1316,102 @@ input{
         {% endif %}
     ></div>
 
-    <div class="tm-hero-blur"></div>
+    <div class="tm-hero-content">
+
+        <div class="tm-hero-info">
+
+            <div class="tm-featured">
+                <span class="tm-live-dot"></span>
+                FEATURED MOVIE
+            </div>
+
+            <h1 class="tm-hero-title">
+                {{ hero.title }}
+            </h1>
+
+            <div class="tm-hero-meta">
+
+                {% if hero.category %}
+                <span>{{ hero.category }}</span>
+
+                <span class="tm-meta-dot"></span>
+                {% endif %}
+
+                <span>2026</span>
+
+                <span class="tm-meta-dot"></span>
+
+                <span class="tm-hd">
+                    HD
+                </span>
+
+                <span class="tm-meta-dot"></span>
+
+                <span>Premium</span>
+
+            </div>
+
+            <p class="tm-hero-description">
+
+                {% if hero.description %}
+
+                    {{ hero.description }}
+
+                {% else %}
+
+                    Watch
+                    {{ hero.title }}
+                    with a smooth cinematic experience
+                    on Tomesh Movies.
+
+                {% endif %}
+
+            </p>
+
+            <div class="tm-hero-actions">
+
+                <a
+                    class="tm-btn tm-watch-btn"
+                    href="{{ url_for(
+                        'movie_page',
+                        movie_id=hero.id
+                    ) }}"
+                >
+                    ▶ Watch Now
+                </a>
+
+                <a
+                    class="tm-btn tm-info-btn"
+                    href="{{ url_for(
+                        'movie_page',
+                        movie_id=hero.id
+                    ) }}"
+                >
+                    ⓘ More Info
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {% if hero.poster_url %}
 
     <div class="tm-hero-poster">
-
-        {% if hero.poster_url %}
 
         <img
             src="{{ hero.poster_url }}"
             alt="{{ hero.title }}"
         >
 
-        {% endif %}
-
-        <div class="tm-poster-shade"></div>
-
-        <div class="tm-hero-rating">
+        <div class="tm-poster-badge">
             ★ 8.5
         </div>
 
     </div>
 
-    <div class="tm-hero-content">
-
-        <div class="tm-hero-info">
-
-            <div class="tm-kicker">
-                <span class="tm-dot"></span>
-                FEATURED MOVIE
-            </div>
-
-            <h1 class="tm-title">
-                {{ hero.title }}
-            </h1>
-
-            <div class="tm-meta">
-
-                {% if hero.category %}
-                <span>{{ hero.category }}</span>
-                {% endif %}
-
-                <span>HD</span>
-                <span>Premium</span>
-
-            </div>
-
-            <p class="tm-description">
-
-                {% if hero.description %}
-                    {{ hero.description }}
-                {% else %}
-                    Watch your favourite movies with
-                    a smooth cinematic experience on
-                    Tomesh Movies.
-                {% endif %}
-
-            </p>
-
-            <div class="tm-actions">
-
-                <a
-                    class="tm-btn tm-watch"
-                    href="{{ url_for(
-                        'movie_page',
-                        movie_id=hero.id
-                    ) }}"
-                >
-                    ▶ Watch ₹1
-                </a>
-
-                <a
-                    class="tm-btn tm-info"
-                    href="{{ url_for(
-                        'movie_page',
-                        movie_id=hero.id
-                    ) }}"
-                >
-                    More Info
-                </a>
-
-            </div>
-
-        </div>
-
-    </div>
+    {% endif %}
 
 </section>
 
@@ -1203,19 +1423,30 @@ input{
 
         <div class="tm-hero-info">
 
-            <div class="tm-kicker">
-                <span class="tm-dot"></span>
+            <div class="tm-featured">
+                <span class="tm-live-dot"></span>
                 TOMESH MOVIES
             </div>
 
-            <h1 class="tm-title">
+            <h1 class="tm-hero-title">
                 Your Cinematic World
             </h1>
 
-            <p class="tm-description">
+            <p class="tm-hero-description">
                 Discover movies and enjoy a premium
-                cinematic experience.
+                cinematic experience on Tomesh Movies.
             </p>
+
+            <div class="tm-hero-actions">
+
+                <a
+                    href="#movies"
+                    class="tm-btn tm-watch-btn"
+                >
+                    ▶ Explore Movies
+                </a>
+
+            </div>
 
         </div>
 
@@ -1227,26 +1458,34 @@ input{
 
 
 <!-- =======================================================
-     MAIN
+     MAIN CONTENT
 ======================================================= -->
 
 <main
-    class="tm-content
-    {% if q or category %}
-    tm-search-content
-    {% endif %}"
+    class="
+        tm-content
+        {% if q or category %}
+            tm-search-content
+        {% endif %}
+    "
 >
+
+<!-- TOP AD -->
 
 {% if ads and ads.get("top") %}
 
-<section class="tm-section">
+<section class="tm-section tm-ad-section">
+
     {{ ads.get("top") | safe }}
+
 </section>
 
 {% endif %}
 
 
-<!-- MOVIES -->
+<!-- =======================================================
+     TRENDING / SEARCH MOVIES
+======================================================= -->
 
 <section
     class="tm-section"
@@ -1258,11 +1497,17 @@ input{
         <h2 class="tm-section-title">
 
             {% if q %}
+
                 Search Results
+
             {% elif category %}
+
                 {{ category }} Movies
+
             {% else %}
+
                 Trending Now
+
             {% endif %}
 
         </h2>
@@ -1270,10 +1515,10 @@ input{
         {% if not q and not category %}
 
         <a
-            class="tm-section-link"
             href="#movies"
+            class="tm-section-link"
         >
-            Explore →
+            Explore All →
         </a>
 
         {% endif %}
@@ -1288,11 +1533,11 @@ input{
         {% for movie in movies %}
 
         <a
-            class="tm-card"
             href="{{ url_for(
                 'movie_page',
                 movie_id=movie.id
             ) }}"
+            class="tm-card"
         >
 
             <div class="tm-card-img">
@@ -1307,7 +1552,7 @@ input{
 
                 {% endif %}
 
-                <div class="tm-card-overlay"></div>
+                <div class="tm-card-gradient"></div>
 
                 <div class="tm-card-play">
                     ▶
@@ -1323,15 +1568,11 @@ input{
 
                 <div class="tm-card-meta">
 
-                    {% if movie.category %}
-
                     <span>
-                        {{ movie.category }}
+                        {{ movie.category or "Movie" }}
                     </span>
 
-                    {% endif %}
-
-                    <span class="tm-gold">
+                    <span class="tm-card-rating">
                         ★ 8.5
                     </span>
 
@@ -1347,11 +1588,11 @@ input{
 
     {% else %}
 
-    <div class="tm-no-results">
+    <div class="tm-empty">
 
-        <div class="tm-no-results-box">
+        <div class="tm-empty-box">
 
-            <div class="tm-no-icon">
+            <div class="tm-empty-icon">
                 🔍
             </div>
 
@@ -1381,7 +1622,7 @@ input{
 
             <a
                 href="{{ url_for('home') }}"
-                class="tm-clear-btn"
+                class="tm-clear"
             >
                 ← Back to Home
             </a>
@@ -1395,7 +1636,9 @@ input{
 </section>
 
 
-<!-- LATEST -->
+<!-- =======================================================
+     LATEST MOVIES
+======================================================= -->
 
 {% if not q and not category and movies %}
 
@@ -1408,10 +1651,10 @@ input{
         </h2>
 
         <a
-            class="tm-section-link"
             href="#movies"
+            class="tm-section-link"
         >
-            Latest →
+            View All →
         </a>
 
     </div>
@@ -1421,11 +1664,11 @@ input{
         {% for movie in movies[:10] %}
 
         <a
-            class="tm-card"
             href="{{ url_for(
                 'movie_page',
                 movie_id=movie.id
             ) }}"
+            class="tm-card"
         >
 
             <div class="tm-card-img">
@@ -1440,7 +1683,7 @@ input{
 
                 {% endif %}
 
-                <div class="tm-card-overlay"></div>
+                <div class="tm-card-gradient"></div>
 
                 <div class="tm-card-play">
                     ▶
@@ -1460,7 +1703,7 @@ input{
                         {{ movie.category or "Movie" }}
                     </span>
 
-                    <span class="tm-gold">
+                    <span class="tm-card-rating">
                         HD
                     </span>
 
@@ -1479,7 +1722,9 @@ input{
 {% endif %}
 
 
-<!-- CATEGORIES -->
+<!-- =======================================================
+     BROWSE CATEGORIES
+======================================================= -->
 
 {% if not q and not category %}
 
@@ -1496,13 +1741,7 @@ input{
 
     </div>
 
-    <div
-        style="
-            display:flex;
-            flex-wrap:wrap;
-            gap:8px;
-        "
-    >
+    <div class="tm-categories">
 
         {% set seen = [] %}
 
@@ -1513,19 +1752,11 @@ input{
                 {% set _ = seen.append(movie.category) %}
 
                 <a
+                    class="tm-category"
                     href="{{ url_for(
                         'home',
                         category=movie.category
                     ) }}"
-                    style="
-                        padding:10px 14px;
-                        border-radius:999px;
-                        background:#111113;
-                        border:1px solid rgba(255,255,255,.08);
-                        color:#c9c9ce;
-                        font-size:12px;
-                        font-weight:700;
-                    "
                 >
                     {{ movie.category }}
                 </a>
@@ -1541,7 +1772,9 @@ input{
 {% endif %}
 
 
-<!-- PREMIUM -->
+<!-- =======================================================
+     PREMIUM
+======================================================= -->
 
 <section
     class="tm-premium"
@@ -1570,11 +1803,11 @@ input{
         {% if movies %}
 
         <a
-            class="tm-btn tm-watch"
             href="{{ url_for(
                 'movie_page',
                 movie_id=movies[0].id
             ) }}"
+            class="tm-btn tm-premium-btn"
         >
             GET PREMIUM
         </a>
@@ -1586,10 +1819,14 @@ input{
 </section>
 
 
+<!-- BOTTOM AD -->
+
 {% if ads and ads.get("bottom") %}
 
-<section class="tm-section">
+<section class="tm-section tm-ad-section">
+
     {{ ads.get("bottom") | safe }}
+
 </section>
 
 {% endif %}
@@ -1602,7 +1839,9 @@ input{
 ======================================================= -->
 
 <footer class="tm-footer">
+
     © 2026 Tomesh Movies · Premium movie streaming experience
+
 </footer>
 
 
@@ -1616,23 +1855,41 @@ input{
         href="{{ url_for('home') }}"
         class="active"
     >
-        <span>⌂</span>
+        <span class="tm-bottom-icon">⌂</span>
         <span>Home</span>
     </a>
 
     <a href="#movies">
-        <span>🎬</span>
+
+        <span class="tm-bottom-icon">
+            🎬
+        </span>
+
         <span>Movies</span>
+
     </a>
 
-    <a href="#movies">
-        <span>⌕</span>
+    <a
+        href="#movies"
+        onclick="focusSearch(event)"
+    >
+
+        <span class="tm-bottom-icon">
+            ⌕
+        </span>
+
         <span>Search</span>
+
     </a>
 
     <a href="#premium">
-        <span>★</span>
+
+        <span class="tm-bottom-icon">
+            ★
+        </span>
+
         <span>Premium</span>
+
     </a>
 
 </nav>
@@ -1640,19 +1897,23 @@ input{
 
 <script>
 /* =========================================================
-   NAV SCROLL
+   NAVBAR SCROLL
 ========================================================= */
 
-const nav = document.getElementById("tmNav");
+const tmNav = document.getElementById("tmNav");
 
 window.addEventListener(
     "scroll",
     function(){
 
         if(window.scrollY > 20){
-            nav.classList.add("scrolled");
+
+            tmNav.classList.add("scrolled");
+
         }else{
-            nav.classList.remove("scrolled");
+
+            tmNav.classList.remove("scrolled");
+
         }
 
     },
@@ -1664,27 +1925,80 @@ window.addEventListener(
    SEARCH
 ========================================================= */
 
-const searchForm = document.querySelector(".tm-search");
-const searchInput = document.getElementById("tmSearch");
+const tmSearchForm =
+    document.querySelector(".tm-search");
 
-if(searchForm && searchInput){
+const tmSearchInput =
+    document.getElementById("tmSearch");
 
-    searchForm.addEventListener(
+if(tmSearchForm && tmSearchInput){
+
+    tmSearchForm.addEventListener(
         "submit",
         function(event){
 
-            const value = searchInput.value.trim();
+            const value =
+                tmSearchInput.value.trim();
 
             if(!value){
+
                 event.preventDefault();
+
                 window.location.href =
                     "{{ url_for('home') }}";
+
             }
 
         }
     );
 
 }
+
+
+/* =========================================================
+   MOBILE SEARCH BUTTON
+========================================================= */
+
+function focusSearch(event){
+
+    if(event){
+
+        event.preventDefault();
+
+    }
+
+    if(tmSearchInput){
+
+        tmSearchInput.focus();
+
+        window.scrollTo({
+            top:0,
+            behavior:"smooth"
+        });
+
+    }
+
+}
+
+
+/* =========================================================
+   IMAGE FALLBACK
+========================================================= */
+
+document
+    .querySelectorAll(".tm-card-img img, .tm-hero-poster img")
+    .forEach(function(img){
+
+        img.addEventListener(
+            "error",
+            function(){
+
+                this.style.display = "none";
+
+            }
+        );
+
+    });
 </script>
 
 </body>
