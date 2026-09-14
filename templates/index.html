@@ -1511,7 +1511,7 @@
 <aside class="tm-sidebar" id="tmSidebar">
 
 <div class="tm-brand">
-    <a href="{{ url_for('index') }}" class="tm-brand-link">
+    <a href="{{ url_for('home') }}" class="tm-brand-link">
 
         <div class="tm-logo">
             <span class="tm-logo-t">T</span>
@@ -1531,7 +1531,7 @@
 
 <nav class="tm-nav">
 
-    <a href="{{ url_for('index') }}" class="tm-nav-link active">
+    <a href="{{ url_for('home') }}" class="tm-nav-link active">
         <span>⌂</span>
         <strong>Home</strong>
     </a>
@@ -1602,7 +1602,7 @@
         aria-label="Open menu"
     >☰</button>
 
-    <a href="{{ url_for('index') }}" class="tm-mobile-logo">
+    <a href="{{ url_for('home') }}" class="tm-mobile-logo">
         <span>T</span>MOVIES
     </a>
 
@@ -1620,7 +1620,7 @@
     </div>
 
     <form
-        action="{{ url_for('index') }}"
+        action="{{ url_for('home') }}"
         method="get"
         class="tm-search"
     >
@@ -1841,7 +1841,7 @@
             {% for category in categories %}
 
             <a
-                href="{{ url_for('index', category=category) }}"
+                href="{{ url_for('home', category=category) }}"
                 class="tm-genre"
             >
 
@@ -2188,7 +2188,7 @@
 
     <div class="tm-footer-links">
 
-        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('home') }}">Home</a>
         <a href="#movies">Movies</a>
         <a href="#categories">Genres</a>
         <a href="#featured">Featured</a>
