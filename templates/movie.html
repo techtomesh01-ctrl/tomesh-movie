@@ -7,7 +7,7 @@
 <style>
 .tm-watch-page{
     min-height:100vh;
-    padding:20px 14px 50px;
+    padding:20px 14px 60px;
     background:
         radial-gradient(circle at 10% 5%,rgba(120,40,180,.22),transparent 30%),
         radial-gradient(circle at 90% 15%,rgba(220,30,70,.16),transparent 30%),
@@ -33,10 +33,6 @@
     background:rgba(255,255,255,.05);
 }
 
-.tm-back:hover{
-    background:rgba(255,255,255,.10);
-}
-
 .tm-player-box{
     position:relative;
     width:100%;
@@ -55,8 +51,37 @@
     background:#000;
 }
 
+.tm-lock{
+    min-height:360px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:30px;
+    background:
+        radial-gradient(circle at center,
+        rgba(130,40,190,.25),
+        transparent 55%),
+        #050505;
+}
+
+.tm-lock-icon{
+    font-size:54px;
+    margin-bottom:10px;
+}
+
+.tm-lock h2{
+    margin:0 0 8px;
+    font-size:28px;
+}
+
+.tm-lock p{
+    color:#aaa;
+    margin:0 0 20px;
+}
+
 .tm-info{
-    padding:20px 4px;
+    padding:22px 4px;
 }
 
 .tm-title{
@@ -86,6 +111,93 @@
     font-size:15px;
 }
 
+.tm-payment{
+    margin-top:24px;
+    padding:22px;
+    border-radius:18px;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(120,30,180,.18),
+            rgba(220,30,70,.10)
+        );
+    border:1px solid rgba(255,255,255,.10);
+}
+
+.tm-payment h2{
+    margin:0 0 6px;
+    font-size:22px;
+}
+
+.tm-payment-sub{
+    margin:0 0 18px;
+    color:#aaa;
+    font-size:14px;
+}
+
+.tm-phone{
+    width:100%;
+    max-width:420px;
+    box-sizing:border-box;
+    padding:13px 14px;
+    border-radius:11px;
+    border:1px solid rgba(255,255,255,.14);
+    background:#101010;
+    color:#fff;
+    outline:none;
+    margin-bottom:14px;
+}
+
+.tm-phone:focus{
+    border-color:#a83cff;
+}
+
+.tm-pay-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+}
+
+.tm-pay-btn{
+    border:0;
+    border-radius:13px;
+    padding:15px 12px;
+    cursor:pointer;
+    color:#fff;
+    font-weight:800;
+    background:
+        linear-gradient(
+            135deg,
+            #7a21b9,
+            #d52d54
+        );
+    box-shadow:0 8px 25px rgba(0,0,0,.3);
+    transition:.2s;
+}
+
+.tm-pay-btn:hover{
+    transform:translateY(-2px);
+}
+
+.tm-pay-btn small{
+    display:block;
+    margin-top:5px;
+    color:#ddd;
+    font-weight:500;
+}
+
+.tm-premium{
+    margin-top:12px;
+    width:100%;
+    background:
+        linear-gradient(
+            135deg,
+            #b8860b,
+            #e6a817,
+            #8f5c00
+        );
+}
+
 .tm-status{
     margin-top:12px;
     padding:10px 12px;
@@ -94,6 +206,19 @@
     color:#aaa;
     font-size:13px;
     display:none;
+}
+
+.tm-download{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    margin-top:15px;
+    padding:12px 18px;
+    border-radius:11px;
+    color:#fff;
+    text-decoration:none;
+    font-weight:800;
+    background:#b31f42;
 }
 
 .tm-poster{
@@ -105,14 +230,10 @@
     margin-top:20px;
 }
 
-@media(max-width:600px){
+@media(max-width:700px){
 
-    .tm-watch-page{
-        padding:12px 8px 40px;
-    }
-
-    .tm-player-box{
-        border-radius:10px;
+    .tm-pay-grid{
+        grid-template-columns:1fr;
     }
 
     .tm-video{
@@ -120,46 +241,73 @@
         max-height:none;
     }
 
-    .tm-info{
-        padding:16px 2px;
-    }
-
-    .tm-title{
-        font-size:27px;
+    .tm-lock{
+        min-height:280px;
     }
 }
 </style>
+
 
 <div class="tm-watch-page">
 
     <div class="tm-watch-wrap">
 
-        <a href="{{ url_for('home') }}" class="tm-back">
+        <a
+            href="{{ url_for('home') }}"
+            class="tm-back"
+        >
             ← Back
         </a>
 
+
         <div class="tm-player-box">
 
-            <!--
-                IMPORTANT:
-                Video URL is placed directly on the video element.
-                This avoids browser problems with the source tag/type.
-            -->
-            <video
-                id="tmVideo"
-                class="tm-video"
-                controls
-                playsinline
-                preload="auto"
-                poster="{{ movie.poster_url or movie.poster or '' }}"
-                src="{{ movie.video_url or movie.video }}"
-            >
-                Your browser does not support HTML5 video.
-            </video>
+            {% if access.watch and movie.video_url %}
+
+                <video
+                    id="tmVideo"
+                    class="tm-video"
+                    controls
+                    playsinline
+                    preload="metadata"
+                    poster="{{ movie.poster_url or movie.poster or '' }}"
+                    src="{{ movie.video_url }}"
+                >
+                    Your browser does not support HTML5 video.
+                </video>
+
+            {% else %}
+
+                <div class="tm-lock">
+
+                    <div>
+
+                        <div class="tm-lock-icon">
+                            🔒
+                        </div>
+
+                        <h2>
+                            Watch access locked
+                        </h2>
+
+                        <p>
+                            ₹1 में यह movie 24 घंटे के लिए watch करें।
+                        </p>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
 
         </div>
 
-        <div id="tmVideoStatus" class="tm-status"></div>
+
+        <div
+            id="tmVideoStatus"
+            class="tm-status"
+        ></div>
+
 
         <div class="tm-info">
 
@@ -167,34 +315,143 @@
                 {{ movie.title }}
             </h1>
 
+
             <div class="tm-meta">
 
                 {% if movie.category %}
-                <span class="tm-badge">
-                    {{ movie.category }}
-                </span>
+
+                    <span class="tm-badge">
+                        {{ movie.category }}
+                    </span>
+
                 {% endif %}
 
                 <span class="tm-badge">
                     👁 {{ movie.views or 0 }} Views
                 </span>
 
+                {% if access.premium %}
+
+                    <span class="tm-badge">
+                        👑 Premium Active
+                    </span>
+
+                {% endif %}
+
             </div>
 
+
             {% if movie.description %}
-            <div class="tm-description">
-                {{ movie.description }}
-            </div>
+
+                <div class="tm-description">
+                    {{ movie.description }}
+                </div>
+
             {% endif %}
+
+
+            {% if access.download %}
+
+                <a
+                    href="{{ url_for('download_movie', movie_id=movie.id) }}"
+                    class="tm-download"
+                >
+                    ⬇ Download Movie
+                </a>
+
+            {% endif %}
+
+
+            {% if not access.watch or not access.download %}
+
+                <div class="tm-payment">
+
+                    <h2>
+                        🎬 Unlock {{ movie.title }}
+                    </h2>
+
+                    <p class="tm-payment-sub">
+                        Payment Cashfree से secure checkout पर होगा।
+                    </p>
+
+
+                    <input
+                        id="tmPhone"
+                        class="tm-phone"
+                        type="tel"
+                        inputmode="numeric"
+                        maxlength="10"
+                        placeholder="10 digit mobile number"
+                    >
+
+
+                    <div class="tm-pay-grid">
+
+                        {% if not access.watch %}
+
+                            <button
+                                class="tm-pay-btn"
+                                onclick="startPayment('watch')"
+                            >
+                                ₹1 Watch
+                                <small>
+                                    24 hours access
+                                </small>
+                            </button>
+
+                        {% endif %}
+
+
+                        {% if not access.download %}
+
+                            <button
+                                class="tm-pay-btn"
+                                onclick="startPayment('download')"
+                            >
+                                ₹9 Download
+                                <small>
+                                    This movie
+                                </small>
+                            </button>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    {% if not access.premium %}
+
+                        <button
+                            class="tm-pay-btn tm-premium"
+                            onclick="startPayment('premium')"
+                        >
+                            👑 ₹109 Premium
+                            <small>
+                                1 year watch + download
+                            </small>
+                        </button>
+
+                    {% endif %}
+
+
+                    <div
+                        id="tmPaymentStatus"
+                        class="tm-status"
+                    ></div>
+
+                </div>
+
+            {% endif %}
+
 
             {% if movie.poster_url or movie.poster %}
 
-            <img
-                class="tm-poster"
-                src="{{ movie.poster_url or movie.poster }}"
-                alt="{{ movie.title }}"
-                loading="lazy"
-            >
+                <img
+                    class="tm-poster"
+                    src="{{ movie.poster_url or movie.poster }}"
+                    alt="{{ movie.title }}"
+                    loading="lazy"
+                >
 
             {% endif %}
 
@@ -204,19 +461,151 @@
 
 </div>
 
+
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+
+
 <script>
-(function(){
+const TM_MOVIE_ID = {{ movie.id | tojson }};
+const TM_CASHFREE_MODE = {{ cashfree_mode | tojson }};
 
-    const video = document.getElementById("tmVideo");
-    const status = document.getElementById("tmVideoStatus");
 
-    if (!video) {
+function paymentStatus(message){
+
+    const box =
+        document.getElementById(
+            "tmPaymentStatus"
+        );
+
+    if(!box){
         return;
     }
 
+    box.style.display = "block";
+    box.textContent = message;
+}
+
+
+async function startPayment(type){
+
+    const phoneInput =
+        document.getElementById(
+            "tmPhone"
+        );
+
+    if(!phoneInput){
+        return;
+    }
+
+    const phone =
+        phoneInput.value
+            .replace(/\D/g,"")
+            .trim();
+
+    if(!/^[6-9]\d{9}$/.test(phone)){
+
+        paymentStatus(
+            "कृपया सही 10 digit mobile number डालें।"
+        );
+
+        phoneInput.focus();
+
+        return;
+    }
+
+
+    paymentStatus(
+        "Cashfree checkout तैयार हो रहा है..."
+    );
+
+
+    try{
+
+        const response =
+            await fetch(
+                "{{ url_for('create_payment') }}",
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:JSON.stringify({
+                        movie_id:TM_MOVIE_ID,
+                        payment_type:type,
+                        phone:phone
+                    })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if(!response.ok || !data.ok){
+
+            throw new Error(
+                data.error ||
+                "Payment order create नहीं हुआ।"
+            );
+        }
+
+
+        const cashfree =
+            Cashfree({
+                mode:TM_CASHFREE_MODE
+            });
+
+
+        await cashfree.checkout({
+            paymentSessionId:
+                data.payment_session_id,
+
+            redirectTarget:
+                "_self"
+        });
+
+    }
+    catch(error){
+
+        console.error(
+            "Tomesh Movies payment error:",
+            error
+        );
+
+        paymentStatus(
+            error.message ||
+            "Payment शुरू नहीं हो पाया।"
+        );
+    }
+}
+</script>
+
+
+<script>
+(function(){
+
+    const video =
+        document.getElementById(
+            "tmVideo"
+        );
+
+    const status =
+        document.getElementById(
+            "tmVideoStatus"
+        );
+
+    if(!video){
+        return;
+    }
+
+
     function showStatus(message){
 
-        if (!status) {
+        if(!status){
             return;
         }
 
@@ -224,9 +613,10 @@
         status.textContent = message;
     }
 
+
     function hideStatus(){
 
-        if (!status) {
+        if(!status){
             return;
         }
 
@@ -234,88 +624,115 @@
         status.textContent = "";
     }
 
-    video.addEventListener("loadstart", function(){
-        showStatus("Video loading...");
-    });
 
-    video.addEventListener("loadedmetadata", function(){
-        hideStatus();
-    });
-
-    video.addEventListener("loadeddata", function(){
-        hideStatus();
-    });
-
-    video.addEventListener("canplay", function(){
-        hideStatus();
-    });
-
-    video.addEventListener("canplaythrough", function(){
-        hideStatus();
-    });
-
-    video.addEventListener("playing", function(){
-        hideStatus();
-    });
-
-    video.addEventListener("waiting", function(){
-        showStatus("Video buffering...");
-    });
-
-    video.addEventListener("stalled", function(){
-        showStatus("Video network connection is slow...");
-    });
-
-    video.addEventListener("suspend", function(){
-
-        if (
-            video.readyState === 0 &&
-            !video.error
-        ){
-            showStatus("Video loading...");
+    video.addEventListener(
+        "loadstart",
+        function(){
+            showStatus(
+                "Video loading..."
+            );
         }
+    );
 
-    });
 
-    video.addEventListener("error", function(){
+    video.addEventListener(
+        "loadedmetadata",
+        function(){
+            hideStatus();
+        }
+    );
 
-        let message = "Unable to play this video.";
 
-        if (video.error){
+    video.addEventListener(
+        "loadeddata",
+        function(){
+            hideStatus();
+        }
+    );
 
-            switch(video.error.code){
 
-                case 1:
-                    message = "Video loading cancelled.";
-                    break;
+    video.addEventListener(
+        "canplay",
+        function(){
+            hideStatus();
+        }
+    );
 
-                case 2:
-                    message = "Network error while loading video.";
-                    break;
 
-                case 3:
-                    message = "Video decoding error.";
-                    break;
+    video.addEventListener(
+        "playing",
+        function(){
+            hideStatus();
+        }
+    );
 
-                case 4:
-                    message = "This video format/source is not supported.";
-                    break;
+
+    video.addEventListener(
+        "waiting",
+        function(){
+            showStatus(
+                "Video buffering..."
+            );
+        }
+    );
+
+
+    video.addEventListener(
+        "stalled",
+        function(){
+            showStatus(
+                "Video network connection is slow..."
+            );
+        }
+    );
+
+
+    video.addEventListener(
+        "error",
+        function(){
+
+            let message =
+                "Unable to play this video.";
+
+            if(video.error){
+
+                switch(video.error.code){
+
+                    case 1:
+                        message =
+                            "Video loading cancelled.";
+                        break;
+
+                    case 2:
+                        message =
+                            "Network error while loading video.";
+                        break;
+
+                    case 3:
+                        message =
+                            "Video decoding error.";
+                        break;
+
+                    case 4:
+                        message =
+                            "This video format/source is not supported.";
+                        break;
+                }
             }
+
+            showStatus(message);
+
+            console.log(
+                "Tomesh video error:",
+                video.error
+            );
+
+            console.log(
+                "Video URL:",
+                video.currentSrc
+            );
         }
-
-        showStatus(message);
-
-        console.log(
-            "Tomesh Movies video error:",
-            video.error
-        );
-
-        console.log(
-            "Tomesh Movies video URL:",
-            video.currentSrc
-        );
-
-    });
+    );
 
 })();
 </script>
