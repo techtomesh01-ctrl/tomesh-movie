@@ -1510,7 +1510,6 @@
 
 <aside class="tm-sidebar" id="tmSidebar">
 
-```
 <div class="tm-brand">
     <a href="{{ url_for('index') }}" class="tm-brand-link">
 
@@ -1589,13 +1588,11 @@
     </div>
 
 </div>
-```
 
 </aside>
 
 <main class="tm-main">
 
-```
 <div class="tm-mobile-bar">
 
     <button
@@ -1960,7 +1957,7 @@
                 </div>
 
                 <a
-                    href="{{ url_for('movie', movie_id=m.id) }}"
+                    href="{{ url_for('movie_page', movie_id=m.id) }}"
                     class="tm-watch-btn"
                 >
                     Watch Now
@@ -2013,7 +2010,7 @@
         {% for m in movies[:5] %}
 
         <a
-            href="{{ url_for('movie', movie_id=m.id) }}"
+            href="{{ url_for('movie_page', movie_id=m.id) }}"
             class="tm-trending-card"
         >
 
@@ -2206,7 +2203,6 @@
     </div>
 
 </footer>
-```
 
 </main>
 
