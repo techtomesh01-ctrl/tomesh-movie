@@ -4,155 +4,99 @@
 
 {% block content %}
 
-<div class="movie-page">
+<div class="tm-movie-page">
 
-    <!-- =====================================================
-         CINEMATIC TOPBAR
-    ====================================================== -->
+    <!-- TOP BAR -->
+    <header class="tm-topbar">
 
-    <header class="movie-topbar">
-
-        <a href="{{ url_for('home') }}" class="movie-brand">
-
-            <div class="brand-logo">
+        <a href="{{ url_for('home') }}" class="tm-brand">
+            <div class="tm-logo">
                 TM
                 <span>▶</span>
             </div>
 
-            <div class="brand-text">
+            <div class="tm-brand-text">
                 <strong>TOMESH</strong>
                 <small>MOVIES</small>
             </div>
-
         </a>
 
-        <a href="{{ url_for('home') }}" class="back-btn">
-            <span>←</span>
-            Back to Movies
+        <a href="{{ url_for('home') }}" class="tm-back">
+            ← Back to Movies
         </a>
 
     </header>
 
 
-    <!-- =====================================================
-         CINEMATIC HERO
-    ====================================================== -->
+    <!-- HERO -->
+    <section class="tm-hero">
 
-    <section class="movie-hero">
+        <div class="tm-hero-content">
 
-        <div class="hero-bg-glow"></div>
-        <div class="hero-grid"></div>
-
-        <div class="hero-content">
-
-            <div class="now-playing">
-                <span>●</span>
+            <div class="tm-now">
+                <span></span>
                 NOW PLAYING
             </div>
 
             <h1>{{ movie.title }}</h1>
 
-            <div class="title-line"></div>
+            <div class="tm-title-line"></div>
 
-            <div class="movie-meta">
+            <div class="tm-meta">
 
                 {% if movie.category %}
-                <span class="category">
+                <span class="tm-category">
                     🎬 {{ movie.category }}
                 </span>
                 {% endif %}
 
-                <span class="views">
+                <span class="tm-views">
                     👁 {{ movie.views or 0 }} Views
                 </span>
 
-                <span class="quality-badge">
+                <span class="tm-hd">
                     HD
                 </span>
 
             </div>
 
             {% if movie.description %}
-
-            <p class="description">
-                {{ movie.description }}
-            </p>
-
+            <p class="tm-description">{{ movie.description }}</p>
             {% else %}
-
-            <p class="description">
-                अपनी पसंदीदा Movie को आसानी से देखें और Enjoy करें।
-                Tomesh Movies पर अपनी cinematic journey शुरू करें।
+            <p class="tm-description">
+                अपनी पसंदीदा Movie को Tomesh Movies पर देखें और Enjoy करें।
             </p>
-
             {% endif %}
-
-            <div class="hero-mini-info">
-
-                <div>
-                    <span>EXPERIENCE</span>
-                    <strong>YOUR CINEMA</strong>
-                </div>
-
-                <i></i>
-
-                <div>
-                    <span>STREAM</span>
-                    <strong>ANYTIME</strong>
-                </div>
-
-                <i></i>
-
-                <div>
-                    <span>PLATFORM</span>
-                    <strong>TOMESH</strong>
-                </div>
-
-            </div>
 
         </div>
 
 
-        <!-- =================================================
-             POPCORN CARD
-        ================================================== -->
+        <div class="tm-popcorn">
 
-        <div class="popcorn-wrapper">
+            <div class="tm-popcorn-glow"></div>
 
-            <div class="glow"></div>
+            <div class="tm-popcorn-card">
 
-            <div class="orbit orbit-one"></div>
-            <div class="orbit orbit-two"></div>
+                <span class="tm-tonight">
+                    TONIGHT ★
+                </span>
 
-            <div class="popcorn-card">
-
-                <div class="popcorn-top-label">
-                    <span>TONIGHT</span>
-                    <b>★</b>
-                </div>
-
-                <div class="popcorn-title">
-                    <span>NOW</span>
+                <div class="tm-watch">
+                    <small>NOW</small>
                     <strong>WATCH</strong>
                 </div>
 
-                <div class="popcorn">
+                <div class="tm-popcorn-icon">
                     🍿
                 </div>
 
-                <strong class="popcorn-main">
+                <strong>
                     Grab Your Popcorn!
                 </strong>
 
-                <span class="popcorn-sub">
+                <small>
                     Movie time starts now
-                </span>
-
-                <div class="popcorn-dots">
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                </div>
+                </small>
 
             </div>
 
@@ -161,69 +105,45 @@
     </section>
 
 
-    <!-- =====================================================
-         TOP AD
-    ====================================================== -->
-
+    <!-- TOP AD -->
     {% if ads and ads.ad_top %}
-
-    <div class="movie-ad movie-ad-top">
+    <div class="tm-ad tm-ad-top">
         {{ ads.ad_top | safe }}
     </div>
-
     {% endif %}
 
 
-    <!-- =====================================================
-         PLAYER
-    ====================================================== -->
+    <!-- VIDEO PLAYER -->
+    {% if movie.video_url %}
 
-    {% if movie.video_url or movie.video %}
+    <section class="tm-player-section">
 
-    <section class="player-section">
+        <div class="tm-player-header">
 
-        <div class="player-header">
+            <div class="tm-player-title">
 
-            <div class="player-heading">
-
-                <span class="play-icon">
+                <div class="tm-play-icon">
                     ▶
-                </span>
+                </div>
 
                 <div>
-                    <span class="player-kicker">
-                        TOMESH MOVIES
-                    </span>
-
-                    <strong>
-                        Watch Now
-                    </strong>
+                    <small>TOMESH MOVIES</small>
+                    <strong>Watch Now</strong>
                 </div>
 
             </div>
 
-            <div class="player-status">
-
-                <span class="live-dot"></span>
-
-                <span>
-                    PLAYING
-                </span>
-
-                <b>
-                    HD
-                </b>
-
+            <div class="tm-status">
+                <span id="tmStatusDot"></span>
+                <span id="tmStatus">LOADING</span>
             </div>
 
         </div>
 
 
-        <div class="video-frame">
+        <div class="tm-video-frame">
 
-            <div class="video-frame-top"></div>
-
-            <div class="video-box">
+            <div class="tm-video-box">
 
                 <video
                     id="tmVideo"
@@ -231,100 +151,124 @@
                     controls
                     playsinline
                     preload="metadata"
-                    poster="{% if movie.poster_url %}{{ movie.poster_url }}{% endif %}"
+                    poster="{{ movie.poster_url or '' }}"
                 >
-
-                    {% if movie.video_url %}
 
                     <source
                         src="{{ movie.video_url }}"
-                        type="video/mp4"
+                        type="{{ movie.video_mime or 'video/mp4' }}"
                     >
 
-                    {% elif movie.video %}
-
-                    <source
-                        src="{{ movie.video }}"
-                        type="video/mp4"
-                    >
-
-                    {% endif %}
-
-                    आपका browser video playback support नहीं करता।
+                    आपका browser इस video को play नहीं कर सकता।
 
                 </video>
 
-            </div>
 
-            <div class="video-frame-bottom"></div>
+                <!-- LOADING -->
+                <div id="tmLoading" class="tm-loading">
+
+                    <div class="tm-spinner"></div>
+
+                    <strong>
+                        Video Loading...
+                    </strong>
+
+                    <small>
+                        Please wait
+                    </small>
+
+                </div>
+
+
+                <!-- ERROR -->
+                <div id="tmError" class="tm-error" hidden>
+
+                    <div class="tm-error-icon">
+                        ⚠
+                    </div>
+
+                    <strong>
+                        Video Play नहीं हो पाई
+                    </strong>
+
+                    <small id="tmErrorText">
+                        Video format या connection में समस्या हो सकती है।
+                    </small>
+
+                    <button
+                        type="button"
+                        onclick="tmRetryVideo()"
+                    >
+                        ↻ Retry
+                    </button>
+
+                </div>
+
+            </div>
 
         </div>
 
 
-        <!-- =================================================
-             VIDEO ACTIONS
-        ================================================== -->
-
-        <div class="video-actions">
+        <!-- ACTIONS -->
+        <div class="tm-actions">
 
             <button
                 type="button"
-                class="action-btn"
-                onclick="toggleFullscreen()"
+                onclick="tmFullscreen()"
             >
-                <span>⛶</span>
-                Fullscreen
+                ⛶ Fullscreen
             </button>
 
             <button
                 type="button"
-                class="action-btn"
-                onclick="restartVideo()"
+                onclick="tmRestart()"
             >
-                <span>↻</span>
-                Restart
+                ↻ Restart
             </button>
 
         </div>
 
     </section>
 
+    {% else %}
+
+    <section class="tm-no-video">
+
+        <div>
+            🎬
+        </div>
+
+        <strong>
+            Video अभी उपलब्ध नहीं है
+        </strong>
+
+        <small>
+            इस movie के लिए video file नहीं मिली।
+        </small>
+
+    </section>
+
     {% endif %}
 
 
-    <!-- =====================================================
-         PLAYER AD
-    ====================================================== -->
-
+    <!-- PLAYER AD -->
     {% if ads and ads.ad_player %}
-
-    <div class="movie-ad movie-ad-player">
+    <div class="tm-ad tm-ad-player">
         {{ ads.ad_player | safe }}
     </div>
-
     {% endif %}
 
 
-    <!-- =====================================================
-         MOVIE INFORMATION
-    ====================================================== -->
+    <!-- DETAILS -->
+    <section class="tm-details">
 
-    <section class="movie-details">
+        <div class="tm-detail">
 
-        <div class="detail-card">
+            <span>🎬</span>
 
-            <div class="detail-icon">
-                🎬
-            </div>
-
-            <div class="detail-content">
-
+            <div>
                 <small>MOVIE</small>
-
-                <strong>
-                    {{ movie.title }}
-                </strong>
-
+                <strong>{{ movie.title }}</strong>
             </div>
 
         </div>
@@ -332,20 +276,13 @@
 
         {% if movie.category %}
 
-        <div class="detail-card">
+        <div class="tm-detail">
 
-            <div class="detail-icon">
-                🏷️
-            </div>
+            <span>🏷️</span>
 
-            <div class="detail-content">
-
+            <div>
                 <small>CATEGORY</small>
-
-                <strong>
-                    {{ movie.category }}
-                </strong>
-
+                <strong>{{ movie.category }}</strong>
             </div>
 
         </div>
@@ -353,20 +290,13 @@
         {% endif %}
 
 
-        <div class="detail-card">
+        <div class="tm-detail">
 
-            <div class="detail-icon">
-                👁
-            </div>
+            <span>👁</span>
 
-            <div class="detail-content">
-
+            <div>
                 <small>VIEWS</small>
-
-                <strong>
-                    {{ movie.views or 0 }}
-                </strong>
-
+                <strong>{{ movie.views or 0 }}</strong>
             </div>
 
         </div>
@@ -374,44 +304,27 @@
     </section>
 
 
-    <!-- =====================================================
-         BOTTOM AD
-    ====================================================== -->
-
+    <!-- BOTTOM AD -->
     {% if ads and ads.ad_bottom %}
-
-    <div class="movie-ad movie-ad-bottom">
+    <div class="tm-ad tm-ad-bottom">
         {{ ads.ad_bottom | safe }}
     </div>
-
     {% endif %}
 
 
-    <!-- =====================================================
-         FOOTER
-    ====================================================== -->
+    <!-- FOOTER -->
+    <footer class="tm-footer">
 
-    <footer class="movie-footer">
-
-        <div class="footer-logo">
+        <div class="tm-footer-logo">
             TM
         </div>
 
-        <div class="footer-text">
-
-            <strong>
-                TOMESH MOVIES
-            </strong>
-
-            <span>
-                Your Cinematic World
-            </span>
-
+        <div>
+            <strong>TOMESH MOVIES</strong>
+            <small>Your Cinematic World</small>
         </div>
 
-        <div class="footer-line"></div>
-
-        <span class="footer-copy">
+        <span>
             © Tomesh Movies
         </span>
 
@@ -422,80 +335,73 @@
 
 <style>
 
-/* =========================================================
-   MOVIE PAGE — PREMIUM CINEMATIC
-========================================================= */
+/* ===============================
+   PAGE
+================================ */
 
-.movie-page,
-.movie-page *{
-    box-sizing:border-box;
-}
-
-.movie-page{
-    min-height:100vh;
-    padding:0 25px 55px;
-    color:#fff;
-    position:relative;
-    overflow:hidden;
+.tm-movie-page {
+    min-height: 100vh;
+    padding: 0 20px 50px;
+    color: #fff;
 
     background:
         radial-gradient(
             circle at 80% 5%,
-            rgba(139,92,246,.12),
-            transparent 28%
-        ),
-        radial-gradient(
-            circle at 15% 45%,
-            rgba(255,193,7,.045),
-            transparent 25%
-        ),
-        radial-gradient(
-            circle at 60% 100%,
-            rgba(239,35,60,.045),
+            rgba(139, 92, 246, .14),
             transparent 30%
+        ),
+        radial-gradient(
+            circle at 10% 40%,
+            rgba(255, 193, 7, .05),
+            transparent 25%
         ),
         #050507;
 }
 
-
-/* =========================================================
-   TOPBAR
-========================================================= */
-
-.movie-topbar{
-    max-width:1200px;
-    height:78px;
-    margin:auto;
-
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-
-    border-bottom:1px solid rgba(255,255,255,.07);
+.tm-movie-page *,
+.tm-movie-page *::before,
+.tm-movie-page *::after {
+    box-sizing: border-box;
 }
 
-.movie-brand{
-    display:flex;
-    align-items:center;
-    gap:12px;
 
-    text-decoration:none;
-    color:#fff;
+/* ===============================
+   TOP BAR
+================================ */
+
+.tm-topbar {
+    max-width: 1150px;
+    height: 76px;
+    margin: auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    border-bottom: 1px solid rgba(255,255,255,.07);
 }
 
-.brand-logo{
-    width:45px;
-    height:45px;
+.tm-brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
 
-    position:relative;
+    color: #fff;
+    text-decoration: none;
+}
 
-    display:flex;
-    align-items:center;
-    justify-content:center;
+.tm-logo {
+    width: 44px;
+    height: 44px;
 
-    border-radius:13px;
+    position: relative;
 
-    color:#090a0d;
+    display: grid;
+    place-items: center;
+
+    border-radius: 12px;
+
+    color: #111;
 
     background:
         linear-gradient(
@@ -505,296 +411,149 @@
             #ef233c
         );
 
-    font-size:15px;
-    font-weight:1000;
-
-    box-shadow:
-        0 10px 30px rgba(255,193,7,.17);
-
-    transition:.3s;
+    font-weight: 1000;
 }
 
-.movie-brand:hover .brand-logo{
-    transform:rotate(-4deg) scale(1.05);
+.tm-logo span {
+    position: absolute;
 
-    box-shadow:
-        0 12px 38px rgba(255,193,7,.27);
+    right: -6px;
+    bottom: -5px;
+
+    width: 20px;
+    height: 20px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 50%;
+
+    background: #fff;
+
+    font-size: 8px;
 }
 
-.brand-logo span{
-    position:absolute;
-
-    right:-6px;
-    bottom:-5px;
-
-    width:21px;
-    height:21px;
-
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    border-radius:50%;
-
-    background:#fff;
-    color:#111;
-
-    font-size:8px;
+.tm-brand-text {
+    display: flex;
+    flex-direction: column;
 }
 
-.brand-text{
-    display:flex;
-    flex-direction:column;
-
-    line-height:1;
+.tm-brand-text strong {
+    font-size: 15px;
+    letter-spacing: 1.5px;
 }
 
-.brand-text strong{
-    font-size:16px;
-    letter-spacing:1.4px;
+.tm-brand-text small {
+    margin-top: 4px;
+
+    color: #ffc107;
+
+    font-size: 8px;
+    letter-spacing: 3px;
+    font-weight: 900;
 }
 
-.brand-text small{
-    margin-top:5px;
+.tm-back {
+    padding: 9px 14px;
 
-    color:#ffc107;
+    color: #9297a2;
 
-    font-size:8px;
-    letter-spacing:3px;
-    font-weight:900;
+    text-decoration: none;
+
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 9px;
+
+    background: rgba(255,255,255,.025);
+
+    font-size: 10px;
+    font-weight: 800;
 }
 
-.back-btn{
-    padding:9px 14px;
-
-    display:flex;
-    align-items:center;
-    gap:7px;
-
-    border:1px solid rgba(255,255,255,.09);
-    border-radius:10px;
-
-    background:rgba(255,255,255,.025);
-
-    color:#858b97;
-
-    text-decoration:none;
-
-    font-size:10px;
-    font-weight:800;
-
-    transition:.25s;
-}
-
-.back-btn:hover{
-    color:#ffc107;
-
-    border-color:rgba(255,193,7,.25);
-
-    background:rgba(255,193,7,.045);
-
-    transform:translateY(-2px);
+.tm-back:hover {
+    color: #ffc107;
+    border-color: rgba(255,193,7,.3);
 }
 
 
-/* =========================================================
+/* ===============================
    HERO
-========================================================= */
+================================ */
 
-.movie-hero{
-    max-width:1150px;
-    min-height:445px;
+.tm-hero {
+    max-width: 1150px;
+    min-height: 420px;
 
-    margin:auto;
-    padding:60px 0 45px;
+    margin: auto;
+    padding: 55px 0 40px;
 
-    position:relative;
+    display: grid;
+    grid-template-columns: minmax(0,1fr) 300px;
 
-    display:grid;
-    grid-template-columns:minmax(0,1fr) 310px;
+    gap: 50px;
 
-    gap:55px;
-
-    align-items:center;
+    align-items: center;
 }
 
-.hero-bg-glow{
-    position:absolute;
-
-    width:500px;
-    height:500px;
-
-    right:70px;
-    top:-120px;
-
-    border-radius:50%;
-
-    background:
-        radial-gradient(
-            circle,
-            rgba(139,92,246,.11),
-            transparent 68%
-        );
-
-    pointer-events:none;
-
-    animation:heroGlow 6s ease-in-out infinite alternate;
+.tm-hero-content {
+    min-width: 0;
 }
 
-@keyframes heroGlow{
+.tm-now {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 
-    from{
-        transform:scale(.9);
-        opacity:.5;
-    }
+    color: #ffc107;
 
-    to{
-        transform:scale(1.1);
-        opacity:1;
-    }
+    font-size: 9px;
+    font-weight: 900;
 
+    letter-spacing: 3px;
 }
 
-.hero-grid{
-    position:absolute;
+.tm-now span {
+    width: 7px;
+    height: 7px;
 
-    left:-100px;
-    right:-100px;
-    bottom:0;
+    border-radius: 50%;
 
-    height:170px;
+    background: #ef233c;
 
-    opacity:.08;
-
-    background-image:
-        linear-gradient(
-            rgba(255,255,255,.16) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(255,255,255,.16) 1px,
-            transparent 1px
-        );
-
-    background-size:35px 35px;
-
-    mask-image:
-        linear-gradient(
-            to top,
-            black,
-            transparent
-        );
-
-    pointer-events:none;
+    box-shadow: 0 0 12px #ef233c;
 }
 
-.hero-content{
-    min-width:0;
+.tm-hero h1 {
+    margin: 15px 0 0;
 
-    position:relative;
-    z-index:2;
+    max-width: 850px;
 
-    animation:
-        heroContentIn
-        .8s
-        cubic-bezier(.16,1,.3,1)
-        both;
-}
+    font-size: clamp(38px, 5.5vw, 70px);
+    line-height: 1;
 
-@keyframes heroContentIn{
+    letter-spacing: -2px;
 
-    from{
-        opacity:0;
-        transform:translateY(22px);
-    }
-
-    to{
-        opacity:1;
-        transform:translateY(0);
-    }
-
-}
-
-.now-playing{
-    margin-bottom:14px;
-
-    display:flex;
-    align-items:center;
-    gap:7px;
-
-    color:#ffc107;
-
-    font-size:9px;
-    font-weight:1000;
-
-    letter-spacing:3px;
-}
-
-.now-playing span{
-    color:#ef233c;
-
-    font-size:8px;
-
-    animation:
-        nowPulse
-        1.5s
-        ease-in-out
-        infinite;
-}
-
-@keyframes nowPulse{
-
-    0%,100%{
-        opacity:.4;
-    }
-
-    50%{
-        opacity:1;
-    }
-
-}
-
-.hero-content h1{
-    max-width:850px;
-
-    margin:0;
-
-    font-size:
-        clamp(
-            38px,
-            5.5vw,
-            70px
-        );
-
-    line-height:.98;
-
-    font-weight:1000;
-
-    letter-spacing:-2.5px;
-
-    overflow-wrap:anywhere;
+    overflow-wrap: anywhere;
 
     background:
         linear-gradient(
             100deg,
-            #fff 0%,
-            #fff 45%,
-            #cfd1d7 100%
+            #fff,
+            #d1d4da
         );
 
-    -webkit-background-clip:text;
-    background-clip:text;
-    color:transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    color: transparent;
 }
 
-.title-line{
-    width:80px;
-    height:3px;
+.tm-title-line {
+    width: 80px;
+    height: 3px;
 
-    margin-top:18px;
+    margin-top: 18px;
 
-    border-radius:10px;
+    border-radius: 5px;
 
     background:
         linear-gradient(
@@ -802,30 +561,24 @@
             #ffc107,
             #ef233c
         );
-
-    box-shadow:
-        0 0 18px rgba(255,193,7,.22);
 }
 
-.movie-meta{
-    margin-top:18px;
+.tm-meta {
+    margin-top: 18px;
 
-    display:flex;
-    align-items:center;
-    flex-wrap:wrap;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
 
-    gap:9px;
+    gap: 9px;
 }
 
-.category{
-    display:inline-flex;
-    align-items:center;
+.tm-category {
+    padding: 7px 12px;
 
-    padding:7px 12px;
+    border-radius: 8px;
 
-    border-radius:8px;
-
-    color:#08090b;
+    color: #111;
 
     background:
         linear-gradient(
@@ -834,430 +587,207 @@
             #ff9f00
         );
 
-    font-size:10px;
-    font-weight:1000;
+    font-size: 10px;
+    font-weight: 900;
 }
 
-.views{
-    color:#777e8b;
-
-    font-size:11px;
+.tm-views {
+    color: #777e8a;
+    font-size: 11px;
 }
 
-.quality-badge{
-    padding:5px 7px;
+.tm-hd {
+    padding: 5px 7px;
 
-    border:1px solid rgba(255,255,255,.1);
-    border-radius:6px;
+    color: #aaa;
 
-    color:#aeb3bc;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 5px;
 
-    background:rgba(255,255,255,.035);
-
-    font-size:8px;
-    font-weight:1000;
+    font-size: 8px;
+    font-weight: 900;
 }
 
-.description{
-    max-width:720px;
+.tm-description {
+    max-width: 700px;
 
-    margin:19px 0 0;
+    margin: 20px 0 0;
 
-    color:#8c929d;
+    color: #9096a1;
 
-    font-size:13px;
+    font-size: 13px;
+    line-height: 1.8;
 
-    line-height:1.85;
-}
-
-.hero-mini-info{
-    margin-top:25px;
-
-    display:flex;
-    align-items:center;
-    gap:15px;
-}
-
-.hero-mini-info div{
-    display:flex;
-    flex-direction:column;
-}
-
-.hero-mini-info span{
-    color:#555c68;
-
-    font-size:7px;
-    font-weight:900;
-
-    letter-spacing:1.5px;
-}
-
-.hero-mini-info strong{
-    margin-top:4px;
-
-    color:#d7d9de;
-
-    font-size:9px;
-    letter-spacing:.5px;
-}
-
-.hero-mini-info i{
-    width:1px;
-    height:28px;
-
-    background:rgba(255,255,255,.1);
+    white-space: pre-wrap;
 }
 
 
-/* =========================================================
-   POPCORN CARD
-========================================================= */
+/* ===============================
+   POPCORN
+================================ */
 
-.popcorn-wrapper{
-    position:relative;
-
-    z-index:2;
+.tm-popcorn {
+    position: relative;
 }
 
-.glow{
-    position:absolute;
+.tm-popcorn-glow {
+    position: absolute;
 
-    width:230px;
-    height:230px;
+    width: 240px;
+    height: 240px;
 
-    left:50%;
-    top:50%;
+    left: 50%;
+    top: 50%;
 
-    transform:
-        translate(-50%,-50%);
+    transform: translate(-50%,-50%);
 
-    border-radius:50%;
+    border-radius: 50%;
 
     background:
         radial-gradient(
             circle,
-            rgba(255,193,7,.22),
-            rgba(139,92,246,.08),
+            rgba(255,193,7,.2),
             transparent 68%
         );
 
-    filter:blur(25px);
-
-    animation:
-        popcornGlow
-        4s
-        ease-in-out
-        infinite alternate;
+    filter: blur(25px);
 }
 
-@keyframes popcornGlow{
+.tm-popcorn-card {
+    position: relative;
 
-    from{
-        transform:
-            translate(-50%,-50%)
-            scale(.85);
-    }
+    padding: 27px 20px;
 
-    to{
-        transform:
-            translate(-50%,-50%)
-            scale(1.12);
-    }
+    text-align: center;
 
-}
-
-.orbit{
-    position:absolute;
-
-    left:50%;
-    top:50%;
-
-    border:1px solid rgba(255,193,7,.1);
-
-    border-radius:50%;
-
-    pointer-events:none;
-}
-
-.orbit-one{
-    width:285px;
-    height:285px;
-
-    transform:
-        translate(-50%,-50%)
-        rotate(20deg);
-
-    border-left-color:rgba(255,193,7,.35);
-
-    animation:
-        orbitRotate
-        12s
-        linear
-        infinite;
-}
-
-.orbit-two{
-    width:245px;
-    height:245px;
-
-    transform:
-        translate(-50%,-50%)
-        rotate(-20deg);
-
-    border-right-color:rgba(139,92,246,.3);
-
-    animation:
-        orbitRotateReverse
-        9s
-        linear
-        infinite;
-}
-
-@keyframes orbitRotate{
-
-    to{
-        transform:
-            translate(-50%,-50%)
-            rotate(380deg);
-    }
-
-}
-
-@keyframes orbitRotateReverse{
-
-    to{
-        transform:
-            translate(-50%,-50%)
-            rotate(-380deg);
-    }
-
-}
-
-.popcorn-card{
-    position:relative;
-
-    padding:27px 20px 25px;
-
-    text-align:center;
-
-    border:1px solid rgba(255,255,255,.09);
-    border-radius:22px;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 22px;
 
     background:
         linear-gradient(
             145deg,
-            rgba(23,24,31,.97),
-            rgba(10,11,15,.97)
+            #181920,
+            #090a0d
         );
 
     box-shadow:
-        0 25px 70px rgba(0,0,0,.42),
-        inset 0 1px 0 rgba(255,255,255,.035);
-
-    overflow:hidden;
-
-    backdrop-filter:blur(15px);
+        0 25px 70px rgba(0,0,0,.45);
 }
 
-.popcorn-card::before{
-    content:"";
+.tm-tonight {
+    color: #666d78;
 
-    position:absolute;
-
-    inset:0;
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(255,193,7,.05),
-            transparent 38%,
-            rgba(139,92,246,.05)
-        );
-
-    pointer-events:none;
+    font-size: 7px;
+    letter-spacing: 2px;
 }
 
-.popcorn-top-label{
-    position:relative;
+.tm-watch {
+    margin-top: 10px;
 
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-
-    color:#575e6a;
-
-    font-size:7px;
-    font-weight:900;
-
-    letter-spacing:2px;
+    display: flex;
+    flex-direction: column;
 }
 
-.popcorn-top-label b{
-    color:#ffc107;
+.tm-watch small {
+    color: #ffc107;
 
-    font-size:10px;
+    font-size: 9px;
+    letter-spacing: 4px;
+    font-weight: 900;
 }
 
-.popcorn-title{
-    position:relative;
+.tm-watch strong {
+    margin-top: 3px;
 
-    margin-top:9px;
-
-    display:flex;
-    flex-direction:column;
+    font-size: 28px;
+    letter-spacing: 2px;
 }
 
-.popcorn-title span{
-    color:#ffc107;
+.tm-popcorn-icon {
+    margin: 18px 0;
 
-    font-size:9px;
-    font-weight:1000;
+    font-size: 70px;
 
-    letter-spacing:4px;
+    animation: tmPopcorn 2.8s ease-in-out infinite;
 }
 
-.popcorn-title strong{
-    margin-top:3px;
+@keyframes tmPopcorn {
 
-    font-size:29px;
-
-    letter-spacing:2px;
-}
-
-.popcorn{
-    position:relative;
-
-    margin:18px 0;
-
-    font-size:72px;
-
-    line-height:1;
-
-    filter:
-        drop-shadow(
-            0 12px 18px rgba(0,0,0,.4)
-        );
-
-    animation:
-        tmFloat
-        2.8s
-        ease-in-out
-        infinite;
-}
-
-@keyframes tmFloat{
-
-    0%,100%{
-        transform:
-            translateY(0)
-            rotate(-1deg);
+    0%,100% {
+        transform: translateY(0) rotate(-2deg);
     }
 
-    50%{
-        transform:
-            translateY(-9px)
-            rotate(3deg);
+    50% {
+        transform: translateY(-8px) rotate(3deg);
     }
 
 }
 
-.popcorn-main{
-    position:relative;
-
-    display:block;
-
-    font-size:14px;
+.tm-popcorn-card > strong {
+    display: block;
+    font-size: 14px;
 }
 
-.popcorn-sub{
-    position:relative;
+.tm-popcorn-card > small {
+    display: block;
 
-    display:block;
+    margin-top: 5px;
 
-    margin-top:5px;
+    color: #666d78;
 
-    color:#666d79;
-
-    font-size:9px;
-}
-
-.popcorn-dots{
-    margin-top:16px;
-
-    display:flex;
-    justify-content:center;
-    gap:5px;
-}
-
-.popcorn-dots i{
-    width:5px;
-    height:5px;
-
-    border-radius:50%;
-
-    background:#393d46;
-}
-
-.popcorn-dots i:first-child{
-    background:#ffc107;
+    font-size: 9px;
 }
 
 
-/* =========================================================
+/* ===============================
    ADS
-========================================================= */
+================================ */
 
-.movie-ad{
-    max-width:1200px;
+.tm-ad {
+    max-width: 1150px;
 
-    margin:22px auto;
+    margin: 20px auto;
 
-    text-align:center;
+    text-align: center;
 
-    overflow:hidden;
-}
-
-.movie-ad-top,
-.movie-ad-player,
-.movie-ad-bottom{
-    min-height:45px;
+    overflow: hidden;
 }
 
 
-/* =========================================================
+/* ===============================
    PLAYER
-========================================================= */
+================================ */
 
-.player-section{
-    max-width:1150px;
+.tm-player-section {
+    max-width: 1150px;
 
-    margin:0 auto 30px;
+    margin: 20px auto 30px;
 }
 
-.player-header{
-    margin-bottom:13px;
+.tm-player-header {
+    margin-bottom: 13px;
 
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.player-heading{
-    display:flex;
-    align-items:center;
-    gap:10px;
+.tm-player-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.play-icon{
-    width:34px;
-    height:34px;
+.tm-play-icon {
+    width: 35px;
+    height: 35px;
 
-    display:grid;
-    place-items:center;
+    display: grid;
+    place-items: center;
 
-    border-radius:10px;
+    border-radius: 10px;
 
-    color:#08090b;
+    color: #111;
 
     background:
         linear-gradient(
@@ -1266,245 +796,358 @@
             #ff9f00
         );
 
-    font-size:11px;
-
-    box-shadow:
-        0 8px 22px rgba(255,193,7,.12);
+    font-size: 11px;
 }
 
-.player-heading > div{
-    display:flex;
-    flex-direction:column;
+.tm-player-title div:last-child {
+    display: flex;
+    flex-direction: column;
 }
 
-.player-kicker{
-    color:#555c68;
+.tm-player-title small {
+    color: #565d68;
 
-    font-size:7px;
-    font-weight:900;
-
-    letter-spacing:2px;
+    font-size: 7px;
+    letter-spacing: 2px;
 }
 
-.player-heading strong{
-    margin-top:3px;
+.tm-player-title strong {
+    margin-top: 3px;
 
-    font-size:17px;
+    font-size: 17px;
 }
 
-.player-status{
-    display:flex;
-    align-items:center;
-    gap:7px;
+.tm-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 
-    color:#656c78;
+    color: #777e89;
 
-    font-size:8px;
-    font-weight:900;
-
-    letter-spacing:1px;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 1px;
 }
 
-.live-dot{
-    width:6px;
-    height:6px;
+#tmStatusDot {
+    width: 7px;
+    height: 7px;
 
-    border-radius:50%;
+    border-radius: 50%;
 
-    background:#ef233c;
+    background: #ffc107;
 
-    box-shadow:
-        0 0 12px rgba(239,35,60,.7);
-
-    animation:
-        nowPulse
-        1.5s
-        ease-in-out
-        infinite;
-}
-
-.player-status b{
-    margin-left:5px;
-
-    padding:4px 6px;
-
-    border:1px solid rgba(255,255,255,.1);
-    border-radius:5px;
-
-    color:#aaa;
-
-    font-size:7px;
+    box-shadow: 0 0 10px rgba(255,193,7,.7);
 }
 
 
-/* =========================================================
+/* ===============================
    VIDEO FRAME
-========================================================= */
+================================ */
 
-.video-frame{
-    position:relative;
+.tm-video-frame {
+    padding: 2px;
 
-    padding:1px;
-
-    border-radius:20px;
+    border-radius: 19px;
 
     background:
         linear-gradient(
             135deg,
-            rgba(255,193,7,.35),
-            rgba(255,255,255,.07) 30%,
-            rgba(139,92,246,.25) 70%,
-            rgba(255,193,7,.2)
+            rgba(255,193,7,.4),
+            rgba(139,92,246,.3),
+            rgba(239,35,60,.25)
         );
 
     box-shadow:
         0 30px 80px rgba(0,0,0,.5);
 }
 
-.video-frame-top,
-.video-frame-bottom{
-    position:absolute;
+.tm-video-box {
+    position: relative;
 
-    left:20px;
-    right:20px;
+    width: 100%;
 
-    height:1px;
+    overflow: hidden;
 
-    z-index:3;
+    border-radius: 17px;
 
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            rgba(255,193,7,.55),
-            transparent
-        );
-
-    pointer-events:none;
+    background: #000;
 }
 
-.video-frame-top{
-    top:0;
-}
+.tm-video {
+    display: block;
 
-.video-frame-bottom{
-    bottom:0;
-}
+    width: 100%;
 
-.video-box{
-    position:relative;
+    height: auto;
 
-    width:100%;
+    min-height: 300px;
+    max-height: 700px;
 
-    background:#000;
+    background: #000;
 
-    border-radius:19px;
-
-    overflow:hidden;
-}
-
-.tm-video{
-    display:block;
-
-    width:100%;
-
-    min-height:300px;
-    max-height:700px;
-
-    background:#000;
-
-    object-fit:contain;
+    object-fit: contain;
 }
 
 
-/* =========================================================
-   VIDEO ACTIONS
-========================================================= */
+/* ===============================
+   LOADING
+================================ */
 
-.video-actions{
-    margin-top:12px;
+.tm-loading {
+    position: absolute;
 
-    display:flex;
-    justify-content:flex-end;
+    inset: 0;
 
-    gap:8px;
+    z-index: 5;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    background: rgba(0,0,0,.75);
+
+    color: #aaa;
+
+    transition: .25s;
 }
 
-.action-btn{
-    min-height:34px;
-
-    padding:0 13px;
-
-    display:flex;
-    align-items:center;
-    gap:7px;
-
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:9px;
-
-    background:#101218;
-
-    color:#858c98;
-
-    cursor:pointer;
-
-    font-size:9px;
-    font-weight:800;
-
-    transition:.25s;
+.tm-loading.hidden {
+    opacity: 0;
+    visibility: hidden;
 }
 
-.action-btn span{
-    color:#ffc107;
+.tm-loading strong {
+    color: #ddd;
 
-    font-size:13px;
+    font-size: 12px;
 }
 
-.action-btn:hover{
-    color:#fff;
+.tm-loading small {
+    color: #666;
 
-    border-color:rgba(255,193,7,.25);
+    font-size: 9px;
+}
+
+.tm-spinner {
+    width: 38px;
+    height: 38px;
+
+    border: 3px solid rgba(255,255,255,.12);
+
+    border-top-color: #ffc107;
+
+    border-radius: 50%;
+
+    animation: tmSpin .8s linear infinite;
+}
+
+@keyframes tmSpin {
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
+
+
+/* ===============================
+   ERROR
+================================ */
+
+.tm-error {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 10;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 9px;
+
+    padding: 20px;
+
+    text-align: center;
+
+    background: rgba(0,0,0,.9);
+}
+
+.tm-error[hidden] {
+    display: none;
+}
+
+.tm-error-icon {
+    width: 50px;
+    height: 50px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 50%;
+
+    color: #fff;
+
+    background: rgba(239,35,60,.15);
+
+    border: 1px solid rgba(239,35,60,.3);
+
+    font-size: 22px;
+}
+
+.tm-error strong {
+    font-size: 14px;
+}
+
+.tm-error small {
+    max-width: 350px;
+
+    color: #777e89;
+
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.tm-error button {
+    margin-top: 5px;
+
+    padding: 9px 16px;
+
+    border: 0;
+    border-radius: 8px;
+
+    color: #111;
 
     background:
         linear-gradient(
             135deg,
-            rgba(255,193,7,.1),
-            rgba(139,92,246,.06)
+            #ffc107,
+            #ff9f00
         );
 
-    transform:translateY(-2px);
+    cursor: pointer;
+
+    font-size: 10px;
+    font-weight: 900;
 }
 
 
-/* =========================================================
+/* ===============================
+   ACTIONS
+================================ */
+
+.tm-actions {
+    margin-top: 12px;
+
+    display: flex;
+    justify-content: flex-end;
+
+    gap: 8px;
+}
+
+.tm-actions button {
+    padding: 9px 14px;
+
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+
+    color: #8b929d;
+
+    background: #101218;
+
+    cursor: pointer;
+
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.tm-actions button:hover {
+    color: #fff;
+
+    border-color: rgba(255,193,7,.3);
+}
+
+
+/* ===============================
+   NO VIDEO
+================================ */
+
+.tm-no-video {
+    max-width: 1150px;
+
+    margin: 30px auto;
+
+    padding: 60px 20px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 10px;
+
+    text-align: center;
+
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 18px;
+
+    background: #0b0d11;
+}
+
+.tm-no-video > div {
+    font-size: 45px;
+}
+
+.tm-no-video strong {
+    font-size: 16px;
+}
+
+.tm-no-video small {
+    color: #707782;
+    font-size: 10px;
+}
+
+
+/* ===============================
    DETAILS
-========================================================= */
+================================ */
 
-.movie-details{
-    max-width:1150px;
+.tm-details {
+    max-width: 1150px;
 
-    margin:27px auto;
+    margin: 25px auto;
 
-    display:grid;
+    display: grid;
 
     grid-template-columns:
-        repeat(3,1fr);
+        repeat(3, 1fr);
 
-    gap:12px;
+    gap: 12px;
 }
 
-.detail-card{
-    min-width:0;
+.tm-detail {
+    min-width: 0;
 
-    display:flex;
-    align-items:center;
+    display: flex;
+    align-items: center;
 
-    gap:12px;
+    gap: 12px;
 
-    padding:16px;
+    padding: 16px;
 
-    border:1px solid rgba(255,255,255,.065);
-    border-radius:15px;
+    border: 1px solid rgba(255,255,255,.065);
+    border-radius: 14px;
 
     background:
         linear-gradient(
@@ -1512,103 +1155,82 @@
             #101218,
             #090b0f
         );
-
-    transition:
-        transform .25s,
-        border-color .25s,
-        box-shadow .25s;
 }
 
-.detail-card:hover{
-    transform:translateY(-4px);
+.tm-detail > span {
+    width: 42px;
+    height: 42px;
 
-    border-color:rgba(255,193,7,.2);
+    flex-shrink: 0;
 
-    box-shadow:
-        0 15px 35px rgba(0,0,0,.3);
+    display: grid;
+    place-items: center;
+
+    border-radius: 10px;
+
+    background: rgba(255,193,7,.07);
+
+    font-size: 18px;
 }
 
-.detail-icon{
-    width:43px;
-    height:43px;
+.tm-detail > div {
+    min-width: 0;
 
-    flex-shrink:0;
+    display: flex;
+    flex-direction: column;
 
-    display:grid;
-    place-items:center;
-
-    border-radius:11px;
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(255,193,7,.09),
-            rgba(139,92,246,.07)
-        );
-
-    font-size:19px;
+    gap: 5px;
 }
 
-.detail-content{
-    min-width:0;
+.tm-detail small {
+    color: #555c67;
 
-    display:flex;
-    flex-direction:column;
+    font-size: 7px;
+    font-weight: 900;
 
-    gap:5px;
+    letter-spacing: 1.5px;
 }
 
-.detail-content small{
-    color:#555c68;
+.tm-detail strong {
+    overflow: hidden;
 
-    font-size:7px;
-    font-weight:900;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
-    letter-spacing:1.5px;
-}
+    color: #ddd;
 
-.detail-content strong{
-    overflow:hidden;
-
-    text-overflow:ellipsis;
-
-    white-space:nowrap;
-
-    color:#e1e3e7;
-
-    font-size:12px;
+    font-size: 12px;
 }
 
 
-/* =========================================================
+/* ===============================
    FOOTER
-========================================================= */
+================================ */
 
-.movie-footer{
-    max-width:1150px;
+.tm-footer {
+    max-width: 1150px;
 
-    margin:50px auto 0;
+    margin: 45px auto 0;
+    padding-top: 20px;
 
-    padding-top:22px;
+    display: flex;
+    align-items: center;
 
-    display:flex;
-    align-items:center;
+    gap: 12px;
 
-    gap:12px;
-
-    border-top:1px solid rgba(255,255,255,.065);
+    border-top: 1px solid rgba(255,255,255,.06);
 }
 
-.footer-logo{
-    width:38px;
-    height:38px;
+.tm-footer-logo {
+    width: 38px;
+    height: 38px;
 
-    display:grid;
-    place-items:center;
+    display: grid;
+    place-items: center;
 
-    border-radius:10px;
+    border-radius: 9px;
 
-    color:#08090b;
+    color: #111;
 
     background:
         linear-gradient(
@@ -1617,271 +1239,160 @@
             #ff9f00
         );
 
-    font-size:11px;
-    font-weight:1000;
+    font-size: 11px;
+    font-weight: 1000;
 }
 
-.footer-text{
-    display:flex;
-    flex-direction:column;
-
-    gap:4px;
+.tm-footer div:nth-child(2) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.footer-text strong{
-    color:#d8dbe1;
-
-    font-size:10px;
-
-    letter-spacing:1px;
+.tm-footer strong {
+    font-size: 10px;
+    letter-spacing: 1px;
 }
 
-.footer-text span{
-    color:#555c68;
-
-    font-size:8px;
+.tm-footer small {
+    color: #555c67;
+    font-size: 8px;
 }
 
-.footer-line{
-    flex:1;
-    height:1px;
+.tm-footer > span {
+    margin-left: auto;
 
-    background:
-        linear-gradient(
-            90deg,
-            rgba(255,255,255,.08),
-            transparent
-        );
-}
+    color: #414751;
 
-.footer-copy{
-    color:#3f454f;
-
-    font-size:8px;
+    font-size: 8px;
 }
 
 
-/* =========================================================
+/* ===============================
    TABLET
-========================================================= */
+================================ */
 
-@media(max-width:900px){
+@media (max-width: 900px) {
 
-    .movie-page{
-        padding-left:16px;
-        padding-right:16px;
+    .tm-hero {
+        grid-template-columns: 1fr;
+        gap: 35px;
     }
 
-    .movie-hero{
-        grid-template-columns:1fr;
-
-        gap:40px;
-
-        padding-top:45px;
-    }
-
-    .popcorn-wrapper{
-        width:330px;
-        max-width:100%;
-
-        margin:auto;
+    .tm-popcorn {
+        width: 320px;
+        max-width: 100%;
+        margin: auto;
     }
 
 }
 
 
-/* =========================================================
+/* ===============================
    MOBILE
-========================================================= */
+================================ */
 
-@media(max-width:600px){
+@media (max-width: 600px) {
 
-    .movie-page{
-        padding:
-            0 12px 35px;
+    .tm-movie-page {
+        padding: 0 12px 35px;
     }
 
-    .movie-topbar{
-        height:62px;
+    .tm-topbar {
+        height: 62px;
     }
 
-    .brand-logo{
-        width:38px;
-        height:38px;
-
-        border-radius:10px;
+    .tm-logo {
+        width: 38px;
+        height: 38px;
     }
 
-    .brand-text strong{
-        font-size:14px;
+    .tm-brand-text strong {
+        font-size: 13px;
     }
 
-    .brand-text small{
-        font-size:7px;
+    .tm-brand-text small {
+        font-size: 7px;
     }
 
-    .back-btn{
-        padding:7px 10px;
-
-        font-size:9px;
+    .tm-back {
+        padding: 7px 10px;
+        font-size: 9px;
     }
 
-    .movie-hero{
-        min-height:auto;
+    .tm-hero {
+        min-height: auto;
 
-        padding:
-            32px 0 30px;
+        padding: 35px 0 30px;
 
-        gap:30px;
+        gap: 30px;
     }
 
-    .hero-content h1{
-        font-size:32px;
-
-        letter-spacing:-1.3px;
+    .tm-hero h1 {
+        font-size: 32px;
+        letter-spacing: -1px;
     }
 
-    .description{
-        font-size:12px;
-        line-height:1.75;
+    .tm-description {
+        font-size: 12px;
     }
 
-    .hero-mini-info{
-        gap:9px;
+    .tm-popcorn {
+        max-width: 310px;
     }
 
-    .hero-mini-info strong{
-        font-size:8px;
+    .tm-player-title strong {
+        font-size: 15px;
     }
 
-    .hero-mini-info span{
-        font-size:6px;
+    .tm-video-frame {
+        border-radius: 12px;
     }
 
-    .popcorn-wrapper{
-        width:100%;
-        max-width:320px;
+    .tm-video-box {
+        border-radius: 10px;
     }
 
-    .popcorn-card{
-        padding:
-            22px 15px;
+    .tm-video {
+        min-height: 210px;
+        max-height: 450px;
     }
 
-    .popcorn{
-        font-size:63px;
+    .tm-actions {
+        justify-content: stretch;
     }
 
-    .orbit-one{
-        width:265px;
-        height:265px;
+    .tm-actions button {
+        flex: 1;
     }
 
-    .orbit-two{
-        width:225px;
-        height:225px;
+    .tm-details {
+        grid-template-columns: 1fr;
     }
 
-    .player-header{
-        align-items:flex-end;
-    }
-
-    .player-heading strong{
-        font-size:15px;
-    }
-
-    .player-status{
-        font-size:7px;
-    }
-
-    .video-frame{
-        border-radius:12px;
-    }
-
-    .video-box{
-        border-radius:11px;
-    }
-
-    .tm-video{
-        min-height:210px;
-        max-height:450px;
-    }
-
-    .video-actions{
-        justify-content:stretch;
-    }
-
-    .action-btn{
-        flex:1;
-        justify-content:center;
-    }
-
-    .movie-details{
-        grid-template-columns:1fr;
-
-        gap:9px;
-    }
-
-    .detail-card{
-        padding:13px;
-    }
-
-    .movie-footer{
-        margin-top:35px;
-    }
-
-    .footer-copy{
-        display:none;
+    .tm-footer > span {
+        display: none;
     }
 
 }
 
 
-/* =========================================================
+/* ===============================
    SMALL MOBILE
-========================================================= */
+================================ */
 
-@media(max-width:380px){
+@media (max-width: 380px) {
 
-    .brand-text{
-        display:none;
+    .tm-brand-text {
+        display: none;
     }
 
-    .hero-content h1{
-        font-size:28px;
+    .tm-hero h1 {
+        font-size: 28px;
     }
 
-    .hero-mini-info{
-        gap:7px;
-    }
-
-    .hero-mini-info strong{
-        font-size:7px;
-    }
-
-    .hero-mini-info i{
-        height:22px;
-    }
-
-    .tm-video{
-        min-height:190px;
-    }
-
-}
-
-
-/* =========================================================
-   REDUCED MOTION
-========================================================= */
-
-@media(prefers-reduced-motion:reduce){
-
-    *,
-    *::before,
-    *::after{
-        animation-duration:.01ms !important;
-        animation-iteration-count:1 !important;
-        transition-duration:.01ms !important;
+    .tm-video {
+        min-height: 190px;
     }
 
 }
@@ -1891,88 +1402,304 @@
 
 <script>
 
-/* =========================================================
-   FULLSCREEN
-========================================================= */
+document.addEventListener("DOMContentLoaded", function () {
 
-function toggleFullscreen(){
+    const video = document.getElementById("tmVideo");
+    const loading = document.getElementById("tmLoading");
+    const errorBox = document.getElementById("tmError");
+    const status = document.getElementById("tmStatus");
+    const dot = document.getElementById("tmStatusDot");
 
-    const video =
-        document.getElementById("tmVideo");
-
-    if(!video){
+    if (!video) {
         return;
     }
 
-    if(document.fullscreenElement){
 
-        document.exitFullscreen();
+    function setStatus(text) {
 
-    }else{
-
-        if(video.requestFullscreen){
-
-            video.requestFullscreen();
-
-        }else if(video.webkitEnterFullscreen){
-
-            video.webkitEnterFullscreen();
-
+        if (status) {
+            status.textContent = text;
         }
 
     }
 
-}
+
+    function hideLoading() {
+
+        if (loading) {
+            loading.classList.add("hidden");
+        }
+
+    }
 
 
-/* =========================================================
-   RESTART VIDEO
-========================================================= */
+    function showLoading() {
 
-function restartVideo(){
+        if (loading) {
+            loading.classList.remove("hidden");
+        }
+
+        if (errorBox) {
+            errorBox.hidden = true;
+        }
+
+        setStatus("LOADING");
+
+    }
+
+
+    function showError() {
+
+        hideLoading();
+
+        if (errorBox) {
+            errorBox.hidden = false;
+        }
+
+        setStatus("ERROR");
+
+        if (dot) {
+            dot.style.background = "#ef233c";
+            dot.style.boxShadow = "0 0 10px rgba(239,35,60,.8)";
+        }
+
+    }
+
+
+    function showReady() {
+
+        hideLoading();
+
+        if (errorBox) {
+            errorBox.hidden = true;
+        }
+
+        setStatus("READY");
+
+        if (dot) {
+            dot.style.background = "#ffc107";
+            dot.style.boxShadow = "0 0 10px rgba(255,193,7,.7)";
+        }
+
+    }
+
+
+    showLoading();
+
+
+    video.addEventListener("loadstart", function () {
+        showLoading();
+    });
+
+
+    video.addEventListener("loadedmetadata", function () {
+
+        console.log(
+            "Tomesh Movies: metadata loaded"
+        );
+
+        console.log(
+            "Duration:",
+            video.duration
+        );
+
+        showReady();
+
+    });
+
+
+    video.addEventListener("canplay", function () {
+
+        showReady();
+
+    });
+
+
+    video.addEventListener("playing", function () {
+
+        hideLoading();
+
+        setStatus("PLAYING");
+
+    });
+
+
+    video.addEventListener("waiting", function () {
+
+        setStatus("BUFFERING");
+
+    });
+
+
+    video.addEventListener("pause", function () {
+
+        if (!video.ended) {
+            setStatus("PAUSED");
+        }
+
+    });
+
+
+    video.addEventListener("ended", function () {
+
+        setStatus("ENDED");
+
+    });
+
+
+    video.addEventListener("error", function () {
+
+        console.error(
+            "Tomesh Movies video error:",
+            video.error
+        );
+
+        showError();
+
+    });
+
+
+    video.addEventListener("stalled", function () {
+
+        console.log(
+            "Tomesh Movies: video stalled"
+        );
+
+    });
+
+
+    /*
+     * Important:
+     * Force browser to load the R2 presigned URL.
+     */
+
+    try {
+
+        video.load();
+
+    } catch (e) {
+
+        console.error(
+            "Video load error:",
+            e
+        );
+
+        showError();
+
+    }
+
+});
+
+
+/* ===============================
+   RETRY
+================================ */
+
+function tmRetryVideo() {
 
     const video =
         document.getElementById("tmVideo");
 
-    if(!video){
+    const loading =
+        document.getElementById("tmLoading");
+
+    const errorBox =
+        document.getElementById("tmError");
+
+    if (!video) {
         return;
     }
 
-    video.currentTime = 0;
+    if (loading) {
+        loading.classList.remove("hidden");
+    }
 
-    video.play().catch(function(){});
+    if (errorBox) {
+        errorBox.hidden = true;
+    }
 
-}
+    try {
+
+        video.pause();
+
+    } catch (e) {}
 
 
-/* =========================================================
-   VIDEO ERROR SAFETY
-========================================================= */
+    try {
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function(){
+        video.load();
 
-        const video =
-            document.getElementById("tmVideo");
+    } catch (e) {
 
-        if(!video){
-            return;
-        }
-
-        video.addEventListener(
-            "error",
-            function(){
-
-                console.log(
-                    "Tomesh Movies: video playback error"
-                );
-
-            }
+        console.error(
+            "Retry failed:",
+            e
         );
 
     }
-);
+
+}
+
+
+/* ===============================
+   FULLSCREEN
+================================ */
+
+function tmFullscreen() {
+
+    const video =
+        document.getElementById("tmVideo");
+
+    if (!video) {
+        return;
+    }
+
+    if (document.fullscreenElement) {
+
+        document.exitFullscreen();
+
+        return;
+    }
+
+    if (video.requestFullscreen) {
+
+        video.requestFullscreen();
+
+    } else if (video.webkitEnterFullscreen) {
+
+        video.webkitEnterFullscreen();
+
+    }
+
+}
+
+
+/* ===============================
+   RESTART
+================================ */
+
+function tmRestart() {
+
+    const video =
+        document.getElementById("tmVideo");
+
+    if (!video) {
+        return;
+    }
+
+    try {
+
+        video.currentTime = 0;
+
+        video.play().catch(function () {});
+
+    } catch (e) {
+
+        console.log(e);
+
+    }
+
+}
 
 </script>
 
