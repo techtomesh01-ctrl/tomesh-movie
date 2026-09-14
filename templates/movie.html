@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 
 {% block title %}{{ movie.title }} | Tomesh Movies{% endblock %}
@@ -5,185 +6,493 @@
 {% block content %}
 
 <style>
+/* =========================================================
+   TOMESH MOVIES - PREMIUM WATCH PAGE
+   Existing backend/payment/player logic preserved
+   ========================================================= */
+
 .tm-watch-page{
     min-height:100vh;
-    padding:20px 14px 60px;
-    background:
-        radial-gradient(circle at 10% 5%,rgba(120,40,180,.22),transparent 30%),
-        radial-gradient(circle at 90% 15%,rgba(220,30,70,.16),transparent 30%),
-        #080808;
     color:#fff;
+    background:
+        radial-gradient(circle at 15% 0%, rgba(114,42,172,.22), transparent 28%),
+        radial-gradient(circle at 88% 8%, rgba(205,33,67,.18), transparent 28%),
+        linear-gradient(180deg,#070707 0%,#090909 45%,#050505 100%);
+    padding:18px 12px 70px;
 }
 
 .tm-watch-wrap{
-    max-width:1200px;
-    margin:auto;
+    width:100%;
+    max-width:1240px;
+    margin:0 auto;
+}
+
+/* ---------------------------------------------------------
+   TOP NAV / BACK
+   --------------------------------------------------------- */
+
+.tm-topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:16px;
 }
 
 .tm-back{
     display:inline-flex;
     align-items:center;
     gap:8px;
-    margin-bottom:16px;
+    min-height:40px;
     padding:9px 14px;
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:10px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:12px;
     color:#fff;
     text-decoration:none;
-    background:rgba(255,255,255,.05);
+    background:rgba(255,255,255,.045);
+    backdrop-filter:blur(12px);
+    transition:.2s ease;
+}
+
+.tm-back:hover{
+    transform:translateY(-1px);
+    border-color:rgba(255,255,255,.18);
+    background:rgba(255,255,255,.08);
+}
+
+.tm-brand-mini{
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:1.7px;
+    color:#d9d9d9;
+    text-transform:uppercase;
+}
+
+/* ---------------------------------------------------------
+   PLAYER
+   --------------------------------------------------------- */
+
+.tm-player-shell{
+    position:relative;
 }
 
 .tm-player-box{
     position:relative;
     width:100%;
-    background:#000;
-    border-radius:16px;
     overflow:hidden;
-    box-shadow:0 15px 50px rgba(0,0,0,.6);
+    border-radius:20px;
+    background:#000;
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:
+        0 24px 70px rgba(0,0,0,.58),
+        0 0 0 1px rgba(255,255,255,.02);
+}
+
+.tm-player-glow{
+    position:absolute;
+    inset:-20%;
+    pointer-events:none;
+    background:
+        radial-gradient(circle at 50% 50%, rgba(145,43,202,.10), transparent 45%),
+        radial-gradient(circle at 70% 35%, rgba(220,40,72,.07), transparent 35%);
 }
 
 .tm-video{
+    position:relative;
+    z-index:2;
     display:block;
     width:100%;
     height:auto;
-    min-height:300px;
-    max-height:75vh;
+    min-height:320px;
+    max-height:78vh;
+    object-fit:contain;
     background:#000;
 }
 
 .tm-lock{
-    min-height:360px;
+    position:relative;
+    z-index:2;
+    min-height:480px;
     display:flex;
     align-items:center;
     justify-content:center;
     text-align:center;
-    padding:30px;
+    padding:35px 20px;
     background:
-        radial-gradient(circle at center,
-        rgba(130,40,190,.25),
-        transparent 55%),
-        #050505;
+        radial-gradient(circle at center, rgba(117,37,167,.27), transparent 48%),
+        linear-gradient(180deg,#080808,#020202);
+}
+
+.tm-lock-box{
+    width:100%;
+    max-width:480px;
+}
+
+.tm-lock-icon-wrap{
+    width:78px;
+    height:78px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 18px;
+    border-radius:22px;
+    background:
+        linear-gradient(135deg,rgba(149,49,210,.23),rgba(218,41,79,.16));
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
 }
 
 .tm-lock-icon{
-    font-size:54px;
-    margin-bottom:10px;
+    font-size:38px;
 }
 
 .tm-lock h2{
-    margin:0 0 8px;
-    font-size:28px;
+    margin:0 0 9px;
+    font-size:clamp(24px,4vw,34px);
+    font-weight:900;
+    letter-spacing:-.4px;
 }
 
 .tm-lock p{
+    margin:0 auto 22px;
+    max-width:430px;
     color:#aaa;
-    margin:0 0 20px;
+    line-height:1.65;
+    font-size:14px;
 }
 
-.tm-info{
-    padding:22px 4px;
+.tm-lock-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:46px;
+    padding:11px 20px;
+    border-radius:12px;
+    color:#fff;
+    background:linear-gradient(135deg,#7a22ba,#d52d54);
+    text-decoration:none;
+    font-weight:900;
+    box-shadow:0 14px 30px rgba(0,0,0,.35);
+}
+
+/* ---------------------------------------------------------
+   PLAYER STATUS
+   --------------------------------------------------------- */
+
+.tm-status{
+    display:none;
+    margin-top:10px;
+    padding:11px 13px;
+    border-radius:11px;
+    background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.08);
+    color:#bbb;
+    font-size:13px;
+}
+
+.tm-status.tm-error{
+    color:#ffd2d9;
+    border-color:rgba(255,60,90,.20);
+    background:rgba(120,20,35,.16);
+}
+
+/* ---------------------------------------------------------
+   MOVIE HERO INFO
+   --------------------------------------------------------- */
+
+.tm-movie-head{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 280px;
+    gap:28px;
+    align-items:start;
+    padding:28px 2px 0;
+}
+
+.tm-info-main{
+    min-width:0;
+}
+
+.tm-eyebrow{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:10px;
+}
+
+.tm-eyebrow-badge{
+    display:inline-flex;
+    align-items:center;
+    min-height:28px;
+    padding:5px 9px;
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    color:#d7d7d7;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+}
+
+.tm-eyebrow-badge.hot{
+    color:#ffd79b;
+    background:rgba(206,143,38,.12);
+    border-color:rgba(226,165,57,.18);
 }
 
 .tm-title{
-    margin:0 0 8px;
-    font-size:clamp(24px,4vw,40px);
-    font-weight:800;
+    margin:0 0 11px;
+    max-width:960px;
+    font-size:clamp(28px,5vw,52px);
+    line-height:1.08;
+    letter-spacing:-1.2px;
+    font-weight:950;
 }
 
 .tm-meta{
     display:flex;
     flex-wrap:wrap;
     gap:8px;
-    margin-bottom:14px;
+    margin-bottom:17px;
 }
 
 .tm-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    min-height:31px;
     padding:6px 10px;
     border-radius:999px;
-    background:rgba(255,255,255,.08);
-    color:#ddd;
-    font-size:13px;
+    background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.075);
+    color:#d3d3d3;
+    font-size:12px;
+    font-weight:700;
+}
+
+.tm-badge.premium{
+    color:#ffd36f;
+    background:rgba(190,135,28,.11);
+    border-color:rgba(229,177,72,.20);
 }
 
 .tm-description{
-    color:#bbb;
-    line-height:1.7;
+    max-width:880px;
+    color:#b9b9b9;
+    line-height:1.8;
     font-size:15px;
+    white-space:pre-line;
 }
 
+/* ---------------------------------------------------------
+   POSTER
+   --------------------------------------------------------- */
+
+.tm-poster-card{
+    position:relative;
+    overflow:hidden;
+    border-radius:17px;
+    background:#0d0d0d;
+    border:1px solid rgba(255,255,255,.09);
+    box-shadow:0 18px 45px rgba(0,0,0,.35);
+}
+
+.tm-poster{
+    width:100%;
+    aspect-ratio:2/3;
+    display:block;
+    object-fit:cover;
+}
+
+.tm-poster-shade{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    padding:28px 14px 14px;
+    background:linear-gradient(
+        180deg,
+        transparent,
+        rgba(0,0,0,.84)
+    );
+    font-size:12px;
+    font-weight:800;
+    color:#ddd;
+}
+
+/* ---------------------------------------------------------
+   ACTION ROW
+   --------------------------------------------------------- */
+
+.tm-action-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:21px;
+}
+
+.tm-action-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    min-height:44px;
+    padding:11px 17px;
+    border-radius:12px;
+    text-decoration:none;
+    border:1px solid rgba(255,255,255,.09);
+    color:#fff;
+    background:rgba(255,255,255,.055);
+    font-weight:850;
+    font-size:13px;
+    transition:.2s ease;
+}
+
+.tm-action-btn:hover{
+    transform:translateY(-1px);
+    background:rgba(255,255,255,.09);
+}
+
+.tm-action-btn.download{
+    background:linear-gradient(135deg,#98233e,#c92d55);
+    border-color:transparent;
+}
+
+.tm-active-pill{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:44px;
+    padding:11px 16px;
+    border-radius:12px;
+    color:#d9ffd7;
+    background:rgba(62,157,64,.10);
+    border:1px solid rgba(99,207,103,.20);
+    font-weight:850;
+    font-size:13px;
+}
+
+/* ---------------------------------------------------------
+   PAYMENT
+   --------------------------------------------------------- */
+
 .tm-payment{
-    margin-top:24px;
-    padding:22px;
-    border-radius:18px;
+    margin-top:28px;
+    padding:24px;
+    border-radius:20px;
+    border:1px solid rgba(255,255,255,.09);
     background:
         linear-gradient(
             135deg,
-            rgba(120,30,180,.18),
-            rgba(220,30,70,.10)
+            rgba(111,30,167,.19),
+            rgba(220,39,74,.08)
         );
-    border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 20px 55px rgba(0,0,0,.25);
+}
+
+.tm-payment-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:18px;
+    margin-bottom:17px;
 }
 
 .tm-payment h2{
     margin:0 0 6px;
-    font-size:22px;
+    font-size:23px;
+    font-weight:900;
 }
 
 .tm-payment-sub{
-    margin:0 0 18px;
-    color:#aaa;
-    font-size:14px;
+    margin:0;
+    color:#9e9e9e;
+    font-size:13px;
+    line-height:1.6;
+}
+
+.tm-secure{
+    flex:0 0 auto;
+    padding:7px 10px;
+    border-radius:999px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.07);
+    color:#bdbdbd;
+    font-size:11px;
+    font-weight:800;
+    white-space:nowrap;
 }
 
 .tm-phone{
     width:100%;
-    max-width:420px;
+    max-width:430px;
     box-sizing:border-box;
+    min-height:48px;
     padding:13px 14px;
-    border-radius:11px;
-    border:1px solid rgba(255,255,255,.14);
-    background:#101010;
+    margin-bottom:14px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.13);
+    background:#0c0c0c;
     color:#fff;
     outline:none;
-    margin-bottom:14px;
+    font-size:14px;
+}
+
+.tm-phone::placeholder{
+    color:#6f6f6f;
 }
 
 .tm-phone:focus{
-    border-color:#a83cff;
+    border-color:#9f43d6;
+    box-shadow:0 0 0 3px rgba(159,67,214,.12);
 }
 
 .tm-pay-grid{
     display:grid;
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(2,minmax(0,1fr));
     gap:12px;
 }
 
 .tm-pay-btn{
+    width:100%;
     border:0;
-    border-radius:13px;
-    padding:15px 12px;
+    border-radius:14px;
+    padding:15px 13px;
     cursor:pointer;
     color:#fff;
-    font-weight:800;
+    text-align:left;
+    font-weight:900;
     background:
         linear-gradient(
             135deg,
-            #7a21b9,
-            #d52d54
+            #7423b2,
+            #c32b55
         );
-    box-shadow:0 8px 25px rgba(0,0,0,.3);
-    transition:.2s;
+    box-shadow:0 10px 26px rgba(0,0,0,.24);
+    transition:.2s ease;
 }
 
 .tm-pay-btn:hover{
     transform:translateY(-2px);
+    filter:brightness(1.05);
+}
+
+.tm-pay-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    font-size:16px;
 }
 
 .tm-pay-btn small{
     display:block;
     margin-top:5px;
-    color:#ddd;
-    font-weight:500;
+    color:#dedede;
+    font-size:12px;
+    font-weight:600;
+    line-height:1.45;
 }
 
 .tm-premium{
@@ -192,48 +501,96 @@
     background:
         linear-gradient(
             135deg,
-            #b8860b,
-            #e6a817,
-            #8f5c00
+            #8c5b00,
+            #dca425,
+            #9b6500
         );
 }
 
-.tm-status{
-    margin-top:12px;
-    padding:10px 12px;
-    border-radius:9px;
-    background:#151515;
-    color:#aaa;
-    font-size:13px;
-    display:none;
-}
-
-.tm-download{
-    display:inline-flex;
+.tm-premium-wrap{
+    display:flex;
     align-items:center;
-    justify-content:center;
-    margin-top:15px;
-    padding:12px 18px;
-    border-radius:11px;
-    color:#fff;
-    text-decoration:none;
-    font-weight:800;
-    background:#b31f42;
+    justify-content:space-between;
+    gap:10px;
 }
 
-.tm-poster{
-    max-width:220px;
-    width:100%;
-    height:auto;
-    display:block;
-    border-radius:12px;
-    margin-top:20px;
+.tm-premium-tag{
+    font-size:10px;
+    padding:5px 8px;
+    border-radius:999px;
+    color:#fff2b8;
+    background:rgba(255,255,255,.12);
+}
+
+.tm-payment-note{
+    margin-top:14px;
+    color:#868686;
+    font-size:11px;
+    line-height:1.6;
+}
+
+.tm-payment-status{
+    margin-top:11px;
+}
+
+/* ---------------------------------------------------------
+   FOOT NOTE
+   --------------------------------------------------------- */
+
+.tm-foot-note{
+    margin-top:22px;
+    padding:14px 15px;
+    border-radius:13px;
+    color:#777;
+    background:rgba(255,255,255,.025);
+    border:1px solid rgba(255,255,255,.05);
+    font-size:11px;
+    line-height:1.6;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+   --------------------------------------------------------- */
+
+@media(max-width:900px){
+
+    .tm-movie-head{
+        grid-template-columns:1fr;
+    }
+
+    .tm-poster-card{
+        max-width:230px;
+    }
+
+    .tm-poster{
+        aspect-ratio:2/3;
+    }
 }
 
 @media(max-width:700px){
 
-    .tm-pay-grid{
-        grid-template-columns:1fr;
+    .tm-watch-page{
+        padding:12px 9px 54px;
+    }
+
+    .tm-topbar{
+        margin-bottom:11px;
+    }
+
+    .tm-brand-mini{
+        font-size:10px;
+        letter-spacing:1.2px;
+    }
+
+    .tm-back{
+        min-height:38px;
+        padding:8px 11px;
+        border-radius:10px;
+        font-size:12px;
+    }
+
+    .tm-player-box{
+        border-radius:15px;
     }
 
     .tm-video{
@@ -242,7 +599,73 @@
     }
 
     .tm-lock{
-        min-height:280px;
+        min-height:320px;
+        padding:28px 15px;
+    }
+
+    .tm-lock-icon-wrap{
+        width:66px;
+        height:66px;
+        border-radius:18px;
+    }
+
+    .tm-lock-icon{
+        font-size:32px;
+    }
+
+    .tm-title{
+        font-size:30px;
+        letter-spacing:-.7px;
+    }
+
+    .tm-description{
+        font-size:14px;
+        line-height:1.7;
+    }
+
+    .tm-payment{
+        padding:18px;
+        border-radius:17px;
+    }
+
+    .tm-payment-top{
+        display:block;
+    }
+
+    .tm-secure{
+        display:inline-flex;
+        margin-top:11px;
+    }
+
+    .tm-pay-grid{
+        grid-template-columns:1fr;
+    }
+
+    .tm-poster-card{
+        max-width:100%;
+        width:180px;
+    }
+}
+
+@media(max-width:420px){
+
+    .tm-title{
+        font-size:26px;
+    }
+
+    .tm-action-row{
+        display:grid;
+        grid-template-columns:1fr;
+    }
+
+    .tm-action-btn,
+    .tm-active-pill{
+        width:100%;
+        box-sizing:border-box;
+    }
+
+    .tm-payment h2{
+        font-size:20px;
     }
 }
 </style>
@@ -252,206 +675,365 @@
 
     <div class="tm-watch-wrap">
 
-        <a
-            href="{{ url_for('home') }}"
-            class="tm-back"
-        >
-            ← Back
-        </a>
+        <!-- TOP -->
+        <div class="tm-topbar">
 
+            <a
+                href="{{ url_for('home') }}"
+                class="tm-back"
+            >
+                ← Back
+            </a>
 
-        <div class="tm-player-box">
-
-            {% if access.watch and movie.video_url %}
-
-                <video
-                    id="tmVideo"
-                    class="tm-video"
-                    controls
-                    playsinline
-                    preload="metadata"
-                    poster="{{ movie.poster_url or movie.poster or '' }}"
-                    src="{{ movie.video_url }}"
-                >
-                    Your browser does not support HTML5 video.
-                </video>
-
-            {% else %}
-
-                <div class="tm-lock">
-
-                    <div>
-
-                        <div class="tm-lock-icon">
-                            🔒
-                        </div>
-
-                        <h2>
-                            Watch access locked
-                        </h2>
-
-                        <p>
-                            ₹1 में यह movie 24 घंटे के लिए watch करें।
-                        </p>
-
-                    </div>
-
-                </div>
-
-            {% endif %}
+            <div class="tm-brand-mini">
+                TOMESH MOVIES
+            </div>
 
         </div>
 
 
-        <div
-            id="tmVideoStatus"
-            class="tm-status"
-        ></div>
+        <!-- VIDEO PLAYER -->
+        <div class="tm-player-shell">
 
+            <div class="tm-player-box">
 
-        <div class="tm-info">
+                <div class="tm-player-glow"></div>
 
-            <h1 class="tm-title">
-                {{ movie.title }}
-            </h1>
+                {% if access.watch and movie.video_url %}
 
+                    <video
+                        id="tmVideo"
+                        class="tm-video"
+                        controls
+                        playsinline
+                        preload="metadata"
+                        poster="{{ movie.poster_url or movie.poster or '' }}"
+                        src="{{ movie.video_url }}"
+                    >
+                        Your browser does not support HTML5 video.
+                    </video>
 
-            <div class="tm-meta">
+                {% else %}
 
-                {% if movie.category %}
+                    <div class="tm-lock">
 
-                    <span class="tm-badge">
-                        {{ movie.category }}
-                    </span>
+                        <div class="tm-lock-box">
 
-                {% endif %}
+                            <div class="tm-lock-icon-wrap">
+                                <div class="tm-lock-icon">
+                                    🔒
+                                </div>
+                            </div>
 
-                <span class="tm-badge">
-                    👁 {{ movie.views or 0 }} Views
-                </span>
+                            <h2>
+                                Watch access locked
+                            </h2>
 
-                {% if access.premium %}
+                            <p>
+                                ₹1 में यह movie 24 घंटे के लिए unlock करें।
+                                Payment के बाद video इसी page पर play होगा।
+                            </p>
 
-                    <span class="tm-badge">
-                        👑 Premium Active
-                    </span>
+                            <a
+                                href="#tmPaymentBox"
+                                class="tm-lock-btn"
+                            >
+                                🎬 Unlock Movie
+                            </a>
+
+                        </div>
+
+                    </div>
 
                 {% endif %}
 
             </div>
 
 
-            {% if movie.description %}
+            <div
+                id="tmVideoStatus"
+                class="tm-status"
+            ></div>
 
-                <div class="tm-description">
-                    {{ movie.description }}
+        </div>
+
+
+        <!-- MOVIE INFO -->
+        <div class="tm-movie-head">
+
+            <div class="tm-info-main">
+
+                <div class="tm-eyebrow">
+
+                    {% if movie.category %}
+                        <span class="tm-eyebrow-badge">
+                            {{ movie.category }}
+                        </span>
+                    {% endif %}
+
+                    <span class="tm-eyebrow-badge hot">
+                        TOMESH MOVIES
+                    </span>
+
+                    {% if access.premium %}
+                        <span class="tm-eyebrow-badge">
+                            PREMIUM ACCESS
+                        </span>
+                    {% endif %}
+
                 </div>
 
-            {% endif %}
+
+                <h1 class="tm-title">
+                    {{ movie.title }}
+                </h1>
 
 
-            {% if access.download %}
+                <div class="tm-meta">
 
-                <a
-                    href="{{ url_for('download_movie', movie_id=movie.id) }}"
-                    class="tm-download"
-                >
-                    ⬇ Download Movie
-                </a>
+                    {% if movie.category %}
+                        <span class="tm-badge">
+                            🎬 {{ movie.category }}
+                        </span>
+                    {% endif %}
 
-            {% endif %}
+                    <span class="tm-badge">
+                        👁 {{ movie.views or 0 }} Views
+                    </span>
 
+                    <span class="tm-badge">
+                        HD
+                    </span>
 
-            {% if not access.watch or not access.download %}
+                    {% if access.watch %}
+                        <span class="tm-badge">
+                            ▶ Watch Active
+                        </span>
+                    {% endif %}
 
-                <div class="tm-payment">
+                    {% if access.download %}
+                        <span class="tm-badge">
+                            ⬇ Download Active
+                        </span>
+                    {% endif %}
 
-                    <h2>
-                        🎬 Unlock {{ movie.title }}
-                    </h2>
+                    {% if access.premium %}
+                        <span class="tm-badge premium">
+                            👑 Premium Active
+                        </span>
+                    {% endif %}
 
-                    <p class="tm-payment-sub">
-                        Payment Cashfree से secure checkout पर होगा।
-                    </p>
-
-
-                    <input
-                        id="tmPhone"
-                        class="tm-phone"
-                        type="tel"
-                        inputmode="numeric"
-                        maxlength="10"
-                        placeholder="10 digit mobile number"
-                    >
-
-
-                    <div class="tm-pay-grid">
-
-                        {% if not access.watch %}
-
-                            <button
-                                class="tm-pay-btn"
-                                onclick="startPayment('watch')"
-                            >
-                                ₹1 Watch
-                                <small>
-                                    24 hours access
-                                </small>
-                            </button>
-
-                        {% endif %}
+                </div>
 
 
-                        {% if not access.download %}
+                {% if movie.description %}
 
-                            <button
-                                class="tm-pay-btn"
-                                onclick="startPayment('download')"
-                            >
-                                ₹9 Download
-                                <small>
-                                    This movie
-                                </small>
-                            </button>
-
-                        {% endif %}
-
+                    <div class="tm-description">
+                        {{ movie.description }}
                     </div>
 
+                {% endif %}
 
-                    {% if not access.premium %}
 
-                        <button
-                            class="tm-pay-btn tm-premium"
-                            onclick="startPayment('premium')"
+                <!-- ACTIONS -->
+                <div class="tm-action-row">
+
+                    {% if access.watch %}
+
+                        <a
+                            href="#tmVideo"
+                            class="tm-action-btn"
                         >
-                            👑 ₹109 Premium
-                            <small>
-                                1 year watch + download
-                            </small>
-                        </button>
+                            ▶ Watch Now
+                        </a>
 
                     {% endif %}
 
 
-                    <div
-                        id="tmPaymentStatus"
-                        class="tm-status"
-                    ></div>
+                    {% if access.download %}
+
+                        <a
+                            href="{{ url_for('download_movie', movie_id=movie.id) }}"
+                            class="tm-action-btn download"
+                        >
+                            ⬇ Download Movie
+                        </a>
+
+                    {% endif %}
+
+
+                    {% if access.premium %}
+
+                        <div class="tm-active-pill">
+                            👑 Premium 1 Year Active
+                        </div>
+
+                    {% endif %}
 
                 </div>
 
-            {% endif %}
+
+                <!-- PAYMENT -->
+                {% if not access.watch or not access.download %}
+
+                    <div
+                        id="tmPaymentBox"
+                        class="tm-payment"
+                    >
+
+                        <div class="tm-payment-top">
+
+                            <div>
+
+                                <h2>
+                                    🎬 Unlock {{ movie.title }}
+                                </h2>
+
+                                <p class="tm-payment-sub">
+                                    Secure Cashfree checkout के जरिए payment करें।
+                                </p>
+
+                            </div>
+
+                            <div class="tm-secure">
+                                🔒 Secure Payment
+                            </div>
+
+                        </div>
 
 
+                        <input
+                            id="tmPhone"
+                            class="tm-phone"
+                            type="tel"
+                            inputmode="numeric"
+                            maxlength="10"
+                            autocomplete="tel"
+                            placeholder="10 digit mobile number"
+                        >
+
+
+                        <div class="tm-pay-grid">
+
+                            {% if not access.watch %}
+
+                                <button
+                                    type="button"
+                                    class="tm-pay-btn"
+                                    onclick="startPayment('watch')"
+                                >
+
+                                    <div class="tm-pay-title">
+                                        <span>₹1 Watch</span>
+                                        <span>▶</span>
+                                    </div>
+
+                                    <small>
+                                        24 hours movie watch access
+                                    </small>
+
+                                </button>
+
+                            {% endif %}
+
+
+                            {% if not access.download %}
+
+                                <button
+                                    type="button"
+                                    class="tm-pay-btn"
+                                    onclick="startPayment('download')"
+                                >
+
+                                    <div class="tm-pay-title">
+                                        <span>₹9 Download</span>
+                                        <span>⬇</span>
+                                    </div>
+
+                                    <small>
+                                        This movie download access
+                                    </small>
+
+                                </button>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        {% if not access.premium %}
+
+                            <button
+                                type="button"
+                                class="tm-pay-btn tm-premium"
+                                onclick="startPayment('premium')"
+                            >
+
+                                <div class="tm-premium-wrap">
+
+                                    <div>
+
+                                        <div class="tm-pay-title">
+                                            <span>👑 ₹109 Premium</span>
+                                        </div>
+
+                                        <small>
+                                            1 year watch + download on Tomesh Movies
+                                        </small>
+
+                                    </div>
+
+                                    <div class="tm-premium-tag">
+                                        BEST VALUE
+                                    </div>
+
+                                </div>
+
+                            </button>
+
+                        {% endif %}
+
+
+                        <div
+                            id="tmPaymentStatus"
+                            class="tm-status tm-payment-status"
+                        ></div>
+
+
+                        <div class="tm-payment-note">
+                            Payment complete होने के बाद access automatically update होगा।
+                            Page refresh करने पर नया access दिखाई देगा।
+                        </div>
+
+                    </div>
+
+                {% endif %}
+
+
+                <div class="tm-foot-note">
+                    Tomesh Movies पर केवल अपनी या properly licensed content ही publish करें।
+                </div>
+
+            </div>
+
+
+            <!-- POSTER -->
             {% if movie.poster_url or movie.poster %}
 
-                <img
-                    class="tm-poster"
-                    src="{{ movie.poster_url or movie.poster }}"
-                    alt="{{ movie.title }}"
-                    loading="lazy"
-                >
+                <div class="tm-poster-card">
+
+                    <img
+                        class="tm-poster"
+                        src="{{ movie.poster_url or movie.poster }}"
+                        alt="{{ movie.title }}"
+                        loading="lazy"
+                    >
+
+                    <div class="tm-poster-shade">
+                        {{ movie.title }}
+                    </div>
+
+                </div>
 
             {% endif %}
 
@@ -462,6 +1044,10 @@
 </div>
 
 
+<!-- =========================================================
+     CASHFREE
+     ========================================================= -->
+
 <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 
 
@@ -469,6 +1055,10 @@
 const TM_MOVIE_ID = {{ movie.id | tojson }};
 const TM_CASHFREE_MODE = {{ cashfree_mode | tojson }};
 
+
+/* ---------------------------------------------------------
+   PAYMENT STATUS
+   --------------------------------------------------------- */
 
 function paymentStatus(message){
 
@@ -482,9 +1072,15 @@ function paymentStatus(message){
     }
 
     box.style.display = "block";
+    box.classList.remove("tm-error");
     box.textContent = message;
 }
 
+
+/* ---------------------------------------------------------
+   START PAYMENT
+   Existing create_payment route preserved
+   --------------------------------------------------------- */
 
 async function startPayment(type){
 
@@ -497,10 +1093,12 @@ async function startPayment(type){
         return;
     }
 
+
     const phone =
         phoneInput.value
             .replace(/\D/g,"")
             .trim();
+
 
     if(!/^[6-9]\d{9}$/.test(phone)){
 
@@ -541,8 +1139,16 @@ async function startPayment(type){
             );
 
 
-        const data =
-            await response.json();
+        let data = null;
+
+        try{
+            data = await response.json();
+        }
+        catch(parseError){
+            throw new Error(
+                "Payment server से valid response नहीं मिला।"
+            );
+        }
 
 
         if(!response.ok || !data.ok){
@@ -554,6 +1160,14 @@ async function startPayment(type){
         }
 
 
+        if(!data.payment_session_id){
+
+            throw new Error(
+                "Payment session नहीं मिला।"
+            );
+        }
+
+
         const cashfree =
             Cashfree({
                 mode:TM_CASHFREE_MODE
@@ -561,11 +1175,13 @@ async function startPayment(type){
 
 
         await cashfree.checkout({
+
             paymentSessionId:
                 data.payment_session_id,
 
             redirectTarget:
                 "_self"
+
         });
 
     }
@@ -576,16 +1192,30 @@ async function startPayment(type){
             error
         );
 
-        paymentStatus(
-            error.message ||
-            "Payment शुरू नहीं हो पाया।"
-        );
+
+        const box =
+            document.getElementById(
+                "tmPaymentStatus"
+            );
+
+        if(box){
+            box.style.display = "block";
+            box.classList.add("tm-error");
+            box.textContent =
+                error.message ||
+                "Payment शुरू नहीं हो पाया।";
+        }
+
     }
+
 }
-</script>
 
 
-<script>
+/* ---------------------------------------------------------
+   VIDEO STATUS
+   Existing stream/player behavior preserved
+   --------------------------------------------------------- */
+
 (function(){
 
     const video =
@@ -597,6 +1227,7 @@ async function startPayment(type){
         document.getElementById(
             "tmVideoStatus"
         );
+
 
     if(!video){
         return;
@@ -610,7 +1241,22 @@ async function startPayment(type){
         }
 
         status.style.display = "block";
+        status.classList.remove("tm-error");
         status.textContent = message;
+
+    }
+
+
+    function showError(message){
+
+        if(!status){
+            return;
+        }
+
+        status.style.display = "block";
+        status.classList.add("tm-error");
+        status.textContent = message;
+
     }
 
 
@@ -621,16 +1267,20 @@ async function startPayment(type){
         }
 
         status.style.display = "none";
+        status.classList.remove("tm-error");
         status.textContent = "";
+
     }
 
 
     video.addEventListener(
         "loadstart",
         function(){
+
             showStatus(
                 "Video loading..."
             );
+
         }
     );
 
@@ -638,7 +1288,9 @@ async function startPayment(type){
     video.addEventListener(
         "loadedmetadata",
         function(){
+
             hideStatus();
+
         }
     );
 
@@ -646,7 +1298,9 @@ async function startPayment(type){
     video.addEventListener(
         "loadeddata",
         function(){
+
             hideStatus();
+
         }
     );
 
@@ -654,7 +1308,9 @@ async function startPayment(type){
     video.addEventListener(
         "canplay",
         function(){
+
             hideStatus();
+
         }
     );
 
@@ -662,7 +1318,9 @@ async function startPayment(type){
     video.addEventListener(
         "playing",
         function(){
+
             hideStatus();
+
         }
     );
 
@@ -670,9 +1328,11 @@ async function startPayment(type){
     video.addEventListener(
         "waiting",
         function(){
+
             showStatus(
                 "Video buffering..."
             );
+
         }
     );
 
@@ -680,9 +1340,11 @@ async function startPayment(type){
     video.addEventListener(
         "stalled",
         function(){
+
             showStatus(
-                "Video network connection is slow..."
+                "Video network connection slow है..."
             );
+
         }
     );
 
@@ -693,6 +1355,7 @@ async function startPayment(type){
 
             let message =
                 "Unable to play this video.";
+
 
             if(video.error){
 
@@ -717,24 +1380,32 @@ async function startPayment(type){
                         message =
                             "This video format/source is not supported.";
                         break;
+
                 }
+
             }
 
-            showStatus(message);
+
+            showError(message);
+
 
             console.log(
                 "Tomesh video error:",
                 video.error
             );
 
+
             console.log(
                 "Video URL:",
                 video.currentSrc
             );
+
         }
     );
+
 
 })();
 </script>
 
 {% endblock %}
+```
