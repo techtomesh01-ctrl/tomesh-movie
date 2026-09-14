@@ -36,6 +36,8 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
+# 4 GB server request limit
+# Direct R2 upload is still used by the Admin Panel.
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
 
@@ -350,7 +352,13 @@ def object_exists(key):
 
         return True
 
-    except Exception:
+    except Exception as e:
+
+        print(
+            "R2 object check failed:",
+            str(e)
+        )
+
         return False
 
 
@@ -369,9 +377,49 @@ def delete_object(key):
             Key=key,
         )
 
-    except Exception:
-        pass
+    except Exception as e:
 
+        print(
+            "R2 delete failed:",
+            str(e)
+        )
+
+
+# ============================================================
+# VIDEO MIME TYPE
+# ============================================================
+
+def video_mime_type(key):
+
+    """
+    Browser ko video ka correct MIME type dene ke liye.
+    """
+
+    key = (key or "").lower()
+
+    if key.endswith(".mp4"):
+        return "video/mp4"
+
+    if key.endswith(".webm"):
+        return "video/webm"
+
+    if key.endswith(".mov"):
+        return "video/quicktime"
+
+    if key.endswith(".mkv"):
+        return "video/x-matroska"
+
+    mime = mimetypes.guess_type(key)[0]
+
+    if mime:
+        return mime
+
+    return "application/octet-stream"
+
+
+# ============================================================
+# MOVIE VIDEO URL
+# ============================================================
 
 def movie_video_url(movie):
 
@@ -394,6 +442,10 @@ def movie_video_url(movie):
     )
 
 
+# ============================================================
+# MOVIE POSTER URL
+# ============================================================
+
 def movie_poster_url(movie):
 
     poster = movie.get(
@@ -414,6 +466,10 @@ def movie_poster_url(movie):
         poster
     )
 
+
+# ============================================================
+# GET ADS
+# ============================================================
 
 def get_ads():
 
@@ -467,6 +523,7 @@ def index():
         movies = cur.fetchall()
 
         for movie in movies:
+
             movie["poster_url"] = (
                 movie_poster_url(movie)
             )
@@ -527,8 +584,23 @@ def movie_page(movie_id):
             movie.get("views") or 0
         ) + 1
 
-        movie["video_url"] = (
-            movie_video_url(movie)
+        # ====================================================
+        # IMPORTANT PLAYBACK FIX
+        # ====================================================
+
+        # Browser ab direct public R2 URL ko source nahi lega.
+        # Pehle /video/<id> route hit karega.
+        # Woh route R2 presigned GET URL par redirect karega.
+
+        movie["video_url"] = url_for(
+            "video_redirect",
+            movie_id=movie_id
+        )
+
+        movie["video_mime"] = (
+            video_mime_type(
+                movie.get("video", "")
+            )
         )
 
         movie["poster_url"] = (
@@ -559,12 +631,189 @@ def movie_page(movie_id):
         return render_template(
             "movie.html",
             movie=movie,
+
+            # Both names are supplied.
+            # This prevents template variable mismatch.
             more_movies=more_movies,
+            related_movies=more_movies,
+
             ads=ads,
         )
 
     finally:
         conn.close()
+
+
+# ============================================================
+# VIDEO PLAYBACK ROUTE
+# ============================================================
+
+@app.route(
+    "/video/<int:movie_id>"
+)
+def video_redirect(movie_id):
+
+    """
+    IMPORTANT:
+
+    Render video ko proxy nahi karega.
+
+    Browser:
+        /video/5
+             ↓
+        Flask creates R2 presigned GET URL
+             ↓
+        302 redirect
+             ↓
+        Cloudflare R2
+             ↓
+        Browser video player
+    """
+
+    try:
+
+        r2_required()
+
+        conn = get_db()
+
+        try:
+
+            cur = conn.cursor()
+
+            cur.execute(
+                """
+                SELECT id, video
+                FROM movies
+                WHERE id = %s
+                """,
+                (movie_id,),
+            )
+
+            movie = cur.fetchone()
+
+        finally:
+
+            conn.close()
+
+        if not movie:
+
+            abort(
+                404,
+                "Movie not found"
+            )
+
+        video_key = (
+            movie.get("video") or ""
+        ).strip()
+
+        if not video_key:
+
+            abort(
+                404,
+                "Video not found"
+            )
+
+        # Old records may contain a full URL.
+        if (
+            video_key.startswith("http://")
+            or video_key.startswith("https://")
+        ):
+
+            return redirect(
+                video_key,
+                code=302
+            )
+
+        # Only allow our video folder.
+        if not video_key.startswith(
+            "videos/"
+        ):
+
+            abort(
+                404,
+                "Invalid video key"
+            )
+
+        # Check that object really exists.
+        try:
+
+            head = r2.head_object(
+                Bucket=R2_BUCKET,
+                Key=video_key,
+            )
+
+        except Exception as e:
+
+            print(
+                "VIDEO R2 HEAD ERROR:",
+                str(e)
+            )
+
+            abort(
+                404,
+                "Video file not found in R2"
+            )
+
+        object_size = int(
+            head.get(
+                "ContentLength",
+                0
+            )
+        )
+
+        if object_size <= 0:
+
+            abort(
+                404,
+                "Video file is empty"
+            )
+
+        mime = video_mime_type(
+            video_key
+        )
+
+        # ====================================================
+        # PRESIGNED GET URL
+        # ====================================================
+
+        signed_url = (
+            r2.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": R2_BUCKET,
+                    "Key": video_key,
+                    "ResponseContentType": mime,
+                },
+                ExpiresIn=PRESIGNED_EXPIRES,
+            )
+        )
+
+        print(
+            "VIDEO PLAYBACK:",
+            video_key,
+            "|",
+            mime,
+            "|",
+            object_size,
+            "bytes"
+        )
+
+        return redirect(
+            signed_url,
+            code=302
+        )
+
+    except Exception as e:
+
+        print(
+            "VIDEO PLAYBACK ERROR:",
+            str(e)
+        )
+
+        abort(
+            404,
+            "Unable to load video"
+        )
 
 
 # ============================================================
@@ -611,6 +860,10 @@ def login():
         "login.html"
     )
 
+
+# ============================================================
+# LOGOUT
+# ============================================================
 
 @app.route("/logout")
 def logout():
@@ -769,18 +1022,22 @@ def admin_add():
 
     try:
 
+        video_mime = (
+            video_file.mimetype
+            or mimetypes.guess_type(
+                video_file.filename
+            )[0]
+            or video_mime_type(
+                video_key
+            )
+        )
+
         r2.upload_fileobj(
             video_file,
             R2_BUCKET,
             video_key,
             ExtraArgs={
-                "ContentType": (
-                    video_file.mimetype
-                    or mimetypes.guess_type(
-                        video_file.filename
-                    )[0]
-                    or "application/octet-stream"
-                )
+                "ContentType": video_mime
             },
         )
 
@@ -801,15 +1058,20 @@ def admin_add():
                     f"{secure_filename(poster_file.filename)}"
                 )
 
+                poster_mime = (
+                    poster_file.mimetype
+                    or mimetypes.guess_type(
+                        poster_file.filename
+                    )[0]
+                    or "application/octet-stream"
+                )
+
                 r2.upload_fileobj(
                     poster_file,
                     R2_BUCKET,
                     poster_key,
                     ExtraArgs={
-                        "ContentType": (
-                            poster_file.mimetype
-                            or "application/octet-stream"
-                        )
+                        "ContentType": poster_mime
                     },
                 )
 
@@ -844,6 +1106,7 @@ def admin_add():
             conn.commit()
 
         finally:
+
             conn.close()
 
         flash(
@@ -900,6 +1163,7 @@ def admin_delete(movie_id):
         movie = cur.fetchone()
 
         if not movie:
+
             abort(404)
 
         cur.execute(
@@ -913,6 +1177,7 @@ def admin_delete(movie_id):
         conn.commit()
 
     finally:
+
         conn.close()
 
     delete_object(
@@ -978,6 +1243,7 @@ def admin_ads():
         conn.commit()
 
     finally:
+
         conn.close()
 
     flash(
@@ -1041,6 +1307,7 @@ def health():
             cur.fetchone()
 
         finally:
+
             conn.close()
 
         return jsonify({
@@ -1112,6 +1379,16 @@ def multipart_create():
                 "error": "Invalid file size",
             }), 400
 
+        # Browser direct upload maximum.
+        max_size = 4 * 1024 * 1024 * 1024
+
+        if size > max_size:
+
+            return jsonify({
+                "ok": False,
+                "error": "Video is larger than 4 GB limit",
+            }), 400
+
         ext = extension(
             filename
         )
@@ -1131,6 +1408,7 @@ def multipart_create():
         )
 
         if not clean_name:
+
             clean_name = "video"
 
         key = (
@@ -1149,6 +1427,20 @@ def multipart_create():
                 "ok": False,
                 "error": "Too many multipart parts",
             }), 400
+
+        # If browser sends a generic MIME type,
+        # use the extension-based MIME instead.
+        if (
+            not content_type
+            or content_type
+            == "application/octet-stream"
+        ):
+
+            content_type = (
+                video_mime_type(
+                    filename
+                )
+            )
 
         result = (
             r2.create_multipart_upload(
@@ -1172,6 +1464,11 @@ def multipart_create():
         })
 
     except Exception as e:
+
+        print(
+            "MULTIPART CREATE ERROR:",
+            str(e)
+        )
 
         return jsonify({
             "ok": False,
@@ -1293,6 +1590,11 @@ def multipart_urls():
         })
 
     except Exception as e:
+
+        print(
+            "MULTIPART URL ERROR:",
+            str(e)
+        )
 
         return jsonify({
             "ok": False,
@@ -1464,9 +1766,20 @@ def multipart_complete():
             "key": key,
             "url": r2_object_url(key),
             "size": object_size,
+            "content_type": (
+                head.get(
+                    "ContentType"
+                )
+                or video_mime_type(key)
+            ),
         })
 
     except Exception as e:
+
+        print(
+            "MULTIPART COMPLETE ERROR:",
+            str(e)
+        )
 
         return jsonify({
             "ok": False,
@@ -1749,6 +2062,7 @@ def save_movie():
             conn.commit()
 
         finally:
+
             conn.close()
 
         return jsonify({
@@ -1762,9 +2076,17 @@ def save_movie():
             "poster_url": r2_object_url(
                 poster_key
             ),
+            "video_mime": video_mime_type(
+                video_key
+            ),
         })
 
     except Exception as e:
+
+        print(
+            "SAVE MOVIE ERROR:",
+            str(e)
+        )
 
         return jsonify({
             "ok": False,
