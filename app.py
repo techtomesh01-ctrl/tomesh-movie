@@ -1062,9 +1062,16 @@ def create_payment():
         + "_"
         + secrets.token_hex(8)
     )
-
-    return_url = url_for(
-        "cashfree_return",
+"order_meta": {
+    "return_url": return_url,
+    "upi_app_priority": [
+        "gpay",
+        "phonepe",
+        "paytm",
+        "bhim",
+    ],
+},
+    
         movie_id=movie_id,
         _external=True,
     )
