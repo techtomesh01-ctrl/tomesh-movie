@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 
 {% block title %}Tomesh Movies | Unlimited Movies & Entertainment{% endblock %}
@@ -206,66 +207,139 @@
     transform:translateY(-1px);
 }
 
-/* ================= TRENDING ================= */
+/* =====================================================
+   PREMIUM TRENDING NOW
+   ===================================================== */
 
 .tm-trending-section{
-    width:min(1250px,92%);
+    width:min(1280px,94%);
     margin:0 auto;
-    padding:70px 0 55px;
+    padding:72px 0 65px;
+    position:relative;
 }
 
 .tm-trending-heading{
     display:flex;
-    align-items:center;
+    align-items:flex-end;
     justify-content:space-between;
-    margin-bottom:28px;
+    margin-bottom:30px;
+}
+
+.tm-trending-heading-left{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
 }
 
 .tm-trending-heading h2{
     margin:0;
     color:#fff;
-    font-size:30px;
-    line-height:1.2;
+    font-size:32px;
+    line-height:1.15;
     font-weight:900;
+    letter-spacing:-.8px;
 }
+
+.tm-trending-subtitle{
+    color:#999;
+    font-size:13px;
+    font-weight:600;
+}
+
+.tm-trending-live{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    color:#aaa;
+    font-size:12px;
+    font-weight:800;
+}
+
+.tm-trending-live-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#e50914;
+    box-shadow:0 0 12px rgba(229,9,20,.9);
+}
+
+/* GRID */
 
 .tm-trending-grid{
     display:grid;
     grid-template-columns:repeat(6,minmax(0,1fr));
-    gap:18px;
+    gap:24px 18px;
     overflow:visible;
 }
+
+/* CARD */
 
 .tm-trending-card{
     position:relative;
     min-width:0;
     display:block;
+    border-radius:10px;
     transition:
-        transform .28s ease,
-        filter .28s ease;
+        transform .32s ease,
+        filter .32s ease;
     transform-origin:center center;
 }
 
 .tm-trending-card:hover{
-    transform:scale(1.07);
-    z-index:20;
+    transform:translateY(-8px) scale(1.045);
+    z-index:30;
 }
+
+/* POSTER */
 
 .tm-trending-poster{
     position:relative;
     width:100%;
     aspect-ratio:2/3;
     overflow:hidden;
-    border-radius:8px;
+    border-radius:10px;
     background:
         radial-gradient(
-            circle at 50% 30%,
-            #383838,
-            #171717 55%,
-            #080808
+            circle at 50% 25%,
+            #404040,
+            #181818 55%,
+            #050505
         );
-    box-shadow:0 10px 25px rgba(0,0,0,.35);
+
+    box-shadow:
+        0 12px 30px rgba(0,0,0,.55),
+        0 0 0 1px rgba(255,255,255,.07);
+
+    transition:
+        box-shadow .32s ease,
+        border-color .32s ease;
 }
+
+.tm-trending-card:hover .tm-trending-poster{
+    box-shadow:
+        0 22px 55px rgba(0,0,0,.75),
+        0 0 25px rgba(229,9,20,.18),
+        0 0 0 1px rgba(229,9,20,.35);
+}
+
+/* IMAGE */
+
+.tm-trending-poster img{
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:cover;
+    transition:
+        transform .55s cubic-bezier(.2,.7,.2,1),
+        filter .4s ease;
+}
+
+.tm-trending-card:hover .tm-trending-poster img{
+    transform:scale(1.11);
+    filter:brightness(1.08) saturate(1.06);
+}
+
+/* DARK OVERLAY */
 
 .tm-trending-poster::after{
     content:"";
@@ -275,41 +349,87 @@
     background:
         linear-gradient(
             180deg,
-            transparent 35%,
-            rgba(0,0,0,.12) 50%,
-            rgba(0,0,0,.94) 100%
+            rgba(0,0,0,.02) 20%,
+            rgba(0,0,0,.05) 38%,
+            rgba(0,0,0,.35) 62%,
+            rgba(0,0,0,.97) 100%
         );
     pointer-events:none;
 }
 
-.tm-trending-poster img{
-    width:100%;
-    height:100%;
-    display:block;
-    object-fit:cover;
-    transition:
-        transform .45s ease,
-        filter .35s ease;
+/* TOP BADGE */
+
+.tm-trending-badge{
+    position:absolute;
+    top:10px;
+    right:10px;
+    z-index:8;
+    padding:5px 8px;
+    border-radius:4px;
+    background:#e50914;
+    color:#fff;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.8px;
+    text-transform:uppercase;
+    box-shadow:0 4px 15px rgba(0,0,0,.5);
 }
 
-.tm-trending-card:hover .tm-trending-poster img{
-    transform:scale(1.10);
-    filter:brightness(1.08);
+/* PLAY BUTTON */
+
+.tm-trending-play{
+    position:absolute;
+    left:50%;
+    top:50%;
+    z-index:9;
+    width:52px;
+    height:52px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid rgba(255,255,255,.75);
+    border-radius:50%;
+    background:rgba(0,0,0,.66);
+    backdrop-filter:blur(5px);
+    transform:translate(-50%,-50%) scale(.72);
+    opacity:0;
+    transition:
+        opacity .28s ease,
+        transform .32s ease,
+        background .28s ease;
 }
+
+.tm-trending-card:hover .tm-trending-play{
+    opacity:1;
+    transform:translate(-50%,-50%) scale(1);
+}
+
+.tm-trending-play:hover{
+    background:#e50914;
+}
+
+.tm-trending-play svg{
+    width:22px;
+    height:22px;
+    margin-left:3px;
+}
+
+/* NUMBER */
 
 .tm-trending-number{
     position:absolute;
-    left:-13px;
-    bottom:-5px;
-    z-index:10;
+    left:-16px;
+    bottom:-6px;
+    z-index:12;
 
-    font-size:82px;
+    font-size:88px;
     line-height:.78;
     font-weight:900;
-    letter-spacing:-7px;
+    letter-spacing:-8px;
 
     color:#050505;
-    -webkit-text-stroke:2px rgba(255,255,255,.95);
+
+    -webkit-text-stroke:2px rgba(255,255,255,.98);
 
     text-shadow:
         3px 0 0 #fff,
@@ -319,26 +439,32 @@
     pointer-events:none;
 }
 
+/* INFO */
+
 .tm-trending-info{
     position:absolute;
     left:0;
     right:0;
     bottom:0;
-    z-index:5;
-    padding:45px 10px 11px 16px;
+    z-index:7;
+    padding:48px 10px 12px 19px;
 }
+
+/* TITLE */
 
 .tm-trending-title{
     display:-webkit-box;
     overflow:hidden;
     color:#fff;
     font-size:13px;
-    line-height:1.3;
+    line-height:1.35;
     font-weight:800;
     -webkit-line-clamp:2;
     -webkit-box-orient:vertical;
-    text-shadow:0 2px 7px rgba(0,0,0,.9);
+    text-shadow:0 2px 9px rgba(0,0,0,.95);
 }
+
+/* PLACEHOLDER */
 
 .tm-trending-placeholder{
     width:100%;
@@ -352,29 +478,39 @@
     text-align:center;
     font-size:14px;
     font-weight:800;
+    background:
+        radial-gradient(
+            circle at 50% 30%,
+            #383838,
+            #171717 55%,
+            #080808
+        );
 }
+
+/* CARD GLOW */
 
 .tm-trending-card::before{
     content:"";
     position:absolute;
-    inset:-1px;
+    inset:-3px;
     z-index:-1;
-    border-radius:10px;
+    border-radius:13px;
     opacity:0;
     background:
         linear-gradient(
             135deg,
-            rgba(229,9,20,.65),
-            rgba(255,255,255,.12),
-            transparent
+            rgba(229,9,20,.72),
+            rgba(255,255,255,.16),
+            transparent 65%
         );
-    filter:blur(10px);
-    transition:opacity .28s ease;
+    filter:blur(12px);
+    transition:opacity .32s ease;
 }
 
 .tm-trending-card:hover::before{
     opacity:1;
 }
+
 
 /* ================= MORE REASONS ================= */
 
@@ -774,18 +910,37 @@
     }
 
 
+    /* TRENDING MOBILE */
+
     .tm-trending-section{
         width:calc(100% - 28px);
-        padding:48px 0 40px;
+        padding:50px 0 45px;
+    }
+
+    .tm-trending-heading{
+        margin-bottom:24px;
+        align-items:flex-start;
     }
 
     .tm-trending-heading h2{
-        font-size:24px;
+        font-size:25px;
+    }
+
+    .tm-trending-subtitle{
+        font-size:11px;
+    }
+
+    .tm-trending-live{
+        display:none;
     }
 
     .tm-trending-grid{
         grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:16px 14px;
+        gap:18px 14px;
+    }
+
+    .tm-trending-card:hover{
+        transform:translateY(-4px) scale(1.025);
     }
 
     .tm-trending-number{
@@ -796,8 +951,29 @@
         -webkit-text-stroke:1.7px #fff;
     }
 
+    .tm-trending-info{
+        padding:40px 8px 10px 14px;
+    }
+
     .tm-trending-title{
         font-size:11px;
+    }
+
+    .tm-trending-badge{
+        top:7px;
+        right:7px;
+        padding:4px 6px;
+        font-size:7px;
+    }
+
+    .tm-trending-play{
+        width:44px;
+        height:44px;
+    }
+
+    .tm-trending-play svg{
+        width:18px;
+        height:18px;
     }
 
 
@@ -1022,18 +1198,39 @@
 
 
 <!-- =====================================================
-     TRENDING NOW
+     PREMIUM TRENDING NOW
      ===================================================== -->
 
 <section class="tm-trending-section" id="tmTrending">
 
     <div class="tm-trending-heading">
 
-        <h2
-            data-en="Trending Now"
-            data-hi="अभी ट्रेंडिंग">
-            Trending Now
-        </h2>
+        <div class="tm-trending-heading-left">
+
+            <h2
+                data-en="Trending Now"
+                data-hi="अभी ट्रेंडिंग">
+                Trending Now
+            </h2>
+
+            <div
+                class="tm-trending-subtitle"
+                data-en="Popular on Tomesh Movies"
+                data-hi="Tomesh Movies पर लोकप्रिय">
+                Popular on Tomesh Movies
+            </div>
+
+        </div>
+
+        <div class="tm-trending-live">
+            <span class="tm-trending-live-dot"></span>
+
+            <span
+                data-en="TRENDING"
+                data-hi="ट्रेंडिंग">
+                TRENDING
+            </span>
+        </div>
 
     </div>
 
@@ -1048,11 +1245,6 @@
                 href="{{ url_for('movie_page', movie_id=movie.id) }}"
                 class="tm-trending-card"
                 aria-label="{{ movie.title }}">
-
-                <div class="tm-trending-number">
-                    {{ loop.index }}
-                </div>
-
 
                 <div class="tm-trending-poster">
 
@@ -1081,6 +1273,44 @@
 
                     {% endif %}
 
+
+                    <!-- TRENDING BADGE -->
+
+                    <div class="tm-trending-badge">
+                        Trending
+                    </div>
+
+
+                    <!-- PLAY -->
+
+                    <div class="tm-trending-play">
+
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round">
+
+                            <path
+                                d="M8 5.5v13l10-6.5z"
+                                fill="white"
+                                stroke="none"/>
+
+                        </svg>
+
+                    </div>
+
+
+                    <!-- NUMBER -->
+
+                    <div class="tm-trending-number">
+                        {{ loop.index }}
+                    </div>
+
+
+                    <!-- INFO -->
 
                     <div class="tm-trending-info">
 
@@ -1768,3 +1998,4 @@
 </script>
 
 {% endblock %}
+```
