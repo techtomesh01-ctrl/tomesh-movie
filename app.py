@@ -1280,59 +1280,44 @@ def cashfree_return():
 
         if order_status == "PAID":
 
-            # ------------------------------------------------
-            # Restore the customer identity from the order.
-            #
-            # This is important on Render because a restart/
-            # wake-up can invalidate an old Flask session.
-            # The paid order remains the source of truth.
-            # ------------------------------------------------
+            # --------------------------------------------------
+            # ALWAYS restore the paid customer session.
+            # This is important after Cashfree redirects back.
+            # --------------------------------------------------
             session["customer_id"] = local_order["customer_id"]
+            session["payment_success"] = True
 
-            # ----------------------------------------------
-            # Prevent duplicate granting
-            # ----------------------------------------------
-
-            if local_order["status"] != "PAID":
-
-                conn = get_db()
-
-                try:
-
-                    cur = conn.cursor()
-
-                    cur.execute(
-                        """
-                        UPDATE payment_orders
-                        SET
-                            status = 'PAID',
-                            paid_at = NOW()
-                        WHERE order_id = %s
-                        """,
-                        (order_id,),
-                    )
-
-                    conn.commit()
-                    cur.close()
-
-                finally:
-                    conn.close()
-
-                grant_access(
-                    local_order[
-                        "customer_id"
-                    ],
-                    local_order[
-                        "movie_id"
-                    ],
-                    local_order[
-                        "payment_type"
-                    ],
+            # --------------------------------------------------
+            # Mark the local order as PAID (idempotent).
+            # --------------------------------------------------
+            conn = get_db()
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    """
+                    UPDATE payment_orders
+                    SET
+                        status = 'PAID',
+                        paid_at = COALESCE(paid_at, NOW())
+                    WHERE order_id = %s
+                    """,
+                    (order_id,),
                 )
+                conn.commit()
+                cur.close()
+            finally:
+                conn.close()
 
-            session[
-                "payment_success"
-            ] = True
+            # --------------------------------------------------
+            # ALWAYS ensure access exists.
+            # Never skip this just because order status is already
+            # PAID; this makes the flow safe to retry.
+            # --------------------------------------------------
+            grant_access(
+                local_order["customer_id"],
+                local_order["movie_id"],
+                local_order["payment_type"],
+            )
 
             flash(
                 "Payment successful. Access unlocked.",
