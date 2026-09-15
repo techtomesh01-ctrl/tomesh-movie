@@ -1,76 +1,89 @@
 {% extends "base.html" %}
 
-{% block title %}Unlimited Movies | Tomesh Movies{% endblock %}
+{% block title %}Tomesh Movies | Member{% endblock %}
 
 {% block content %}
 
 <style>
 /* =========================================================
    TOMESH MOVIES — PREMIUM MEMBER HOME
-   Fixed Unlimited Movies Hero
-   Existing backend/movie routes preserved
+   Working navigation + search + category + My List
    ========================================================= */
 
 :root{
-    --tm-bg:#050505;
-    --tm-card:#111;
-    --tm-gold:#f5c518;
     --tm-red:#e50914;
-    --tm-purple:#8b5cf6;
-    --tm-text:#fff;
-    --tm-muted:#a8a8a8;
+    --tm-red2:#ff2633;
+    --tm-black:#050505;
+    --tm-dark:#0b0b0b;
+    --tm-card:#141414;
+    --tm-card2:#1b1b1b;
+    --tm-white:#fff;
+    --tm-muted:#a7a7a7;
+    --tm-border:rgba(255,255,255,.10);
 }
 
 *{
     box-sizing:border-box;
 }
 
-.tm-member{
-    min-height:100vh;
-    background:#050505;
-    color:#fff;
-    overflow:hidden;
+html{
+    scroll-behavior:smooth;
 }
 
-/* ================= NAVBAR ================= */
+body{
+    margin:0;
+    background:#050505;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif;
+}
 
-.tm-nav{
+/* =========================================================
+   NAVBAR
+   ========================================================= */
+
+.tm-member-nav{
     position:fixed;
     top:0;
     left:0;
     right:0;
     z-index:5000;
-    height:72px;
+    height:70px;
     display:flex;
     align-items:center;
-    padding:0 42px;
-    background:linear-gradient(
-        to bottom,
-        rgba(0,0,0,.98),
-        rgba(0,0,0,.80),
-        transparent
-    );
-    transition:.3s ease;
+    padding:0 5%;
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(0,0,0,.97),
+            rgba(0,0,0,.78),
+            transparent
+        );
+    backdrop-filter:blur(7px);
 }
 
-.tm-brand{
+.tm-nav-left{
+    display:flex;
+    align-items:center;
+    gap:30px;
+}
+
+.tm-logo{
     color:#fff;
     text-decoration:none;
-    font-size:24px;
-    font-weight:950;
+    font-size:22px;
+    font-weight:900;
     letter-spacing:1.5px;
     white-space:nowrap;
 }
 
-.tm-brand span{
+.tm-logo span{
     color:var(--tm-red);
 }
 
 .tm-nav-links{
     display:flex;
     align-items:center;
-    gap:25px;
-    margin-left:42px;
+    gap:22px;
 }
 
 .tm-nav-links a{
@@ -81,8 +94,7 @@
     transition:.2s;
 }
 
-.tm-nav-links a:hover,
-.tm-nav-links a.active{
+.tm-nav-links a:hover{
     color:#fff;
 }
 
@@ -90,627 +102,744 @@
     margin-left:auto;
     display:flex;
     align-items:center;
-    gap:14px;
+    gap:12px;
+}
+
+.tm-search-wrap{
+    position:relative;
 }
 
 .tm-search{
-    width:210px;
+    width:220px;
     height:38px;
-    padding:0 14px;
-    border:1px solid rgba(255,255,255,.18);
+    padding:0 40px 0 14px;
+    border:1px solid rgba(255,255,255,.20);
     border-radius:7px;
     outline:none;
+    background:rgba(0,0,0,.72);
     color:#fff;
-    background:rgba(0,0,0,.65);
-    backdrop-filter:blur(10px);
+    font-size:13px;
 }
 
 .tm-search::placeholder{
-    color:#999;
+    color:#aaa;
+}
+
+.tm-search-icon{
+    position:absolute;
+    right:13px;
+    top:10px;
+    color:#aaa;
+    pointer-events:none;
 }
 
 .tm-member-badge{
     padding:7px 10px;
-    border-radius:5px;
-    color:#000;
-    background:var(--tm-gold);
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:6px;
+    color:#ddd;
     font-size:10px;
-    font-weight:950;
-    letter-spacing:.7px;
+    font-weight:900;
+    letter-spacing:1px;
 }
 
 .tm-avatar{
-    width:36px;
-    height:36px;
+    width:35px;
+    height:35px;
     border-radius:6px;
-    display:grid;
-    place-items:center;
-    background:linear-gradient(135deg,#e50914,#8b5cf6);
-    color:#fff;
-    font-size:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,#e50914,#7b0000);
     font-weight:900;
 }
 
 .tm-logout{
-    color:#ddd;
+    color:#fff;
     text-decoration:none;
-    font-size:13px;
+    font-size:12px;
     font-weight:800;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:6px;
+    transition:.2s;
 }
 
 .tm-logout:hover{
-    color:#fff;
+    background:#fff;
+    color:#000;
 }
 
-/* ================= HERO ================= */
+/* =========================================================
+   HERO
+   ========================================================= */
 
 .tm-hero{
+    min-height:650px;
     position:relative;
-    min-height:690px;
     display:flex;
     align-items:center;
-    padding:120px 7% 90px;
-    isolation:isolate;
     overflow:hidden;
-}
-
-/*
-   Fixed cinematic background.
-   This is intentionally independent of movie posters.
-*/
-
-.tm-hero-bg{
-    position:absolute;
-    inset:0;
-    z-index:-3;
     background:
         radial-gradient(
-            ellipse at 72% 42%,
-            rgba(125,45,190,.42),
-            transparent 38%
-        ),
-        radial-gradient(
-            ellipse at 82% 72%,
-            rgba(229,9,20,.25),
+            circle at 75% 35%,
+            rgba(229,9,20,.35),
             transparent 35%
         ),
+        radial-gradient(
+            circle at 30% 20%,
+            rgba(120,20,160,.22),
+            transparent 38%
+        ),
         linear-gradient(
-            110deg,
-            #030303 0%,
-            #080808 35%,
-            #160d1c 66%,
-            #050505 100%
+            120deg,
+            #050505 0%,
+            #090909 45%,
+            #16090b 100%
         );
 }
 
-/* cinematic light streaks */
-
-.tm-hero-bg::before{
+.tm-hero::after{
     content:"";
     position:absolute;
-    width:800px;
-    height:260px;
-    right:-180px;
-    top:150px;
-    transform:rotate(-18deg);
-    background:linear-gradient(
-        90deg,
-        transparent,
-        rgba(255,255,255,.07),
-        transparent
-    );
-    filter:blur(25px);
+    left:0;
+    right:0;
+    bottom:0;
+    height:180px;
+    background:
+        linear-gradient(
+            to bottom,
+            transparent,
+            #050505
+        );
 }
 
-.tm-hero-bg::after{
-    content:"";
+.tm-hero-glow{
     position:absolute;
-    width:500px;
-    height:500px;
-    right:8%;
-    top:50%;
-    transform:translateY(-50%);
+    width:520px;
+    height:520px;
+    right:-130px;
+    top:70px;
     border-radius:50%;
     background:
         radial-gradient(
             circle,
-            rgba(245,197,24,.12),
-            transparent 62%
+            rgba(229,9,20,.22),
+            transparent 67%
         );
-    filter:blur(12px);
-}
-
-.tm-hero-overlay{
-    position:absolute;
-    inset:0;
-    z-index:-2;
-    background:
-        linear-gradient(
-            90deg,
-            #050505 0%,
-            rgba(5,5,5,.92) 28%,
-            rgba(5,5,5,.40) 63%,
-            rgba(5,5,5,.86) 100%
-        ),
-        linear-gradient(
-            0deg,
-            #050505 0%,
-            transparent 28%,
-            transparent 78%,
-            #050505 100%
-        );
+    filter:blur(15px);
 }
 
 .tm-hero-content{
-    width:min(680px,100%);
+    position:relative;
+    z-index:2;
+    width:min(680px,90%);
+    margin-left:7%;
+    padding-top:50px;
 }
 
 .tm-hero-small{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    margin-bottom:18px;
-    padding:7px 11px;
-    border:1px solid rgba(245,197,24,.38);
-    border-radius:5px;
-    color:var(--tm-gold);
-    background:rgba(245,197,24,.08);
-    font-size:11px;
-    font-weight:950;
-    letter-spacing:1.3px;
+    color:#e50914;
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:3px;
+    margin-bottom:16px;
 }
 
-.tm-hero-small::before{
-    content:"";
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:var(--tm-red);
-    box-shadow:0 0 12px rgba(229,9,20,.8);
-}
-
-.tm-hero-title{
+.tm-hero h1{
     margin:0;
-    font-size:clamp(48px,7vw,92px);
-    line-height:.92;
-    letter-spacing:-3px;
+    font-size:clamp(44px,7vw,82px);
+    line-height:.95;
     font-weight:1000;
-    text-transform:uppercase;
-    background:linear-gradient(
-        90deg,
-        #fff 0%,
-        #fff 50%,
-        #f5c518 100%
-    );
-    -webkit-background-clip:text;
-    background-clip:text;
-    color:transparent;
+    letter-spacing:-3px;
 }
 
-.tm-hero-subtitle{
-    margin:20px 0 0;
-    color:#eee;
-    font-size:21px;
-    line-height:1.5;
-    font-weight:650;
+.tm-hero h1 span{
+    color:#e50914;
 }
 
-.tm-hero-description{
-    max-width:590px;
-    margin:13px 0 0;
-    color:#bdbdbd;
-    font-size:15px;
-    line-height:1.65;
+.tm-hero p{
+    max-width:600px;
+    color:#c9c9c9;
+    line-height:1.7;
+    font-size:16px;
+    margin:25px 0;
 }
 
-.tm-hero-actions{
+.tm-hero-buttons{
     display:flex;
-    flex-wrap:wrap;
     gap:12px;
-    margin-top:28px;
+    flex-wrap:wrap;
 }
 
 .tm-btn{
-    min-height:46px;
-    padding:0 21px;
     border:0;
+    min-height:44px;
+    padding:0 20px;
     border-radius:6px;
+    cursor:pointer;
+    text-decoration:none;
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    gap:8px;
-    text-decoration:none;
-    font-size:14px;
-    font-weight:950;
-    cursor:pointer;
-    transition:.2s ease;
+    font-size:13px;
+    font-weight:900;
+    transition:.2s;
 }
 
-.tm-btn:hover{
-    transform:translateY(-2px);
-}
-
-.tm-btn-primary{
-    color:#000;
-    background:#fff;
-}
-
-.tm-btn-primary:hover{
-    background:#f0f0f0;
-}
-
-.tm-btn-secondary{
+.tm-btn-red{
+    background:#e50914;
     color:#fff;
-    background:rgba(255,255,255,.13);
-    border:1px solid rgba(255,255,255,.15);
-    backdrop-filter:blur(10px);
 }
 
-.tm-btn-secondary:hover{
+.tm-btn-red:hover{
+    background:#ff1d2b;
+    transform:translateY(-1px);
+}
+
+.tm-btn-light{
+    background:#fff;
+    color:#000;
+}
+
+.tm-btn-light:hover{
+    background:#ddd;
+}
+
+.tm-btn-dark{
+    background:rgba(255,255,255,.12);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.16);
+}
+
+.tm-btn-dark:hover{
     background:rgba(255,255,255,.20);
 }
 
-.tm-hero-meta{
-    display:flex;
-    flex-wrap:wrap;
-    gap:14px;
-    margin-top:24px;
-    color:#999;
-    font-size:12px;
-    font-weight:750;
-}
+/* =========================================================
+   MAIN
+   ========================================================= */
 
-.tm-meta-dot{
-    color:#666;
+.tm-member-main{
+    position:relative;
+    z-index:3;
+    margin-top:-35px;
+    padding-bottom:70px;
 }
-
-/* ================= SECTION ================= */
 
 .tm-section{
-    position:relative;
-    padding:15px 4.5% 35px;
+    width:90%;
+    max-width:1450px;
+    margin:0 auto 52px;
+    scroll-margin-top:90px;
 }
 
-.tm-section-title{
+.tm-section-head{
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:15px;
-    margin:0 0 17px;
+    margin-bottom:18px;
 }
 
-.tm-section-title h2{
+.tm-section-head h2{
     margin:0;
-    font-size:22px;
-    font-weight:950;
-    letter-spacing:-.4px;
+    font-size:24px;
+    font-weight:900;
 }
 
-.tm-section-title span{
-    color:#888;
+.tm-section-count{
+    color:#999;
     font-size:12px;
-    font-weight:700;
 }
 
-/* ================= MOVIE ROW ================= */
+/* =========================================================
+   TRENDING HORIZONTAL
+   ========================================================= */
 
-.tm-row{
-    display:grid;
-    grid-template-columns:repeat(6,minmax(0,1fr));
+.tm-trending-row{
+    display:flex;
     gap:14px;
+    overflow-x:auto;
+    padding:4px 2px 12px;
+    scrollbar-width:thin;
 }
 
-.tm-movie{
+.tm-trending-row::-webkit-scrollbar{
+    height:5px;
+}
+
+.tm-trending-row::-webkit-scrollbar-thumb{
+    background:#333;
+    border-radius:20px;
+}
+
+.tm-trending-card{
+    flex:0 0 190px;
     position:relative;
-    min-width:0;
-    border-radius:7px;
     overflow:hidden;
-    background:#111;
-    cursor:pointer;
-    transition:
-        transform .25s ease,
-        box-shadow .25s ease;
+    border-radius:8px;
+    background:#141414;
+    border:1px solid rgba(255,255,255,.08);
 }
 
-.tm-movie:hover{
-    transform:scale(1.035);
-    z-index:10;
-    box-shadow:
-        0 20px 45px rgba(0,0,0,.65),
-        0 0 0 1px rgba(255,255,255,.10);
+.tm-trending-poster{
+    width:100%;
+    height:270px;
+    object-fit:cover;
+    display:block;
+    background:#202020;
+}
+
+.tm-trending-info{
+    padding:11px;
+}
+
+.tm-trending-title{
+    font-size:13px;
+    font-weight:900;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.tm-trending-category{
+    margin-top:5px;
+    color:#888;
+    font-size:11px;
+}
+
+/* =========================================================
+   CATEGORY
+   ========================================================= */
+
+.tm-category-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.tm-category-btn{
+    border:1px solid rgba(255,255,255,.15);
+    background:#111;
+    color:#ccc;
+    padding:10px 15px;
+    border-radius:7px;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:800;
+    transition:.2s;
+}
+
+.tm-category-btn:hover,
+.tm-category-btn.active{
+    background:#e50914;
+    border-color:#e50914;
+    color:#fff;
+}
+
+/* =========================================================
+   MOVIE GRID
+   ========================================================= */
+
+.tm-movie-grid{
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:18px;
+}
+
+.tm-movie-card{
+    min-width:0;
+    position:relative;
+    background:#121212;
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:9px;
+    overflow:hidden;
+    transition:
+        transform .22s ease,
+        border-color .22s ease,
+        box-shadow .22s ease;
+}
+
+.tm-movie-card:hover{
+    transform:translateY(-6px);
+    border-color:rgba(255,255,255,.20);
+    box-shadow:0 20px 45px rgba(0,0,0,.55);
+}
+
+.tm-poster-link{
+    display:block;
+    text-decoration:none;
+    color:#fff;
+}
+
+.tm-poster-wrap{
+    position:relative;
+    aspect-ratio:2/3;
+    background:#202020;
+    overflow:hidden;
 }
 
 .tm-poster{
-    position:relative;
-    width:100%;
-    aspect-ratio:2/3;
-    overflow:hidden;
-    background:
-        linear-gradient(
-            145deg,
-            #171717,
-            #080808
-        );
-}
-
-.tm-poster img{
     width:100%;
     height:100%;
-    display:block;
     object-fit:cover;
-    transition:transform .35s ease;
-}
-
-.tm-movie:hover .tm-poster img{
-    transform:scale(1.06);
+    display:block;
 }
 
 .tm-no-poster{
     width:100%;
     height:100%;
-    display:grid;
-    place-items:center;
-    padding:20px;
-    text-align:center;
-    color:#666;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+        linear-gradient(135deg,#191919,#303030);
+    color:#777;
     font-size:12px;
-    font-weight:800;
+    font-weight:900;
 }
 
-.tm-poster-badge{
+.tm-card-gradient{
     position:absolute;
-    top:8px;
-    left:8px;
-    padding:5px 7px;
-    border-radius:4px;
-    color:#fff;
-    background:rgba(229,9,20,.9);
-    font-size:9px;
-    font-weight:950;
-    letter-spacing:.6px;
+    left:0;
+    right:0;
+    bottom:0;
+    height:55%;
+    background:
+        linear-gradient(
+            to top,
+            rgba(0,0,0,.9),
+            transparent
+        );
 }
 
-.tm-movie-info{
-    padding:11px;
+.tm-card-info{
+    padding:12px;
 }
 
 .tm-movie-title{
     margin:0;
-    overflow:hidden;
-    white-space:nowrap;
-    text-overflow:ellipsis;
     color:#fff;
     font-size:14px;
     font-weight:900;
+    line-height:1.3;
 }
 
-.tm-movie-category{
-    margin-top:5px;
-    color:#888;
+.tm-movie-meta{
+    margin-top:6px;
+    color:#8d8d8d;
     font-size:11px;
-    font-weight:700;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
 }
 
-/* ================= CATEGORY ================= */
-
-.tm-categories{
+.tm-card-actions{
     display:flex;
-    flex-wrap:wrap;
-    gap:9px;
-    margin-bottom:34px;
+    gap:7px;
+    padding:0 12px 12px;
 }
 
-.tm-category{
-    padding:9px 15px;
-    border:1px solid rgba(255,255,255,.13);
-    border-radius:20px;
-    color:#bbb;
-    background:#101010;
-    font-size:12px;
-    font-weight:800;
+.tm-watch-card-btn{
+    flex:1;
+    min-height:36px;
+    border:0;
+    border-radius:5px;
+    background:#fff;
+    color:#000;
+    text-decoration:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    font-weight:900;
+}
+
+.tm-list-btn{
+    min-height:36px;
+    padding:0 10px;
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:5px;
+    background:#222;
+    color:#fff;
     cursor:pointer;
+    font-size:11px;
+    font-weight:900;
+    white-space:nowrap;
     transition:.2s;
 }
 
-.tm-category:hover,
-.tm-category.active{
-    color:#000;
-    background:#fff;
-    border-color:#fff;
+.tm-list-btn:hover{
+    background:#333;
 }
 
-/* ================= ALL MOVIES ================= */
-
-.tm-all-grid{
-    display:grid;
-    grid-template-columns:repeat(6,minmax(0,1fr));
-    gap:18px 14px;
+.tm-list-btn.saved{
+    background:#e50914;
+    border-color:#e50914;
 }
 
-.tm-hidden{
-    display:none!important;
+/* =========================================================
+   MY LIST
+   ========================================================= */
+
+.tm-my-list-section{
+    scroll-margin-top:90px;
 }
 
-/* ================= EMPTY ================= */
-
-.tm-empty{
-    padding:70px 20px;
-    text-align:center;
-    border:1px dashed rgba(255,255,255,.15);
+.tm-my-list-empty{
+    display:none;
+    padding:45px 20px;
+    border:1px dashed rgba(255,255,255,.16);
     border-radius:10px;
-    color:#777;
+    text-align:center;
+    background:#101010;
 }
 
-.tm-empty strong{
-    display:block;
-    margin-bottom:8px;
-    color:#ddd;
-    font-size:18px;
+.tm-my-list-empty-icon{
+    font-size:40px;
+    margin-bottom:10px;
 }
 
-/* ================= FOOTER ================= */
+.tm-my-list-empty h3{
+    margin:0 0 8px;
+    font-size:20px;
+}
 
-.tm-footer{
-    margin-top:40px;
-    padding:45px 5%;
+.tm-my-list-empty p{
+    margin:0;
+    color:#888;
+    font-size:13px;
+}
+
+/* =========================================================
+   SEARCH EMPTY
+   ========================================================= */
+
+.tm-search-empty{
+    display:none;
+    padding:40px 20px;
+    text-align:center;
+    color:#888;
+    border:1px dashed rgba(255,255,255,.12);
+    border-radius:10px;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.tm-member-footer{
+    width:90%;
+    max-width:1450px;
+    margin:0 auto;
+    padding:30px 0 50px;
     border-top:1px solid rgba(255,255,255,.08);
     color:#666;
-    text-align:center;
     font-size:12px;
+    text-align:center;
 }
 
-.tm-footer strong{
+.tm-member-footer strong{
     color:#aaa;
 }
 
-/* ================= RESPONSIVE ================= */
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
 
-@media(max-width:1100px){
-
-    .tm-row,
-    .tm-all-grid{
+@media(max-width:1200px){
+    .tm-movie-grid{
         grid-template-columns:repeat(4,minmax(0,1fr));
     }
 
-    .tm-nav-links{
-        gap:15px;
-        margin-left:25px;
-    }
-
     .tm-search{
-        width:150px;
+        width:180px;
     }
 }
 
-@media(max-width:800px){
-
-    .tm-nav{
-        height:62px;
-        padding:0 17px;
-    }
-
-    .tm-brand{
-        font-size:19px;
-    }
-
+@media(max-width:900px){
     .tm-nav-links{
         display:none;
-    }
-
-    .tm-search{
-        width:130px;
-        height:35px;
     }
 
     .tm-member-badge{
         display:none;
     }
 
-    .tm-avatar{
-        width:33px;
-        height:33px;
+    .tm-search{
+        width:160px;
     }
 
-    .tm-logout{
-        display:none;
+    .tm-movie-grid{
+        grid-template-columns:repeat(3,minmax(0,1fr));
     }
 
     .tm-hero{
-        min-height:620px;
-        padding:110px 22px 70px;
+        min-height:590px;
     }
 
-    .tm-hero-title{
-        font-size:clamp(44px,14vw,72px);
-        letter-spacing:-2px;
+    .tm-hero-content{
+        margin-left:5%;
+    }
+}
+
+@media(max-width:650px){
+    .tm-member-nav{
+        height:60px;
+        padding:0 4%;
     }
 
-    .tm-hero-subtitle{
+    .tm-logo{
         font-size:18px;
     }
 
-    .tm-hero-description{
-        font-size:14px;
+    .tm-nav-right{
+        gap:6px;
     }
 
-    .tm-section{
-        padding-left:17px;
-        padding-right:17px;
+    .tm-search-wrap{
+        display:none;
     }
 
-    .tm-row,
-    .tm-all-grid{
-        grid-template-columns:repeat(3,minmax(0,1fr));
-        gap:10px;
+    .tm-avatar{
+        width:32px;
+        height:32px;
     }
 
-    .tm-movie-info{
-        padding:8px;
-    }
-
-    .tm-movie-title{
-        font-size:12px;
-    }
-
-    .tm-movie-category{
+    .tm-logout{
+        padding:8px 9px;
         font-size:10px;
-    }
-}
-
-@media(max-width:500px){
-
-    .tm-search{
-        width:105px;
     }
 
     .tm-hero{
-        min-height:570px;
+        min-height:540px;
     }
 
-    .tm-hero-actions{
+    .tm-hero-content{
+        width:90%;
+        margin-left:5%;
+        padding-top:60px;
+    }
+
+    .tm-hero h1{
+        font-size:48px;
+        letter-spacing:-2px;
+    }
+
+    .tm-hero p{
+        font-size:13px;
+    }
+
+    .tm-section{
+        width:92%;
+        margin-bottom:40px;
+    }
+
+    .tm-section-head h2{
+        font-size:20px;
+    }
+
+    .tm-movie-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:12px;
+    }
+
+    .tm-trending-card{
+        flex-basis:150px;
+    }
+
+    .tm-trending-poster{
+        height:215px;
+    }
+
+    .tm-card-info{
+        padding:9px;
+    }
+
+    .tm-card-actions{
+        padding:0 9px 9px;
+        flex-direction:column;
+    }
+
+    .tm-list-btn,
+    .tm-watch-card-btn{
         width:100%;
     }
-
-    .tm-btn{
-        flex:1;
-        min-width:130px;
-    }
-
-    .tm-row,
-    .tm-all-grid{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-    }
-
-    .tm-section-title h2{
-        font-size:19px;
-    }
-
-    .tm-category{
-        padding:8px 12px;
-        font-size:11px;
-    }
 }
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+.tm-toast{
+    position:fixed;
+    left:50%;
+    bottom:25px;
+    z-index:9999;
+    transform:translateX(-50%) translateY(20px);
+    min-width:250px;
+    max-width:90%;
+    padding:13px 18px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:8px;
+    background:rgba(18,18,18,.97);
+    color:#fff;
+    text-align:center;
+    font-size:12px;
+    font-weight:800;
+    box-shadow:0 15px 40px rgba(0,0,0,.6);
+    opacity:0;
+    pointer-events:none;
+    transition:.25s;
+}
+
+.tm-toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+}
+
 </style>
 
-<div class="tm-member">
+<!-- =========================================================
+     NAVBAR
+     ========================================================= -->
+
+<nav class="tm-member-nav">
 
 ```
-<!-- ================= NAVBAR ================= -->
+<div class="tm-nav-left">
 
-<nav class="tm-nav">
-
-    <a href="{{ url_for('member_home') }}" class="tm-brand">
+    <a class="tm-logo" href="#top">
         TOMESH <span>MOVIES</span>
     </a>
 
     <div class="tm-nav-links">
-        <a href="{{ url_for('member_home') }}" class="active">Home</a>
-        <a href="#movies">Movies</a>
-        <a href="#categories">Categories</a>
-        <a href="#all-movies">My List</a>
+
+        <a href="#top">
+            Home
+        </a>
+
+        <a href="#movies">
+            Movies
+        </a>
+
+        <a href="#categories">
+            Categories
+        </a>
+
+        <a href="#my-list">
+            My List
+        </a>
+
     </div>
 
-    <div class="tm-nav-right">
+</div>
+
+
+<div class="tm-nav-right">
+
+    <div class="tm-search-wrap">
 
         <input
             id="tmSearch"
@@ -720,406 +849,1034 @@
             autocomplete="off"
         >
 
-        <div class="tm-member-badge">
-            MEMBER
-        </div>
+        <span class="tm-search-icon">
+            🔍
+        </span>
 
-        <div class="tm-avatar">
-            TM
-        </div>
+    </div>
 
-        <a href="{{ url_for('logout') }}" class="tm-logout">
-            Logout
+    <div class="tm-member-badge">
+        MEMBER
+    </div>
+
+    <div class="tm-avatar">
+        T
+    </div>
+
+    <a
+        class="tm-logout"
+        href="{{ url_for('logout') }}"
+    >
+        Logout
+    </a>
+
+</div>
+```
+
+</nav>
+
+<!-- =========================================================
+     HERO
+     ========================================================= -->
+
+<section
+    class="tm-hero"
+    id="top"
+>
+
+```
+<div class="tm-hero-glow"></div>
+
+<div class="tm-hero-content">
+
+    <div class="tm-hero-small">
+        TOMESH MOVIES • MEMBER
+    </div>
+
+    <h1>
+        UNLIMITED<br>
+        <span>MOVIES.</span>
+    </h1>
+
+    <p>
+        Welcome to Tomesh Movies. Discover action,
+        drama, thriller, comedy and classic movies
+        in one cinematic place.
+    </p>
+
+    <div class="tm-hero-buttons">
+
+        <a
+            href="#movies"
+            class="tm-btn tm-btn-red"
+        >
+            ▶ Watch Movies
+        </a>
+
+        <a
+            href="#my-list"
+            class="tm-btn tm-btn-light"
+        >
+            ＋ My List
+        </a>
+
+        <a
+            href="#categories"
+            class="tm-btn tm-btn-dark"
+        >
+            Browse Categories
         </a>
 
     </div>
 
-</nav>
+</div>
+```
+
+</section>
+
+<main class="tm-member-main">
+
+<!-- =========================================================
+     TRENDING
+     ========================================================= -->
+
+<section class="tm-section">
+
+```
+<div class="tm-section-head">
+
+    <h2>
+        Trending Now
+    </h2>
+
+    <span class="tm-section-count">
+        Latest movies
+    </span>
+
+</div>
 
 
-<!-- ================= FIXED HERO ================= -->
+<div class="tm-trending-row">
 
-<section class="tm-hero">
+    {% for movie in movies[:10] %}
 
-    <div class="tm-hero-bg"></div>
+    <div class="tm-trending-card">
 
-    <div class="tm-hero-overlay"></div>
+        <a
+            href="{{ url_for('movie_page', movie_id=movie.id) }}"
+            class="tm-poster-link"
+        >
 
-    <div class="tm-hero-content">
+            {% if movie.poster_url %}
 
-        <div class="tm-hero-small">
-            TOMESH MOVIES
-        </div>
-
-        <h1 class="tm-hero-title">
-            UNLIMITED<br>
-            MOVIES
-        </h1>
-
-        <div class="tm-hero-subtitle">
-            Watch. Discover. Enjoy.
-        </div>
-
-        <p class="tm-hero-description">
-            Your cinematic world is here. Discover exciting stories,
-            powerful performances and entertainment made for movie lovers.
-            Browse the collection and start watching.
-        </p>
-
-        <div class="tm-hero-actions">
-
-            {% if movies %}
-
-                <a
-                    href="{{ url_for('movie_page', movie_id=movies[0].id) }}"
-                    class="tm-btn tm-btn-primary"
+                <img
+                    class="tm-trending-poster"
+                    src="{{ movie.poster_url }}"
+                    alt="{{ movie.title }}"
+                    loading="lazy"
                 >
-                    ▶ Watch Now
-                </a>
-
-                <a
-                    href="#movies"
-                    class="tm-btn tm-btn-secondary"
-                >
-                    Browse Movies
-                </a>
 
             {% else %}
 
-                <a
-                    href="#movies"
-                    class="tm-btn tm-btn-primary"
+                <div
+                    class="tm-trending-poster tm-no-poster"
                 >
-                    Browse Movies
-                </a>
+                    NO POSTER
+                </div>
 
             {% endif %}
 
-        </div>
+        </a>
 
-        <div class="tm-hero-meta">
-            <span>HD Entertainment</span>
-            <span class="tm-meta-dot">•</span>
-            <span>Unlimited Discovery</span>
-            <span class="tm-meta-dot">•</span>
-            <span>Tomesh Movies</span>
+        <div class="tm-trending-info">
+
+            <div class="tm-trending-title">
+                {{ movie.title }}
+            </div>
+
+            <div class="tm-trending-category">
+                {{ movie.category or "Movie" }}
+            </div>
+
         </div>
 
     </div>
-
-</section>
-
-
-<!-- ================= TRENDING ================= -->
-
-<section class="tm-section" id="movies">
-
-    <div class="tm-section-title">
-        <h2>Trending Now</h2>
-        <span>Fresh from Tomesh Movies</span>
-    </div>
-
-    {% if movies %}
-
-        <div class="tm-row">
-
-            {% for movie in movies[:6] %}
-
-                <a
-                    href="{{ url_for('movie_page', movie_id=movie.id) }}"
-                    class="tm-movie tm-search-item"
-                    data-title="{{ movie.title|lower }}"
-                    data-category="{{ (movie.category or '')|lower }}"
-                    style="text-decoration:none;"
-                >
-
-                    <div class="tm-poster">
-
-                        {% if movie.poster_url %}
-
-                            <img
-                                src="{{ movie.poster_url }}"
-                                alt="{{ movie.title }}"
-                                loading="lazy"
-                            >
-
-                        {% else %}
-
-                            <div class="tm-no-poster">
-                                NO POSTER
-                            </div>
-
-                        {% endif %}
-
-                        <div class="tm-poster-badge">
-                            TRENDING
-                        </div>
-
-                    </div>
-
-                    <div class="tm-movie-info">
-
-                        <h3 class="tm-movie-title">
-                            {{ movie.title }}
-                        </h3>
-
-                        <div class="tm-movie-category">
-                            {{ movie.category or "Movie" }}
-                        </div>
-
-                    </div>
-
-                </a>
-
-            {% endfor %}
-
-        </div>
 
     {% else %}
 
-        <div class="tm-empty">
-            <strong>No movies available yet.</strong>
-            New movies will appear here.
-        </div>
+    <div style="color:#777;">
+        No movies available yet.
+    </div>
 
-    {% endif %}
+    {% endfor %}
+
+</div>
+```
 
 </section>
 
-
-<!-- ================= CATEGORIES ================= -->
+<!-- =========================================================
+     CATEGORIES
+     ========================================================= -->
 
 <section
     class="tm-section"
     id="categories"
 >
 
-    <div class="tm-section-title">
-        <h2>Browse by Category</h2>
-    </div>
-
-    <div class="tm-categories">
-
-        <button
-            type="button"
-            class="tm-category active"
-            data-filter="all"
-        >
-            All
-        </button>
-
-        {% set categories = [] %}
-
-        {% for movie in movies %}
-
-            {% if movie.category and movie.category not in categories %}
-
-                {% set categories = categories + [movie.category] %}
-
-            {% endif %}
-
-        {% endfor %}
-
-        {% for category in categories %}
-
-            <button
-                type="button"
-                class="tm-category"
-                data-filter="{{ category|lower }}"
-            >
-                {{ category }}
-            </button>
-
-        {% endfor %}
-
-    </div>
-
-</section>
-
-
-<!-- ================= ALL MOVIES ================= -->
-
-<section
-    class="tm-section"
-    id="all-movies"
->
-
-    <div class="tm-section-title">
-        <h2>All Movies</h2>
-        <span id="tmResultText">
-            {{ movies|length }} movies
-        </span>
-    </div>
-
-    {% if movies %}
-
-        <div
-            class="tm-all-grid"
-            id="tmMovieGrid"
-        >
-
-            {% for movie in movies %}
-
-                <a
-                    href="{{ url_for('movie_page', movie_id=movie.id) }}"
-                    class="tm-movie tm-search-item"
-                    data-title="{{ movie.title|lower }}"
-                    data-category="{{ (movie.category or '')|lower }}"
-                    style="text-decoration:none;"
-                >
-
-                    <div class="tm-poster">
-
-                        {% if movie.poster_url %}
-
-                            <img
-                                src="{{ movie.poster_url }}"
-                                alt="{{ movie.title }}"
-                                loading="lazy"
-                            >
-
-                        {% else %}
-
-                            <div class="tm-no-poster">
-                                NO POSTER
-                            </div>
-
-                        {% endif %}
-
-                    </div>
-
-                    <div class="tm-movie-info">
-
-                        <h3 class="tm-movie-title">
-                            {{ movie.title }}
-                        </h3>
-
-                        <div class="tm-movie-category">
-                            {{ movie.category or "Movie" }}
-                        </div>
-
-                    </div>
-
-                </a>
-
-            {% endfor %}
-
-        </div>
-
-        <div
-            id="tmNoSearchResults"
-            class="tm-empty"
-            style="display:none;margin-top:20px;"
-        >
-            <strong>No movies found.</strong>
-            Try another movie name or category.
-        </div>
-
-    {% else %}
-
-        <div class="tm-empty">
-            <strong>Your movie collection is empty.</strong>
-            Add your first movie from the Admin Panel.
-        </div>
-
-    {% endif %}
-
-</section>
-
-
-<!-- ================= FOOTER ================= -->
-
-<footer class="tm-footer">
-
-    <strong>TOMESH MOVIES</strong>
-
-    <br><br>
-
-    Your cinematic entertainment destination.
-
-    <br><br>
-
-    © 2026 Tomesh Movies. All rights reserved.
-
-</footer>
 ```
+<div class="tm-section-head">
+
+    <h2>
+        Browse by Category
+    </h2>
 
 </div>
 
+
+<div class="tm-category-row">
+
+    <button
+        type="button"
+        class="tm-category-btn active"
+        data-category="all"
+    >
+        All
+    </button>
+
+    <button
+        type="button"
+        class="tm-category-btn"
+        data-category="action"
+    >
+        Action
+    </button>
+
+    <button
+        type="button"
+        class="tm-category-btn"
+        data-category="drama"
+    >
+        Drama
+    </button>
+
+    <button
+        type="button"
+        class="tm-category-btn"
+        data-category="thriller"
+    >
+        Thriller
+    </button>
+
+    <button
+        type="button"
+        class="tm-category-btn"
+        data-category="comedy"
+    >
+        Comedy
+    </button>
+
+    <button
+        type="button"
+        class="tm-category-btn"
+        data-category="hindi"
+    >
+        Hindi
+    </button>
+
+    <button
+        type="button"
+        class="tm-category-btn"
+        data-category="classic"
+    >
+        Classic
+    </button>
+
+</div>
+```
+
+</section>
+
+<!-- =========================================================
+     MY LIST
+     ========================================================= -->
+
+<section
+    class="tm-section tm-my-list-section"
+    id="my-list"
+>
+
+```
+<div class="tm-section-head">
+
+    <h2>
+        My List
+    </h2>
+
+    <span
+        class="tm-section-count"
+        id="tmMyListCount"
+    >
+        0 saved
+    </span>
+
+</div>
+
+
+<div
+    class="tm-movie-grid"
+    id="tmMyListGrid"
+>
+
+    {% for movie in movies %}
+
+    <article
+        class="tm-movie-card tm-my-list-card"
+        data-movie-id="{{ movie.id }}"
+        data-title="{{ movie.title|lower }}"
+        data-category="{{ (movie.category or '')|lower }}"
+        style="display:none;"
+    >
+
+        <a
+            class="tm-poster-link"
+            href="{{ url_for('movie_page', movie_id=movie.id) }}"
+        >
+
+            <div class="tm-poster-wrap">
+
+                {% if movie.poster_url %}
+
+                <img
+                    class="tm-poster"
+                    src="{{ movie.poster_url }}"
+                    alt="{{ movie.title }}"
+                    loading="lazy"
+                >
+
+                {% else %}
+
+                <div class="tm-no-poster">
+                    NO POSTER
+                </div>
+
+                {% endif %}
+
+                <div class="tm-card-gradient"></div>
+
+            </div>
+
+            <div class="tm-card-info">
+
+                <h3 class="tm-movie-title">
+                    {{ movie.title }}
+                </h3>
+
+                <div class="tm-movie-meta">
+                    {{ movie.category or "Movie" }}
+                </div>
+
+            </div>
+
+        </a>
+
+
+        <div class="tm-card-actions">
+
+            <a
+                class="tm-watch-card-btn"
+                href="{{ url_for('movie_page', movie_id=movie.id) }}"
+            >
+                ▶ Watch
+            </a>
+
+            <button
+                type="button"
+                class="tm-list-btn saved"
+                data-movie-id="{{ movie.id }}"
+                data-list-action="remove"
+            >
+                ✓ Saved
+            </button>
+
+        </div>
+
+    </article>
+
+    {% endfor %}
+
+</div>
+
+
+<div
+    class="tm-my-list-empty"
+    id="tmMyListEmpty"
+>
+
+    <div class="tm-my-list-empty-icon">
+        ＋
+    </div>
+
+    <h3>
+        Your My List is empty
+    </h3>
+
+    <p>
+        Movies you add with “+ My List” will appear here.
+    </p>
+
+</div>
+```
+
+</section>
+
+<!-- =========================================================
+     ALL MOVIES
+     ========================================================= -->
+
+<section
+    class="tm-section"
+    id="movies"
+>
+
+```
+<div class="tm-section-head">
+
+    <h2>
+        All Movies
+    </h2>
+
+    <span
+        class="tm-section-count"
+        id="tmMovieCount"
+    >
+        {{ movies|length }} movies
+    </span>
+
+</div>
+
+
+<div
+    class="tm-movie-grid"
+    id="tmMovieGrid"
+>
+
+    {% for movie in movies %}
+
+    <article
+        class="tm-movie-card tm-all-movie-card"
+        data-movie-id="{{ movie.id }}"
+        data-title="{{ movie.title|lower }}"
+        data-category="{{ (movie.category or '')|lower }}"
+    >
+
+        <a
+            class="tm-poster-link"
+            href="{{ url_for('movie_page', movie_id=movie.id) }}"
+        >
+
+            <div class="tm-poster-wrap">
+
+                {% if movie.poster_url %}
+
+                <img
+                    class="tm-poster"
+                    src="{{ movie.poster_url }}"
+                    alt="{{ movie.title }}"
+                    loading="lazy"
+                >
+
+                {% else %}
+
+                <div class="tm-no-poster">
+                    NO POSTER
+                </div>
+
+                {% endif %}
+
+                <div class="tm-card-gradient"></div>
+
+            </div>
+
+
+            <div class="tm-card-info">
+
+                <h3 class="tm-movie-title">
+                    {{ movie.title }}
+                </h3>
+
+                <div class="tm-movie-meta">
+                    {{ movie.category or "Movie" }}
+                </div>
+
+            </div>
+
+        </a>
+
+
+        <div class="tm-card-actions">
+
+            <a
+                class="tm-watch-card-btn"
+                href="{{ url_for('movie_page', movie_id=movie.id) }}"
+            >
+                ▶ Watch
+            </a>
+
+            <button
+                type="button"
+                class="tm-list-btn"
+                data-movie-id="{{ movie.id }}"
+                data-list-action="add"
+            >
+                ＋ My List
+            </button>
+
+        </div>
+
+    </article>
+
+    {% else %}
+
+    <div
+        style="
+            grid-column:1/-1;
+            padding:50px 20px;
+            text-align:center;
+            color:#777;
+        "
+    >
+        No movies available.
+    </div>
+
+    {% endfor %}
+
+</div>
+
+
+<div
+    class="tm-search-empty"
+    id="tmSearchEmpty"
+>
+    No movies found.
+</div>
+```
+
+</section>
+
+</main>
+
+<!-- =========================================================
+     FOOTER
+     ========================================================= -->
+
+<footer class="tm-member-footer">
+
+```
+<strong>TOMESH MOVIES</strong>
+
+<br><br>
+
+Movies • Entertainment • Stories
+
+<br><br>
+
+© 2026 Tomesh Movies. All rights reserved.
+```
+
+</footer>
+
+<!-- =========================================================
+     TOAST
+     ========================================================= -->
+
+<div
+    class="tm-toast"
+    id="tmToast"
+></div>
+
 <script>
+/* =========================================================
+   TOMESH MOVIES — MEMBER HOME JAVASCRIPT
+   ========================================================= */
+
 (function(){
 
-    const searchInput = document.getElementById("tmSearch");
-    const movieItems = Array.from(
-        document.querySelectorAll(".tm-search-item")
+    "use strict";
+
+
+    /* -------------------------------------------------------
+       ELEMENTS
+       ------------------------------------------------------- */
+
+    const searchInput =
+        document.getElementById("tmSearch");
+
+    const movieCards =
+        Array.from(
+            document.querySelectorAll(
+                ".tm-all-movie-card"
+            )
+        );
+
+    const myListCards =
+        Array.from(
+            document.querySelectorAll(
+                ".tm-my-list-card"
+            )
+        );
+
+    const myListButtons =
+        Array.from(
+            document.querySelectorAll(
+                ".tm-list-btn"
+            )
+        );
+
+    const categoryButtons =
+        Array.from(
+            document.querySelectorAll(
+                ".tm-category-btn"
+            )
+        );
+
+    const myListCount =
+        document.getElementById(
+            "tmMyListCount"
+        );
+
+    const myListEmpty =
+        document.getElementById(
+            "tmMyListEmpty"
+        );
+
+    const searchEmpty =
+        document.getElementById(
+            "tmSearchEmpty"
+        );
+
+    const movieCount =
+        document.getElementById(
+            "tmMovieCount"
+        );
+
+    const toast =
+        document.getElementById(
+            "tmToast"
+        );
+
+
+    /* -------------------------------------------------------
+       STORAGE KEY
+       ------------------------------------------------------- */
+
+    const STORAGE_KEY =
+        "tomesh_movies_my_list_v1";
+
+
+    /* -------------------------------------------------------
+       GET LIST
+       ------------------------------------------------------- */
+
+    function getMyList(){
+
+        try{
+
+            const raw =
+                localStorage.getItem(
+                    STORAGE_KEY
+                );
+
+            if(!raw){
+                return [];
+            }
+
+            const parsed =
+                JSON.parse(raw);
+
+            if(!Array.isArray(parsed)){
+                return [];
+            }
+
+            return parsed
+                .map(function(id){
+                    return String(id);
+                })
+                .filter(function(id){
+                    return id.length > 0;
+                });
+
+        }catch(error){
+
+            console.error(
+                "My List read error:",
+                error
+            );
+
+            return [];
+        }
+    }
+
+
+    /* -------------------------------------------------------
+       SAVE LIST
+       ------------------------------------------------------- */
+
+    function saveMyList(list){
+
+        try{
+
+            localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify(list)
+            );
+
+        }catch(error){
+
+            console.error(
+                "My List save error:",
+                error
+            );
+        }
+    }
+
+
+    /* -------------------------------------------------------
+       CHECK SAVED
+       ------------------------------------------------------- */
+
+    function isSaved(movieId){
+
+        const list =
+            getMyList();
+
+        return list.indexOf(
+            String(movieId)
+        ) !== -1;
+    }
+
+
+    /* -------------------------------------------------------
+       TOAST
+       ------------------------------------------------------- */
+
+    let toastTimer = null;
+
+    function showToast(message){
+
+        if(!toast){
+            return;
+        }
+
+        toast.textContent =
+            message;
+
+        toast.classList.add(
+            "show"
+        );
+
+        clearTimeout(
+            toastTimer
+        );
+
+        toastTimer =
+            setTimeout(
+                function(){
+
+                    toast.classList.remove(
+                        "show"
+                    );
+
+                },
+                1800
+            );
+    }
+
+
+    /* -------------------------------------------------------
+       UPDATE BUTTONS
+       ------------------------------------------------------- */
+
+    function updateButtons(){
+
+        const saved =
+            getMyList();
+
+        myListButtons.forEach(
+            function(button){
+
+                const id =
+                    String(
+                        button.dataset.movieId
+                    );
+
+                const savedNow =
+                    saved.indexOf(id) !== -1;
+
+                if(savedNow){
+
+                    button.textContent =
+                        "✓ Saved";
+
+                    button.classList.add(
+                        "saved"
+                    );
+
+                    button.dataset.listAction =
+                        "remove";
+
+                }else{
+
+                    button.textContent =
+                        "＋ My List";
+
+                    button.classList.remove(
+                        "saved"
+                    );
+
+                    button.dataset.listAction =
+                        "add";
+                }
+
+            }
+        );
+    }
+
+
+    /* -------------------------------------------------------
+       UPDATE MY LIST SECTION
+       ------------------------------------------------------- */
+
+    function updateMyListSection(){
+
+        const saved =
+            getMyList();
+
+        let visibleCount = 0;
+
+        myListCards.forEach(
+            function(card){
+
+                const id =
+                    String(
+                        card.dataset.movieId
+                    );
+
+                const shouldShow =
+                    saved.indexOf(id) !== -1;
+
+                if(shouldShow){
+
+                    card.style.display =
+                        "";
+
+                    visibleCount++;
+
+                }else{
+
+                    card.style.display =
+                        "none";
+                }
+
+            }
+        );
+
+
+        if(myListCount){
+
+            myListCount.textContent =
+                visibleCount +
+                (
+                    visibleCount === 1
+                    ? " saved"
+                    : " saved"
+                );
+        }
+
+
+        if(myListEmpty){
+
+            myListEmpty.style.display =
+                visibleCount === 0
+                ? "block"
+                : "none";
+        }
+    }
+
+
+    /* -------------------------------------------------------
+       ADD / REMOVE
+       ------------------------------------------------------- */
+
+    function toggleMyList(movieId){
+
+        const id =
+            String(movieId);
+
+        let list =
+            getMyList();
+
+        const index =
+            list.indexOf(id);
+
+
+        if(index === -1){
+
+            list.push(id);
+
+            saveMyList(list);
+
+            updateButtons();
+
+            updateMyListSection();
+
+            showToast(
+                "✓ Movie added to My List"
+            );
+
+        }else{
+
+            list.splice(
+                index,
+                1
+            );
+
+            saveMyList(list);
+
+            updateButtons();
+
+            updateMyListSection();
+
+            showToast(
+                "Movie removed from My List"
+            );
+        }
+    }
+
+
+    /* -------------------------------------------------------
+       BUTTON CLICK
+       ------------------------------------------------------- */
+
+    myListButtons.forEach(
+        function(button){
+
+            button.addEventListener(
+                "click",
+                function(event){
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+                    const movieId =
+                        button.dataset.movieId;
+
+                    if(movieId){
+
+                        toggleMyList(
+                            movieId
+                        );
+                    }
+
+                }
+            );
+
+        }
     );
 
-    const categoryButtons = Array.from(
-        document.querySelectorAll(".tm-category")
-    );
 
-    const resultText = document.getElementById("tmResultText");
-    const noResults = document.getElementById("tmNoSearchResults");
+    /* -------------------------------------------------------
+       SEARCH + CATEGORY
+       ------------------------------------------------------- */
 
     let activeCategory = "all";
 
 
-    function applyFilters(){
+    function filterMovies(){
 
-        const search = (
+        const query =
             searchInput
-                ? searchInput.value.trim().toLowerCase()
-                : ""
-        );
+            ? searchInput.value
+                .trim()
+                .toLowerCase()
+            : "";
 
-        let visible = 0;
 
-        movieItems.forEach(function(item){
+        let visible =
+            0;
 
-            const title =
-                item.getAttribute("data-title") || "";
 
-            const category =
-                item.getAttribute("data-category") || "";
+        movieCards.forEach(
+            function(card){
 
-            const searchMatch =
-                !search ||
-                title.includes(search) ||
-                category.includes(search);
+                const title =
+                    (
+                        card.dataset.title ||
+                        ""
+                    ).toLowerCase();
 
-            const categoryMatch =
-                activeCategory === "all" ||
-                category === activeCategory;
+                const category =
+                    (
+                        card.dataset.category ||
+                        ""
+                    ).toLowerCase();
 
-            if(searchMatch && categoryMatch){
 
-                item.classList.remove("tm-hidden");
-                visible++;
+                const searchMatch =
+                    !query ||
+                    title.includes(query) ||
+                    category.includes(query);
 
-            }else{
 
-                item.classList.add("tm-hidden");
+                const categoryMatch =
+                    activeCategory === "all" ||
+                    category.includes(
+                        activeCategory
+                    );
+
+
+                const show =
+                    searchMatch &&
+                    categoryMatch;
+
+
+                if(show){
+
+                    card.style.display =
+                        "";
+
+                    visible++;
+
+                }else{
+
+                    card.style.display =
+                        "none";
+                }
 
             }
+        );
 
-        });
 
+        if(movieCount){
 
-        if(resultText){
-
-            resultText.textContent =
-                visible + (visible === 1 ? " movie" : " movies");
-
+            movieCount.textContent =
+                visible +
+                (
+                    visible === 1
+                    ? " movie"
+                    : " movies"
+                );
         }
 
 
-        if(noResults){
+        if(searchEmpty){
 
-            noResults.style.display =
-                visible === 0 ? "block" : "none";
-
+            searchEmpty.style.display =
+                visible === 0
+                ? "block"
+                : "none";
         }
-
     }
 
 
@@ -1127,65 +1884,110 @@
 
         searchInput.addEventListener(
             "input",
-            applyFilters
+            filterMovies
         );
-
     }
 
 
-    categoryButtons.forEach(function(button){
+    /* -------------------------------------------------------
+       CATEGORY BUTTONS
+       ------------------------------------------------------- */
 
-        button.addEventListener(
-            "click",
-            function(){
+    categoryButtons.forEach(
+        function(button){
 
-                categoryButtons.forEach(function(btn){
-                    btn.classList.remove("active");
-                });
+            button.addEventListener(
+                "click",
+                function(){
 
-                button.classList.add("active");
+                    categoryButtons.forEach(
+                        function(btn){
 
-                activeCategory =
-                    button.getAttribute("data-filter") || "all";
+                            btn.classList.remove(
+                                "active"
+                            );
 
-                applyFilters();
+                        }
+                    );
+
+
+                    button.classList.add(
+                        "active"
+                    );
+
+
+                    activeCategory =
+                        (
+                            button.dataset.category ||
+                            "all"
+                        ).toLowerCase();
+
+
+                    filterMovies();
+
+
+                    const moviesSection =
+                        document.getElementById(
+                            "movies"
+                        );
+
+                    if(moviesSection){
+
+                        moviesSection.scrollIntoView({
+                            behavior:"smooth",
+                            block:"start"
+                        });
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+
+    /* -------------------------------------------------------
+       MY LIST NAVBAR
+       ------------------------------------------------------- */
+
+    document
+        .querySelectorAll(
+            'a[href="#my-list"]'
+        )
+        .forEach(
+            function(link){
+
+                link.addEventListener(
+                    "click",
+                    function(){
+
+                        setTimeout(
+                            function(){
+
+                                updateMyListSection();
+
+                            },
+                            50
+                        );
+
+                    }
+                );
 
             }
         );
 
-    });
 
+    /* -------------------------------------------------------
+       INITIAL LOAD
+       ------------------------------------------------------- */
 
-    /* Navbar background after scrolling */
+    updateButtons();
 
-    const nav =
-        document.querySelector(".tm-nav");
+    updateMyListSection();
 
-    function updateNav(){
+    filterMovies();
 
-        if(!nav) return;
-
-        if(window.scrollY > 30){
-
-            nav.style.background =
-                "rgba(5,5,5,.96)";
-
-        }else{
-
-            nav.style.background =
-                "linear-gradient(to bottom,rgba(0,0,0,.98),rgba(0,0,0,.80),transparent)";
-
-        }
-
-    }
-
-    window.addEventListener(
-        "scroll",
-        updateNav,
-        {passive:true}
-    );
-
-    updateNav();
 
 })();
 </script>
