@@ -1892,6 +1892,8 @@ def video_box_debug(movie_id):
 
                 pos += size
 
+            return boxes
+
         first_boxes = parse_boxes(first_bytes)
         last_boxes = parse_boxes(last_bytes)
 
