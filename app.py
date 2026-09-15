@@ -441,23 +441,6 @@ def init_db():
             )
         """)
 
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS customer_movie_list (
-                customer_id TEXT NOT NULL,
-                movie_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (customer_id, movie_id),
-                FOREIGN KEY (movie_id)
-                    REFERENCES movies(id)
-                    ON DELETE CASCADE
-            )
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_customer_movie_list_customer
-            ON customer_movie_list(customer_id)
-        """)
-
         # ----------------------------------------------------
         # EMAIL OTP CODES
         # ----------------------------------------------------
@@ -1415,229 +1398,7 @@ def verify_otp():
     )
 
     return redirect(
-        url_for("member_home")
-    )
-
-
-# ============================================================
-# MEMBER HOME + MY LIST
-# ============================================================
-
-def customer_login_required(view_func):
-    @wraps(view_func)
-    def wrapper(*args, **kwargs):
-        if not session.get("customer_logged_in"):
-            return redirect(url_for("login"))
-        return view_func(*args, **kwargs)
-    return wrapper
-
-
-def get_member_movies_data():
-    customer_id = session.get("customer_id")
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-
-        if customer_id:
-            cur.execute(
-                """
-                SELECT
-                    m.*,
-                    CASE
-                        WHEN cml.movie_id IS NOT NULL THEN TRUE
-                        ELSE FALSE
-                    END AS in_my_list
-                FROM movies m
-                LEFT JOIN customer_movie_list cml
-                    ON cml.movie_id = m.id
-                   AND cml.customer_id = %s
-                ORDER BY m.id DESC
-                """,
-                (customer_id,),
-            )
-        else:
-            cur.execute(
-                """
-                SELECT
-                    m.*,
-                    FALSE AS in_my_list
-                FROM movies m
-                ORDER BY m.id DESC
-                """
-            )
-
-        movies = cur.fetchall()
-        cur.close()
-    finally:
-        conn.close()
-
-    for movie in movies:
-        try:
-            movie["poster_url"] = (
-                media_url(movie.get("poster"))
-                if movie.get("poster")
-                else None
-            )
-        except Exception:
-            movie["poster_url"] = None
-
-        movie["in_my_list"] = bool(
-            movie.get("in_my_list")
-        )
-        movie["views"] = int(
-            movie.get("views") or 0
-        )
-
-    return movies
-
-
-@app.route("/member")
-@customer_login_required
-def member_home():
-    movies = get_member_movies_data()
-    saved_movies = [
-        movie for movie in movies
-        if movie.get("in_my_list")
-    ]
-
-    categories = []
-    seen_categories = set()
-    for movie in movies:
-        raw_category = str(
-            movie.get("category") or ""
-        ).strip()
-        if not raw_category:
-            continue
-        for part in raw_category.split(","):
-            category = part.strip()
-            if category and category.lower() not in seen_categories:
-                seen_categories.add(category.lower())
-                categories.append(category)
-
-    return render_template(
-        "member_home.html",
-        movies=movies,
-        saved_movies=saved_movies,
-        my_list_movies=saved_movies,
-        saved_movie_ids=[
-            int(movie["id"])
-            for movie in saved_movies
-        ],
-        categories=categories,
-        customer_email=session.get("customer_email", ""),
-        premium=has_active_premium(),
-    )
-
-
-@app.route(
-    "/api/my-list/<int:movie_id>",
-    methods=["POST", "DELETE"],
-)
-@customer_login_required
-def api_my_list(movie_id):
-    customer_id = session.get("customer_id")
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT id FROM movies WHERE id = %s",
-            (movie_id,),
-        )
-        movie = cur.fetchone()
-
-        if not movie:
-            cur.close()
-            return json_error("Movie not found.", 404)
-
-        if request.method == "POST":
-            cur.execute(
-                """
-                INSERT INTO customer_movie_list
-                (customer_id, movie_id)
-                VALUES(%s, %s)
-                ON CONFLICT(customer_id, movie_id)
-                DO NOTHING
-                """,
-                (customer_id, movie_id),
-            )
-            conn.commit()
-            cur.close()
-            return json_ok(
-                saved=True,
-                movie_id=movie_id,
-                message="Added to My List.",
-            )
-
-        cur.execute(
-            """
-            DELETE FROM customer_movie_list
-            WHERE customer_id = %s
-              AND movie_id = %s
-            """,
-            (customer_id, movie_id),
-        )
-        removed = cur.rowcount > 0
-        conn.commit()
-        cur.close()
-
-        return json_ok(
-            saved=False,
-            removed=removed,
-            movie_id=movie_id,
-            message="Removed from My List.",
-        )
-
-    except Exception as exc:
-        conn.rollback()
-        print("MY LIST ERROR:", repr(exc))
-        return json_error(
-            "My List update failed: " + str(exc),
-            500,
-        )
-    finally:
-        conn.close()
-
-
-@app.route("/api/my-list", methods=["GET"])
-@customer_login_required
-def api_my_list_all():
-    customer_id = session.get("customer_id")
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT m.*
-            FROM movies m
-            INNER JOIN customer_movie_list cml
-                ON cml.movie_id = m.id
-            WHERE cml.customer_id = %s
-            ORDER BY cml.created_at DESC, m.id DESC
-            """,
-            (customer_id,),
-        )
-        movies = cur.fetchall()
-        cur.close()
-    finally:
-        conn.close()
-
-    for movie in movies:
-        try:
-            movie["poster_url"] = (
-                media_url(movie.get("poster"))
-                if movie.get("poster")
-                else None
-            )
-        except Exception:
-            movie["poster_url"] = None
-
-    return json_ok(
-        movies=movies,
-        movie_ids=[int(movie["id"]) for movie in movies],
+        url_for("home")
     )
 
 
@@ -2592,6 +2353,20 @@ def movie_page(movie_id):
         movie_id
     )
 
+    # --------------------------------------------------------
+    # MEMBER WATCH ACCESS
+    # --------------------------------------------------------
+    # A verified customer/member can open and watch movies
+    # directly from Member Home. Payment/download logic stays
+    # unchanged; only watch access is opened for logged-in
+    # members.
+    member_watch = bool(
+        session.get("customer_logged_in")
+    )
+
+    if member_watch:
+        access["watch"] = True
+
     video_key = movie.get(
         "video"
     )
@@ -2665,7 +2440,9 @@ def stream_movie(movie_id):
     ).strip()
 
     # --------------------------------------------------------
-    # Verify paid watch access.
+    # Verify stream access.
+    # Paid tokens remain valid. Verified members may also
+    # stream directly without a payment token.
     # --------------------------------------------------------
     if access_token:
 
@@ -2677,6 +2454,10 @@ def stream_movie(movie_id):
                 "Invalid or expired stream access.",
                 status=403,
             )
+
+    elif session.get("customer_logged_in"):
+        # Verified Member Home user: direct watch access.
+        pass
 
     else:
 
