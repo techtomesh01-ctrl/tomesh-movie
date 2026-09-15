@@ -1234,12 +1234,11 @@
         controls
         playsinline
         preload="metadata"
-        crossorigin="anonymous"
         poster="{{ movie.poster_url or movie.poster or '' }}"
     >
 
         <source
-            src="{{ url_for('stream_movie', movie_id=movie.id) }}"
+            src="{{ movie.video_url }}"
             type="{{ movie.video_mime or 'video/mp4' }}"
         >
 
@@ -2931,7 +2930,7 @@ async function startPayment(type){
             );
 
             showStatus(
-                "Video buffering..."
+                "Video loading..."
             );
 
         }
@@ -3033,6 +3032,13 @@ async function startPayment(type){
             console.log(
                 "Video URL:",
                 video.currentSrc
+            );
+
+            console.log(
+                "Video readyState:",
+                video.readyState,
+                "networkState:",
+                video.networkState
             );
 
         }
