@@ -84,6 +84,8 @@ button,input,select{
     color:#000;
 }
 
+/* SIGN IN */
+
 .tm-signin{
     height:38px;
     padding:0 17px;
@@ -100,6 +102,38 @@ button,input,select{
 
 .tm-signin:hover{
     background:#f40612;
+}
+
+/* LOGGED-IN ACCOUNT */
+
+.tm-account{
+    height:38px;
+    max-width:280px;
+    padding:0 15px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    border-radius:4px;
+    background:#e50914;
+    color:#fff;
+    font-size:13px;
+    font-weight:800;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    transition:.2s;
+}
+
+.tm-account:hover{
+    background:#f40612;
+}
+
+.tm-account-email{
+    max-width:190px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
 }
 
 /* =========================
@@ -678,6 +712,17 @@ button,input,select{
         font-size:11px;
     }
 
+    .tm-account{
+        height:35px;
+        max-width:160px;
+        padding:0 10px;
+        font-size:10px;
+    }
+
+    .tm-account-email{
+        max-width:105px;
+    }
+
     .tm-hero{
         min-height:720px;
     }
@@ -781,25 +826,45 @@ button,input,select{
 
 <div class="tm-page">
 
-    <header class="tm-header">
+```
+<header class="tm-header">
 
-        <a
-            class="tm-brand"
-            href="{{ url_for('index') }}">
-            TOMESH <span>MOVIES</span>
-        </a>
+    <a
+        class="tm-brand"
+        href="{{ url_for('index') }}">
+        TOMESH <span>MOVIES</span>
+    </a>
 
-        <div class="tm-header-actions">
+    <div class="tm-header-actions">
 
-            <select
-                id="tmLanguage"
-                class="tm-lang"
-                aria-label="Language">
+        <select
+            id="tmLanguage"
+            class="tm-lang"
+            aria-label="Language">
 
-                <option value="en">English</option>
-                <option value="hi">हिन्दी</option>
+            <option value="en">English</option>
+            <option value="hi">हिन्दी</option>
 
-            </select>
+        </select>
+
+        {% if session.get("customer_logged_in") %}
+
+            <a
+                class="tm-account"
+                href="{{ url_for('logout') }}"
+                title="Logout">
+
+                <span>👤</span>
+
+                <span class="tm-account-email">
+                    {{ session.get("customer_email") or "Account" }}
+                </span>
+
+                <span>Logout</span>
+
+            </a>
+
+        {% else %}
 
             <a
                 class="tm-signin"
@@ -807,41 +872,418 @@ button,input,select{
                 Sign In
             </a>
 
+        {% endif %}
+
+    </div>
+
+</header>
+
+
+<section class="tm-hero">
+
+    <div class="tm-hero-content">
+
+        <h1
+            data-en="Unlimited movies, shows, and more"
+            data-hi="अनलिमिटेड मूवीज़, शो और बहुत कुछ">
+            Unlimited movies, shows, and more
+        </h1>
+
+        <p
+            class="tm-hero-desc"
+            data-en="Watch movies and entertainment in one cinematic place. Discover stories you'll want to watch again and again."
+            data-hi="एक सिनेमैटिक जगह पर मूवीज़ और एंटरटेनमेंट देखें। ऐसी कहानियाँ खोजें जिन्हें आप बार-बार देखना चाहेंगे।">
+            Watch movies and entertainment in one cinematic place.
+            Discover stories you'll want to watch again and again.
+        </p>
+
+        <p
+            class="tm-price"
+            data-en="Starts at ₹9. Cancel at any time."
+            data-hi="₹9 से शुरू। कभी भी कैंसल करें।">
+            Starts at ₹9. Cancel at any time.
+        </p>
+
+        <p
+            class="tm-ready"
+            data-en="Ready to watch? Enter your email to create or restart your membership."
+            data-hi="देखने के लिए तैयार हैं? अपनी membership शुरू या फिर से शुरू करने के लिए ईमेल डालें।">
+            Ready to watch? Enter your email to create or restart your membership.
+        </p>
+
+        <form
+            class="tm-email-form"
+            action="{{ url_for('login') }}"
+            method="GET">
+
+            <input
+                class="tm-email"
+                type="email"
+                name="email"
+                required
+                autocomplete="email"
+                placeholder="Email address"
+                data-placeholder-en="Email address"
+                data-placeholder-hi="ईमेल एड्रेस">
+
+            <button
+                class="tm-start"
+                type="submit">
+                Get Started →
+            </button>
+
+        </form>
+
+    </div>
+
+</section>
+
+
+<section
+    id="tmTrending"
+    class="tm-section">
+
+    <div class="tm-inner">
+
+        <div class="tm-trending-head">
+
+            <div>
+
+                <h2 class="tm-heading">
+                    Trending Now
+                </h2>
+
+                <p class="tm-subheading">
+                    Popular on Tomesh Movies
+                </p>
+
+            </div>
+
+            <div class="tm-live">
+                <span class="tm-dot"></span>
+                TRENDING
+            </div>
+
         </div>
 
-    </header>
+
+        <div class="tm-trending">
+
+            {% if movies %}
+
+                {% for movie in movies[:12] %}
+
+                    <a
+                        class="tm-card"
+                        href="{{ url_for('movie_page', movie_id=movie.id) }}">
+
+                        <span class="tm-number">
+                            {{ loop.index }}
+                        </span>
+
+                        <div class="tm-poster-box">
+
+                            <span class="tm-badge">
+                                TRENDING
+                            </span>
+
+                            {% if movie.poster_url %}
+
+                                <img
+                                    class="tm-poster"
+                                    src="{{ movie.poster_url }}"
+                                    alt="{{ movie.title }}"
+                                    loading="lazy">
+
+                            {% else %}
+
+                                <div class="tm-placeholder">
+                                    {{ movie.title }}
+                                </div>
+
+                            {% endif %}
+
+                            <div class="tm-overlay">
+                                <span class="tm-play">▶</span>
+                            </div>
+
+                        </div>
+
+                        <p class="tm-title">
+                            {{ movie.title }}
+                        </p>
+
+                    </a>
+
+                {% endfor %}
+
+            {% else %}
+
+                <div
+                    style="
+                    grid-column:1/-1;
+                    padding:45px 20px;
+                    text-align:center;
+                    color:#888;
+                    background:#111;
+                    border:1px solid #222;
+                    border-radius:10px;
+                    ">
+                    Movies coming soon...
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</section>
 
 
-    <section class="tm-hero">
+<section class="tm-section">
 
-        <div class="tm-hero-content">
+    <div class="tm-inner">
 
-            <h1
-                data-en="Unlimited movies, shows, and more"
-                data-hi="अनलिमिटेड मूवीज़, शो और बहुत कुछ">
-                Unlimited movies, shows, and more
-            </h1>
+        <h2 class="tm-heading">
+            More reasons to join
+        </h2>
 
-            <p
-                class="tm-hero-desc"
-                data-en="Watch movies and entertainment in one cinematic place. Discover stories you'll want to watch again and again."
-                data-hi="एक सिनेमैटिक जगह पर मूवीज़ और एंटरटेनमेंट देखें। ऐसी कहानियाँ खोजें जिन्हें आप बार-बार देखना चाहेंगे।">
-                Watch movies and entertainment in one cinematic place.
-                Discover stories you'll want to watch again and again.
-            </p>
+        <div class="tm-reasons">
 
-            <p
-                class="tm-price"
-                data-en="Starts at ₹9. Cancel at any time."
-                data-hi="₹9 से शुरू। कभी भी कैंसल करें।">
-                Starts at ₹9. Cancel at any time.
-            </p>
+            <article class="tm-reason">
 
-            <p
-                class="tm-ready"
-                data-en="Ready to watch? Enter your email to create or restart your membership."
-                data-hi="देखने के लिए तैयार हैं? अपनी membership शुरू या फिर से शुरू करने के लिए ईमेल डालें।">
-                Ready to watch? Enter your email to create or restart your membership.
+                <div class="tm-icon">📺</div>
+
+                <h3>
+                    Enjoy on your TV
+                </h3>
+
+                <p>
+                    Watch your favourite movies and shows on your TV,
+                    laptop, tablet and other supported devices.
+                </p>
+
+            </article>
+
+
+            <article class="tm-reason">
+
+                <div class="tm-icon">⬇️</div>
+
+                <h3>
+                    Download your movies
+                </h3>
+
+                <p>
+                    Save supported content and enjoy your entertainment
+                    when you are offline.
+                </p>
+
+            </article>
+
+
+            <article class="tm-reason">
+
+                <div class="tm-icon">🌎</div>
+
+                <h3>
+                    Watch everywhere
+                </h3>
+
+                <p>
+                    Your cinematic world is available across devices
+                    wherever supported access is available.
+                </p>
+
+            </article>
+
+
+            <article class="tm-reason">
+
+                <div class="tm-icon">👥</div>
+
+                <h3>
+                    Create profiles
+                </h3>
+
+                <p>
+                    Keep your viewing experience organised with profiles
+                    for different members of your family.
+                </p>
+
+            </article>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section
+    id="tmFaq"
+    class="tm-section">
+
+    <div class="tm-inner">
+
+        <h2 class="tm-heading">
+            Frequently Asked Questions
+        </h2>
+
+        <div class="tm-faq">
+
+            <div class="tm-faq-item">
+
+                <button
+                    class="tm-faq-btn"
+                    type="button">
+
+                    <span>
+                        What is Tomesh Movies?
+                    </span>
+
+                    <span class="tm-plus">+</span>
+
+                </button>
+
+                <div class="tm-answer">
+                    Tomesh Movies is a movie and entertainment portal
+                    where users can discover and watch available content.
+                </div>
+
+            </div>
+
+
+            <div class="tm-faq-item">
+
+                <button
+                    class="tm-faq-btn"
+                    type="button">
+
+                    <span>
+                        How much does Tomesh Movies cost?
+                    </span>
+
+                    <span class="tm-plus">+</span>
+
+                </button>
+
+                <div class="tm-answer">
+                    Pricing can vary depending on the movie and access
+                    option. The applicable price is shown before payment.
+                </div>
+
+            </div>
+
+
+            <div class="tm-faq-item">
+
+                <button
+                    class="tm-faq-btn"
+                    type="button">
+
+                    <span>
+                        Where can I watch?
+                    </span>
+
+                    <span class="tm-plus">+</span>
+
+                </button>
+
+                <div class="tm-answer">
+                    Tomesh Movies can be used on supported desktop,
+                    laptop, tablet and mobile browsers.
+                </div>
+
+            </div>
+
+
+            <div class="tm-faq-item">
+
+                <button
+                    class="tm-faq-btn"
+                    type="button">
+
+                    <span>
+                        How do I cancel?
+                    </span>
+
+                    <span class="tm-plus">+</span>
+
+                </button>
+
+                <div class="tm-answer">
+                    Cancellation details are shown with supported
+                    membership or paid-access options.
+                </div>
+
+            </div>
+
+
+            <div class="tm-faq-item">
+
+                <button
+                    class="tm-faq-btn"
+                    type="button">
+
+                    <span>
+                        What can I watch?
+                    </span>
+
+                    <span class="tm-plus">+</span>
+
+                </button>
+
+                <div class="tm-answer">
+                    The catalogue contains movies and entertainment
+                    content that Tomesh Movies is permitted to make
+                    available.
+                </div>
+
+            </div>
+
+
+            <div class="tm-faq-item">
+
+                <button
+                    class="tm-faq-btn"
+                    type="button">
+
+                    <span>
+                        Is Tomesh Movies good for kids?
+                    </span>
+
+                    <span class="tm-plus">+</span>
+
+                </button>
+
+                <div class="tm-answer">
+                    Content suitability varies by movie. Please check
+                    the information for each title before children watch.
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section class="tm-section tm-ready-section">
+
+    <div class="tm-inner">
+
+        <div class="tm-ready-box">
+
+            <h2>
+                Ready to watch?
+            </h2>
+
+            <p>
+                Enter your email to create or restart your membership.
             </p>
 
             <form
@@ -869,464 +1311,89 @@ button,input,select{
 
         </div>
 
-    </section>
+    </div>
+
+</section>
 
 
-    <section
-        id="tmTrending"
-        class="tm-section">
+<footer class="tm-footer">
 
-        <div class="tm-inner">
+    <div class="tm-footer-inner">
 
-            <div class="tm-trending-head">
+        <p class="tm-footer-question">
+            Questions? Contact us.
+        </p>
 
-                <div>
+        <div class="tm-footer-links">
 
-                    <h2 class="tm-heading">
-                        Trending Now
-                    </h2>
+            <a href="{{ url_for('index') }}">
+                Home
+            </a>
 
-                    <p class="tm-subheading">
-                        Popular on Tomesh Movies
-                    </p>
+            <a href="#tmTrending">
+                Movies
+            </a>
 
-                </div>
+            <a href="#tmTrending">
+                Categories
+            </a>
 
-                <div class="tm-live">
-                    <span class="tm-dot"></span>
-                    TRENDING
-                </div>
+            <a href="{{ url_for('login') }}">
+                Sign In
+            </a>
 
+            <a href="{{ url_for('index') }}">
+                Premium
+            </a>
+
+            <a href="{{ url_for('ads_txt') }}">
+                Ads
+            </a>
+
+            <a href="#tmFaq">
+                FAQ
+            </a>
+
+            <a href="#tmFaq">
+                Help Centre
+            </a>
+
+            <a href="{{ url_for('index') }}">
+                Terms
+            </a>
+
+            <a href="{{ url_for('index') }}">
+                Privacy
+            </a>
+
+            <a href="{{ url_for('index') }}">
+                Cookie Preferences
+            </a>
+
+            <a href="{{ url_for('index') }}">
+                Contact
+            </a>
+
+        </div>
+
+        <div class="tm-footer-bottom">
+
+            <div class="tm-footer-brand">
+                TOMESH <span>MOVIES</span>
             </div>
 
-
-            <div class="tm-trending">
-
-                {% if movies %}
-
-                    {% for movie in movies[:12] %}
-
-                        <a
-                            class="tm-card"
-                            href="{{ url_for('movie_page', movie_id=movie.id) }}">
-
-                            <span class="tm-number">
-                                {{ loop.index }}
-                            </span>
-
-                            <div class="tm-poster-box">
-
-                                <span class="tm-badge">
-                                    TRENDING
-                                </span>
-
-                                {% if movie.poster_url %}
-
-                                    <img
-                                        class="tm-poster"
-                                        src="{{ movie.poster_url }}"
-                                        alt="{{ movie.title }}"
-                                        loading="lazy">
-
-                                {% else %}
-
-                                    <div class="tm-placeholder">
-                                        {{ movie.title }}
-                                    </div>
-
-                                {% endif %}
-
-                                <div class="tm-overlay">
-                                    <span class="tm-play">▶</span>
-                                </div>
-
-                            </div>
-
-                            <p class="tm-title">
-                                {{ movie.title }}
-                            </p>
-
-                        </a>
-
-                    {% endfor %}
-
-                {% else %}
-
-                    <div
-                        style="
-                        grid-column:1/-1;
-                        padding:45px 20px;
-                        text-align:center;
-                        color:#888;
-                        background:#111;
-                        border:1px solid #222;
-                        border-radius:10px;
-                        ">
-                        Movies coming soon...
-                    </div>
-
-                {% endif %}
-
+            <div class="tm-copy">
+                © 2026 Tomesh Movies. All rights reserved.
             </div>
 
         </div>
 
-    </section>
+    </div>
 
-
-    <section class="tm-section">
-
-        <div class="tm-inner">
-
-            <h2 class="tm-heading">
-                More reasons to join
-            </h2>
-
-            <div class="tm-reasons">
-
-                <article class="tm-reason">
-
-                    <div class="tm-icon">📺</div>
-
-                    <h3>
-                        Enjoy on your TV
-                    </h3>
-
-                    <p>
-                        Watch your favourite movies and shows on your TV,
-                        laptop, tablet and other supported devices.
-                    </p>
-
-                </article>
-
-
-                <article class="tm-reason">
-
-                    <div class="tm-icon">⬇️</div>
-
-                    <h3>
-                        Download your movies
-                    </h3>
-
-                    <p>
-                        Save supported content and enjoy your entertainment
-                        when you are offline.
-                    </p>
-
-                </article>
-
-
-                <article class="tm-reason">
-
-                    <div class="tm-icon">🌎</div>
-
-                    <h3>
-                        Watch everywhere
-                    </h3>
-
-                    <p>
-                        Your cinematic world is available across devices
-                        wherever supported access is available.
-                    </p>
-
-                </article>
-
-
-                <article class="tm-reason">
-
-                    <div class="tm-icon">👥</div>
-
-                    <h3>
-                        Create profiles
-                    </h3>
-
-                    <p>
-                        Keep your viewing experience organised with profiles
-                        for different members of your family.
-                    </p>
-
-                </article>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <section
-        id="tmFaq"
-        class="tm-section">
-
-        <div class="tm-inner">
-
-            <h2 class="tm-heading">
-                Frequently Asked Questions
-            </h2>
-
-            <div class="tm-faq">
-
-                <div class="tm-faq-item">
-
-                    <button
-                        class="tm-faq-btn"
-                        type="button">
-
-                        <span>
-                            What is Tomesh Movies?
-                        </span>
-
-                        <span class="tm-plus">+</span>
-
-                    </button>
-
-                    <div class="tm-answer">
-                        Tomesh Movies is a movie and entertainment portal
-                        where users can discover and watch available content.
-                    </div>
-
-                </div>
-
-
-                <div class="tm-faq-item">
-
-                    <button
-                        class="tm-faq-btn"
-                        type="button">
-
-                        <span>
-                            How much does Tomesh Movies cost?
-                        </span>
-
-                        <span class="tm-plus">+</span>
-
-                    </button>
-
-                    <div class="tm-answer">
-                        Pricing can vary depending on the movie and access
-                        option. The applicable price is shown before payment.
-                    </div>
-
-                </div>
-
-
-                <div class="tm-faq-item">
-
-                    <button
-                        class="tm-faq-btn"
-                        type="button">
-
-                        <span>
-                            Where can I watch?
-                        </span>
-
-                        <span class="tm-plus">+</span>
-
-                    </button>
-
-                    <div class="tm-answer">
-                        Tomesh Movies can be used on supported desktop,
-                        laptop, tablet and mobile browsers.
-                    </div>
-
-                </div>
-
-
-                <div class="tm-faq-item">
-
-                    <button
-                        class="tm-faq-btn"
-                        type="button">
-
-                        <span>
-                            How do I cancel?
-                        </span>
-
-                        <span class="tm-plus">+</span>
-
-                    </button>
-
-                    <div class="tm-answer">
-                        Cancellation details are shown with supported
-                        membership or paid-access options.
-                    </div>
-
-                </div>
-
-
-                <div class="tm-faq-item">
-
-                    <button
-                        class="tm-faq-btn"
-                        type="button">
-
-                        <span>
-                            What can I watch?
-                        </span>
-
-                        <span class="tm-plus">+</span>
-
-                    </button>
-
-                    <div class="tm-answer">
-                        The catalogue contains movies and entertainment
-                        content that Tomesh Movies is permitted to make
-                        available.
-                    </div>
-
-                </div>
-
-
-                <div class="tm-faq-item">
-
-                    <button
-                        class="tm-faq-btn"
-                        type="button">
-
-                        <span>
-                            Is Tomesh Movies good for kids?
-                        </span>
-
-                        <span class="tm-plus">+</span>
-
-                    </button>
-
-                    <div class="tm-answer">
-                        Content suitability varies by movie. Please check
-                        the information for each title before children watch.
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <section class="tm-section tm-ready-section">
-
-        <div class="tm-inner">
-
-            <div class="tm-ready-box">
-
-                <h2>
-                    Ready to watch?
-                </h2>
-
-                <p>
-                    Enter your email to create or restart your membership.
-                </p>
-
-                <form
-                    class="tm-email-form"
-                    action="{{ url_for('login') }}"
-                    method="GET">
-
-                    <input
-                        class="tm-email"
-                        type="email"
-                        name="email"
-                        required
-                        autocomplete="email"
-                        placeholder="Email address"
-                        data-placeholder-en="Email address"
-                        data-placeholder-hi="ईमेल एड्रेस">
-
-                    <button
-                        class="tm-start"
-                        type="submit">
-                        Get Started →
-                    </button>
-
-                </form>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <footer class="tm-footer">
-
-        <div class="tm-footer-inner">
-
-            <p class="tm-footer-question">
-                Questions? Contact us.
-            </p>
-
-            <div class="tm-footer-links">
-
-                <a href="{{ url_for('index') }}">
-                    Home
-                </a>
-
-                <a href="#tmTrending">
-                    Movies
-                </a>
-
-                <a href="#tmTrending">
-                    Categories
-                </a>
-
-                <a href="{{ url_for('login') }}">
-                    Sign In
-                </a>
-
-                <a href="{{ url_for('index') }}">
-                    Premium
-                </a>
-
-                <a href="{{ url_for('ads_txt') }}">
-                    Ads
-                </a>
-
-                <a href="#tmFaq">
-                    FAQ
-                </a>
-
-                <a href="#tmFaq">
-                    Help Centre
-                </a>
-
-                <a href="{{ url_for('index') }}">
-                    Terms
-                </a>
-
-                <a href="{{ url_for('index') }}">
-                    Privacy
-                </a>
-
-                <a href="{{ url_for('index') }}">
-                    Cookie Preferences
-                </a>
-
-                <a href="{{ url_for('index') }}">
-                    Contact
-                </a>
-
-            </div>
-
-            <div class="tm-footer-bottom">
-
-                <div class="tm-footer-brand">
-                    TOMESH <span>MOVIES</span>
-                </div>
-
-                <div class="tm-copy">
-                    © 2026 Tomesh Movies. All rights reserved.
-                </div>
-
-            </div>
-
-        </div>
-
-    </footer>
+</footer>
+```
 
 </div>
-
 
 <script>
 (function(){
