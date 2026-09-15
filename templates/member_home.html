@@ -25,11 +25,11 @@
     padding:0 4.5%;
     background:linear-gradient(
         180deg,
-        rgba(0,0,0,.96) 0%,
+        rgba(0,0,0,.96),
         rgba(0,0,0,.72) 65%,
-        rgba(0,0,0,0) 100%
+        rgba(0,0,0,0)
     );
-    transition:background .25s ease;
+    transition:.25s ease;
 }
 
 .tm-member-nav.scrolled{
@@ -47,7 +47,6 @@
 .tm-member-logo{
     color:#e50914;
     font-size:24px;
-    line-height:1;
     font-weight:1000;
     letter-spacing:1.3px;
     text-decoration:none;
@@ -56,7 +55,6 @@
 
 .tm-member-menu{
     display:flex;
-    align-items:center;
     gap:22px;
 }
 
@@ -65,7 +63,6 @@
     text-decoration:none;
     font-size:14px;
     font-weight:700;
-    transition:color .2s ease;
 }
 
 .tm-member-menu a:hover,
@@ -89,7 +86,6 @@
     border:1px solid rgba(255,255,255,.24);
     background:rgba(0,0,0,.45);
     border-radius:4px;
-    transition:width .25s ease,background .25s ease;
 }
 
 .tm-search:focus-within{
@@ -142,6 +138,8 @@
     overflow:hidden;
     text-overflow:ellipsis;
 }
+
+/* HERO */
 
 .tm-member-hero{
     position:relative;
@@ -197,7 +195,6 @@
     align-items:center;
     gap:8px;
     margin-bottom:18px;
-    color:#fff;
     font-size:13px;
     font-weight:900;
     letter-spacing:1px;
@@ -218,7 +215,6 @@
     line-height:.96;
     font-weight:1000;
     letter-spacing:-2px;
-    text-shadow:0 5px 30px rgba(0,0,0,.55);
 }
 
 .tm-hero-meta{
@@ -247,7 +243,6 @@
     color:#d5d5d5;
     font-size:16px;
     line-height:1.65;
-    text-shadow:0 2px 10px rgba(0,0,0,.7);
 }
 
 .tm-hero-buttons{
@@ -269,7 +264,7 @@
     font-size:15px;
     font-weight:950;
     cursor:pointer;
-    transition:transform .18s ease,opacity .18s ease;
+    transition:transform .18s ease;
 }
 
 .tm-hero-btn:hover{
@@ -285,6 +280,8 @@
     background:rgba(80,80,80,.78);
     color:#fff;
 }
+
+/* CONTENT */
 
 .tm-member-content{
     position:relative;
@@ -310,7 +307,6 @@
     margin:0;
     font-size:21px;
     font-weight:950;
-    letter-spacing:-.3px;
 }
 
 .tm-section-link{
@@ -330,12 +326,13 @@
     overflow-x:auto;
     padding:4px 4.5% 16px 2px;
     scrollbar-width:none;
-    scroll-behavior:smooth;
 }
 
 .tm-movie-row::-webkit-scrollbar{
     display:none;
 }
+
+/* CARD */
 
 .tm-movie-card{
     position:relative;
@@ -345,7 +342,6 @@
     border-radius:5px;
     overflow:hidden;
     background:#151515;
-    transform-origin:center center;
     transition:
         transform .22s ease,
         box-shadow .22s ease;
@@ -401,7 +397,6 @@
         rgba(0,0,0,.92),
         transparent
     );
-    pointer-events:none;
 }
 
 .tm-card-play{
@@ -416,11 +411,9 @@
     border:2px solid #fff;
     border-radius:50%;
     background:rgba(0,0,0,.55);
-    color:#fff;
-    font-size:13px;
     opacity:0;
     transform:translateY(5px);
-    transition:opacity .2s ease,transform .2s ease;
+    transition:.2s ease;
 }
 
 .tm-movie-card:hover .tm-card-play{
@@ -435,7 +428,6 @@
 
 .tm-card-title{
     margin:0;
-    color:#fff;
     font-size:14px;
     font-weight:900;
     white-space:nowrap;
@@ -449,6 +441,8 @@
     font-size:11px;
     font-weight:700;
 }
+
+/* CATEGORY */
 
 .tm-category-row{
     display:flex;
@@ -471,12 +465,15 @@
     color:#ccc;
     font-size:12px;
     font-weight:800;
+    text-decoration:none;
 }
 
 .tm-category-chip:hover{
     background:#222;
     color:#fff;
 }
+
+/* EMPTY */
 
 .tm-empty{
     margin:30px 4.5%;
@@ -487,6 +484,8 @@
     background:#101010;
     color:#888;
 }
+
+/* FOOTER */
 
 .tm-member-footer{
     margin-top:45px;
@@ -521,6 +520,8 @@
     color:#fff;
 }
 
+/* MOBILE */
+
 @media(max-width:900px){
 
     .tm-member-left{
@@ -552,13 +553,8 @@
         padding:0 18px 85px;
     }
 
-    .tm-hero-content{
-        max-width:100%;
-    }
-
     .tm-hero-title{
         font-size:clamp(38px,12vw,58px);
-        letter-spacing:-1.5px;
     }
 
     .tm-hero-description{
@@ -591,18 +587,6 @@
 
     .tm-poster-wrap{
         height:205px;
-    }
-
-    .tm-card-info{
-        padding:8px 9px 10px;
-    }
-
-    .tm-card-title{
-        font-size:12px;
-    }
-
-    .tm-card-category{
-        font-size:10px;
     }
 }
 
@@ -660,10 +644,6 @@
     .tm-poster-wrap{
         height:187px;
     }
-
-    .tm-category-row{
-        padding-left:2px;
-    }
 }
 </style>
 
@@ -712,26 +692,30 @@
                 type="search"
                 placeholder="Search"
                 autocomplete="off">
-
         </label>
 
         <a class="tm-account"
            href="{{ url_for('logout') }}"
            title="Logout">
 
-            <span class="tm-account-avatar">👤</span>
+            <span class="tm-account-avatar">
+                👤
+            </span>
 
             <span class="tm-account-text">
                 {{ session.get("customer_email") or "Member" }}
             </span>
 
-            <span>Logout</span>
+            <span>
+                Logout
+            </span>
 
         </a>
 
     </div>
 
 </nav>
+
 
 {% if movies %}
 
@@ -768,13 +752,17 @@
 
                 <span class="tm-meta-dot">•</span>
 
-                <span>HD</span>
+                <span>
+                    HD
+                </span>
 
             </div>
 
             <p class="tm-hero-description">
+
                 {{ featured.description or
                 "Watch movies and entertainment on Tomesh Movies. Discover stories you'll want to watch again and again." }}
+
             </p>
 
             <div class="tm-hero-buttons">
@@ -794,6 +782,7 @@
         </div>
 
     </section>
+
 
     <main class="tm-member-content">
 
@@ -867,6 +856,7 @@
 
         </section>
 
+
         <section class="tm-movie-section"
                  id="categories">
 
@@ -884,13 +874,16 @@
 
                 {% for movie in movies %}
 
-                    {% if movie.category and movie.category not in category_list %}
+                    {% if movie.category
+                          and movie.category not in category_list %}
 
-                        {% set _ = category_list.append(movie.category) %}
+                        {% set _ =
+                            category_list.append(movie.category) %}
 
                     {% endif %}
 
                 {% endfor %}
+
 
                 {% if category_list %}
 
@@ -898,9 +891,7 @@
 
                         <a class="tm-category-chip"
                            href="#trending">
-
                             {{ category }}
-
                         </a>
 
                     {% endfor %}
@@ -916,6 +907,7 @@
             </div>
 
         </section>
+
 
         <section class="tm-movie-section"
                  id="my-list">
@@ -984,6 +976,7 @@
 
     </main>
 
+
 {% else %}
 
     <section class="tm-member-hero">
@@ -1012,6 +1005,7 @@
     </div>
 
 {% endif %}
+
 
 <footer class="tm-member-footer">
 
@@ -1053,11 +1047,14 @@
 <script>
 (function(){
 
-    const nav = document.getElementById("tmMemberNav");
+    const nav =
+        document.getElementById("tmMemberNav");
 
     function updateNav(){
 
-        if(!nav) return;
+        if(!nav){
+            return;
+        }
 
         if(window.scrollY > 20){
 
@@ -1079,6 +1076,7 @@
 
     updateNav();
 
+
     const search =
         document.getElementById("tmMovieSearch");
 
@@ -1098,23 +1096,25 @@
                         ".tm-searchable-movie"
                     );
 
-                cards.forEach(function(card){
+                cards.forEach(
+                    function(card){
 
-                    const title =
-                        card.dataset.title || "";
+                        const title =
+                            card.dataset.title || "";
 
-                    const category =
-                        card.dataset.category || "";
+                        const category =
+                            card.dataset.category || "";
 
-                    const matched =
-                        !query ||
-                        title.includes(query) ||
-                        category.includes(query);
+                        const matched =
+                            !query ||
+                            title.includes(query) ||
+                            category.includes(query);
 
-                    card.style.display =
-                        matched ? "" : "none";
+                        card.style.display =
+                            matched ? "" : "none";
 
-                });
+                    }
+                );
 
             }
         );
