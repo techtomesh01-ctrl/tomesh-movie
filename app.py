@@ -947,10 +947,6 @@ def cashfree_request(
     "/api/payment/create",
     methods=["POST"],
 )
-@app.route(
-    "/api/payment/create",
-    methods=["POST"],
-)
 def create_payment():
 
     data = (
@@ -1284,95 +1280,34 @@ def cashfree_return():
 
         if order_status == "PAID":
 
-            # Restore the exact customer session that created
-            # this successful Cashfree order.
-            session["customer_id"] = local_order["customer_id"]
+            # ----------------------------------------------
+            # Prevent duplicate granting
+            # ----------------------------------------------
 
-            # Mark the local order as paid. This is safe to repeat.
-            conn = get_db()
+            if local_order["status"] != "PAID":
 
-            try:
+                conn = get_db()
 
-                cur = conn.cursor()
+                try:
 
-                cur.execute(
-                    """
-                    UPDATE payment_orders
-                    SET
-                        status = 'PAID',
-                        paid_at = COALESCE(paid_at, NOW())
-                    WHERE order_id = %s
-                    """,
-                    (order_id,),
-                )
+                    cur = conn.cursor()
 
-                conn.commit()
-                cur.close()
-
-            finally:
-                conn.close()
-
-            # Check whether the access row is already active.
-            conn = get_db(
-                dict_rows=True
-            )
-
-            try:
-
-                cur = conn.cursor()
-
-                cur.execute(
-                    """
-                    SELECT
-                        watch_until,
-                        download_until,
-                        premium_until
-                    FROM customer_access
-                    WHERE customer_id = %s
-                      AND movie_id = %s
-                    ORDER BY id DESC
-                    LIMIT 1
-                    """,
-                    (
-                        local_order["customer_id"],
-                        local_order["movie_id"],
-                    ),
-                )
-
-                access_row = cur.fetchone()
-                cur.close()
-
-            finally:
-                conn.close()
-
-            now = datetime.now()
-            active = False
-
-            if access_row:
-
-                if local_order["payment_type"] == "watch":
-
-                    active = (
-                        access_row["watch_until"] is not None
-                        and access_row["watch_until"] > now
+                    cur.execute(
+                        """
+                        UPDATE payment_orders
+                        SET
+                            status = 'PAID',
+                            paid_at = NOW()
+                        WHERE order_id = %s
+                        """,
+                        (order_id,),
                     )
 
-                elif local_order["payment_type"] == "download":
+                    conn.commit()
+                    cur.close()
 
-                    active = (
-                        access_row["download_until"] is not None
-                        and access_row["download_until"] > now
-                    )
-
-                elif local_order["payment_type"] == "premium":
-
-                    active = (
-                        access_row["premium_until"] is not None
-                        and access_row["premium_until"] > now
-                    )
-
-            # If access is missing/expired, grant it again.
-            if not active:
+                finally:
+                    conn.close()
 
                 grant_access(
                     local_order[
@@ -1389,6 +1324,18 @@ def cashfree_return():
             session[
                 "payment_success"
             ] = True
+
+            flash(
+                "Payment successful. Access unlocked.",
+                "success",
+            )
+
+            return redirect(
+                url_for(
+                    "movie_page",
+                    movie_id=local_order["movie_id"],
+                )
+            )
 
         flash(
             "Payment was not completed. Status: "
@@ -1586,20 +1533,10 @@ def movie_page(movie_id):
 
     if video_key and access["watch"]:
 
-        # Direct Cloudflare R2 presigned URL.
-        # This lets the browser handle native MP4 range requests
-        # directly instead of proxy-streaming through Render.
-        try:
-            movie["video_url"] = r2_presigned_url(
-                video_key,
-                expires=PRESIGNED_EXPIRES,
-            )
-        except Exception as exc:
-            print(
-                "VIDEO URL ERROR:",
-                repr(exc),
-            )
-            movie["video_url"] = None
+        movie["video_url"] = url_for(
+            "stream_movie",
+            movie_id=movie_id,
+        )
 
     else:
 
@@ -1639,26 +1576,21 @@ def movie_page(movie_id):
     methods=["GET"],
 )
 def stream_movie(movie_id):
+    """
+    Backward-compatible streaming endpoint.
 
-    access = access_for_movie(
-        movie_id
-    )
+    Redirects the browser to a short-lived Cloudflare R2 presigned URL.
+    A 307 redirect preserves the GET request and Range header so the
+    browser performs native media range requests directly against R2.
+    """
+    access = access_for_movie(movie_id)
 
     if not access["watch"]:
+        return Response("Payment required.", status=403)
 
-        return Response(
-            "Payment required.",
-            status=403,
-        )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
+    conn = get_db(dict_rows=True)
     try:
-
         cur = conn.cursor()
-
         cur.execute(
             """
             SELECT id, title, video
@@ -1667,276 +1599,27 @@ def stream_movie(movie_id):
             """,
             (movie_id,),
         )
-
         movie = cur.fetchone()
         cur.close()
-
     finally:
         conn.close()
 
     if not movie:
-        return Response(
-            "Movie not found.",
-            status=404,
-        )
+        return Response("Movie not found.", status=404)
 
-    video_key = movie.get(
-        "video"
-    )
-
+    video_key = movie.get("video")
     if not video_key:
-        return Response(
-            "Video not found.",
-            status=404,
-        )
+        return Response("Video not found.", status=404)
 
     try:
-        video_key = validate_r2_key(
-            video_key
+        location = r2_presigned_url(
+            video_key,
+            expires=PRESIGNED_EXPIRES,
         )
-    except Exception:
-        return Response(
-            "Invalid video object.",
-            status=400,
-        )
-
-    try:
-
-        client = get_r2_client()
-
-        head = client.head_object(
-            Bucket=R2_BUCKET,
-            Key=video_key,
-        )
-
+        return redirect(location, code=307)
     except Exception as exc:
-
-        print(
-            "R2 HEAD ERROR:",
-            repr(exc),
-        )
-
-        return Response(
-            "Video object not found in R2.",
-            status=404,
-        )
-
-    total_size = int(
-        head.get(
-            "ContentLength",
-            0,
-        )
-    )
-
-    if total_size <= 0:
-        return Response(
-            "Video file is empty.",
-            status=404,
-        )
-
-    content_type = (
-        head.get(
-            "ContentType"
-        )
-        or content_type_for_key(
-            video_key
-        )
-    )
-
-    range_header = request.headers.get(
-        "Range"
-    )
-
-    start = 0
-    end = total_size - 1
-
-    if range_header:
-
-        try:
-
-            if not range_header.startswith(
-                "bytes="
-            ):
-                raise ValueError()
-
-            value = (
-                range_header
-               .replace(
-                    "bytes=",
-                    "",
-                    1,
-                )
-                .split(",", 1)[0]
-                .strip()
-            )
-
-            if "-" not in value:
-                raise ValueError()
-
-            start_text, end_text = value.split(
-                "-",
-                1,
-            )
-
-            if not start_text:
-
-                suffix = int(
-                    end_text
-                )
-
-                if suffix <= 0:
-                    raise ValueError()
-
-                suffix = min(
-                    suffix,
-                    total_size,
-                )
-
-                start = (
-                    total_size - suffix
-                )
-
-                end = total_size - 1
-
-            else:
-
-                start = int(
-                    start_text
-                )
-
-                end = (
-                    int(end_text)
-                    if end_text
-                    else total_size - 1
-                )
-
-            if start < 0:
-                raise ValueError()
-
-            if start >= total_size:
-                raise ValueError()
-
-            end = min(
-                end,
-                total_size - 1,
-            )
-
-            if end < start:
-                raise ValueError()
-
-        except Exception:
-
-            return Response(
-                "Range Not Satisfiable",
-                status=416,
-                headers={
-                    "Content-Range":
-                        "bytes */"
-                        + str(total_size)
-                },
-            )
-
-    content_length = (
-        end - start + 1
-    )
-
-    try:
-
-        if range_header:
-
-            obj = client.get_object(
-                Bucket=R2_BUCKET,
-                Key=video_key,
-                Range=(
-                    "bytes="
-                    + str(start)
-                    + "-"
-                    + str(end)
-                ),
-            )
-
-        else:
-
-            obj = client.get_object(
-                Bucket=R2_BUCKET,
-                Key=video_key,
-            )
-
-    except Exception as exc:
-
-        print(
-            "R2 VIDEO GET ERROR:",
-            repr(exc),
-        )
-
-        return Response(
-            "Unable to load video.",
-            status=502,
-        )
-
-    body = obj["Body"]
-
-    def generate():
-
-        try:
-
-            while True:
-
-                chunk = body.read(
-                    1024 * 1024
-                )
-
-                if not chunk:
-                    break
-
-                yield chunk
-
-        finally:
-
-            try:
-                body.close()
-            except Exception:
-                pass
-
-    headers = {
-        "Content-Type": content_type,
-        "Content-Length": str(
-            content_length
-        ),
-        "Accept-Ranges": "bytes",
-        "Cache-Control":
-            "private, max-age=300",
-        "Content-Disposition": "inline",
-        "X-Content-Type-Options":
-            "nosniff",
-    }
-
-    if range_header:
-
-        headers[
-            "Content-Range"
-        ] = (
-            "bytes "
-            + str(start)
-            + "-"
-            + str(end)
-            + "/"
-            + str(total_size)
-        )
-
-        return Response(
-            generate(),
-            status=206,
-            headers=headers,
-            direct_passthrough=True,
-        )
-
-    return Response(
-        generate(),
-        status=200,
-        headers=headers,
-        direct_passthrough=True,
-    )
+        print("STREAM REDIRECT ERROR:", repr(exc))
+        return Response("Unable to load video.", status=502)
 
 
 # ============================================================
@@ -2924,9 +2607,9 @@ def api_movie_save():
             movie_id=movie_id,
             video_key=video_key,
             poster_key=poster_key,
-            video_url=url_for(
-                "stream_movie",
-                movie_id=movie_id,
+            video_url=r2_presigned_url(
+                video_key,
+                expires=PRESIGNED_EXPIRES,
             ),
         )
 
