@@ -1,2347 +1,525 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Dashboard | Tomesh Movies{% endblock %}
+{% block title %}Login | Tomesh Movies{% endblock %}
 
 {% block content %}
 
 <style>
-.tm-admin-page{
-    min-height:100vh;
-    padding:24px 12px 60px;
-    color:#fff;
-    background:
-        radial-gradient(circle at 10% 5%,rgba(115,35,160,.30),transparent 30%),
-        radial-gradient(circle at 90% 10%,rgba(255,40,90,.18),transparent 28%),
-        radial-gradient(circle at 50% 100%,rgba(255,190,0,.10),transparent 35%),
-        #070707;
-}
-
-.tm-admin-wrap{
-    width:min(1250px,100%);
-    margin:0 auto;
-}
-
-.tm-admin-top{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:15px;
-    flex-wrap:wrap;
-    margin-bottom:22px;
-}
-
-.tm-brand{
-    font-size:12px;
-    font-weight:900;
-    letter-spacing:2px;
-    color:#ffc400;
-    text-transform:uppercase;
-}
-
-.tm-title{
-    margin:4px 0 0;
-    font-size:30px;
-    line-height:1.1;
-    font-weight:950;
-}
-
-.tm-subtitle{
-    margin:7px 0 0;
-    color:#aaa;
-    font-size:13px;
-}
-
-.tm-top-actions{
-    display:flex;
-    gap:9px;
-    flex-wrap:wrap;
-}
-
-.tm-btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    min-height:42px;
-    padding:0 16px;
-    border-radius:12px;
-    border:1px solid rgba(255,255,255,.12);
-    color:#fff;
-    background:rgba(255,255,255,.07);
-    text-decoration:none;
-    font-size:13px;
-    font-weight:800;
-    transition:.2s ease;
-}
-
-.tm-btn:hover{
-    transform:translateY(-1px);
-    background:rgba(255,255,255,.12);
-}
-
-.tm-btn-red{
-    border-color:rgba(255,55,90,.35);
-    background:rgba(255,55,90,.12);
-}
-
-.tm-section{
-    margin-top:18px;
-    padding:18px;
-    border:1px solid rgba(255,255,255,.09);
-    border-radius:20px;
-    background:rgba(15,15,15,.86);
-    box-shadow:0 18px 55px rgba(0,0,0,.30);
-    backdrop-filter:blur(12px);
-}
-
-.tm-section-title{
-    margin:0;
-    font-size:19px;
-    font-weight:900;
-}
-
-.tm-section-desc{
-    margin:5px 0 18px;
-    color:#999;
-    font-size:12px;
-}
-
-.tm-stats{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:12px;
-}
-
-.tm-stat{
-    min-height:105px;
-    padding:17px;
-    border-radius:17px;
-    border:1px solid rgba(255,255,255,.08);
-    background:linear-gradient(
-        145deg,
-        rgba(255,255,255,.08),
-        rgba(255,255,255,.025)
-    );
-}
-
-.tm-stat-label{
-    color:#999;
-    font-size:11px;
-    font-weight:800;
-    text-transform:uppercase;
-    letter-spacing:1px;
-}
-
-.tm-stat-value{
-    margin-top:8px;
-    font-size:29px;
-    font-weight:950;
-    color:#ffc400;
-}
-
-.tm-form-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:14px;
-}
-
-.tm-field{
-    display:flex;
-    flex-direction:column;
-    gap:7px;
-}
-
-.tm-field-full{
-    grid-column:1/-1;
-}
-
-.tm-field label{
-    color:#ccc;
-    font-size:12px;
-    font-weight:800;
-}
-
-.tm-field input,
-.tm-field textarea{
-    width:100%;
-    box-sizing:border-box;
-    color:#fff;
-    background:#101010;
-    border:1px solid rgba(255,255,255,.13);
-    border-radius:12px;
-    padding:12px 13px;
-    outline:none;
-    font:inherit;
-}
-
-.tm-field input:focus,
-.tm-field textarea:focus{
-    border-color:rgba(255,196,0,.65);
-    box-shadow:0 0 0 3px rgba(255,196,0,.08);
-}
-
-.tm-field textarea{
-    min-height:110px;
-    resize:vertical;
-}
-
-.tm-file-box{
-    padding:14px;
-    border-radius:14px;
-    border:1px dashed rgba(255,255,255,.16);
-    background:rgba(255,255,255,.025);
-}
-
-.tm-file-box input{
-    padding:0;
-    border:0;
-    background:transparent;
-}
-
-.tm-help{
-    color:#888;
-    font-size:11px;
-    line-height:1.5;
-    margin-top:8px;
-}
-
-.tm-submit-row{
-    margin-top:15px;
-    display:flex;
-    align-items:center;
-    gap:12px;
-    flex-wrap:wrap;
-}
-
-.tm-upload-btn{
-    min-height:46px;
-    padding:0 20px;
-    border:0;
-    border-radius:13px;
-    background:#ffc400;
-    color:#111;
-    font-size:14px;
-    font-weight:950;
-    cursor:pointer;
-}
-
-.tm-upload-btn:disabled{
-    opacity:.5;
-    cursor:not-allowed;
-}
-
-#uploadStatus{
-    display:none;
-    margin-top:18px;
-    padding:16px;
-    border-radius:16px;
-    border:1px solid rgba(255,255,255,.10);
-    background:#0c0c0c;
-}
-
-.tm-upload-file{
-    font-size:14px;
-    font-weight:900;
-    word-break:break-word;
-}
-
-.tm-upload-meta{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:10px;
-    margin-top:12px;
-}
-
-.tm-upload-stat{
-    padding:10px;
-    border-radius:10px;
-    background:rgba(255,255,255,.045);
-}
-
-.tm-upload-stat span{
-    display:block;
-    color:#888;
-    font-size:10px;
-    text-transform:uppercase;
-    font-weight:800;
-}
-
-.tm-upload-stat strong{
-    display:block;
-    margin-top:3px;
-    font-size:13px;
-}
-
-.tm-progress-wrap{
-    margin-top:14px;
-    height:12px;
-    overflow:hidden;
-    border-radius:999px;
-    background:#222;
-}
-
-#uploadProgress{
-    width:0%;
-    height:100%;
-    border-radius:999px;
-    background:linear-gradient(90deg,#ffc400,#ff315b,#a83cff);
-    transition:width .2s ease;
-}
-
-#uploadPercent{
-    margin-top:7px;
-    color:#ffc400;
-    font-size:13px;
-    font-weight:900;
-}
-
-.tm-upload-message{
-    margin-top:10px;
-    color:#aaa;
-    font-size:12px;
-    line-height:1.5;
-}
-
-.tm-cancel-btn{
-    display:none;
-    min-height:38px;
-    padding:0 14px;
-    border-radius:10px;
-    border:1px solid rgba(255,60,90,.35);
-    color:#ff6680;
-    background:rgba(255,50,80,.08);
-    cursor:pointer;
-    font-weight:800;
-}
-
-.tm-table-wrap{
-    overflow-x:auto;
-    border-radius:15px;
-    border:1px solid rgba(255,255,255,.08);
-}
-
-.tm-table{
-    width:100%;
-    min-width:780px;
-    border-collapse:collapse;
-}
-
-.tm-table th{
-    padding:13px 12px;
-    text-align:left;
-    color:#888;
-    background:#0d0d0d;
-    font-size:10px;
-    text-transform:uppercase;
-    letter-spacing:1px;
-}
-
-.tm-table td{
-    padding:13px 12px;
-    border-top:1px solid rgba(255,255,255,.07);
-    vertical-align:middle;
-}
-
-.tm-movie-poster{
-    width:52px;
-    height:70px;
-    object-fit:cover;
-    border-radius:8px;
-    display:block;
-    background:#181818;
-}
-
-.tm-no-poster{
-    width:52px;
-    height:70px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    border-radius:8px;
-    background:#181818;
-    color:#555;
-    font-size:9px;
-    text-align:center;
-}
-
-.tm-movie-title{
-    max-width:350px;
-    font-size:13px;
-    font-weight:900;
-    line-height:1.35;
-}
-
-.tm-movie-id{
-    margin-top:4px;
-    color:#666;
-    font-size:10px;
-}
-
-.tm-category{
-    display:inline-flex;
-    padding:5px 9px;
-    border-radius:999px;
-    background:rgba(168,60,255,.12);
-    border:1px solid rgba(168,60,255,.2);
-    color:#d6a7ff;
-    font-size:10px;
-    font-weight:800;
-}
-
-.tm-views{
-    color:#ffc400;
-    font-weight:900;
-    font-size:13px;
-}
-
-.tm-actions{
-    display:flex;
-    gap:7px;
-    flex-wrap:wrap;
-}
-
-.tm-watch,
-.tm-delete{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    min-height:34px;
-    padding:0 11px;
-    border-radius:9px;
-    text-decoration:none;
-    font-size:11px;
-    font-weight:900;
-}
-
-.tm-watch{
-    color:#111;
-    background:#ffc400;
-    border:1px solid #ffc400;
-}
-
-.tm-delete{
-    color:#ff6680;
-    background:rgba(255,50,80,.08);
-    border:1px solid rgba(255,50,80,.25);
-}
-
-.tm-flashes{
-    margin-bottom:15px;
-}
-
-.tm-flash{
-    padding:12px 14px;
-    border-radius:12px;
-    margin-bottom:8px;
-    font-size:12px;
-    font-weight:700;
-}
-
-.tm-flash-success{
-    color:#8dffb1;
-    background:rgba(50,220,110,.09);
-    border:1px solid rgba(50,220,110,.18);
-}
-
-.tm-flash-error{
-    color:#ff8397;
-    background:rgba(255,50,80,.09);
-    border:1px solid rgba(255,50,80,.18);
-}
-
-@media(max-width:800px){
-    .tm-stats{
-        grid-template-columns:1fr;
+    * {
+        box-sizing: border-box;
     }
 
-    .tm-form-grid{
-        grid-template-columns:1fr;
+    .tm-login-page {
+        min-height: 100vh;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 35px 18px;
+        color: #fff;
+        background:
+            radial-gradient(circle at 15% 15%, rgba(110, 30, 180, .25), transparent 32%),
+            radial-gradient(circle at 85% 80%, rgba(210, 20, 50, .18), transparent 32%),
+            #050505;
     }
 
-    .tm-field-full{
-        grid-column:auto;
+    .tm-login-shell {
+        width: min(960px, 100%);
+        display: grid;
+        grid-template-columns: 1.15fr .85fr;
+        gap: 20px;
     }
 
-    .tm-upload-meta{
-        grid-template-columns:1fr 1fr;
+    .tm-login-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 22px;
+        padding: 34px;
+        background:
+            linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
+        box-shadow:
+            0 25px 80px rgba(0,0,0,.55),
+            inset 0 1px 0 rgba(255,255,255,.04);
+        backdrop-filter: blur(14px);
     }
 
-    .tm-title{
-        font-size:24px;
-    }
-}
-
-@media(max-width:500px){
-    .tm-admin-page{
-        padding:16px 9px 40px;
-    }
-
-    .tm-section{
-        padding:13px;
-        border-radius:16px;
+    .tm-login-card::before {
+        content: "";
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        top: -90px;
+        right: -90px;
+        border-radius: 50%;
+        background: rgba(160, 35, 220, .16);
+        filter: blur(20px);
+        pointer-events: none;
     }
 
-    .tm-upload-meta{
-        grid-template-columns:1fr;
+    .tm-login-brand {
+        display: inline-block;
+        margin-bottom: 28px;
+        color: #fff;
+        text-decoration: none;
+        font-size: 22px;
+        font-weight: 1000;
+        letter-spacing: -1px;
     }
 
-    .tm-top-actions{
-        width:100%;
+    .tm-login-brand span {
+        color: #e50914;
     }
 
-    .tm-top-actions .tm-btn{
-        flex:1;
+    .tm-login-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 14px;
+        padding: 7px 11px;
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 999px;
+        color: #ddd;
+        background: rgba(255,255,255,.04);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .5px;
+        text-transform: uppercase;
     }
-}
+
+    .tm-login-card h1 {
+        margin: 0 0 10px;
+        font-size: clamp(28px, 4vw, 42px);
+        line-height: 1.05;
+        letter-spacing: -1.5px;
+    }
+
+    .tm-login-card h2 {
+        margin: 0 0 10px;
+        font-size: 27px;
+        letter-spacing: -.8px;
+    }
+
+    .tm-login-card .tm-login-subtitle {
+        margin: 0 0 26px;
+        color: #aaa;
+        font-size: 14px;
+        line-height: 1.65;
+    }
+
+    .tm-login-label {
+        display: block;
+        margin: 0 0 8px;
+        color: #ddd;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .tm-login-input {
+        width: 100%;
+        height: 52px;
+        padding: 0 15px;
+        border: 1px solid rgba(255,255,255,.14);
+        border-radius: 11px;
+        outline: none;
+        color: #fff;
+        background: rgba(0,0,0,.48);
+        font-size: 15px;
+        transition: .2s ease;
+    }
+
+    .tm-login-input:focus {
+        border-color: rgba(229,9,20,.85);
+        box-shadow: 0 0 0 3px rgba(229,9,20,.12);
+    }
+
+    .tm-login-input::placeholder {
+        color: #777;
+    }
+
+    .tm-login-form-group {
+        margin-bottom: 16px;
+    }
+
+    .tm-login-btn {
+        width: 100%;
+        min-height: 52px;
+        margin-top: 4px;
+        border: 0;
+        border-radius: 11px;
+        cursor: pointer;
+        color: #fff;
+        background: #e50914;
+        font-size: 15px;
+        font-weight: 900;
+        transition: transform .18s ease, filter .18s ease;
+    }
+
+    .tm-login-btn:hover {
+        filter: brightness(1.12);
+        transform: translateY(-1px);
+    }
+
+    .tm-login-btn:active {
+        transform: translateY(0);
+    }
+
+    .tm-login-btn-secondary {
+        color: #fff;
+        background: rgba(255,255,255,.07);
+        border: 1px solid rgba(255,255,255,.12);
+    }
+
+    .tm-login-btn-secondary:hover {
+        background: rgba(255,255,255,.11);
+    }
+
+    .tm-login-back {
+        display: inline-block;
+        margin-top: 18px;
+        color: #aaa;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .tm-login-back:hover {
+        color: #fff;
+    }
+
+    .tm-login-divider {
+        height: 1px;
+        margin: 25px 0;
+        background: rgba(255,255,255,.08);
+    }
+
+    .tm-login-note {
+        margin-top: 14px;
+        color: #777;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+
+    .tm-otp-email {
+        margin-bottom: 20px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        color: #ddd;
+        background: rgba(255,255,255,.045);
+        border: 1px solid rgba(255,255,255,.08);
+        font-size: 13px;
+    }
+
+    .tm-otp-input {
+        text-align: center;
+        letter-spacing: 10px;
+        font-size: 23px;
+        font-weight: 900;
+        padding-left: 20px;
+    }
+
+    .tm-admin-card {
+        background:
+            linear-gradient(145deg, rgba(255,0,40,.07), rgba(255,255,255,.015));
+    }
+
+    .tm-admin-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 18px;
+        border-radius: 14px;
+        background: rgba(229,9,20,.12);
+        border: 1px solid rgba(229,9,20,.22);
+        font-size: 22px;
+    }
+
+    .tm-secure-text {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 18px;
+        color: #777;
+        font-size: 11px;
+    }
+
+    @media (max-width: 800px) {
+        .tm-login-page {
+            align-items: flex-start;
+            padding: 22px 13px;
+        }
+
+        .tm-login-shell {
+            grid-template-columns: 1fr;
+            max-width: 560px;
+        }
+
+        .tm-login-card {
+            padding: 27px 21px;
+            border-radius: 18px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .tm-login-card h1 {
+            font-size: 31px;
+        }
+
+        .tm-login-card h2 {
+            font-size: 24px;
+        }
+
+        .tm-login-brand {
+            font-size: 20px;
+        }
+
+        .tm-otp-input {
+            letter-spacing: 7px;
+        }
+    }
 </style>
 
 
-<div class="tm-admin-page">
-
-<div class="tm-admin-wrap">
-
-<div class="tm-admin-top">
-<div>
-<div class="tm-brand">TOMESH MOVIES • CONTROL CENTER</div>
-<h1 class="tm-title">Premium Admin Panel</h1>
-<p class="tm-subtitle">
-Movies, R2 uploads, ads and content management
-</p>
-</div>
-
-<div class="tm-top-actions">
-<a href="{{ url_for('home') }}" class="tm-btn">Dashboard</a>
-<a href="{{ url_for('admin_ads') }}" class="tm-btn">Ads</a>
-<a href="{{ url_for('logout') }}" class="tm-btn tm-btn-red">Logout</a>
-</div>
-</div>
-
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-<div class="tm-flashes">
-{% for category, message in messages %}
-<div class="tm-flash {% if category == 'success' %}tm-flash-success{% else %}tm-flash-error{% endif %}">
-{{ message }}
-</div>
-{% endfor %}
-</div>
-{% endif %}
-{% endwith %}
+<div class="tm-login-page">
+
+    <div class="tm-login-shell">
 
-
-<div class="tm-stats">
-
-<div class="tm-stat">
-<div class="tm-stat-label">Total Movies</div>
-<div class="tm-stat-value">{{ total_movies or 0 }}</div>
-</div>
-
-<div class="tm-stat">
-<div class="tm-stat-label">Total Views</div>
-<div class="tm-stat-value">{{ total_views or 0 }}</div>
-</div>
-
-<div class="tm-stat">
-<div class="tm-stat-label">Storage</div>
-<div class="tm-stat-value">R2</div>
-</div>
+        <!-- CUSTOMER LOGIN -->
+        <section class="tm-login-card">
+
+            <a href="{{ url_for('home') }}" class="tm-login-brand">
+                TOMESH <span>MOVIES</span>
+            </a>
+
+            <div class="tm-login-badge">
+                🎬 Tomesh Movies
+            </div>
 
-</div>
+            {% if step == "otp" %}
 
+                <h1>Verify your email</h1>
 
-<section class="tm-section">
+                <p class="tm-login-subtitle">
+                    हमने आपके email पर 6-digit verification code भेजा है।
+                    नीचे OTP डालकर continue करें।
+                </p>
+
+                <div class="tm-otp-email">
+                    📧 <strong>{{ email }}</strong>
+                </div>
+
+                <form
+                    action="{{ url_for('verify_otp') }}"
+                    method="post"
+                    autocomplete="off"
+                >
+
+                    <div class="tm-login-form-group">
+
+                        <label class="tm-login-label">
+                            Verification Code
+                        </label>
+
+                        <input
+                            class="tm-login-input tm-otp-input"
+                            type="text"
+                            name="otp"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            placeholder="••••••"
+                            required
+                            autofocus
+                        >
+
+                    </div>
+
+                    <button
+                        class="tm-login-btn"
+                        type="submit"
+                    >
+                        Verify & Continue →
+                    </button>
+
+                </form>
 
-<h2 class="tm-section-title">🎬 Add New Movie</h2>
-
-<p class="tm-section-desc">
-Video और poster सीधे Cloudflare R2 पर upload होंगे.
-Render server के through video नहीं जाएगी.
-</p>
-
-
-<form id="movieUploadForm" enctype="multipart/form-data" autocomplete="off">
-
-<div class="tm-form-grid">
-
-<div class="tm-field tm-field-full">
-<label for="movieTitle">Movie Title</label>
-<input
-type="text"
-id="movieTitle"
-name="title"
-placeholder="Enter movie title"
-required
->
-</div>
 
+                <div class="tm-login-divider"></div>
 
-<div class="tm-field">
-<label for="movieCategory">Category</label>
-<input
-type="text"
-id="movieCategory"
-name="category"
-placeholder="Action, Drama, Hindi..."
->
-</div>
+                <form
+                    action="{{ url_for('request_otp') }}"
+                    method="post"
+                >
 
+                    <input
+                        type="hidden"
+                        name="email"
+                        value="{{ email }}"
+                    >
+
+                    <button
+                        type="submit"
+                        class="tm-login-btn tm-login-btn-secondary"
+                    >
+                        Resend OTP
+                    </button>
 
-<div class="tm-field">
-<label for="movieDescription">Description</label>
-<textarea
-id="movieDescription"
-name="description"
-placeholder="Movie description..."
-></textarea>
-</div>
-
-
-<div class="tm-field">
-<label for="posterFile">Poster</label>
-
-<div class="tm-file-box">
-
-<input
-type="file"
-id="posterFile"
-name="poster"
-accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
->
-
-<div class="tm-help">
-JPG / JPEG / PNG / WEBP
-<br>
-Maximum 25 MB
-</div>
-
-</div>
-</div>
-
-
-<div class="tm-field">
-<label for="videoFile">Video</label>
-
-<div class="tm-file-box">
-
-<input
-type="file"
-id="videoFile"
-name="video"
-accept=".mp4,.mkv,.webm,.mov,video/mp4,video/webm,video/quicktime,video/x-matroska"
-required
->
-
-<div class="tm-help">
-MP4 / MKV / WebM / MOV
-<br>
-Maximum 4 GB
-<br>
-Direct R2 multipart upload
-</div>
-
-</div>
-</div>
-
-</div>
-
-
-<div class="tm-submit-row">
-
-<button
-type="submit"
-id="uploadButton"
-class="tm-upload-btn"
->
-☁️ Upload Movie
-</button>
-
-<button
-type="button"
-id="cancelUploadButton"
-class="tm-cancel-btn"
->
-Cancel Upload
-</button>
-
-</div>
-
-</form>
-
-
-<div id="uploadStatus">
-
-<div id="uploadFileName" class="tm-upload-file">
-Uploading...
-</div>
-
-<div class="tm-upload-meta">
-
-<div class="tm-upload-stat">
-<span>Progress</span>
-<strong id="uploadProgressText">0%</strong>
-</div>
-
-<div class="tm-upload-stat">
-<span>Uploaded</span>
-<strong id="uploadedText">0 MB / 0 MB</strong>
-</div>
-
-<div class="tm-upload-stat">
-<span>Speed</span>
-<strong id="speedText">0 KB/s</strong>
-</div>
-
-<div class="tm-upload-stat">
-<span>Remaining</span>
-<strong id="remainingText">--</strong>
-</div>
-
-</div>
-
-
-<div class="tm-progress-wrap">
-<div id="uploadProgress"></div>
-</div>
-
-<div id="uploadPercent">0%</div>
-
-<div id="uploadMessage" class="tm-upload-message">
-☁️ Direct R2
-</div>
-
-</div>
-
-</section>
-
-
-<section class="tm-section">
-
-<h2 class="tm-section-title">🎞️ Movie Library</h2>
-
-<p class="tm-section-desc">
-Uploaded movies manage करें. Watch button से movie page खोलें.
-</p>
-
-<div class="tm-table-wrap">
-
-<table class="tm-table">
-
-<thead>
-<tr>
-<th>Poster</th>
-<th>Title</th>
-<th>Category</th>
-<th>Views</th>
-<th>Action</th>
-</tr>
-</thead>
-
-<tbody>
-
-{% if movies %}
-
-{% for movie in movies %}
-
-<tr>
-
-<td>
-
-{% if movie.poster_url %}
-
-<img
-src="{{ movie.poster_url }}"
-alt="{{ movie.title }}"
-class="tm-movie-poster"
-loading="lazy"
->
-
-{% else %}
-
-<div class="tm-no-poster">
-NO POSTER
-</div>
-
-{% endif %}
-
-</td>
-
-
-<td>
-
-<div class="tm-movie-title">
-{{ movie.title }}
-</div>
-
-<div class="tm-movie-id">
-Movie ID: {{ movie.id }}
-</div>
-
-</td>
-
-
-<td>
-
-{% if movie.category %}
-
-<span class="tm-category">
-{{ movie.category }}
-</span>
-
-{% else %}
-
-<span style="color:#666;">—</span>
-
-{% endif %}
-
-</td>
-
-
-<td>
-<span class="tm-views">
-{{ movie.views or 0 }}
-</span>
-</td>
-
-
-<td>
-
-<div class="tm-actions">
-
-<a
-href="{{ url_for('movie_page', movie_id=movie.id) }}"
-class="tm-watch"
-target="_blank"
-rel="noopener"
->
-▶ Watch
-</a>
-
-<a
-href="{{ url_for('admin_delete_movie', movie_id=movie.id) }}"
-class="tm-delete"
-onclick="return confirm('Delete this movie and its R2 files?');"
->
-🗑 Delete
-</a>
+                </form>
+
+                <a
+                    href="{{ url_for('login') }}"
+                    class="tm-login-back"
+                >
+                    ← Change email
+                </a>
+
+                <div class="tm-secure-text">
+                    🔒 Your verification code is private and secure.
+                </div>
+
+            {% else %}
+
+                <h1>Welcome back</h1>
+
+                <p class="tm-login-subtitle">
+                    अपना email डालें। हम आपको एक verification code भेजेंगे।
+                    Password याद रखने की जरूरत नहीं।
+                </p>
+
+                <form
+                    action="{{ url_for('request_otp') }}"
+                    method="post"
+                >
+
+                    <div class="tm-login-form-group">
+
+                        <label class="tm-login-label">
+                            Email address
+                        </label>
+
+                        <input
+                            class="tm-login-input"
+                            type="email"
+                            name="email"
+                            value="{{ email }}"
+                            placeholder="you@example.com"
+                            autocomplete="email"
+                            required
+                        >
+
+                    </div>
+
+                    <button
+                        class="tm-login-btn"
+                        type="submit"
+                    >
+                        Get OTP →
+                    </button>
+
+                </form>
+
+                <div class="tm-login-note">
+                    Email verification के बाद आप Tomesh Movies में
+                    securely sign in कर पाएंगे।
+                </div>
+
+                <a
+                    href="{{ url_for('home') }}"
+                    class="tm-login-back"
+                >
+                    ← Back to Tomesh Movies
+                </a>
+
+            {% endif %}
+
+        </section>
+
+
+        <!-- ADMIN LOGIN -->
+        <section class="tm-login-card tm-admin-card">
+
+            <div class="tm-admin-icon">
+                🔐
+            </div>
+
+            <h2>Admin Login</h2>
+
+            <p class="tm-login-subtitle">
+                Tomesh Movies control panel के लिए administrator
+                credentials से sign in करें।
+            </p>
+
+            <form
+                action="{{ url_for('login') }}"
+                method="post"
+                autocomplete="off"
+            >
+
+                <input
+                    type="hidden"
+                    name="login_type"
+                    value="admin"
+                >
+
+                <div class="tm-login-form-group">
+
+                    <label class="tm-login-label">
+                        Admin Username
+                    </label>
+
+                    <input
+                        class="tm-login-input"
+                        type="text"
+                        name="username"
+                        placeholder="Admin username"
+                        autocomplete="username"
+                        required
+                    >
+
+                </div>
+
+                <div class="tm-login-form-group">
+
+                    <label class="tm-login-label">
+                        Admin Password
+                    </label>
+
+                    <input
+                        class="tm-login-input"
+                        type="password"
+                        name="password"
+                        placeholder="Admin password"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                </div>
+
+                <button
+                    class="tm-login-btn"
+                    type="submit"
+                >
+                    Admin Sign In →
+                </button>
+
+            </form>
+
+            <div class="tm-login-note">
+                ⚠️ यह section सिर्फ website administrator के लिए है।
+                Customer login के लिए ऊपर Email OTP इस्तेमाल करें।
+            </div>
+
+            <div class="tm-secure-text">
+                🛡️ Protected Admin Area
+            </div>
+
+        </section>
+
+    </div>
 
 </div>
-
-</td>
-
-</tr>
-
-{% endfor %}
-
-{% else %}
-
-<tr>
-
-<td
-colspan="5"
-style="text-align:center;padding:35px 15px;color:#777;"
->
-No movies uploaded yet.
-</td>
-
-</tr>
-
-{% endif %}
-
-</tbody>
-
-</table>
-
-</div>
-
-</section>
-
-</div>
-
-</div>
-
-
-<script>
-(function(){
-
-"use strict";
-
-
-/* =========================================================
-   ELEMENTS
-   ========================================================= */
-
-const form = document.getElementById("movieUploadForm");
-const titleInput = document.getElementById("movieTitle");
-const categoryInput = document.getElementById("movieCategory");
-const descriptionInput = document.getElementById("movieDescription");
-const posterInput = document.getElementById("posterFile");
-const videoInput = document.getElementById("videoFile");
-
-const uploadButton =
-    document.getElementById("uploadButton");
-
-const cancelButton =
-    document.getElementById("cancelUploadButton");
-
-const uploadStatus =
-    document.getElementById("uploadStatus");
-
-const uploadFileName =
-    document.getElementById("uploadFileName");
-
-const progressBar =
-    document.getElementById("uploadProgress");
-
-const progressText =
-    document.getElementById("uploadProgressText");
-
-const percentText =
-    document.getElementById("uploadPercent");
-
-const uploadedText =
-    document.getElementById("uploadedText");
-
-const speedText =
-    document.getElementById("speedText");
-
-const remainingText =
-    document.getElementById("remainingText");
-
-const uploadMessage =
-    document.getElementById("uploadMessage");
-
-
-/* =========================================================
-   SETTINGS
-   ========================================================= */
-
-const PART_SIZE = 10 * 1024 * 1024;
-const PARALLEL = 3;
-const MAX_RETRIES = 4;
-
-const MAX_VIDEO_SIZE =
-    4 * 1024 * 1024 * 1024;
-
-const MAX_POSTER_SIZE =
-    25 * 1024 * 1024;
-
-const ALLOWED_VIDEO_EXTENSIONS = [
-    "mp4",
-    "mkv",
-    "webm",
-    "mov"
-];
-
-const ALLOWED_POSTER_EXTENSIONS = [
-    "jpg",
-    "jpeg",
-    "png",
-    "webp"
-];
-
-
-/* =========================================================
-   STATE
-   ========================================================= */
-
-let cancelled = false;
-
-let activeUploadId = null;
-
-let activeVideoKey = null;
-
-let activePosterKey = null;
-
-
-/* =========================================================
-   HELPERS
-   ========================================================= */
-
-function getExtension(fileName){
-
-    const parts =
-        String(fileName || "")
-        .toLowerCase()
-        .split(".");
-
-    if(parts.length < 2){
-        return "";
-    }
-
-    return parts.pop();
-}
-
-
-function formatBytes(bytes){
-
-    bytes = Number(bytes || 0);
-
-    if(bytes < 1024){
-        return bytes + " B";
-    }
-
-    if(bytes < 1024 * 1024){
-        return (bytes / 1024).toFixed(1) + " KB";
-    }
-
-    if(bytes < 1024 * 1024 * 1024){
-        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-    }
-
-    return (
-        (bytes / (1024 * 1024 * 1024)).toFixed(2)
-        + " GB"
-    );
-}
-
-
-function formatSpeed(bytesPerSecond){
-
-    if(bytesPerSecond <= 0){
-        return "0 KB/s";
-    }
-
-    if(bytesPerSecond >= 1024 * 1024){
-
-        return (
-            (bytesPerSecond / (1024 * 1024))
-            .toFixed(1)
-            + " MB/s"
-        );
-
-    }
-
-    return (
-        (bytesPerSecond / 1024)
-        .toFixed(1)
-        + " KB/s"
-    );
-}
-
-
-function formatTime(seconds){
-
-    seconds =
-        Math.max(
-            0,
-            Math.round(Number(seconds || 0))
-        );
-
-    if(seconds < 60){
-        return seconds + "s";
-    }
-
-    const minutes =
-        Math.floor(seconds / 60);
-
-    const secs =
-        seconds % 60;
-
-    if(minutes < 60){
-
-        return (
-            minutes
-            + "m "
-            + secs
-            + "s"
-        );
-
-    }
-
-    const hours =
-        Math.floor(minutes / 60);
-
-    const mins =
-        minutes % 60;
-
-    return (
-        hours
-        + "h "
-        + mins
-        + "m"
-    );
-}
-
-
-async function fetchJSON(url, options){
-
-    let response;
-
-    try{
-
-        response =
-            await fetch(
-                url,
-                options
-            );
-
-    }catch(error){
-
-        throw new Error(
-            "Failed to fetch. Server/R2 request blocked or unavailable."
-        );
-
-    }
-
-
-    let data = null;
-
-    try{
-
-        data =
-            await response.json();
-
-    }catch(error){
-
-        throw new Error(
-            "Server returned an invalid response."
-        );
-
-    }
-
-
-    if(!response.ok || !data.ok){
-
-        throw new Error(
-            data.error
-            || "Request failed."
-        );
-
-    }
-
-    return data;
-}
-
-
-function makeKey(prefix, file){
-
-    const ext =
-        getExtension(file.name);
-
-    let random;
-
-    if(
-        window.crypto
-        && typeof window.crypto.randomUUID === "function"
-    ){
-
-        random =
-            window.crypto.randomUUID();
-
-    }else{
-
-        random =
-            Date.now()
-            + "-"
-            + Math.random()
-                .toString(16)
-                .slice(2);
-
-    }
-
-    return (
-        prefix
-        + random
-        + "."
-        + ext
-    );
-}
-
-
-function setProgress(
-    uploaded,
-    total,
-    startedAt
-){
-
-    const percent =
-        total > 0
-        ? Math.min(
-            100,
-            (uploaded / total) * 100
-        )
-        : 0;
-
-    const elapsed =
-        Math.max(
-            0.001,
-            (Date.now() - startedAt) / 1000
-        );
-
-    const speed =
-        uploaded / elapsed;
-
-    const remaining =
-        speed > 0
-        ? (total - uploaded) / speed
-        : 0;
-
-    const rounded =
-        Math.round(percent);
-
-    progressBar.style.width =
-        rounded + "%";
-
-    progressText.textContent =
-        rounded + "%";
-
-    percentText.textContent =
-        rounded + "%";
-
-    uploadedText.textContent =
-        formatBytes(uploaded)
-        + " / "
-        + formatBytes(total);
-
-    speedText.textContent =
-        formatSpeed(speed);
-
-    remainingText.textContent =
-        speed > 0
-        ? formatTime(remaining)
-        : "--";
-}
-
-
-function sleep(ms){
-
-    return new Promise(
-        resolve => setTimeout(
-            resolve,
-            ms
-        )
-    );
-}
-
-
-/* =========================================================
-   UPLOAD ONE PART
-   ========================================================= */
-
-async function uploadPartWithRetry(
-    url,
-    blob,
-    partNumber
-){
-
-    let lastError = null;
-
-    for(
-        let attempt = 0;
-        attempt <= MAX_RETRIES;
-        attempt++
-    ){
-
-        if(cancelled){
-
-            throw new Error(
-                "Upload cancelled."
-            );
-
-        }
-
-
-        try{
-
-            const response =
-                await fetch(
-                    url,
-                    {
-                        method:"PUT",
-                        body:blob
-                    }
-                );
-
-
-            if(!response.ok){
-
-                throw new Error(
-                    "Part "
-                    + partNumber
-                    + " failed: HTTP "
-                    + response.status
-                );
-
-            }
-
-
-            const etag =
-                response.headers.get("ETag");
-
-
-            if(!etag){
-
-                throw new Error(
-                    "R2 did not return ETag for part "
-                    + partNumber
-                );
-
-            }
-
-
-            return etag;
-
-
-        }catch(error){
-
-            lastError = error;
-
-            if(
-                attempt >= MAX_RETRIES
-            ){
-                break;
-            }
-
-
-            uploadMessage.textContent =
-                "🔄 Retrying part "
-                + partNumber
-                + "..."
-                + " Attempt "
-                + (attempt + 2)
-                + "/"
-                + (MAX_RETRIES + 1);
-
-
-            await sleep(
-                800 * (attempt + 1)
-            );
-
-        }
-
-    }
-
-
-    throw (
-        lastError
-        || new Error(
-            "Part upload failed."
-        )
-    );
-}
-
-
-/* =========================================================
-   NORMALIZE URL RESPONSE
-   Backend returns:
-   {
-       ok: true,
-       urls: [
-           {part_number:1,url:"..."},
-           {part_number:2,url:"..."}
-       ]
-   }
-
-   This function converts that list into:
-   {
-       "1":"...",
-       "2":"..."
-   }
-   ========================================================= */
-
-function normalizePartUrls(data){
-
-    const map = {};
-
-    const raw =
-        data.urls
-        || data.url_map
-        || data.part_urls
-        || [];
-
-
-    if(Array.isArray(raw)){
-
-        raw.forEach(function(item){
-
-            if(!item){
-                return;
-            }
-
-            const number =
-                item.part_number
-                || item.PartNumber
-                || item.part
-                || item.number;
-
-            const url =
-                item.url
-                || item.presigned_url
-                || item.presignedUrl;
-
-            if(number && url){
-
-                map[String(number)] =
-                    url;
-
-            }
-
-        });
-
-
-    }else if(
-        raw
-        && typeof raw === "object"
-    ){
-
-        Object.keys(raw).forEach(function(key){
-
-            const value =
-                raw[key];
-
-            if(typeof value === "string"){
-
-                map[String(key)] =
-                    value;
-
-            }else if(
-                value
-                && typeof value === "object"
-                && value.url
-            ){
-
-                map[String(key)] =
-                    value.url;
-
-            }
-
-        });
-
-    }
-
-
-    return map;
-}
-
-
-/* =========================================================
-   UPLOAD FILE TO R2
-   ========================================================= */
-
-async function uploadFileToR2(
-    file,
-    key,
-    label
-){
-
-    const totalParts =
-        Math.ceil(
-            file.size / PART_SIZE
-        );
-
-
-    if(
-        totalParts < 1
-        || totalParts > 10000
-    ){
-
-        throw new Error(
-            label
-            + " has too many multipart parts."
-        );
-
-    }
-
-
-    uploadMessage.textContent =
-        "☁️ Creating R2 multipart upload for "
-        + label
-        + "...";
-
-
-    const create =
-        await fetchJSON(
-            "/api/r2/multipart/create",
-            {
-                method:"POST",
-                headers:{
-                    "Content-Type":
-                        "application/json"
-                },
-                body:JSON.stringify({
-
-                    key:key,
-
-                    content_type:
-                        file.type
-                        || (
-                            label === "Video"
-                            ? "application/octet-stream"
-                            : "image/jpeg"
-                        )
-
-                })
-            }
-        );
-
-
-    activeUploadId =
-        create.upload_id;
-
-
-    if(!activeUploadId){
-
-        throw new Error(
-            "R2 did not return upload ID."
-        );
-
-    }
-
-
-    uploadMessage.textContent =
-        "☁️ Getting secure R2 upload URLs...";
-
-
-    const partNumbers = [];
-
-    for(
-        let i = 1;
-        i <= totalParts;
-        i++
-    ){
-
-        partNumbers.push(i);
-
-    }
-
-
-    const urlsResponse =
-        await fetchJSON(
-            "/api/r2/multipart/urls",
-            {
-                method:"POST",
-                headers:{
-                    "Content-Type":
-                        "application/json"
-                },
-                body:JSON.stringify({
-
-                    key:key,
-
-                    upload_id:
-                        activeUploadId,
-
-                    part_numbers:
-                        partNumbers
-
-                })
-            }
-        );
-
-
-    const urls =
-        normalizePartUrls(
-            urlsResponse
-        );
-
-
-    if(
-        Object.keys(urls).length
-        !== totalParts
-    ){
-
-        throw new Error(
-            "R2 returned "
-            + Object.keys(urls).length
-            + " upload URLs, but "
-            + totalParts
-            + " are required."
-        );
-
-    }
-
-
-    /*
-     * IMPORTANT:
-     * Safe shared queue.
-     * Old code calculated index from completedParts.length,
-     * which caused duplicate/skipped part numbers.
-     */
-
-    let nextPartIndex = 0;
-
-    const completedParts = [];
-
-    const startedAt =
-        Date.now();
-
-    let uploadedBytes = 0;
-
-
-    async function worker(){
-
-        while(true){
-
-            if(cancelled){
-
-                throw new Error(
-                    "Upload cancelled."
-                );
-
-            }
-
-
-            /*
-             * Atomically reserve the next part.
-             * JavaScript executes this synchronously before await,
-             * so workers cannot reserve the same part.
-             */
-
-            const currentIndex =
-                nextPartIndex++;
-
-            if(
-                currentIndex >= totalParts
-            ){
-
-                return;
-
-            }
-
-
-            const partNumber =
-                currentIndex + 1;
-
-
-            const start =
-                currentIndex * PART_SIZE;
-
-
-            const end =
-                Math.min(
-                    start + PART_SIZE,
-                    file.size
-                );
-
-
-            const blob =
-                file.slice(
-                    start,
-                    end
-                );
-
-
-            const url =
-                urls[String(partNumber)];
-
-
-            if(!url){
-
-                throw new Error(
-                    "Missing R2 upload URL for part "
-                    + partNumber
-                );
-
-            }
-
-
-            uploadMessage.textContent =
-                "☁️ Direct R2 • "
-                + label
-                + " • Uploading part "
-                + partNumber
-                + " / "
-                + totalParts;
-
-
-            const etag =
-                await uploadPartWithRetry(
-                    url,
-                    blob,
-                    partNumber
-                );
-
-
-            completedParts.push({
-
-                PartNumber:
-                    partNumber,
-
-                ETag:
-                    etag
-
-            });
-
-
-            uploadedBytes +=
-                blob.size;
-
-
-            setProgress(
-                uploadedBytes,
-                file.size,
-                startedAt
-            );
-
-        }
-
-    }
-
-
-    const workerCount =
-        Math.min(
-            PARALLEL,
-            totalParts
-        );
-
-
-    const workers = [];
-
-
-    for(
-        let i = 0;
-        i < workerCount;
-        i++
-    ){
-
-        workers.push(
-            worker()
-        );
-
-    }
-
-
-    await Promise.all(
-        workers
-    );
-
-
-    if(cancelled){
-
-        throw new Error(
-            "Upload cancelled."
-        );
-
-    }
-
-
-    completedParts.sort(
-        function(a,b){
-
-            return (
-                a.PartNumber
-                - b.PartNumber
-            );
-
-        }
-    );
-
-
-    if(
-        completedParts.length
-        !== totalParts
-    ){
-
-        throw new Error(
-            "Only "
-            + completedParts.length
-            + " of "
-            + totalParts
-            + " parts uploaded."
-        );
-
-    }
-
-
-    uploadMessage.textContent =
-        "☁️ Completing R2 "
-        + label
-        + " upload...";
-
-
-    const complete =
-        await fetchJSON(
-            "/api/r2/multipart/complete",
-            {
-                method:"POST",
-                headers:{
-                    "Content-Type":
-                        "application/json"
-                },
-                body:JSON.stringify({
-
-                    key:key,
-
-                    upload_id:
-                        activeUploadId,
-
-                    parts:
-                        completedParts
-
-                })
-            }
-        );
-
-
-    activeUploadId = null;
-
-
-    setProgress(
-        file.size,
-        file.size,
-        startedAt
-    );
-
-
-    return complete;
-}
-
-
-/* =========================================================
-   ABORT
-   ========================================================= */
-
-async function abortUpload(
-    key,
-    uploadId
-){
-
-    if(!key || !uploadId){
-        return;
-    }
-
-
-    try{
-
-        await fetch(
-            "/api/r2/multipart/abort",
-            {
-                method:"POST",
-                headers:{
-                    "Content-Type":
-                        "application/json"
-                },
-                body:JSON.stringify({
-
-                    key:key,
-
-                    upload_id:
-                        uploadId
-
-                })
-            }
-        );
-
-    }catch(error){
-
-        console.error(
-            "Abort upload error:",
-            error
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   DELETE R2 OBJECT
-   ========================================================= */
-
-async function deleteR2Object(key){
-
-    if(!key){
-        return;
-    }
-
-
-    try{
-
-        await fetch(
-            "/api/r2/delete",
-            {
-                method:"POST",
-                headers:{
-                    "Content-Type":
-                        "application/json"
-                },
-                body:JSON.stringify({
-                    key:key
-                })
-            }
-        );
-
-    }catch(error){
-
-        console.error(
-            "R2 cleanup error:",
-            error
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   CANCEL BUTTON
-   ========================================================= */
-
-cancelButton.addEventListener(
-    "click",
-    async function(){
-
-        cancelled = true;
-
-        cancelButton.disabled = true;
-
-        uploadMessage.textContent =
-            "⛔ Cancelling upload...";
-
-
-        if(
-            activeUploadId
-            && activeVideoKey
-        ){
-
-            await abortUpload(
-                activeVideoKey,
-                activeUploadId
-            );
-
-        }
-
-
-        activeUploadId = null;
-
-
-        uploadMessage.textContent =
-            "⛔ Upload cancelled.";
-
-
-        uploadButton.disabled = false;
-
-        cancelButton.disabled = false;
-
-        cancelButton.style.display =
-            "none";
-
-    }
-);
-
-
-/* =========================================================
-   FORM SUBMIT
-   ========================================================= */
-
-form.addEventListener(
-    "submit",
-    async function(event){
-
-        event.preventDefault();
-
-
-        const title =
-            titleInput.value.trim();
-
-        const category =
-            categoryInput.value.trim();
-
-        const description =
-            descriptionInput.value.trim();
-
-        const videoFile =
-            videoInput.files[0];
-
-        const posterFile =
-            posterInput.files[0];
-
-
-        if(!title){
-
-            alert(
-                "Movie title required."
-            );
-
-            titleInput.focus();
-
-            return;
-
-        }
-
-
-        if(!videoFile){
-
-            alert(
-                "Please select a video."
-            );
-
-            return;
-
-        }
-
-
-        const videoExtension =
-            getExtension(
-                videoFile.name
-            );
-
-
-        if(
-            !ALLOWED_VIDEO_EXTENSIONS.includes(
-                videoExtension
-            )
-        ){
-
-            alert(
-                "Video केवल MP4, MKV, WebM या MOV होनी चाहिए."
-            );
-
-            return;
-
-        }
-
-
-        if(
-            videoFile.size > MAX_VIDEO_SIZE
-        ){
-
-            alert(
-                "Video maximum 4 GB हो सकती है."
-            );
-
-            return;
-
-        }
-
-
-        if(posterFile){
-
-            const posterExtension =
-                getExtension(
-                    posterFile.name
-                );
-
-
-            if(
-                !ALLOWED_POSTER_EXTENSIONS.includes(
-                    posterExtension
-                )
-            ){
-
-                alert(
-                    "Poster केवल JPG, JPEG, PNG या WEBP होना चाहिए."
-                );
-
-                return;
-
-            }
-
-
-            if(
-                posterFile.size > MAX_POSTER_SIZE
-            ){
-
-                alert(
-                    "Poster maximum 25 MB हो सकता है."
-                );
-
-                return;
-
-            }
-
-        }
-
-
-        cancelled = false;
-
-        activeUploadId = null;
-
-        activeVideoKey = null;
-
-        activePosterKey = null;
-
-
-        uploadButton.disabled = true;
-
-        cancelButton.disabled = false;
-
-        cancelButton.style.display =
-            "inline-flex";
-
-        uploadStatus.style.display =
-            "block";
-
-
-        uploadFileName.textContent =
-            "🎬 "
-            + videoFile.name;
-
-
-        progressBar.style.width =
-            "0%";
-
-        progressText.textContent =
-            "0%";
-
-        percentText.textContent =
-            "0%";
-
-
-        uploadedText.textContent =
-            "0 MB / "
-            + formatBytes(
-                videoFile.size
-            );
-
-
-        speedText.textContent =
-            "0 KB/s";
-
-        remainingText.textContent =
-            "--";
-
-
-        uploadMessage.textContent =
-            "Preparing Direct R2 upload...";
-
-
-        try{
-
-            /* =============================================
-               CREATE KEYS
-               ============================================= */
-
-            activeVideoKey =
-                makeKey(
-                    "videos/",
-                    videoFile
-                );
-
-
-            if(posterFile){
-
-                activePosterKey =
-                    makeKey(
-                        "posters/",
-                        posterFile
-                    );
-
-            }
-
-
-            /* =============================================
-               VIDEO
-               ============================================= */
-
-            await uploadFileToR2(
-                videoFile,
-                activeVideoKey,
-                "Video"
-            );
-
-
-            if(cancelled){
-
-                throw new Error(
-                    "Upload cancelled."
-                );
-
-            }
-
-
-            /* =============================================
-               POSTER
-               ============================================= */
-
-            if(posterFile){
-
-                uploadFileName.textContent =
-                    "🖼️ "
-                    + posterFile.name;
-
-
-                progressBar.style.width =
-                    "0%";
-
-                progressText.textContent =
-                    "0%";
-
-                percentText.textContent =
-                    "0%";
-
-
-                uploadedText.textContent =
-                    "0 MB / "
-                    + formatBytes(
-                        posterFile.size
-                    );
-
-
-                speedText.textContent =
-                    "0 KB/s";
-
-                remainingText.textContent =
-                    "--";
-
-
-                await uploadFileToR2(
-                    posterFile,
-                    activePosterKey,
-                    "Poster"
-                );
-
-            }
-
-
-            if(cancelled){
-
-                throw new Error(
-                    "Upload cancelled."
-                );
-
-            }
-
-
-            /* =============================================
-               DATABASE SAVE
-               ============================================= */
-
-            uploadFileName.textContent =
-                "💾 Saving movie...";
-
-
-            uploadMessage.textContent =
-                "💾 Saving movie in database...";
-
-
-            const save =
-                await fetchJSON(
-                    "/api/movie/save",
-                    {
-                        method:"POST",
-                        headers:{
-                            "Content-Type":
-                                "application/json"
-                        },
-                        body:JSON.stringify({
-
-                            title:title,
-
-                            category:
-                                category,
-
-                            description:
-                                description,
-
-                            video:
-                                activeVideoKey,
-
-                            poster:
-                                activePosterKey
-
-                        })
-                    }
-                );
-
-
-            uploadMessage.textContent =
-                "✅ Movie uploaded successfully. "
-                + "Movie ID: "
-                + save.movie_id;
-
-
-            progressBar.style.width =
-                "100%";
-
-            progressText.textContent =
-                "100%";
-
-            percentText.textContent =
-                "100%";
-
-
-            cancelButton.style.display =
-                "none";
-
-
-            /*
-             * Reload after successful DB save.
-             */
-
-            setTimeout(
-                function(){
-
-                    window.location.reload();
-
-                },
-                1500
-            );
-
-
-        }catch(error){
-
-            console.error(
-                "MOVIE UPLOAD ERROR:",
-                error
-            );
-
-
-            /*
-             * Stop active multipart upload.
-             */
-
-            if(
-                activeUploadId
-                && activeVideoKey
-            ){
-
-                await abortUpload(
-                    activeVideoKey,
-                    activeUploadId
-                );
-
-            }
-
-
-            activeUploadId = null;
-
-
-            uploadMessage.textContent =
-                "❌ "
-                + (
-                    error.message
-                    || "Upload failed."
-                );
-
-
-            /*
-             * Cleanup successfully uploaded R2 files.
-             */
-
-            if(activeVideoKey){
-
-                await deleteR2Object(
-                    activeVideoKey
-                );
-
-            }
-
-
-            if(activePosterKey){
-
-                await deleteR2Object(
-                    activePosterKey
-                );
-
-            }
-
-
-            uploadButton.disabled =
-                false;
-
-            cancelButton.disabled =
-                false;
-
-            cancelButton.style.display =
-                "none";
-
-        }
-
-    }
-);
-
-})();
-</script>
 
 {% endblock %}
