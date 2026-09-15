@@ -1,489 +1,1587 @@
 {% extends "base.html" %}
 
-{% block title %}Tomesh Movies | Member Access{% endblock %}
+{% block title %}Tomesh Movies | Member Home{% endblock %}
 
 {% block content %}
 
 <style>
 /* =========================================================
-   TOMESH MOVIES — MEMBER ACCESS PAGE
-   Login → OTP → ₹9 Access → Continue
-   Public Home untouched
+   TOMESH MOVIES — PREMIUM MEMBER MOVIES HOME
+   Public Home (/ ) untouched
+   Member Home (/member)
    ========================================================= */
 
-.tm-access-page{
+:root{
+    --tm-red:#e50914;
+    --tm-red-dark:#b20710;
+    --tm-bg:#050505;
+    --tm-card:#111;
+    --tm-text:#fff;
+    --tm-muted:#a7a7a7;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    background:#050505 !important;
+}
+
+/* =========================
+   PAGE
+   ========================= */
+
+.tm-member-page{
     min-height:100vh;
-    padding:0;
-    color:#fff;
     background:
-        radial-gradient(circle at 15% 10%,rgba(255,0,80,.18),transparent 30%),
-        radial-gradient(circle at 85% 20%,rgba(120,0,255,.20),transparent 32%),
-        linear-gradient(180deg,#050505 0%,#080808 55%,#030303 100%);
+        radial-gradient(circle at 15% 0%,rgba(229,9,20,.10),transparent 28%),
+        radial-gradient(circle at 90% 10%,rgba(120,40,180,.10),transparent 28%),
+        #050505;
+    color:var(--tm-text);
+    overflow:hidden;
     font-family:Arial,Helvetica,sans-serif;
 }
 
-/* NAVBAR */
-.tm-access-nav{
+/* =========================
+   NAVBAR
+   ========================= */
+
+.tm-member-nav{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
     height:72px;
-    padding:0 6%;
+    z-index:5000;
+
     display:flex;
     align-items:center;
-    justify-content:space-between;
-    border-bottom:1px solid rgba(255,255,255,.08);
-    background:rgba(0,0,0,.78);
-    backdrop-filter:blur(18px);
-    position:sticky;
-    top:0;
-    z-index:100;
+    gap:28px;
+
+    padding:0 4.5%;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(0,0,0,.96) 0%,
+            rgba(0,0,0,.80) 70%,
+            rgba(0,0,0,0) 100%
+        );
+
+    transition:.25s ease;
 }
 
-.tm-logo{
-    font-size:22px;
-    font-weight:900;
-    letter-spacing:1.5px;
-    color:#fff;
+.tm-member-nav.scrolled{
+    background:rgba(5,5,5,.96);
+    border-bottom:1px solid rgba(255,255,255,.07);
+    backdrop-filter:blur(16px);
 }
 
-.tm-logo span{
-    color:#e50914;
-}
+/* LOGO */
 
-.tm-logout{
+.tm-member-logo{
+    flex-shrink:0;
+
     text-decoration:none;
     color:#fff;
-    padding:10px 18px;
-    border:1px solid rgba(255,255,255,.18);
-    border-radius:999px;
+
+    font-size:23px;
+    font-weight:950;
+    letter-spacing:1.5px;
+}
+
+.tm-member-logo span{
+    color:var(--tm-red);
+}
+
+/* NAV LINKS */
+
+.tm-member-links{
+    display:flex;
+    align-items:center;
+    gap:20px;
+}
+
+.tm-member-links a{
+    color:#d5d5d5;
+    text-decoration:none;
     font-size:13px;
     font-weight:700;
+    transition:.2s;
+}
+
+.tm-member-links a:hover,
+.tm-member-links a.active{
+    color:#fff;
+}
+
+/* NAV RIGHT */
+
+.tm-member-right{
+    margin-left:auto;
+
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+/* SEARCH */
+
+.tm-search{
+    width:220px;
+    height:38px;
+
+    display:flex;
+    align-items:center;
+
+    padding:0 13px;
+
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:7px;
+
+    background:rgba(0,0,0,.55);
+
     transition:.25s;
 }
 
+.tm-search:focus-within{
+    width:270px;
+    border-color:rgba(255,255,255,.35);
+}
+
+.tm-search-icon{
+    color:#aaa;
+    font-size:17px;
+    margin-right:8px;
+}
+
+.tm-search input{
+    width:100%;
+    border:0;
+    outline:0;
+
+    background:transparent;
+    color:#fff;
+
+    font-size:13px;
+}
+
+.tm-search input::placeholder{
+    color:#888;
+}
+
+/* PREMIUM BADGE */
+
+.tm-premium-badge{
+    padding:7px 11px;
+
+    border:1px solid rgba(229,9,20,.45);
+    border-radius:5px;
+
+    background:rgba(229,9,20,.10);
+    color:#ff6b72;
+
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.7px;
+}
+
+/* ACCOUNT */
+
+.tm-account{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.tm-avatar{
+    width:34px;
+    height:34px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    border-radius:6px;
+
+    background:
+        linear-gradient(135deg,#e50914,#6d0b11);
+
+    color:#fff;
+
+    font-size:13px;
+    font-weight:900;
+}
+
+.tm-logout{
+    color:#bbb;
+    text-decoration:none;
+    font-size:12px;
+    font-weight:700;
+}
+
 .tm-logout:hover{
+    color:#fff;
+}
+
+/* =========================
+   HERO
+   ========================= */
+
+.tm-member-hero{
+    position:relative;
+
+    min-height:650px;
+
+    display:flex;
+    align-items:flex-end;
+
+    padding:120px 6% 85px;
+
+    background:
+        linear-gradient(
+            90deg,
+            #050505 0%,
+            rgba(5,5,5,.92) 24%,
+            rgba(5,5,5,.45) 58%,
+            rgba(5,5,5,.10) 100%
+        ),
+        linear-gradient(
+            0deg,
+            #050505 0%,
+            rgba(5,5,5,0) 45%
+        );
+}
+
+/* HERO IMAGE */
+
+.tm-hero-poster{
+    position:absolute;
+    inset:0;
+
+    z-index:0;
+
+    width:100%;
+    height:100%;
+
+    object-fit:cover;
+
+    opacity:.55;
+
+    filter:saturate(.95);
+}
+
+/* HERO CONTENT */
+
+.tm-hero-content{
+    position:relative;
+    z-index:2;
+
+    max-width:590px;
+}
+
+.tm-member-label{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+
+    margin-bottom:17px;
+
+    color:#ddd;
+
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:1.5px;
+}
+
+.tm-member-label::before{
+    content:"";
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--tm-red);
+    box-shadow:0 0 12px rgba(229,9,20,.8);
+}
+
+.tm-hero-title{
+    margin:0;
+
+    font-size:clamp(36px,5.5vw,70px);
+    line-height:1.02;
+
+    font-weight:950;
+    letter-spacing:-2.5px;
+
+    text-shadow:0 5px 30px rgba(0,0,0,.7);
+}
+
+.tm-hero-description{
+    margin:19px 0 0;
+
+    max-width:550px;
+
+    color:#d0d0d0;
+
+    font-size:15px;
+    line-height:1.65;
+}
+
+.tm-hero-buttons{
+    display:flex;
+    align-items:center;
+    gap:10px;
+
+    margin-top:27px;
+}
+
+.tm-watch-btn,
+.tm-info-btn{
+    min-height:43px;
+
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+
+    padding:0 20px;
+
+    border-radius:5px;
+
+    text-decoration:none;
+
+    font-size:13px;
+    font-weight:900;
+
+    transition:.2s;
+}
+
+.tm-watch-btn{
     background:#fff;
     color:#000;
 }
 
-/* MAIN */
-.tm-access-main{
-    width:min(1100px,92%);
-    margin:auto;
-    padding:70px 0 100px;
+.tm-watch-btn:hover{
+    background:#ddd;
+    transform:translateY(-1px);
 }
 
-/* HERO */
-.tm-access-hero{
-    text-align:center;
-    max-width:760px;
-    margin:0 auto 48px;
+.tm-info-btn{
+    background:rgba(90,90,90,.72);
+    color:#fff;
 }
 
-.tm-access-badge{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    padding:8px 15px;
-    border-radius:999px;
-    background:rgba(229,9,20,.12);
-    border:1px solid rgba(229,9,20,.35);
-    color:#ff5963;
-    font-size:12px;
-    font-weight:800;
-    letter-spacing:.5px;
-    margin-bottom:22px;
+.tm-info-btn:hover{
+    background:rgba(110,110,110,.9);
 }
 
-.tm-access-hero h1{
-    margin:0;
-    font-size:clamp(34px,6vw,64px);
-    line-height:1.02;
-    font-weight:900;
-    letter-spacing:-2px;
-}
+/* =========================
+   MOVIE AREA
+   ========================= */
 
-.tm-access-hero h1 span{
-    background:linear-gradient(90deg,#fff,#e50914,#a855f7);
-    -webkit-background-clip:text;
-    background-clip:text;
-    color:transparent;
-}
-
-.tm-access-hero p{
-    margin:20px auto 0;
-    max-width:650px;
-    color:#bcbcbc;
-    font-size:17px;
-    line-height:1.7;
-}
-
-/* CARD */
-.tm-payment-card{
-    width:min(520px,100%);
-    margin:0 auto;
-    padding:34px;
-    border-radius:28px;
-    background:
-        linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));
-    border:1px solid rgba(255,255,255,.12);
-    box-shadow:
-        0 30px 100px rgba(0,0,0,.55),
-        inset 0 1px 0 rgba(255,255,255,.05);
-}
-
-.tm-step{
+.tm-member-content{
     position:relative;
-    padding:24px 0;
+    z-index:5;
+
+    margin-top:-30px;
+
+    padding:0 4.5% 80px;
 }
 
-.tm-step + .tm-step{
-    border-top:1px solid rgba(255,255,255,.10);
+/* SECTION */
+
+.tm-movie-section{
+    margin-bottom:42px;
 }
 
-.tm-step-number{
-    width:34px;
-    height:34px;
+.tm-section-header{
     display:flex;
     align-items:center;
-    justify-content:center;
-    border-radius:50%;
-    background:#e50914;
-    color:#fff;
-    font-size:14px;
-    font-weight:900;
+    justify-content:space-between;
+
     margin-bottom:15px;
 }
 
-.tm-step h2{
-    margin:0 0 8px;
-    font-size:22px;
-}
-
-.tm-step p{
+.tm-section-title{
     margin:0;
-    color:#999;
-    font-size:14px;
-    line-height:1.6;
+
+    font-size:20px;
+    font-weight:900;
+    letter-spacing:-.3px;
 }
 
-.tm-price{
+.tm-section-link{
+    color:#aaa;
+    text-decoration:none;
+
+    font-size:11px;
+    font-weight:800;
+}
+
+.tm-section-link:hover{
+    color:#fff;
+}
+
+/* =========================
+   MOVIE GRID
+   ========================= */
+
+.tm-movie-grid{
+    display:grid;
+
+    grid-template-columns:
+        repeat(6,minmax(0,1fr));
+
+    gap:12px;
+}
+
+/* MOVIE CARD */
+
+.tm-movie-card{
+    position:relative;
+
+    min-width:0;
+
+    border-radius:5px;
+
+    background:#111;
+
+    overflow:hidden;
+
+    transition:
+        transform .25s ease,
+        box-shadow .25s ease;
+
+    cursor:pointer;
+}
+
+.tm-movie-card:hover{
+    transform:scale(1.045);
+    z-index:20;
+
+    box-shadow:
+        0 18px 45px rgba(0,0,0,.7);
+}
+
+/* POSTER */
+
+.tm-poster-wrap{
+    position:relative;
+
+    aspect-ratio:2 / 3;
+
+    background:
+        linear-gradient(135deg,#181818,#0b0b0b);
+
+    overflow:hidden;
+}
+
+.tm-poster{
+    width:100%;
+    height:100%;
+
+    display:block;
+
+    object-fit:cover;
+
+    transition:.3s;
+}
+
+.tm-movie-card:hover .tm-poster{
+    transform:scale(1.035);
+}
+
+/* NO POSTER */
+
+.tm-no-poster{
+    position:absolute;
+    inset:0;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    padding:15px;
+
+    text-align:center;
+
+    color:#777;
+
+    font-size:12px;
+    font-weight:800;
+
+    background:
+        radial-gradient(circle at center,rgba(229,9,20,.10),transparent 60%);
+}
+
+/* OVERLAY */
+
+.tm-card-overlay{
+    position:absolute;
+    inset:0;
+
     display:flex;
     align-items:flex-end;
-    gap:7px;
-    margin:18px 0;
+
+    padding:12px;
+
+    opacity:0;
+
+    background:
+        linear-gradient(
+            180deg,
+            transparent 35%,
+            rgba(0,0,0,.88) 100%
+        );
+
+    transition:.2s;
 }
 
-.tm-price strong{
-    font-size:42px;
-    line-height:1;
+.tm-movie-card:hover .tm-card-overlay{
+    opacity:1;
 }
 
-.tm-price small{
-    color:#999;
-    margin-bottom:4px;
-}
+/* CARD PLAY */
 
-/* BUTTON */
-.tm-pay-btn{
-    width:100%;
-    border:0;
-    padding:16px 20px;
-    border-radius:12px;
-    background:#e50914;
-    color:#fff;
-    font-size:16px;
-    font-weight:900;
-    cursor:pointer;
-    box-shadow:0 12px 35px rgba(229,9,20,.25);
-    transition:.25s;
-}
+.tm-card-play{
+    width:34px;
+    height:34px;
 
-.tm-pay-btn:hover{
-    transform:translateY(-2px);
-    background:#f6121d;
-    box-shadow:0 16px 42px rgba(229,9,20,.35);
-}
-
-.tm-pay-btn:active{
-    transform:scale(.98);
-}
-
-/* PREMIUM BOX */
-.tm-premium-box{
-    margin-top:8px;
-    padding:20px;
-    border-radius:17px;
-    background:rgba(168,85,247,.08);
-    border:1px solid rgba(168,85,247,.22);
-}
-
-.tm-premium-price{
     display:flex;
-    align-items:baseline;
-    gap:5px;
-    margin-bottom:10px;
-}
+    align-items:center;
+    justify-content:center;
 
-.tm-premium-price strong{
-    font-size:31px;
-}
+    border-radius:50%;
 
-.tm-premium-price span{
-    color:#aaa;
+    background:#fff;
+    color:#000;
+
     font-size:13px;
 }
 
-.tm-feature-list{
-    margin:15px 0 20px;
-    padding:0;
-    list-style:none;
+/* CARD BODY */
+
+.tm-card-body{
+    padding:10px 9px 12px;
+
+    background:#111;
 }
 
-.tm-feature-list li{
-    color:#d0d0d0;
+.tm-card-title{
+    margin:0;
+
+    color:#fff;
+
     font-size:13px;
-    margin:9px 0;
+    font-weight:800;
+
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
 }
 
-.tm-feature-list li::before{
-    content:"✓";
-    color:#7ee787;
-    font-weight:900;
-    margin-right:9px;
-}
+.tm-card-meta{
+    margin-top:6px;
 
-/* NOTE */
-.tm-note{
-    margin-top:22px;
-    text-align:center;
+    display:flex;
+    align-items:center;
+    gap:7px;
+
     color:#777;
-    font-size:11px;
-    line-height:1.6;
+
+    font-size:10px;
 }
 
-/* FOOTER */
-.tm-access-footer{
-    padding:28px 20px;
+/* =========================
+   EMPTY STATE
+   ========================= */
+
+.tm-empty{
+    padding:60px 20px;
+
     text-align:center;
-    border-top:1px solid rgba(255,255,255,.07);
-    color:#666;
-    font-size:12px;
+
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:12px;
+
+    background:rgba(255,255,255,.025);
 }
 
-/* MOBILE */
-@media(max-width:600px){
+.tm-empty-icon{
+    font-size:40px;
+    margin-bottom:15px;
+}
 
-    .tm-access-nav{
+.tm-empty h2{
+    margin:0 0 8px;
+    font-size:20px;
+}
+
+.tm-empty p{
+    margin:0;
+    color:#888;
+    font-size:13px;
+}
+
+/* =========================
+   CATEGORY STRIP
+   ========================= */
+
+.tm-category-strip{
+    display:flex;
+    gap:9px;
+
+    overflow-x:auto;
+
+    padding:2px 0 8px;
+
+    scrollbar-width:none;
+}
+
+.tm-category-strip::-webkit-scrollbar{
+    display:none;
+}
+
+.tm-category{
+    flex:0 0 auto;
+
+    padding:9px 15px;
+
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:999px;
+
+    color:#bbb;
+
+    background:#0d0d0d;
+
+    font-size:11px;
+    font-weight:800;
+
+    cursor:pointer;
+
+    transition:.2s;
+}
+
+.tm-category:hover,
+.tm-category.active{
+    color:#fff;
+    background:#1b1b1b;
+    border-color:rgba(255,255,255,.25);
+}
+
+/* =========================
+   FOOTER
+   ========================= */
+
+.tm-member-footer{
+    padding:40px 6% 55px;
+
+    border-top:1px solid rgba(255,255,255,.07);
+
+    color:#666;
+
+    font-size:11px;
+    line-height:1.7;
+
+    text-align:center;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media(max-width:1100px){
+
+    .tm-movie-grid{
+        grid-template-columns:
+            repeat(5,minmax(0,1fr));
+    }
+
+    .tm-search{
+        width:170px;
+    }
+
+    .tm-search:focus-within{
+        width:210px;
+    }
+
+}
+
+@media(max-width:850px){
+
+    .tm-member-nav{
         height:64px;
         padding:0 18px;
     }
 
-    .tm-logo{
+    .tm-member-links{
+        display:none;
+    }
+
+    .tm-premium-badge{
+        display:none;
+    }
+
+    .tm-account{
+        gap:6px;
+    }
+
+    .tm-search{
+        width:145px;
+    }
+
+    .tm-search:focus-within{
+        width:170px;
+    }
+
+    .tm-member-hero{
+        min-height:570px;
+        padding:100px 6% 65px;
+    }
+
+    .tm-movie-grid{
+        grid-template-columns:
+            repeat(4,minmax(0,1fr));
+    }
+
+}
+
+@media(max-width:600px){
+
+    .tm-member-logo{
         font-size:18px;
+        letter-spacing:1px;
+    }
+
+    .tm-member-right{
+        gap:8px;
+    }
+
+    .tm-search{
+        width:36px;
+        height:36px;
+
+        padding:0;
+
+        justify-content:center;
+
+        border-color:transparent;
+        background:transparent;
+    }
+
+    .tm-search:focus-within{
+        width:150px;
+        padding:0 10px;
+
+        border-color:rgba(255,255,255,.16);
+        background:#0d0d0d;
+    }
+
+    .tm-search-icon{
+        margin:0;
+    }
+
+    .tm-search input{
+        display:none;
+    }
+
+    .tm-search:focus-within input{
+        display:block;
+    }
+
+    .tm-search:focus-within .tm-search-icon{
+        margin-right:7px;
+    }
+
+    .tm-avatar{
+        width:31px;
+        height:31px;
     }
 
     .tm-logout{
-        padding:8px 13px;
+        display:none;
+    }
+
+    .tm-member-hero{
+        min-height:530px;
+
+        padding:
+            100px 18px
+            55px;
+
+        align-items:flex-end;
+
+        background:
+            linear-gradient(
+                0deg,
+                #050505 0%,
+                rgba(5,5,5,.25) 65%,
+                rgba(5,5,5,.10) 100%
+            );
+    }
+
+    .tm-hero-poster{
+        opacity:.48;
+    }
+
+    .tm-hero-title{
+        font-size:39px;
+        letter-spacing:-1.5px;
+    }
+
+    .tm-hero-description{
+        font-size:13px;
+        line-height:1.55;
+    }
+
+    .tm-hero-buttons{
+        margin-top:20px;
+    }
+
+    .tm-watch-btn,
+    .tm-info-btn{
+        min-height:40px;
+        padding:0 15px;
         font-size:12px;
     }
 
-    .tm-access-main{
-        width:92%;
-        padding:50px 0 70px;
+    .tm-member-content{
+        margin-top:-15px;
+        padding:0 14px 55px;
     }
 
-    .tm-access-hero{
-        margin-bottom:32px;
+    .tm-section-title{
+        font-size:17px;
     }
 
-    .tm-access-hero h1{
-        letter-spacing:-1px;
+    .tm-movie-grid{
+        grid-template-columns:
+            repeat(2,minmax(0,1fr));
+
+        gap:10px;
     }
 
-    .tm-access-hero p{
-        font-size:14px;
-        line-height:1.6;
+    .tm-card-body{
+        padding:9px 8px 10px;
     }
 
-    .tm-payment-card{
-        padding:23px 20px;
-        border-radius:22px;
+    .tm-card-title{
+        font-size:12px;
     }
 
-    .tm-step{
-        padding:20px 0;
+    .tm-card-meta{
+        font-size:9px;
     }
 
-    .tm-step h2{
-        font-size:19px;
+}
+
+/* =========================
+   REDUCED MOTION
+   ========================= */
+
+@media(prefers-reduced-motion:reduce){
+
+    *,
+    *::before,
+    *::after{
+        scroll-behavior:auto !important;
+        transition:none !important;
     }
 
-    .tm-price strong{
-        font-size:36px;
-    }
 }
 </style>
 
 
-<div class="tm-access-page">
+<div class="tm-member-page">
 
-    <!-- NAVBAR -->
-    <nav class="tm-access-nav">
+    <!-- =========================
+         NAVBAR
+         ========================= -->
 
-        <div class="tm-logo">
+    <nav class="tm-member-nav" id="tmMemberNav">
+
+        <a
+            href="{{ url_for('member_home') }}"
+            class="tm-member-logo">
             TOMESH <span>MOVIES</span>
+        </a>
+
+
+        <div class="tm-member-links">
+
+            <a
+                href="{{ url_for('member_home') }}"
+                class="active">
+                Home
+            </a>
+
+            <a href="#trending">
+                Movies
+            </a>
+
+            <a href="#categories">
+                Categories
+            </a>
+
+            <a href="#all-movies">
+                My List
+            </a>
+
         </div>
 
-        <a class="tm-logout" href="{{ url_for('logout') }}">
-            Logout
-        </a>
+
+        <div class="tm-member-right">
+
+            <!-- SEARCH -->
+
+            <label class="tm-search">
+
+                <span class="tm-search-icon">⌕</span>
+
+                <input
+                    type="search"
+                    id="movieSearch"
+                    placeholder="Search movies..."
+                    autocomplete="off">
+
+            </label>
+
+
+            <div class="tm-premium-badge">
+                MEMBER
+            </div>
+
+
+            <div class="tm-account">
+
+                <div class="tm-avatar">
+                    TM
+                </div>
+
+                <a
+                    href="{{ url_for('logout') }}"
+                    class="tm-logout">
+                    Logout
+                </a>
+
+            </div>
+
+        </div>
 
     </nav>
 
 
-    <!-- MAIN -->
-    <main class="tm-access-main">
+    <!-- =========================
+         HERO
+         ========================= -->
 
-        <!-- HERO -->
-        <section class="tm-access-hero">
+    {% if movies %}
 
-            <div class="tm-access-badge">
-                ● MEMBER ACCESS
+        {% set featured = movies[0] %}
+
+        <section class="tm-member-hero">
+
+            {% if featured.poster_url %}
+
+                <img
+                    class="tm-hero-poster"
+                    src="{{ featured.poster_url }}"
+                    alt=""
+                    loading="eager">
+
+            {% endif %}
+
+
+            <div class="tm-hero-content">
+
+                <div class="tm-member-label">
+                    TOMESH MOVIES MEMBER
+                </div>
+
+
+                <h1 class="tm-hero-title">
+                    Welcome to your cinema.
+                </h1>
+
+
+                <p class="tm-hero-description">
+                    Discover movies, explore new stories,
+                    and enjoy your personal Tomesh Movies
+                    experience in one place.
+                </p>
+
+
+                <div class="tm-hero-buttons">
+
+                    <a
+                        href="{{ url_for('movie_page', movie_id=featured.id) }}"
+                        class="tm-watch-btn">
+                        ▶ Watch Now
+                    </a>
+
+
+                    <a
+                        href="{{ url_for('movie_page', movie_id=featured.id) }}"
+                        class="tm-info-btn">
+                        ⓘ More Info
+                    </a>
+
+                </div>
+
             </div>
-
-            <h1>
-                Your cinema,
-                <span>your way.</span>
-            </h1>
-
-            <p>
-                Get instant access to Tomesh Movies.
-                Start with a simple ₹9 access payment and
-                continue to premium membership when you're ready.
-            </p>
 
         </section>
 
+    {% else %}
 
-        <!-- PAYMENT CARD -->
-        <section class="tm-payment-card">
+        <section class="tm-member-hero">
 
-            <!-- STEP 1 -->
-            <div class="tm-step">
+            <div class="tm-hero-content">
 
-                <div class="tm-step-number">
-                    1
+                <div class="tm-member-label">
+                    TOMESH MOVIES MEMBER
                 </div>
 
-                <h2>
-                    Watch Access
-                </h2>
+                <h1 class="tm-hero-title">
+                    Welcome to your cinema.
+                </h1>
 
-                <p>
-                    One-time access payment to continue to Tomesh Movies.
+                <p class="tm-hero-description">
+                    Your movie collection will appear here.
                 </p>
-
-                <div class="tm-price">
-                    <strong>₹9</strong>
-                    <small>one time</small>
-                </div>
-
-                <button
-                    type="button"
-                    class="tm-pay-btn"
-                    onclick="startWatchPayment()">
-                    Pay ₹9 &amp; Continue
-                </button>
 
             </div>
 
+        </section>
 
-            <!-- STEP 2 -->
-            <div class="tm-step">
+    {% endif %}
 
-                <div class="tm-step-number">
-                    2
+
+    <!-- =========================
+         MOVIE CONTENT
+         ========================= -->
+
+    <main class="tm-member-content">
+
+
+        {% if movies %}
+
+
+            <!-- TRENDING -->
+
+            <section
+                class="tm-movie-section"
+                id="trending">
+
+                <div class="tm-section-header">
+
+                    <h2 class="tm-section-title">
+                        🔥 Trending Now
+                    </h2>
+
+                    <a
+                        href="#all-movies"
+                        class="tm-section-link">
+                        View All
+                    </a>
+
                 </div>
 
-                <h2>
-                    Tomesh Premium
-                </h2>
 
-                <p>
-                    After your ₹9 access, you can authorize
-                    monthly premium membership.
-                </p>
+                <div class="tm-movie-grid">
 
-                <div class="tm-premium-box">
+                    {% for movie in movies[:6] %}
 
-                    <div class="tm-premium-price">
-                        <strong>₹99</strong>
-                        <span>/ month</span>
-                    </div>
+                        <a
+                            href="{{ url_for('movie_page', movie_id=movie.id) }}"
+                            class="tm-movie-card movie-item"
+                            data-title="{{ movie.title|lower }}"
+                            style="text-decoration:none;">
 
-                    <ul class="tm-feature-list">
-                        <li>Premium movie access</li>
-                        <li>Better viewing experience</li>
-                        <li>Monthly membership</li>
-                        <li>Cancel when you want</li>
-                    </ul>
+                            <div class="tm-poster-wrap">
+
+                                {% if movie.poster_url %}
+
+                                    <img
+                                        class="tm-poster"
+                                        src="{{ movie.poster_url }}"
+                                        alt="{{ movie.title }}"
+                                        loading="lazy">
+
+                                {% else %}
+
+                                    <div class="tm-no-poster">
+                                        No Poster
+                                    </div>
+
+                                {% endif %}
+
+
+                                <div class="tm-card-overlay">
+
+                                    <div class="tm-card-play">
+                                        ▶
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="tm-card-body">
+
+                                <h3 class="tm-card-title">
+                                    {{ movie.title }}
+                                </h3>
+
+                                <div class="tm-card-meta">
+                                    <span>
+                                        {{ movie.category or "Movie" }}
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                        HD
+                                    </span>
+                                </div>
+
+                            </div>
+
+                        </a>
+
+                    {% endfor %}
+
+                </div>
+
+            </section>
+
+
+            <!-- CATEGORIES -->
+
+            <section
+                class="tm-movie-section"
+                id="categories">
+
+                <div class="tm-section-header">
+
+                    <h2 class="tm-section-title">
+                        Browse by Category
+                    </h2>
+
+                </div>
+
+
+                <div class="tm-category-strip">
 
                     <button
                         type="button"
-                        class="tm-pay-btn"
-                        onclick="activatePremium()">
-                        Activate ₹99/month AutoPay
+                        class="tm-category active"
+                        data-category="all">
+                        All
+                    </button>
+
+                    <button
+                        type="button"
+                        class="tm-category"
+                        data-category="action">
+                        Action
+                    </button>
+
+                    <button
+                        type="button"
+                        class="tm-category"
+                        data-category="drama">
+                        Drama
+                    </button>
+
+                    <button
+                        type="button"
+                        class="tm-category"
+                        data-category="thriller">
+                        Thriller
+                    </button>
+
+                    <button
+                        type="button"
+                        class="tm-category"
+                        data-category="comedy">
+                        Comedy
+                    </button>
+
+                    <button
+                        type="button"
+                        class="tm-category"
+                        data-category="hindi">
+                        Hindi
+                    </button>
+
+                    <button
+                        type="button"
+                        class="tm-category"
+                        data-category="classic">
+                        Classic
                     </button>
 
                 </div>
 
-            </div>
+            </section>
 
 
-            <div class="tm-note">
-                ₹99/month AutoPay will only be activated after
-                your explicit payment-mandate authorization.
-            </div>
+            <!-- ALL MOVIES -->
 
-        </section>
+            <section
+                class="tm-movie-section"
+                id="all-movies">
+
+                <div class="tm-section-header">
+
+                    <h2 class="tm-section-title">
+                        All Movies
+                    </h2>
+
+                    <span
+                        class="tm-section-link"
+                        id="movieCount">
+                        {{ movies|length }} titles
+                    </span>
+
+                </div>
+
+
+                <div class="tm-movie-grid" id="movieGrid">
+
+                    {% for movie in movies %}
+
+                        <a
+                            href="{{ url_for('movie_page', movie_id=movie.id) }}"
+                            class="tm-movie-card movie-item"
+                            data-title="{{ movie.title|lower }}"
+                            data-category="{{ (movie.category or 'movie')|lower }}"
+                            style="text-decoration:none;">
+
+                            <div class="tm-poster-wrap">
+
+                                {% if movie.poster_url %}
+
+                                    <img
+                                        class="tm-poster"
+                                        src="{{ movie.poster_url }}"
+                                        alt="{{ movie.title }}"
+                                        loading="lazy">
+
+                                {% else %}
+
+                                    <div class="tm-no-poster">
+                                        No Poster
+                                    </div>
+
+                                {% endif %}
+
+
+                                <div class="tm-card-overlay">
+
+                                    <div class="tm-card-play">
+                                        ▶
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="tm-card-body">
+
+                                <h3 class="tm-card-title">
+                                    {{ movie.title }}
+                                </h3>
+
+                                <div class="tm-card-meta">
+
+                                    <span>
+                                        {{ movie.category or "Movie" }}
+                                    </span>
+
+                                    <span>•</span>
+
+                                    <span>
+                                        HD
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </a>
+
+                    {% endfor %}
+
+                </div>
+
+
+                <div
+                    class="tm-empty"
+                    id="noSearchResults"
+                    style="display:none;">
+
+                    <div class="tm-empty-icon">
+                        🔎
+                    </div>
+
+                    <h2>
+                        No movies found
+                    </h2>
+
+                    <p>
+                        Try another movie title or category.
+                    </p>
+
+                </div>
+
+            </section>
+
+
+        {% else %}
+
+            <section class="tm-empty">
+
+                <div class="tm-empty-icon">
+                    🎬
+                </div>
+
+                <h2>
+                    No movies available yet
+                </h2>
+
+                <p>
+                    Movies added from the Admin Panel will appear here.
+                </p>
+
+            </section>
+
+        {% endif %}
 
     </main>
 
 
-    <!-- FOOTER -->
-    <footer class="tm-access-footer">
-        © 2026 Tomesh Movies • Secure Member Area
+    <!-- =========================
+         FOOTER
+         ========================= -->
+
+    <footer class="tm-member-footer">
+
+        © 2026 Tomesh Movies
+        <br>
+
+        Your personal movie experience.
+
     </footer>
 
 </div>
 
 
 <script>
-/*
-=========================================================
-DEMO BUTTONS
-Actual Cashfree payment बाद में connect करेंगे.
-अभी buttons page को break नहीं करेंगे.
-=========================================================
-*/
+/* =========================================================
+   TOMESH MOVIES MEMBER HOME JS
+   ========================================================= */
 
-function startWatchPayment(){
+(function(){
 
-    alert(
-        "₹9 Watch Access\n\n" +
-        "Payment gateway will be connected here."
+    /* NAVBAR */
+
+    const nav = document.getElementById("tmMemberNav");
+
+    function updateNav(){
+
+        if(!nav) return;
+
+        if(window.scrollY > 20){
+            nav.classList.add("scrolled");
+        }else{
+            nav.classList.remove("scrolled");
+        }
+
+    }
+
+    window.addEventListener(
+        "scroll",
+        updateNav,
+        {passive:true}
     );
 
-}
+    updateNav();
 
 
-function activatePremium(){
+    /* SEARCH */
 
-    alert(
-        "₹99/month AutoPay\n\n" +
-        "UPI AutoPay mandate authorization will be connected here."
-    );
+    const searchInput =
+        document.getElementById("movieSearch");
 
-}
+    const movieItems =
+        Array.from(
+            document.querySelectorAll(
+                "#movieGrid .movie-item"
+            )
+        );
+
+    const noResults =
+        document.getElementById("noSearchResults");
+
+    const movieCount =
+        document.getElementById("movieCount");
+
+
+    function filterMovies(){
+
+        if(!searchInput) return;
+
+        const query =
+            searchInput.value
+                .trim()
+                .toLowerCase();
+
+        let visible = 0;
+
+        movieItems.forEach(function(item){
+
+            const title =
+                item.dataset.title || "";
+
+            const category =
+                item.dataset.category || "";
+
+            const matches =
+                !query ||
+                title.includes(query) ||
+                category.includes(query);
+
+            if(matches){
+
+                item.style.display = "";
+
+                visible++;
+
+            }else{
+
+                item.style.display = "none";
+
+            }
+
+        });
+
+
+        if(movieCount){
+
+            movieCount.textContent =
+                visible + " titles";
+
+        }
+
+
+        if(noResults){
+
+            noResults.style.display =
+                visible === 0
+                    ? "block"
+                    : "none";
+
+        }
+
+    }
+
+
+    if(searchInput){
+
+        searchInput.addEventListener(
+            "input",
+            filterMovies
+        );
+
+    }
+
+
+    /* CATEGORY FILTER */
+
+    const categoryButtons =
+        Array.from(
+            document.querySelectorAll(
+                ".tm-category"
+            )
+        );
+
+
+    categoryButtons.forEach(function(button){
+
+        button.addEventListener(
+            "click",
+            function(){
+
+                categoryButtons.forEach(function(btn){
+                    btn.classList.remove("active");
+                });
+
+                button.classList.add("active");
+
+
+                const category =
+                    button.dataset.category ||
+                    "all";
+
+                let visible = 0;
+
+
+                movieItems.forEach(function(item){
+
+                    const itemCategory =
+                        item.dataset.category || "";
+
+                    const show =
+                        category === "all" ||
+                        itemCategory.includes(category);
+
+                    if(show){
+
+                        item.style.display = "";
+
+                        visible++;
+
+                    }else{
+
+                        item.style.display = "none";
+
+                    }
+
+                });
+
+
+                if(movieCount){
+
+                    movieCount.textContent =
+                        visible + " titles";
+
+                }
+
+
+                if(noResults){
+
+                    noResults.style.display =
+                        visible === 0
+                            ? "block"
+                            : "none";
+
+                }
+
+
+                if(searchInput){
+
+                    searchInput.value = "";
+
+                }
+
+            }
+        );
+
+    });
+
+})();
 </script>
 
 {% endblock %}
