@@ -1801,6 +1801,139 @@ def video_debug(movie_id):
         return json_error("R2 metadata check failed: " + str(exc), 500)
 
 
+@app.route("/video-box-debug/<int:movie_id>")
+def video_box_debug(movie_id):
+    """Inspect MP4 container boxes without Render Shell access."""
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, title, video FROM movies WHERE id = %s",
+            (movie_id,),
+        )
+        movie = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not movie or not movie.get("video"):
+        return json_error("Video not found.", 404)
+
+    key = validate_r2_key(movie["video"])
+    client = get_r2_client()
+
+    try:
+        head = client.head_object(
+            Bucket=R2_BUCKET,
+            Key=key,
+        )
+
+        total = int(head.get("ContentLength") or 0)
+        if total <= 0:
+            return json_error("Video object is empty.", 500)
+
+        probe_size = min(65536, total)
+
+        first_obj = client.get_object(
+            Bucket=R2_BUCKET,
+            Key=key,
+            Range=f"bytes=0-{probe_size - 1}",
+        )
+        first_bytes = first_obj["Body"].read()
+        try:
+            first_obj["Body"].close()
+        except Exception:
+            pass
+
+        last_start = max(0, total - probe_size)
+        last_obj = client.get_object(
+            Bucket=R2_BUCKET,
+            Key=key,
+            Range=f"bytes={last_start}-{total - 1}",
+        )
+        last_bytes = last_obj["Body"].read()
+        try:
+            last_obj["Body"].close()
+        except Exception:
+            pass
+
+        def parse_boxes(data):
+            boxes = []
+            pos = 0
+            length = len(data)
+
+            while pos + 8 <= length and len(boxes) < 50:
+                raw_size = int.from_bytes(data[pos:pos + 4], "big")
+                box_type = data[pos + 4:pos + 8].decode(
+                    "latin1", errors="replace"
+                )
+
+                if raw_size == 1:
+                    if pos + 16 > length:
+                        break
+                    size = int.from_bytes(data[pos + 8:pos + 16], "big")
+                    header = 16
+                elif raw_size == 0:
+                    size = length - pos
+                    header = 8
+                else:
+                    size = raw_size
+                    header = 8
+
+                boxes.append({
+                    "offset": pos,
+                    "size": size,
+                    "type": box_type,
+                    "header_size": header,
+                })
+
+                if size < header:
+                    break
+
+                pos += size
+
+        first_boxes = parse_boxes(first_bytes)
+        last_boxes = parse_boxes(last_bytes)
+
+        def contains(data, needle):
+            return needle in data
+
+        first_types = [x["type"] for x in first_boxes]
+        last_types = [x["type"] for x in last_boxes]
+
+        result = {
+            "ok": True,
+            "movie_id": movie_id,
+            "title": movie["title"],
+            "key": key,
+            "size": total,
+            "content_type": head.get("ContentType"),
+            "etag": head.get("ETag"),
+            "accept_ranges": head.get("AcceptRanges"),
+            "first_boxes": first_boxes,
+            "last_boxes": last_boxes,
+            "first_box_types": first_types,
+            "last_box_types": last_types,
+            "ftyp_in_first_64kb": contains(first_bytes, b"ftyp"),
+            "moov_in_first_64kb": contains(first_bytes, b"moov"),
+            "mdat_in_first_64kb": contains(first_bytes, b"mdat"),
+            "moov_in_last_64kb": contains(last_bytes, b"moov"),
+            "mdat_in_last_64kb": contains(last_bytes, b"mdat"),
+            "probe_first_bytes": len(first_bytes),
+            "probe_last_bytes": len(last_bytes),
+            "last_probe_start": last_start,
+        }
+
+        return jsonify(result)
+
+    except Exception as exc:
+        print("VIDEO BOX DEBUG ERROR:", repr(exc))
+        return json_error(
+            "Video box diagnostic failed: " + str(exc),
+            500,
+        )
+
+
 # ============================================================
 # DOWNLOAD
 # ============================================================
