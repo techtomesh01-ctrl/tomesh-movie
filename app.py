@@ -1586,10 +1586,20 @@ def movie_page(movie_id):
 
     if video_key and access["watch"]:
 
-        movie["video_url"] = url_for(
-            "stream_movie",
-            movie_id=movie_id,
-        )
+        # Direct Cloudflare R2 presigned URL.
+        # This lets the browser handle native MP4 range requests
+        # directly instead of proxy-streaming through Render.
+        try:
+            movie["video_url"] = r2_presigned_url(
+                video_key,
+                expires=PRESIGNED_EXPIRES,
+            )
+        except Exception as exc:
+            print(
+                "VIDEO URL ERROR:",
+                repr(exc),
+            )
+            movie["video_url"] = None
 
     else:
 
