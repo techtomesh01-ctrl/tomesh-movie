@@ -109,13 +109,6 @@
     cursor:pointer;
 }
 
-.tm-video::-webkit-media-controls{
-    display:none !important;
-}
-
-.tm-video::-webkit-media-controls-enclosure{
-    display:none !important;
-}
 
 /* =========================================================
    PLAYER GRADIENT
@@ -152,7 +145,6 @@
 ========================================================= */
 
 .tm-center-play{
-    display:none !important;
     position:absolute;
     left:50%;
     top:50%;
@@ -198,7 +190,6 @@
 ========================================================= */
 
 .tm-controls{
-    display:none !important;
     position:absolute;
     left:0;
     right:0;
@@ -221,7 +212,6 @@
 }
 
 .tm-player.active .tm-controls{
-    display:none !important;
     opacity:1;
 }
 
@@ -1100,7 +1090,6 @@
     }
 
     .tm-center-play{
-    display:none !important;
         width:62px;
         height:62px;
 
@@ -1108,7 +1097,6 @@
     }
 
     .tm-controls{
-    display:none !important;
         padding:35px 7px 7px;
     }
 
@@ -1246,11 +1234,12 @@
         controls
         playsinline
         preload="metadata"
+        crossorigin="anonymous"
         poster="{{ movie.poster_url or movie.poster or '' }}"
     >
 
         <source
-            src="{{ movie.video_url }}"
+            src="{{ url_for('stream_movie', movie_id=movie.id) }}"
             type="{{ movie.video_mime or 'video/mp4' }}"
         >
 
