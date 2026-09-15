@@ -1382,6 +1382,16 @@ def cashfree_return():
                     ],
                 )
 
+            # Restore the paid customer identity in the current browser session.
+            # This is critical when the user returns from Cashfree or opens the
+            # existing successful order manually: access_for_movie() checks this
+            # session customer_id.
+            session[
+                "customer_id"
+            ] = local_order[
+                "customer_id"
+            ]
+
             session[
                 "payment_success"
             ] = True
