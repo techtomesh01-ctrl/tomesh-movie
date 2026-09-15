@@ -154,7 +154,8 @@ R2_ENDPOINT = os.environ.get(
 )
 
 R2_PUBLIC_URL = os.environ.get(
-    "R2_PUBLIC_URL", ""
+    "R2_PUBLIC_URL",
+    "https://pub-5b61d97d7d2347c89cab7e3e72f17e07.r2.dev",
 )
 
 
@@ -491,6 +492,9 @@ def get_r2_client():
         region_name="auto",
         config=Config(
             signature_version="s3v4",
+            s3={
+                "addressing_style": "path"
+            },
             retries={
                 "max_attempts": 5,
                 "mode": "standard",
@@ -527,15 +531,13 @@ def r2_presigned_url(
     client = get_r2_client()
 
     return client.generate_presigned_url(
-        ClientMethod="get_object",
+        "get_object",
         Params={
             "Bucket": R2_BUCKET,
             "Key": key,
         },
-        ExpiresIn=int(expires),
-        HttpMethod="GET",
+        ExpiresIn=expires,
     )
-
 
 
 def media_url(key):
@@ -1538,16 +1540,7 @@ def movie_page(movie_id):
 
     if video_key and access["watch"]:
 
-        try:
-            # Direct browser -> R2 playback. R2 supports presigned GET URLs
-            # for browser clients; avoid proxying large byte ranges through Flask.
-            movie["video_url"] = r2_presigned_url(
-                video_key,
-                expires=PRESIGNED_EXPIRES,
-            )
-        except Exception as exc:
-            print("VIDEO PRESIGN ERROR:", repr(exc))
-            movie["video_url"] = None
+        movie["video_url"] = r2_public_url(video_key)
 
     else:
 
@@ -1588,84 +1581,304 @@ def movie_page(movie_id):
 )
 def stream_movie(movie_id):
 
-    access = access_for_movie(movie_id)
+    access = access_for_movie(
+        movie_id
+    )
 
     if not access["watch"]:
-        return Response("Payment required.", status=403)
 
-    conn = get_db(dict_rows=True)
+        return Response(
+            "Payment required.",
+            status=403,
+        )
+
+    conn = get_db(
+        dict_rows=True
+    )
 
     try:
+
         cur = conn.cursor()
+
         cur.execute(
-            "SELECT id, title, video FROM movies WHERE id = %s",
+            """
+            SELECT id, title, video
+            FROM movies
+            WHERE id = %s
+            """,
             (movie_id,),
         )
+
         movie = cur.fetchone()
         cur.close()
+
     finally:
         conn.close()
 
     if not movie:
-        return Response("Movie not found.", status=404)
-
-    video_key = movie.get("video")
-    if not video_key:
-        return Response("Video not found.", status=404)
-
-    try:
-        video_key = validate_r2_key(video_key)
-        url = r2_presigned_url(
-            video_key,
-            expires=PRESIGNED_EXPIRES,
-        )
-        return redirect(url, code=302)
-    except Exception as exc:
-        print("STREAM PRESIGN ERROR:", repr(exc))
-        return Response("Unable to create video URL.", status=502)
-
-
-
-# ============================================================
-# DIRECT R2 VIDEO TEST
-# ============================================================
-
-@app.route("/r2-video-test/<int:movie_id>")
-def r2_video_test(movie_id):
-
-    access = access_for_movie(movie_id)
-
-    if not access["watch"]:
-        return Response("Payment required.", status=403)
-
-    conn = get_db(dict_rows=True)
-
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id, title, video FROM movies WHERE id = %s",
-            (movie_id,),
-        )
-        movie = cur.fetchone()
-        cur.close()
-    finally:
-        conn.close()
-
-    if not movie or not movie.get("video"):
-        return Response("Video not found.", status=404)
-
-    try:
-        url = r2_presigned_url(
-            movie["video"],
-            expires=300,
-        )
-        return redirect(url, code=302)
-    except Exception as exc:
-        print("R2 VIDEO TEST ERROR:", repr(exc))
         return Response(
-            "R2 video URL generation failed: " + str(exc),
-            status=500,
+            "Movie not found.",
+            status=404,
         )
+
+    video_key = movie.get(
+        "video"
+    )
+
+    if not video_key:
+        return Response(
+            "Video not found.",
+            status=404,
+        )
+
+    try:
+        video_key = validate_r2_key(
+            video_key
+        )
+    except Exception:
+        return Response(
+            "Invalid video object.",
+            status=400,
+        )
+
+    try:
+
+        client = get_r2_client()
+
+        head = client.head_object(
+            Bucket=R2_BUCKET,
+            Key=video_key,
+        )
+
+    except Exception as exc:
+
+        print(
+            "R2 HEAD ERROR:",
+            repr(exc),
+        )
+
+        return Response(
+            "Video object not found in R2.",
+            status=404,
+        )
+
+    total_size = int(
+        head.get(
+            "ContentLength",
+            0,
+        )
+    )
+
+    if total_size <= 0:
+        return Response(
+            "Video file is empty.",
+            status=404,
+        )
+
+    content_type = (
+        head.get(
+            "ContentType"
+        )
+        or content_type_for_key(
+            video_key
+        )
+    )
+
+    range_header = request.headers.get(
+        "Range"
+    )
+
+    start = 0
+    end = total_size - 1
+
+    if range_header:
+
+        try:
+
+            if not range_header.startswith(
+                "bytes="
+            ):
+                raise ValueError()
+
+            value = (
+                range_header
+               .replace(
+                    "bytes=",
+                    "",
+                    1,
+                )
+                .split(",", 1)[0]
+                .strip()
+            )
+
+            if "-" not in value:
+                raise ValueError()
+
+            start_text, end_text = value.split(
+                "-",
+                1,
+            )
+
+            if not start_text:
+
+                suffix = int(
+                    end_text
+                )
+
+                if suffix <= 0:
+                    raise ValueError()
+
+                suffix = min(
+                    suffix,
+                    total_size,
+                )
+
+                start = (
+                    total_size - suffix
+                )
+
+                end = total_size - 1
+
+            else:
+
+                start = int(
+                    start_text
+                )
+
+                end = (
+                    int(end_text)
+                    if end_text
+                    else total_size - 1
+                )
+
+            if start < 0:
+                raise ValueError()
+
+            if start >= total_size:
+                raise ValueError()
+
+            end = min(
+                end,
+                total_size - 1,
+            )
+
+            if end < start:
+                raise ValueError()
+
+        except Exception:
+
+            return Response(
+                "Range Not Satisfiable",
+                status=416,
+                headers={
+                    "Content-Range":
+                        "bytes */"
+                        + str(total_size)
+                },
+            )
+
+    content_length = (
+        end - start + 1
+    )
+
+    try:
+
+        if range_header:
+
+            obj = client.get_object(
+                Bucket=R2_BUCKET,
+                Key=video_key,
+                Range=(
+                    "bytes="
+                    + str(start)
+                    + "-"
+                    + str(end)
+                ),
+            )
+
+        else:
+
+            obj = client.get_object(
+                Bucket=R2_BUCKET,
+                Key=video_key,
+            )
+
+    except Exception as exc:
+
+        print(
+            "R2 VIDEO GET ERROR:",
+            repr(exc),
+        )
+
+        return Response(
+            "Unable to load video.",
+            status=502,
+        )
+
+    body = obj["Body"]
+
+    def generate():
+
+        try:
+
+            while True:
+
+                chunk = body.read(
+                    1024 * 1024
+                )
+
+                if not chunk:
+                    break
+
+                yield chunk
+
+        finally:
+
+            try:
+                body.close()
+            except Exception:
+                pass
+
+    headers = {
+        "Content-Type": content_type,
+        "Content-Length": str(
+            content_length
+        ),
+        "Accept-Ranges": "bytes",
+        "Cache-Control":
+            "private, max-age=300",
+        "Content-Disposition": "inline",
+        "X-Content-Type-Options":
+            "nosniff",
+    }
+
+    if range_header:
+
+        headers[
+            "Content-Range"
+        ] = (
+            "bytes "
+            + str(start)
+            + "-"
+            + str(end)
+            + "/"
+            + str(total_size)
+        )
+
+        return Response(
+            generate(),
+            status=206,
+            headers=headers,
+            direct_passthrough=True,
+        )
+
+    return Response(
+        generate(),
+        status=200,
+        headers=headers,
+        direct_passthrough=True,
+    )
+
 
 # ============================================================
 # DOWNLOAD
@@ -1728,10 +1941,10 @@ def download_movie(movie_id):
 
     try:
 
-        url = r2_presigned_url(
-            video_key,
-            expires=600,
-        )
+        url = r2_public_url(video_key)
+
+        if not url:
+            raise RuntimeError("R2 public URL is not configured.")
 
         return redirect(url)
 
@@ -2737,50 +2950,6 @@ def ads_txt():
     )
 
 
-
-# ============================================================
-# R2 VIDEO INFO
-# ============================================================
-
-@app.route("/r2-video-info/<int:movie_id>")
-def r2_video_info(movie_id):
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id, title, video FROM movies WHERE id = %s",
-            (movie_id,),
-        )
-        movie = cur.fetchone()
-        cur.close()
-    finally:
-        conn.close()
-
-    if not movie:
-        return json_error("Movie not found.", 404)
-
-    key = movie.get("video")
-    if not key:
-        return json_error("Video not found.", 404)
-
-    try:
-        head = r2_head(key)
-        return jsonify({
-            "ok": True,
-            "movie_id": movie["id"],
-            "title": movie["title"],
-            "key": key,
-            "content_length": int(head.get("ContentLength", 0)),
-            "content_type": head.get("ContentType"),
-            "accept_ranges": head.get("AcceptRanges"),
-            "etag": head.get("ETag"),
-            "direct_url": r2_presigned_url(key, expires=300),
-        })
-    except Exception as exc:
-        print("R2 VIDEO INFO ERROR:", repr(exc))
-        return json_error(str(exc), 500)
-
 # ============================================================
 # R2 HEALTH
 # ============================================================
@@ -2811,6 +2980,39 @@ def r2_health():
             "R2 ERROR: " + str(exc),
             500,
         )
+
+
+# ============================================================
+# PUBLIC VIDEO TEST
+# ============================================================
+
+@app.route("/public-video-test/<int:movie_id>")
+def public_video_test(movie_id):
+
+    conn = get_db(dict_rows=True)
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT video FROM movies WHERE id = %s",
+            (movie_id,),
+        )
+        movie = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not movie or not movie.get("video"):
+        return Response("Video not found.", status=404)
+
+    try:
+        url = r2_public_url(movie["video"])
+        if not url:
+            return Response("R2 public URL is not configured.", status=500)
+        return redirect(url, code=302)
+    except Exception as exc:
+        print("PUBLIC VIDEO TEST ERROR:", repr(exc))
+        return Response("Unable to load public video.", status=502)
 
 
 # ============================================================
