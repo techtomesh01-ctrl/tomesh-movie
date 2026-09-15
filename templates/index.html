@@ -6,25 +6,36 @@
 
 <style>
 /* =========================================================
-   TOMESH MOVIES
-   FULL-SCREEN STREAMING HOMEPAGE
+   TOMESH MOVIES — PREMIUM NETFLIX-STYLE HOME
+   Full screen • PC + Mobile • No extra card/box
    ========================================================= */
 
-.tm-page{
-    width:100%;
-    min-height:100vh;
-    margin:0;
-    padding:0;
-    background:#050505;
-    color:#fff;
-    font-family:Arial,Helvetica,sans-serif;
-    overflow:hidden;
+:root{
+    --tm-red:#e50914;
+    --tm-red2:#ff1744;
+    --tm-purple:#9c27ff;
+    --tm-gold:#ffc107;
+    --tm-bg:#050505;
+    --tm-card:#151515;
 }
 
-.tm-page *,
-.tm-page *::before,
-.tm-page *::after{
+*{
     box-sizing:border-box;
+}
+
+html,
+body{
+    margin:0;
+    padding:0;
+    background:#000;
+    color:#fff;
+}
+
+.tm-home{
+    width:100%;
+    min-height:100vh;
+    background:#000;
+    overflow:hidden;
 }
 
 /* =========================================================
@@ -35,70 +46,84 @@
     position:absolute;
     top:0;
     left:0;
-    right:0;
-    z-index:20;
-
     width:100%;
-    min-height:78px;
-    padding:20px 5vw;
-
+    height:82px;
+    z-index:100;
     display:flex;
     align-items:center;
     justify-content:space-between;
+    padding:0 clamp(20px,5vw,70px);
 
-    background:linear-gradient(
-        180deg,
-        rgba(0,0,0,.92) 0%,
-        rgba(0,0,0,.55) 55%,
-        transparent 100%
-    );
+    background:
+        linear-gradient(
+            180deg,
+            rgba(0,0,0,.85) 0%,
+            rgba(0,0,0,.42) 55%,
+            transparent 100%
+        );
 }
 
-.tm-brand{
-    color:#fff;
+.tm-logo{
     text-decoration:none;
-    font-size:29px;
-    font-weight:900;
-    letter-spacing:-1.5px;
+    color:#fff;
+    font-size:clamp(20px,2.2vw,32px);
+    font-weight:1000;
+    letter-spacing:-1.2px;
+    white-space:nowrap;
+
+    text-shadow:
+        0 0 10px rgba(229,9,20,.45),
+        0 0 24px rgba(156,39,255,.25);
 }
 
-.tm-brand span{
-    color:#e50914;
+.tm-logo span{
+    color:var(--tm-red);
 }
 
-.tm-header-actions{
+.tm-header-right{
     display:flex;
     align-items:center;
-    gap:10px;
+    gap:12px;
 }
 
 .tm-language{
-    height:36px;
-    padding:0 13px;
-
-    color:#fff;
-    background:rgba(0,0,0,.65);
-    border:1px solid rgba(255,255,255,.55);
+    min-width:118px;
+    height:38px;
+    padding:0 12px;
+    border:1px solid rgba(255,255,255,.65);
     border-radius:4px;
+    background:rgba(0,0,0,.55);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    outline:none;
+    cursor:pointer;
+}
 
-    font-size:13px;
+.tm-language option{
+    color:#000;
+    background:#fff;
 }
 
 .tm-signin{
-    height:36px;
-    padding:0 17px;
-
+    height:38px;
+    padding:0 18px;
+    border:0;
+    border-radius:4px;
+    background:var(--tm-red);
+    color:#fff;
+    text-decoration:none;
     display:flex;
     align-items:center;
     justify-content:center;
-
-    color:#fff;
-    background:#e50914;
-    border-radius:4px;
-
-    text-decoration:none;
     font-size:14px;
-    font-weight:700;
+    font-weight:800;
+    transition:.2s ease;
+}
+
+.tm-signin:hover{
+    background:#f40612;
+    transform:translateY(-1px);
 }
 
 /* =========================================================
@@ -107,333 +132,353 @@
 
 .tm-hero{
     position:relative;
-
     width:100%;
-    min-height:760px;
-
+    min-height:100vh;
+    height:100vh;
     display:flex;
     align-items:center;
+    justify-content:center;
+    text-align:center;
+    isolation:isolate;
 
     background:
-        linear-gradient(
-            90deg,
-            rgba(0,0,0,.97) 0%,
-            rgba(0,0,0,.83) 28%,
-            rgba(0,0,0,.48) 58%,
-            rgba(0,0,0,.72) 100%
+        radial-gradient(
+            circle at 50% 35%,
+            rgba(80,30,100,.35),
+            transparent 48%
         ),
         linear-gradient(
-            180deg,
-            transparent 55%,
-            #050505 100%
-        )
-        {% if latest and latest.poster_url %}
-        ,url("{{ latest.poster_url }}")
-        {% endif %};
-
-    background-size:cover;
-    background-position:center;
+            90deg,
+            rgba(0,0,0,.88),
+            rgba(0,0,0,.42),
+            rgba(0,0,0,.88)
+        ),
+        url("https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=2200&q=85")
+        center/cover no-repeat;
 }
 
 .tm-hero::before{
     content:"";
     position:absolute;
     inset:0;
+    z-index:-1;
 
     background:
-        radial-gradient(
-            circle at 72% 42%,
-            rgba(229,9,20,.13),
-            transparent 30%
+        linear-gradient(
+            180deg,
+            rgba(0,0,0,.15) 0%,
+            rgba(0,0,0,.22) 38%,
+            rgba(0,0,0,.72) 78%,
+            #000 100%
+        );
+}
+
+.tm-hero::after{
+    content:"";
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:-1px;
+    height:130px;
+    z-index:0;
+
+    background:
+        linear-gradient(
+            180deg,
+            transparent,
+            #000
         );
 }
 
 .tm-hero-content{
     position:relative;
     z-index:2;
-
-    width:min(760px,90%);
-    margin-left:8vw;
-    padding-top:80px;
+    width:min(900px,92%);
+    margin-top:45px;
 }
 
-.tm-kicker{
-    display:flex;
+.tm-hero-badge{
+    display:inline-flex;
     align-items:center;
-    gap:9px;
-
-    margin-bottom:18px;
-
-    font-size:13px;
+    gap:8px;
+    margin-bottom:20px;
+    padding:7px 14px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:999px;
+    background:rgba(0,0,0,.38);
+    backdrop-filter:blur(8px);
+    color:#fff;
+    font-size:12px;
     font-weight:800;
-    letter-spacing:1.5px;
-    text-transform:uppercase;
+    letter-spacing:.5px;
 }
 
-.tm-kicker-dot{
+.tm-hero-badge .dot{
     width:8px;
     height:8px;
     border-radius:50%;
-    background:#e50914;
-    box-shadow:0 0 15px rgba(229,9,20,.9);
+    background:var(--tm-red);
+    box-shadow:0 0 12px var(--tm-red);
 }
 
 .tm-hero h1{
-    max-width:760px;
-    margin:0 0 20px;
-
-    font-size:clamp(46px,6vw,78px);
+    margin:0 auto 18px;
+    max-width:850px;
+    font-size:clamp(38px,6vw,78px);
     line-height:1.02;
-    letter-spacing:-3px;
-    font-weight:900;
+    letter-spacing:-2.8px;
+    font-weight:1000;
+    text-shadow:0 5px 35px rgba(0,0,0,.75);
 }
 
-.tm-hero-text{
-    max-width:650px;
-    margin:0 0 12px;
-
-    color:#ddd;
-    font-size:18px;
-    line-height:1.5;
-}
-
-.tm-price{
-    margin:0 0 22px;
-
-    font-size:18px;
+.tm-hero-sub{
+    margin:0 auto 9px;
+    max-width:720px;
+    font-size:clamp(17px,2vw,25px);
+    line-height:1.4;
     font-weight:700;
 }
 
-/* =========================================================
-   EMAIL CTA
-   ========================================================= */
-
-.tm-email-title{
-    margin:0 0 11px;
-
-    color:#fff;
-    font-size:16px;
-    line-height:1.45;
-    font-weight:600;
+.tm-hero-price{
+    margin:0 auto 25px;
+    font-size:clamp(14px,1.5vw,18px);
+    color:#eee;
 }
 
-.tm-email-row{
-    width:min(690px,100%);
-
+.tm-email-box{
+    width:min(700px,100%);
+    margin:0 auto;
     display:flex;
     gap:8px;
+    align-items:stretch;
 }
 
 .tm-email{
     flex:1;
     min-width:0;
     height:58px;
-
-    padding:0 17px;
-
-    color:#fff;
-    background:rgba(15,15,15,.78);
-
+    padding:0 18px;
     border:1px solid rgba(255,255,255,.55);
     border-radius:4px;
-
+    background:rgba(15,15,15,.82);
+    color:#fff;
     outline:none;
     font-size:16px;
 }
 
 .tm-email::placeholder{
-    color:#b8b8b8;
+    color:#c5c5c5;
 }
 
 .tm-email:focus{
     border-color:#fff;
+    box-shadow:0 0 0 1px rgba(255,255,255,.3);
 }
 
-.tm-start{
-    min-width:190px;
+.tm-get-started{
+    min-width:180px;
     height:58px;
-
+    padding:0 22px;
     border:0;
     border-radius:4px;
-
+    background:var(--tm-red);
     color:#fff;
-    background:#e50914;
-
     font-size:19px;
-    font-weight:800;
-
+    font-weight:900;
     cursor:pointer;
+    transition:.2s ease;
 }
 
-.tm-start:hover{
+.tm-get-started:hover{
     background:#f40612;
+    transform:translateY(-1px);
 }
 
 /* =========================================================
-   SECTIONS
+   SECTION
    ========================================================= */
 
 .tm-section{
     width:100%;
-    padding:60px 5vw;
-    background:#050505;
-}
-
-.tm-section-inner{
-    width:min(1250px,100%);
-    margin:0 auto;
+    padding:58px clamp(18px,5vw,70px);
+    background:#000;
 }
 
 .tm-section-title{
-    margin:0 0 26px;
-
-    font-size:28px;
-    font-weight:800;
+    margin:0 0 24px;
+    font-size:clamp(23px,3vw,34px);
+    font-weight:900;
+    letter-spacing:-.7px;
 }
 
 /* =========================================================
    TRENDING
    ========================================================= */
 
+.tm-trending-wrap{
+    position:relative;
+}
+
 .tm-trending{
-    display:grid;
-    grid-template-columns:repeat(6,1fr);
-    gap:20px;
+    display:flex;
+    gap:18px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:8px 5px 24px;
+    scrollbar-width:none;
 }
 
-.tm-trend{
+.tm-trending::-webkit-scrollbar{
+    display:none;
+}
+
+.tm-trend-card{
     position:relative;
-    display:block;
-
-    color:#fff;
-    text-decoration:none;
-
-    transition:
-        transform .25s ease,
-        z-index .25s ease;
-}
-
-.tm-trend:hover{
-    transform:translateY(-8px) scale(1.025);
-    z-index:4;
-}
-
-.tm-poster{
-    position:relative;
-
-    width:100%;
-    aspect-ratio:2/3;
-
+    flex:0 0 clamp(145px,16vw,220px);
+    height:310px;
+    border-radius:7px;
     overflow:hidden;
-    border-radius:6px;
-
-    background:#191919;
+    background:#111;
+    transform:translateZ(0);
+    transition:.25s ease;
 }
 
-.tm-poster img{
+.tm-trend-card:hover{
+    transform:scale(1.045);
+    z-index:3;
+}
+
+.tm-trend-card img{
     width:100%;
     height:100%;
     display:block;
-
     object-fit:cover;
 }
 
-.tm-no-poster{
-    width:100%;
-    height:100%;
-
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    color:#888;
-    background:#181818;
-    font-size:13px;
+.tm-trend-card::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+        linear-gradient(
+            180deg,
+            transparent 55%,
+            rgba(0,0,0,.75)
+        );
 }
 
 .tm-number{
     position:absolute;
-    left:-8px;
-    bottom:-12px;
-
-    color:#050505;
-    font-size:82px;
-    line-height:.8;
-    font-weight:900;
-
-    -webkit-text-stroke:2px #fff;
-
-    text-shadow:0 7px 18px rgba(0,0,0,.8);
+    left:-5px;
+    bottom:-18px;
+    z-index:5;
+    font-size:clamp(80px,9vw,125px);
+    line-height:1;
+    font-weight:1000;
+    color:#000;
+    -webkit-text-stroke:3px #fff;
+    text-shadow:4px 5px 0 rgba(0,0,0,.8);
 }
 
 .tm-trend-title{
-    margin-top:18px;
-
+    position:absolute;
+    left:13px;
+    right:10px;
+    bottom:14px;
+    z-index:6;
     font-size:14px;
-    line-height:1.35;
-    font-weight:700;
-
-    display:-webkit-box;
-    -webkit-box-orient:vertical;
-    -webkit-line-clamp:2;
+    font-weight:800;
+    white-space:nowrap;
     overflow:hidden;
+    text-overflow:ellipsis;
 }
 
 /* =========================================================
-   REASONS
+   MORE REASONS
    ========================================================= */
 
 .tm-reasons{
     display:grid;
     grid-template-columns:repeat(4,1fr);
-    gap:16px;
+    gap:14px;
 }
 
 .tm-reason{
     min-height:260px;
-    padding:25px;
-
-    border-radius:12px;
-    border:1px solid rgba(255,255,255,.08);
+    padding:24px;
+    border-radius:10px;
+    position:relative;
+    overflow:hidden;
 
     background:
-        radial-gradient(
-            circle at 100% 100%,
-            rgba(229,9,20,.17),
-            transparent 42%
-        ),
-        linear-gradient(145deg,#1b1b1b,#111);
+        linear-gradient(
+            145deg,
+            #171717,
+            #101010
+        );
+
+    border:1px solid rgba(255,255,255,.07);
+}
+
+.tm-reason::before{
+    content:"";
+    position:absolute;
+    width:150px;
+    height:150px;
+    right:-45px;
+    bottom:-50px;
+    border-radius:50%;
+    background:rgba(156,39,255,.12);
+    filter:blur(4px);
 }
 
 .tm-reason-icon{
-    width:48px;
-    height:48px;
-
+    width:58px;
+    height:58px;
     display:flex;
     align-items:center;
     justify-content:center;
+    margin-bottom:22px;
+    border-radius:14px;
+    font-size:28px;
 
-    margin-bottom:28px;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(229,9,20,.22),
+            rgba(156,39,255,.22)
+        );
 
-    border-radius:10px;
-    background:#282828;
+    border:1px solid rgba(255,255,255,.08);
+}
 
-    font-size:24px;
+.tm-reason:nth-child(1) .tm-reason-icon{
+    color:#ff1744;
+}
+
+.tm-reason:nth-child(2) .tm-reason-icon{
+    color:#00e5ff;
+}
+
+.tm-reason:nth-child(3) .tm-reason-icon{
+    color:#ffc107;
+}
+
+.tm-reason:nth-child(4) .tm-reason-icon{
+    color:#9c27ff;
 }
 
 .tm-reason h3{
     margin:0 0 12px;
-
     font-size:20px;
-    line-height:1.25;
+    font-weight:900;
 }
 
 .tm-reason p{
     margin:0;
-
-    color:#bbb;
-    font-size:14px;
+    color:#bcbcbc;
     line-height:1.55;
+    font-size:14px;
 }
 
 /* =========================================================
@@ -441,87 +486,63 @@
    ========================================================= */
 
 .tm-faq{
-    width:min(900px,100%);
-    margin:0 auto;
+    width:min(1000px,100%);
+    margin:auto;
 }
 
-.tm-faq-item{
+.tm-faq details{
     margin-bottom:8px;
-}
-
-.tm-faq-question{
-    width:100%;
-    min-height:70px;
-
-    padding:18px 22px;
-
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-
-    border:0;
-    border-radius:0;
-
-    color:#fff;
     background:#2d2d2d;
+}
 
-    text-align:left;
-    font-size:18px;
-
+.tm-faq summary{
+    list-style:none;
     cursor:pointer;
+    padding:23px 25px;
+    font-size:18px;
+    font-weight:700;
+    position:relative;
 }
 
-.tm-faq-question:hover{
-    background:#3a3a3a;
+.tm-faq summary::-webkit-details-marker{
+    display:none;
 }
 
-.tm-plus{
+.tm-faq summary::after{
+    content:"+";
+    position:absolute;
+    right:24px;
+    top:50%;
+    transform:translateY(-50%);
     font-size:32px;
     font-weight:300;
-
-    transition:transform .2s ease;
 }
 
-.tm-answer{
-    display:none;
-
-    padding:20px 22px;
-
-    color:#ddd;
-    background:#2d2d2d;
-
-    font-size:16px;
-    line-height:1.55;
+.tm-faq details[open] summary::after{
+    content:"×";
 }
 
-.tm-faq-item.open .tm-answer{
-    display:block;
-}
-
-.tm-faq-item.open .tm-plus{
-    transform:rotate(45deg);
+.tm-faq-answer{
+    padding:0 25px 23px;
+    color:#d1d1d1;
+    line-height:1.6;
+    font-size:15px;
 }
 
 /* =========================================================
-   READY CTA
+   READY
    ========================================================= */
 
 .tm-ready{
     text-align:center;
-    padding-top:45px;
-    padding-bottom:70px;
+    padding-top:35px;
+    padding-bottom:75px;
 }
 
-.tm-ready-text{
-    margin:0 auto 18px;
-
-    font-size:18px;
-    line-height:1.5;
-}
-
-.tm-ready-form{
-    width:min(700px,100%);
-    margin:auto;
+.tm-ready p{
+    margin:0 0 20px;
+    color:#ddd;
+    font-size:16px;
 }
 
 /* =========================================================
@@ -530,374 +551,266 @@
 
 .tm-footer{
     width:100%;
-    margin:0;
-    padding:45px 5vw 28px;
-
-    background:#050505;
-    border-top:1px solid rgba(255,255,255,.12);
+    padding:55px clamp(20px,5vw,70px) 30px;
+    background:#000;
+    border-top:1px solid rgba(255,255,255,.08);
 }
 
-.tm-footer-inner{
-    width:min(1250px,100%);
-    margin:0 auto;
-}
-
-.tm-footer-links{
+.tm-footer-grid{
     display:grid;
     grid-template-columns:repeat(4,1fr);
-    gap:20px;
+    gap:30px;
+    max-width:1200px;
+    margin:auto;
 }
 
-.tm-footer-column{
+.tm-footer-col{
     display:flex;
     flex-direction:column;
-    gap:14px;
+    gap:12px;
 }
 
-.tm-footer a{
-    color:#999;
-    font-size:13px;
+.tm-footer-col a{
+    color:#aaa;
     text-decoration:underline;
+    font-size:14px;
 }
 
-.tm-footer a:hover{
+.tm-footer-col a:hover{
     color:#fff;
 }
 
-.tm-footer-bottom{
-    margin-top:35px;
-    padding-top:20px;
-
-    border-top:1px solid rgba(255,255,255,.08);
-
+.tm-footer-brand{
+    max-width:1200px;
+    margin:35px auto 0;
     color:#777;
-    font-size:12px;
+    font-size:13px;
 }
 
 /* =========================================================
-   RESPONSIVE
+   MOBILE
    ========================================================= */
 
-@media(max-width:1050px){
-
-    .tm-trending{
-        grid-template-columns:repeat(4,1fr);
-    }
-
-    .tm-reasons{
-        grid-template-columns:repeat(2,1fr);
-    }
-
-}
-
-@media(max-width:700px){
+@media(max-width:850px){
 
     .tm-header{
-        min-height:70px;
-        padding:16px 18px;
+        height:72px;
+        padding:0 18px;
     }
 
-    .tm-brand{
+    .tm-logo{
         font-size:21px;
-        letter-spacing:-1px;
-    }
-
-    .tm-header-actions{
-        gap:6px;
     }
 
     .tm-language{
-        height:33px;
-        min-width:76px;
-        padding:0 7px;
-        font-size:11px;
-    }
-
-    .tm-signin{
-        height:33px;
-        padding:0 12px;
+        min-width:94px;
+        height:36px;
         font-size:12px;
     }
 
+    .tm-signin{
+        height:36px;
+        padding:0 13px;
+        font-size:12px;
+    }
+
+    .tm-header-right{
+        gap:7px;
+    }
+
     .tm-hero{
-        min-height:690px;
-        align-items:flex-end;
-
-        background:
-            linear-gradient(
-                180deg,
-                rgba(0,0,0,.35),
-                rgba(0,0,0,.48) 42%,
-                #050505 94%
-            )
-            {% if latest and latest.poster_url %}
-            ,url("{{ latest.poster_url }}")
-            {% endif %};
-
-        background-size:cover;
+        min-height:92vh;
+        height:auto;
+        padding:130px 18px 90px;
         background-position:center;
     }
 
     .tm-hero-content{
-        width:calc(100% - 36px);
-        margin:0 auto;
-        padding:0 0 38px;
-    }
-
-    .tm-kicker{
-        font-size:11px;
-        margin-bottom:12px;
+        margin-top:20px;
     }
 
     .tm-hero h1{
-        margin-bottom:15px;
-
-        font-size:40px;
-        letter-spacing:-1.5px;
+        font-size:clamp(35px,10vw,55px);
+        letter-spacing:-1.8px;
     }
 
-    .tm-hero-text{
-        font-size:14px;
-        line-height:1.45;
+    .tm-hero-sub{
+        font-size:17px;
     }
 
-    .tm-price{
-        margin-bottom:17px;
-        font-size:15px;
-    }
-
-    .tm-email-title{
-        font-size:14px;
-    }
-
-    .tm-email-row{
+    .tm-email-box{
         flex-direction:column;
-        gap:9px;
+        gap:10px;
     }
 
-    .tm-email{
-        height:52px;
-        font-size:15px;
-    }
-
-    .tm-start{
+    .tm-email,
+    .tm-get-started{
         width:100%;
-        height:52px;
-        font-size:18px;
+        height:54px;
+    }
+
+    .tm-get-started{
+        font-size:17px;
     }
 
     .tm-section{
-        padding:40px 18px;
+        padding:42px 18px;
     }
 
-    .tm-section-title{
-        font-size:24px;
-        margin-bottom:19px;
-    }
-
-    .tm-trending{
-        grid-template-columns:repeat(2,1fr);
-        gap:16px 13px;
+    .tm-trend-card{
+        flex-basis:145px;
+        height:215px;
     }
 
     .tm-number{
-        left:-5px;
-        bottom:-8px;
-        font-size:62px;
-        -webkit-text-stroke:1.5px #fff;
-    }
-
-    .tm-trend-title{
-        margin-top:13px;
-        font-size:13px;
+        font-size:76px;
+        bottom:-12px;
+        -webkit-text-stroke:2px #fff;
     }
 
     .tm-reasons{
         grid-template-columns:1fr;
-        gap:12px;
     }
 
     .tm-reason{
-        min-height:0;
-        padding:22px;
+        min-height:190px;
     }
 
-    .tm-reason-icon{
-        margin-bottom:21px;
-    }
-
-    .tm-faq-question{
-        min-height:63px;
-        padding:17px;
-        font-size:15px;
-    }
-
-    .tm-answer{
-        padding:17px;
-        font-size:14px;
-    }
-
-    .tm-ready{
-        padding-top:38px;
-        padding-bottom:55px;
-    }
-
-    .tm-ready-text{
+    .tm-faq summary{
+        padding:20px 45px 20px 18px;
         font-size:16px;
     }
 
+    .tm-faq-answer{
+        padding:0 18px 20px;
+        font-size:14px;
+    }
+
     .tm-footer{
-        padding:38px 18px 25px;
+        padding:42px 18px 25px;
     }
 
-    .tm-footer-links{
+    .tm-footer-grid{
         grid-template-columns:repeat(2,1fr);
-        gap:24px 16px;
+        gap:30px 20px;
     }
-
 }
 
-@media(max-width:390px){
+@media(max-width:480px){
 
-    .tm-brand{
+    .tm-logo{
         font-size:18px;
     }
 
     .tm-language{
-        min-width:70px;
+        min-width:82px;
+        padding:0 7px;
     }
 
     .tm-signin{
-        padding:0 9px;
+        padding:0 10px;
     }
 
-    .tm-hero h1{
-        font-size:36px;
+    .tm-hero{
+        padding-top:120px;
     }
 
-}
-
-/* =========================================================
-   REDUCE MOTION
-   ========================================================= */
-
-@media(prefers-reduced-motion:reduce){
-
-    .tm-trend,
-    .tm-plus{
-        transition:none;
+    .tm-hero-badge{
+        font-size:10px;
     }
 
+    .tm-footer-grid{
+        grid-template-columns:1fr 1fr;
+    }
 }
 </style>
 
-<div class="tm-page">
 
-```
-<!-- =====================================================
-     HEADER
-     ===================================================== -->
+<div class="tm-home">
 
-<header class="tm-header">
+    <!-- =====================================================
+         HEADER
+         ===================================================== -->
 
-    <a
-        href="{{ url_for('index') }}"
-        class="tm-brand"
-    >
-        TOMESH <span>MOVIES</span>
-    </a>
+    <header class="tm-header">
 
-    <div class="tm-header-actions">
-
-        <select
-            id="tmLanguage"
-            class="tm-language"
-            aria-label="Select Language"
-        >
-            <option value="en">English</option>
-            <option value="hi">हिन्दी</option>
-        </select>
-
-        <a
-            href="{{ url_for('login') }}"
-            class="tm-signin"
-        >
-            Sign In
+        <a href="{{ url_for('index') }}" class="tm-logo">
+            🎬 <span>TOMESH</span> MOVIES
         </a>
 
-    </div>
+        <div class="tm-header-right">
 
-</header>
+            <select class="tm-language" aria-label="Select language">
+                <option value="en">🌐 English</option>
+                <option value="hi">🌐 हिन्दी</option>
+            </select>
 
+            <a href="{{ url_for('login') }}" class="tm-signin">
+                Sign In
+            </a>
 
-<!-- =====================================================
-     HERO
-     ===================================================== -->
-
-<section class="tm-hero">
-
-    <div class="tm-hero-content">
-
-        <div class="tm-kicker">
-            <span class="tm-kicker-dot"></span>
-            TOMESH MOVIES
         </div>
 
-        <h1>
-            Unlimited movies, shows, and more
-        </h1>
+    </header>
 
-        <p class="tm-hero-text">
-            Watch movies and entertainment in one cinematic place.
-            Discover stories you'll want to watch again and again.
-        </p>
 
-        <p class="tm-price">
-            Starts at ₹9. Cancel at any time.
-        </p>
+    <!-- =====================================================
+         HERO
+         ===================================================== -->
 
-        <div class="tm-email-title">
-            Ready to watch? Enter your email to create or restart your membership.
+    <section class="tm-hero">
+
+        <div class="tm-hero-content">
+
+            <div class="tm-hero-badge">
+                <span class="dot"></span>
+                TOMESH MOVIES
+            </div>
+
+            <h1>
+                Unlimited movies, shows, and more
+            </h1>
+
+            <p class="tm-hero-sub">
+                Watch your favourite movies and entertainment
+                anytime, anywhere.
+            </p>
+
+            <p class="tm-hero-price">
+                Starts at ₹9. Cancel at any time.
+            </p>
+
+            <form class="tm-email-box"
+                  action="{{ url_for('login') }}"
+                  method="get">
+
+                <input
+                    class="tm-email"
+                    type="email"
+                    name="email"
+                    placeholder="Email address"
+                    autocomplete="email"
+                    required
+                >
+
+                <button
+                    class="tm-get-started"
+                    type="submit">
+                    Get Started →
+                </button>
+
+            </form>
+
         </div>
 
-        <form
-            class="tm-email-row"
-            action="{{ url_for('login') }}"
-            method="get"
-        >
-
-            <input
-                class="tm-email"
-                type="email"
-                name="email"
-                placeholder="Email address"
-                autocomplete="email"
-                required
-            >
-
-            <button
-                class="tm-start"
-                type="submit"
-            >
-                Get Started&nbsp; →
-            </button>
-
-        </form>
-
-    </div>
-
-</section>
+    </section>
 
 
-<!-- =====================================================
-     TRENDING
-     ===================================================== -->
+    <!-- =====================================================
+         TRENDING NOW
+         ===================================================== -->
 
-{% if movies %}
-
-<section class="tm-section">
-
-    <div class="tm-section-inner">
+    <section class="tm-section">
 
         <h2 class="tm-section-title">
             Trending Now
@@ -905,14 +818,15 @@
 
         <div class="tm-trending">
 
-            {% for movie in movies[:12] %}
+            {% if movies %}
 
-            <a
-                class="tm-trend"
-                href="{{ url_for('movie_page', movie_id=movie.id) }}"
-            >
+                {% for movie in movies[:12] %}
 
-                <div class="tm-poster">
+                <a
+                    href="{{ url_for('movie_page', movie_id=movie.id) }}"
+                    class="tm-trend-card"
+                    style="text-decoration:none;color:#fff;"
+                >
 
                     {% if movie.poster_url %}
 
@@ -924,45 +838,63 @@
 
                     {% else %}
 
-                    <div class="tm-no-poster">
-                        No Poster
+                    <div
+                        style="
+                        width:100%;
+                        height:100%;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        padding:20px;
+                        text-align:center;
+                        background:
+                        linear-gradient(
+                            135deg,
+                            #1a1a1a,
+                            #35103f
+                        );
+                        "
+                    >
+                        <strong>
+                            {{ movie.title }}
+                        </strong>
                     </div>
 
                     {% endif %}
 
-                    <div class="tm-number">
+                    <span class="tm-number">
                         {{ loop.index }}
-                    </div>
+                    </span>
 
+                    <span class="tm-trend-title">
+                        {{ movie.title }}
+                    </span>
+
+                </a>
+
+                {% endfor %}
+
+            {% else %}
+
+                <div style="color:#aaa;padding:30px 0;">
+                    Movies coming soon...
                 </div>
 
-                <div class="tm-trend-title">
-                    {{ movie.title }}
-                </div>
-
-            </a>
-
-            {% endfor %}
+            {% endif %}
 
         </div>
 
-    </div>
-
-</section>
-
-{% endif %}
+    </section>
 
 
-<!-- =====================================================
-     MORE REASONS
-     ===================================================== -->
+    <!-- =====================================================
+         MORE REASONS TO JOIN
+         ===================================================== -->
 
-<section class="tm-section">
-
-    <div class="tm-section-inner">
+    <section class="tm-section">
 
         <h2 class="tm-section-title">
-            More reasons to join
+            More Reasons to Join
         </h2>
 
         <div class="tm-reasons">
@@ -978,8 +910,8 @@
                 </h3>
 
                 <p>
-                    Watch your favourite movies and shows on your
-                    TV, laptop, tablet and other supported devices.
+                    Watch your favourite movies and shows
+                    on your TV, smart devices and big screens.
                 </p>
 
             </article>
@@ -992,12 +924,12 @@
                 </div>
 
                 <h3>
-                    Download your movies
+                    Download and watch offline
                 </h3>
 
                 <p>
-                    Save supported content and enjoy your entertainment
-                    when you are offline.
+                    Save supported content and enjoy it
+                    later without needing a constant connection.
                 </p>
 
             </article>
@@ -1014,8 +946,8 @@
                 </h3>
 
                 <p>
-                    Your cinematic world is available across devices
-                    wherever supported access is available.
+                    Enjoy entertainment on your phone,
+                    tablet, laptop and other supported devices.
                 </p>
 
             </article>
@@ -1024,7 +956,7 @@
             <article class="tm-reason">
 
                 <div class="tm-reason-icon">
-                    👨‍👩‍👧‍👦
+                    👨‍👩‍👧
                 </div>
 
                 <h3>
@@ -1032,218 +964,190 @@
                 </h3>
 
                 <p>
-                    Keep your viewing experience organised with
-                    profiles for different members of your family.
+                    Keep your viewing experience personal
+                    with profiles for different family members.
                 </p>
 
             </article>
 
         </div>
 
-    </div>
-
-</section>
+    </section>
 
 
-<!-- =====================================================
-     FAQ
-     ===================================================== -->
+    <!-- =====================================================
+         FAQ
+         ===================================================== -->
 
-<section class="tm-section" id="tmFaq">
-
-    <div class="tm-section-inner">
-
-        <h2 class="tm-section-title">
-            Frequently Asked Questions
-        </h2>
+    <section class="tm-section">
 
         <div class="tm-faq">
 
+            <h2 class="tm-section-title">
+                Frequently Asked Questions
+            </h2>
 
-            <div class="tm-faq-item">
 
-                <button
-                    type="button"
-                    class="tm-faq-question"
-                    onclick="tmFaq(this)"
-                >
-                    <span>What is Tomesh Movies?</span>
-                    <span class="tm-plus">+</span>
-                </button>
+            <details>
 
-                <div class="tm-answer">
-                    Tomesh Movies is a movie and entertainment portal
-                    where you can discover available movies, view
-                    movie details and access supported content.
+                <summary>
+                    What is Tomesh Movies?
+                </summary>
+
+                <div class="tm-faq-answer">
+                    Tomesh Movies is an entertainment portal where
+                    you can discover and watch movies and other
+                    licensed content available on the platform.
                 </div>
 
-            </div>
+            </details>
 
 
-            <div class="tm-faq-item">
+            <details>
 
-                <button
-                    type="button"
-                    class="tm-faq-question"
-                    onclick="tmFaq(this)"
-                >
-                    <span>How much does Tomesh Movies cost?</span>
-                    <span class="tm-plus">+</span>
-                </button>
+                <summary>
+                    How much does Tomesh Movies cost?
+                </summary>
 
-                <div class="tm-answer">
-                    Access and pricing can vary depending on the movie
-                    and available access option. Movie-specific pricing
-                    is shown on the movie page.
+                <div class="tm-faq-answer">
+                    Available content and access options may have
+                    different prices. Movie-specific access details
+                    are shown on the movie page.
                 </div>
 
-            </div>
+            </details>
 
 
-            <div class="tm-faq-item">
+            <details>
 
-                <button
-                    type="button"
-                    class="tm-faq-question"
-                    onclick="tmFaq(this)"
-                >
-                    <span>Where can I watch?</span>
-                    <span class="tm-plus">+</span>
-                </button>
+                <summary>
+                    Where can I watch?
+                </summary>
 
-                <div class="tm-answer">
-                    Tomesh Movies is designed for supported desktop
-                    and mobile browsers.
+                <div class="tm-faq-answer">
+                    You can use Tomesh Movies on supported phones,
+                    tablets, laptops and desktop browsers.
                 </div>
 
-            </div>
+            </details>
 
 
-            <div class="tm-faq-item">
+            <details>
 
-                <button
-                    type="button"
-                    class="tm-faq-question"
-                    onclick="tmFaq(this)"
-                >
-                    <span>How do I cancel?</span>
-                    <span class="tm-plus">+</span>
-                </button>
+                <summary>
+                    Can I cancel anytime?
+                </summary>
 
-                <div class="tm-answer">
-                    If your access includes a recurring service,
-                    cancellation options will be provided through
-                    the applicable account or payment flow.
+                <div class="tm-faq-answer">
+                    Access and payment terms are shown before
+                    completing a purchase. Check the relevant
+                    movie or account page for the applicable terms.
                 </div>
 
-            </div>
+            </details>
 
 
-            <div class="tm-faq-item">
+            <details>
 
-                <button
-                    type="button"
-                    class="tm-faq-question"
-                    onclick="tmFaq(this)"
-                >
-                    <span>What can I watch?</span>
-                    <span class="tm-plus">+</span>
-                </button>
+                <summary>
+                    What can I watch on Tomesh Movies?
+                </summary>
 
-                <div class="tm-answer">
-                    The available catalogue depends on the movies
-                    currently published on Tomesh Movies.
+                <div class="tm-faq-answer">
+                    The catalogue contains movies and entertainment
+                    content that is available and appropriately
+                    licensed for the platform.
                 </div>
 
-            </div>
+            </details>
 
 
-            <div class="tm-faq-item">
+            <details>
 
-                <button
-                    type="button"
-                    class="tm-faq-question"
-                    onclick="tmFaq(this)"
-                >
-                    <span>Is Tomesh Movies good for kids?</span>
-                    <span class="tm-plus">+</span>
-                </button>
+                <summary>
+                    Is Tomesh Movies good for families?
+                </summary>
 
-                <div class="tm-answer">
-                    Content suitability depends on the individual movie.
-                    Please check the movie details before allowing
-                    children to watch.
+                <div class="tm-faq-answer">
+                    Content suitability depends on the individual
+                    movie. Check each movie's category and description
+                    before watching.
                 </div>
 
-            </div>
+            </details>
 
         </div>
 
-    </div>
-
-</section>
+    </section>
 
 
-<!-- =====================================================
-     READY TO WATCH
-     ===================================================== -->
+    <!-- =====================================================
+         READY TO WATCH
+         ===================================================== -->
 
-<section class="tm-section tm-ready">
+    <section class="tm-section tm-ready">
 
-    <div class="tm-section-inner">
+        <h2 class="tm-section-title">
+            Ready to watch?
+        </h2>
 
-        <p class="tm-ready-text">
-            Ready to watch? Enter your email to create or restart your membership.
+        <p>
+            Enter your email to get started with Tomesh Movies.
         </p>
 
-        <form
-            class="tm-ready-form"
-            action="{{ url_for('login') }}"
-            method="get"
-        >
+        <form class="tm-email-box"
+              action="{{ url_for('login') }}"
+              method="get">
 
-            <div class="tm-email-row">
+            <input
+                class="tm-email"
+                type="email"
+                name="email"
+                placeholder="Email address"
+                autocomplete="email"
+                required
+            >
 
-                <input
-                    class="tm-email"
-                    type="email"
-                    name="email"
-                    placeholder="Email address"
-                    autocomplete="email"
-                    required
-                >
-
-                <button
-                    class="tm-start"
-                    type="submit"
-                >
-                    Get Started&nbsp; →
-                </button>
-
-            </div>
+            <button
+                class="tm-get-started"
+                type="submit">
+                Get Started →
+            </button>
 
         </form>
 
-    </div>
-
-</section>
+    </section>
 
 
-<!-- =====================================================
-     SIMPLE FULL-WIDTH FOOTER
-     NO EXTRA TOMESH MOVIES CARD
-     ===================================================== -->
+    <!-- =====================================================
+         FOOTER
+         ===================================================== -->
 
-<footer class="tm-footer">
+    <footer class="tm-footer">
 
-    <div class="tm-footer-inner">
+        <div class="tm-footer-grid">
 
-        <div class="tm-footer-links">
-
-            <div class="tm-footer-column">
+            <div class="tm-footer-col">
 
                 <a href="{{ url_for('index') }}">
                     Home
+                </a>
+
+                <a href="{{ url_for('index') }}#trending">
+                    Trending
+                </a>
+
+                <a href="{{ url_for('index') }}#faq">
+                    FAQ
+                </a>
+
+            </div>
+
+
+            <div class="tm-footer-col">
+
+                <a href="{{ url_for('login') }}">
+                    Sign In
                 </a>
 
                 <a href="{{ url_for('index') }}">
@@ -1257,31 +1161,14 @@
             </div>
 
 
-            <div class="tm-footer-column">
-
-                <a href="{{ url_for('login') }}">
-                    Sign In
-                </a>
-
-                <a href="{{ url_for('index') }}">
-                    Premium
-                </a>
+            <div class="tm-footer-col">
 
                 <a href="{{ url_for('ads_txt') }}">
                     Ads
                 </a>
 
-            </div>
-
-
-            <div class="tm-footer-column">
-
-                <a href="#tmFaq">
-                    FAQ
-                </a>
-
                 <a href="{{ url_for('index') }}">
-                    Help Centre
+                    Privacy
                 </a>
 
                 <a href="{{ url_for('index') }}">
@@ -1291,18 +1178,18 @@
             </div>
 
 
-            <div class="tm-footer-column">
+            <div class="tm-footer-col">
 
                 <a href="{{ url_for('index') }}">
-                    Privacy
-                </a>
-
-                <a href="{{ url_for('index') }}">
-                    Cookie Preferences
+                    Help
                 </a>
 
                 <a href="{{ url_for('index') }}">
                     Contact
+                </a>
+
+                <a href="{{ url_for('index') }}">
+                    About
                 </a>
 
             </div>
@@ -1310,82 +1197,12 @@
         </div>
 
 
-        <div class="tm-footer-bottom">
-            © 2026 Tomesh Movies. All rights reserved.
+        <div class="tm-footer-brand">
+            © 2026 TOMESH MOVIES. All rights reserved.
         </div>
 
-    </div>
-
-</footer>
-```
+    </footer>
 
 </div>
-
-<script>
-
-/* =========================================================
-   FAQ
-   ========================================================= */
-
-function tmFaq(button){
-
-    const item = button.closest(".tm-faq-item");
-
-    if(!item){
-        return;
-    }
-
-    const alreadyOpen =
-        item.classList.contains("open");
-
-    document
-        .querySelectorAll(".tm-faq-item.open")
-        .forEach(function(openItem){
-
-            openItem.classList.remove("open");
-
-        });
-
-    if(!alreadyOpen){
-        item.classList.add("open");
-    }
-}
-
-
-/* =========================================================
-   LANGUAGE
-   ========================================================= */
-
-(function(){
-
-    const selector =
-        document.getElementById("tmLanguage");
-
-    if(!selector){
-        return;
-    }
-
-    const saved =
-        localStorage.getItem("tm_language");
-
-    if(saved){
-        selector.value = saved;
-    }
-
-    selector.addEventListener(
-        "change",
-        function(){
-
-            localStorage.setItem(
-                "tm_language",
-                selector.value
-            );
-
-        }
-    );
-
-})();
-
-</script>
 
 {% endblock %}
