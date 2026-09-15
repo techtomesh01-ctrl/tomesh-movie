@@ -1580,7 +1580,7 @@ def movie_page(movie_id):
     methods=["GET", "HEAD", "OPTIONS"],
 )
 def stream_movie(movie_id):
-    """Same-origin R2 media endpoint with browser-compatible byte ranges."""
+    """Browser-safe same-origin MP4/WebM/MOV stream from Cloudflare R2."""
 
     if request.method == "OPTIONS":
         return Response(
@@ -1590,7 +1590,7 @@ def stream_movie(movie_id):
                 "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
                 "Access-Control-Allow-Headers": "Range, Content-Type",
                 "Access-Control-Expose-Headers": (
-                    "Accept-Ranges, Content-Length, Content-Range, ETag, Last-Modified"
+                    "Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag, Last-Modified"
                 ),
             },
         )
@@ -1626,10 +1626,7 @@ def stream_movie(movie_id):
     client = get_r2_client()
 
     try:
-        head = client.head_object(
-            Bucket=R2_BUCKET,
-            Key=video_key,
-        )
+        head = client.head_object(Bucket=R2_BUCKET, Key=video_key)
     except Exception as exc:
         print("R2 HEAD ERROR:", repr(exc))
         return Response("Video object not found in R2.", status=404)
@@ -1638,38 +1635,42 @@ def stream_movie(movie_id):
     if total_size <= 0:
         return Response("Video file is empty.", status=404)
 
-    # Always choose a browser-safe MIME type from the extension.
-    # For .mp4 this is always video/mp4, even if old R2 metadata is wrong.
     content_type = content_type_for_key(video_key)
     if content_type == "application/octet-stream":
-        content_type = head.get("ContentType") or "video/mp4"
+        content_type = head.get("ContentType") or "application/octet-stream"
 
     common_headers = {
         "Content-Type": content_type,
         "Accept-Ranges": "bytes",
-        "Cache-Control": "private, no-cache, no-transform",
-        "Content-Disposition": "inline",
-        "X-Content-Type-Options": "nosniff",
-        "Cross-Origin-Resource-Policy": "cross-origin",
+        "Cache-Control": "private, max-age=0, must-revalidate",
+        "Content-Disposition": "inline; filename=video",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Expose-Headers": (
-            "Accept-Ranges, Content-Length, Content-Range, ETag, Last-Modified"
+            "Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag, Last-Modified"
         ),
+        "X-Accel-Buffering": "no",
     }
+
+    # Do NOT add nosniff here. If an old R2 multipart object has imperfect
+    # metadata, Chromium can otherwise refuse to treat the response as media.
 
     if head.get("ETag"):
         common_headers["ETag"] = str(head["ETag"])
 
     if head.get("LastModified"):
-        common_headers["Last-Modified"] = head["LastModified"].strftime(
-            "%a, %d %b %Y %H:%M:%S GMT"
-        )
+        try:
+            common_headers["Last-Modified"] = head["LastModified"].strftime(
+                "%a, %d %b %Y %H:%M:%S GMT"
+            )
+        except Exception:
+            pass
 
     if request.method == "HEAD":
         common_headers["Content-Length"] = str(total_size)
         return Response(status=200, headers=common_headers)
 
     range_header = request.headers.get("Range", "").strip()
+
     start = 0
     end = total_size - 1
     partial = False
@@ -1679,10 +1680,9 @@ def stream_movie(movie_id):
             if not range_header.lower().startswith("bytes="):
                 raise ValueError("Unsupported range unit")
 
+            # Browsers normally send one range for media. Ignore extra ranges
+            # rather than attempting multipart/byteranges responses.
             value = range_header[6:].split(",", 1)[0].strip()
-            if "-" not in value:
-                raise ValueError("Invalid range")
-
             start_text, end_text = value.split("-", 1)
 
             if start_text == "":
@@ -1694,17 +1694,17 @@ def stream_movie(movie_id):
                 end = total_size - 1
             else:
                 start = int(start_text)
-                end = int(end_text) if end_text else total_size - 1
                 if start < 0 or start >= total_size:
-                    raise ValueError("Range outside object")
+                    raise ValueError("Range start outside object")
+                end = int(end_text) if end_text else total_size - 1
                 end = min(end, total_size - 1)
                 if end < start:
                     raise ValueError("Invalid range")
 
             partial = True
+
         except Exception:
             return Response(
-                "Range Not Satisfiable",
                 status=416,
                 headers={
                     **common_headers,
@@ -1735,7 +1735,7 @@ def stream_movie(movie_id):
     def generate():
         try:
             while True:
-                chunk = body.read(1024 * 1024)
+                chunk = body.read(256 * 1024)
                 if not chunk:
                     break
                 yield chunk
@@ -1763,6 +1763,42 @@ def stream_movie(movie_id):
         headers=headers,
         direct_passthrough=True,
     )
+
+
+@app.route("/video-debug/<int:movie_id>")
+def video_debug(movie_id):
+    """Free-plan browser diagnostic; no Render Shell required."""
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, title, video FROM movies WHERE id = %s", (movie_id,))
+        movie = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not movie or not movie.get("video"):
+        return json_error("Video not found.", 404)
+
+    key = movie["video"]
+    try:
+        head = r2_head(key)
+        return json_ok(
+            movie_id=movie_id,
+            title=movie["title"],
+            key=key,
+            content_length=int(head.get("ContentLength") or 0),
+            content_type=head.get("ContentType"),
+            etag=head.get("ETag"),
+            accept_ranges=head.get("AcceptRanges"),
+            last_modified=(
+                head.get("LastModified").isoformat()
+                if head.get("LastModified") else None
+            ),
+            app_content_type=content_type_for_key(key),
+        )
+    except Exception as exc:
+        return json_error("R2 metadata check failed: " + str(exc), 500)
 
 
 # ============================================================
