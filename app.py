@@ -947,10 +947,6 @@ def cashfree_request(
     "/api/payment/create",
     methods=["POST"],
 )
-@app.route(
-    "/api/payment/create",
-    methods=["POST"],
-)
 def create_payment():
 
     data = (
@@ -1283,6 +1279,15 @@ def cashfree_return():
             )
 
         if order_status == "PAID":
+
+            # ------------------------------------------------
+            # Restore the customer identity from the order.
+            #
+            # This is important on Render because a restart/
+            # wake-up can invalidate an old Flask session.
+            # The paid order remains the source of truth.
+            # ------------------------------------------------
+            session["customer_id"] = local_order["customer_id"]
 
             # ----------------------------------------------
             # Prevent duplicate granting
