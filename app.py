@@ -1333,7 +1333,9 @@ def cashfree_return():
             return redirect(
                 url_for(
                     "movie_page",
-                    movie_id=local_order["movie_id"],
+                    movie_id=local_order[
+                        "movie_id"
+                    ],
                 )
             )
 
@@ -1533,10 +1535,14 @@ def movie_page(movie_id):
 
     if video_key and access["watch"]:
 
-        movie["video_url"] = url_for(
-            "stream_movie",
-            movie_id=movie_id,
-        )
+        try:
+            movie["video_url"] = r2_presigned_url(
+                video_key,
+                expires=PRESIGNED_EXPIRES,
+            )
+        except Exception as exc:
+            print("VIDEO URL ERROR:", repr(exc))
+            movie["video_url"] = None
 
     else:
 
@@ -1576,13 +1582,6 @@ def movie_page(movie_id):
     methods=["GET"],
 )
 def stream_movie(movie_id):
-    """
-    Backward-compatible streaming endpoint.
-
-    Redirects the browser to a short-lived Cloudflare R2 presigned URL.
-    A 307 redirect preserves the GET request and Range header so the
-    browser performs native media range requests directly against R2.
-    """
     access = access_for_movie(movie_id)
 
     if not access["watch"]:
@@ -1592,11 +1591,7 @@ def stream_movie(movie_id):
     try:
         cur = conn.cursor()
         cur.execute(
-            """
-            SELECT id, title, video
-            FROM movies
-            WHERE id = %s
-            """,
+            "SELECT video FROM movies WHERE id = %s",
             (movie_id,),
         )
         movie = cur.fetchone()
@@ -1604,19 +1599,17 @@ def stream_movie(movie_id):
     finally:
         conn.close()
 
-    if not movie:
-        return Response("Movie not found.", status=404)
-
-    video_key = movie.get("video")
-    if not video_key:
+    if not movie or not movie.get("video"):
         return Response("Video not found.", status=404)
 
     try:
-        location = r2_presigned_url(
-            video_key,
-            expires=PRESIGNED_EXPIRES,
+        return redirect(
+            r2_presigned_url(
+                movie["video"],
+                expires=PRESIGNED_EXPIRES,
+            ),
+            code=307,
         )
-        return redirect(location, code=307)
     except Exception as exc:
         print("STREAM REDIRECT ERROR:", repr(exc))
         return Response("Unable to load video.", status=502)
@@ -2607,9 +2600,9 @@ def api_movie_save():
             movie_id=movie_id,
             video_key=video_key,
             poster_key=poster_key,
-            video_url=r2_presigned_url(
-                video_key,
-                expires=PRESIGNED_EXPIRES,
+            video_url=url_for(
+                "stream_movie",
+                movie_id=movie_id,
             ),
         )
 
