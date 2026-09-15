@@ -41,7 +41,7 @@
     padding:0 5%;
     background:linear-gradient(
         180deg,
-        rgba(0,0,0,.92),
+        rgba(0,0,0,.95),
         rgba(0,0,0,0)
     );
 }
@@ -107,20 +107,22 @@
     display:flex;
     align-items:center;
     overflow:hidden;
+
+    /* NEW CINEMATIC HERO PHOTO */
     background:
         linear-gradient(
             90deg,
             rgba(0,0,0,.96) 0%,
-            rgba(0,0,0,.82) 28%,
-            rgba(0,0,0,.45) 63%,
-            rgba(0,0,0,.72) 100%
+            rgba(0,0,0,.84) 25%,
+            rgba(0,0,0,.48) 60%,
+            rgba(0,0,0,.76) 100%
         ),
         linear-gradient(
             180deg,
             rgba(0,0,0,.05) 45%,
             #000 100%
         ),
-        url("https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=2200&q=85");
+        url("https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=2200&q=90");
 
     background-size:cover;
     background-position:center;
@@ -132,7 +134,7 @@
     left:0;
     right:0;
     bottom:0;
-    height:230px;
+    height:250px;
     background:linear-gradient(
         180deg,
         transparent,
@@ -255,10 +257,6 @@
 
 /* ================= TRENDING ================= */
 
-.tm-trending{
-    position:relative;
-}
-
 .tm-trending-grid{
     display:grid;
     grid-template-columns:repeat(5,1fr);
@@ -308,6 +306,7 @@
 .tm-poster-placeholder{
     width:100%;
     height:100%;
+    min-height:220px;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -434,7 +433,7 @@
     transform:rotate(45deg);
 }
 
-/* ================= READY SECTION ================= */
+/* ================= READY ================= */
 
 .tm-ready{
     padding-top:20px;
@@ -670,8 +669,9 @@
             <option value="hi">हिन्दी</option>
         </select>
 
-        <!-- IMPORTANT: Sign In goes to LOGIN, not admin -->
-        <a href="{{ url_for('login') }}" class="tm-signin"
+        <!-- Sign In = Login page -->
+        <a href="{{ url_for('login') }}"
+           class="tm-signin"
            data-en="Sign In"
            data-hi="साइन इन">
             Sign In
@@ -719,7 +719,9 @@
             Ready to watch? Enter your email to create or restart your membership.
         </p>
 
-        <form class="tm-email-form" action="{{ url_for('login') }}" method="get">
+        <form class="tm-email-form"
+              action="{{ url_for('login') }}"
+              method="get">
 
             <input
                 class="tm-email-input"
@@ -731,7 +733,8 @@
                 data-placeholder-en="Email address"
                 data-placeholder-hi="Email address">
 
-            <button type="submit" class="tm-get-started"
+            <button type="submit"
+                    class="tm-get-started"
                     data-en="Get Started →"
                     data-hi="शुरू करें →">
                 Get Started →
@@ -746,7 +749,8 @@
 
 <!-- ================= TRENDING ================= -->
 
-<section class="tm-section tm-trending">
+<section class="tm-section"
+         id="tmTrending">
 
     <h2 class="tm-section-title"
         data-en="Trending Now"
@@ -770,14 +774,18 @@
                 <div class="tm-poster">
 
                     {% if movie.poster_url %}
+
                         <img
                             src="{{ movie.poster_url }}"
                             alt="{{ movie.title }}"
                             loading="lazy">
+
                     {% else %}
+
                         <div class="tm-poster-placeholder">
                             {{ movie.title }}
                         </div>
+
                     {% endif %}
 
                 </div>
@@ -793,7 +801,7 @@
         {% else %}
 
             <div class="tm-poster-placeholder"
-                 style="grid-column:1/-1;min-height:220px;border-radius:10px;">
+                 style="grid-column:1/-1;">
                 No movies available yet.
             </div>
 
@@ -816,6 +824,8 @@
 
     <div class="tm-reasons-grid">
 
+        <!-- TV -->
+
         <article class="tm-reason-card">
 
             <h3
@@ -832,15 +842,34 @@
             </p>
 
             <div class="tm-reason-icon">
-                <svg width="45" height="45" viewBox="0 0 24 24" fill="none"
-                     stroke="#ff4d6d" stroke-width="1.7">
-                    <rect x="3" y="4" width="18" height="13" rx="2"/>
-                    <path d="M8 21h8M12 17v4"/>
+
+                <!-- NEW PURPLE ICON -->
+                <svg width="45"
+                     height="45"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="#b197fc"
+                     stroke-width="1.7"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+
+                    <rect x="3"
+                          y="4"
+                          width="18"
+                          height="13"
+                          rx="2"/>
+
+                    <path d="M8 21h8"/>
+                    <path d="M12 17v4"/>
+
                 </svg>
+
             </div>
 
         </article>
 
+
+        <!-- DOWNLOAD -->
 
         <article class="tm-reason-card">
 
@@ -858,16 +887,29 @@
             </p>
 
             <div class="tm-reason-icon">
-                <svg width="45" height="45" viewBox="0 0 24 24" fill="none"
-                     stroke="#4dabf7" stroke-width="1.7">
+
+                <!-- NEW CYAN ICON -->
+                <svg width="45"
+                     height="45"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="#22d3ee"
+                     stroke-width="1.7"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+
                     <path d="M12 3v12"/>
                     <path d="m7 10 5 5 5-5"/>
                     <path d="M5 21h14"/>
+
                 </svg>
+
             </div>
 
         </article>
 
+
+        <!-- EVERYWHERE -->
 
         <article class="tm-reason-card">
 
@@ -885,16 +927,33 @@
             </p>
 
             <div class="tm-reason-icon">
-                <svg width="45" height="45" viewBox="0 0 24 24" fill="none"
-                     stroke="#51cf66" stroke-width="1.7">
-                    <circle cx="12" cy="12" r="9"/>
+
+                <!-- NEW PINK ICON -->
+                <svg width="45"
+                     height="45"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="#f472b6"
+                     stroke-width="1.7"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+
+                    <circle cx="12"
+                            cy="12"
+                            r="9"/>
+
                     <path d="M3 12h18"/>
+
                     <path d="M12 3c3 3 3 15 0 18"/>
+
                 </svg>
+
             </div>
 
         </article>
 
+
+        <!-- PROFILE -->
 
         <article class="tm-reason-card">
 
@@ -912,11 +971,25 @@
             </p>
 
             <div class="tm-reason-icon">
-                <svg width="45" height="45" viewBox="0 0 24 24" fill="none"
-                     stroke="#ffd43b" stroke-width="1.7">
-                    <circle cx="12" cy="8" r="3"/>
+
+                <!-- NEW GOLD ICON -->
+                <svg width="45"
+                     height="45"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="#fbbf24"
+                     stroke-width="1.7"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+
+                    <circle cx="12"
+                            cy="8"
+                            r="3"/>
+
                     <path d="M5 21c0-4 3-6 7-6s7 2 7 6"/>
+
                 </svg>
+
             </div>
 
         </article>
@@ -928,7 +1001,8 @@
 
 <!-- ================= FAQ ================= -->
 
-<section class="tm-section">
+<section class="tm-section"
+         id="tmFaq">
 
     <div class="tm-faq">
 
@@ -941,7 +1015,9 @@
 
         <div class="tm-faq-item">
 
-            <button class="tm-faq-question" type="button">
+            <button class="tm-faq-question"
+                    type="button">
+
                 <span
                     data-en="What is Tomesh Movies?"
                     data-hi="Tomesh Movies क्या है?">
@@ -949,6 +1025,7 @@
                 </span>
 
                 <span class="tm-faq-plus">+</span>
+
             </button>
 
             <div class="tm-faq-answer"
@@ -963,7 +1040,9 @@
 
         <div class="tm-faq-item">
 
-            <button class="tm-faq-question" type="button">
+            <button class="tm-faq-question"
+                    type="button">
+
                 <span
                     data-en="How much does Tomesh Movies cost?"
                     data-hi="Tomesh Movies की कीमत कितनी है?">
@@ -971,6 +1050,7 @@
                 </span>
 
                 <span class="tm-faq-plus">+</span>
+
             </button>
 
             <div class="tm-faq-answer"
@@ -985,7 +1065,9 @@
 
         <div class="tm-faq-item">
 
-            <button class="tm-faq-question" type="button">
+            <button class="tm-faq-question"
+                    type="button">
+
                 <span
                     data-en="Where can I watch?"
                     data-hi="मैं कहां देख सकता हूं?">
@@ -993,6 +1075,7 @@
                 </span>
 
                 <span class="tm-faq-plus">+</span>
+
             </button>
 
             <div class="tm-faq-answer"
@@ -1007,7 +1090,9 @@
 
         <div class="tm-faq-item">
 
-            <button class="tm-faq-question" type="button">
+            <button class="tm-faq-question"
+                    type="button">
+
                 <span
                     data-en="How do I cancel?"
                     data-hi="मैं कैसे cancel करूं?">
@@ -1015,6 +1100,7 @@
                 </span>
 
                 <span class="tm-faq-plus">+</span>
+
             </button>
 
             <div class="tm-faq-answer"
@@ -1029,7 +1115,9 @@
 
         <div class="tm-faq-item">
 
-            <button class="tm-faq-question" type="button">
+            <button class="tm-faq-question"
+                    type="button">
+
                 <span
                     data-en="What can I watch?"
                     data-hi="मैं क्या देख सकता हूं?">
@@ -1037,6 +1125,7 @@
                 </span>
 
                 <span class="tm-faq-plus">+</span>
+
             </button>
 
             <div class="tm-faq-answer"
@@ -1051,7 +1140,9 @@
 
         <div class="tm-faq-item">
 
-            <button class="tm-faq-question" type="button">
+            <button class="tm-faq-question"
+                    type="button">
+
                 <span
                     data-en="Is Tomesh Movies good for kids?"
                     data-hi="क्या Tomesh Movies बच्चों के लिए अच्छा है?">
@@ -1059,6 +1150,7 @@
                 </span>
 
                 <span class="tm-faq-plus">+</span>
+
             </button>
 
             <div class="tm-faq-answer"
@@ -1085,7 +1177,9 @@
         Ready to watch? Enter your email to create or restart your membership.
     </p>
 
-    <form class="tm-email-form" action="{{ url_for('login') }}" method="get">
+    <form class="tm-email-form"
+          action="{{ url_for('login') }}"
+          method="get">
 
         <input
             class="tm-email-input"
@@ -1097,7 +1191,8 @@
             data-placeholder-en="Email address"
             data-placeholder-hi="Email address">
 
-        <button type="submit" class="tm-get-started"
+        <button type="submit"
+                class="tm-get-started"
                 data-en="Get Started →"
                 data-hi="शुरू करें →">
             Get Started →
@@ -1126,7 +1221,7 @@
             Movies
         </a>
 
-        <a href="{{ url_for('index') }}#tmFaq"
+        <a href="{{ url_for('index') }}#tmTrending"
            data-en="Categories"
            data-hi="Categories">
             Categories
@@ -1204,41 +1299,53 @@
 
 (function(){
 
-    /* ---------- LANGUAGE ---------- */
+    /* ================= LANGUAGE ================= */
 
-    const selector = document.getElementById("tmLanguage");
+    const selector =
+        document.getElementById("tmLanguage");
 
     function setLanguage(lang){
 
-        const language = lang === "hi" ? "hi" : "en";
+        const language =
+            lang === "hi" ? "hi" : "en";
 
-        document.documentElement.lang = language;
+        document.documentElement.lang =
+            language;
 
-        document.querySelectorAll("[data-en][data-hi]").forEach(function(el){
+        document
+            .querySelectorAll("[data-en][data-hi]")
+            .forEach(function(el){
 
-            const value =
-                language === "hi"
-                ? el.getAttribute("data-hi")
-                : el.getAttribute("data-en");
+                const value =
+                    language === "hi"
+                    ? el.getAttribute("data-hi")
+                    : el.getAttribute("data-en");
 
-            if(value !== null){
-                el.textContent = value;
-            }
+                if(value !== null){
+                    el.textContent = value;
+                }
 
-        });
+            });
 
-        document.querySelectorAll(
-            "[data-placeholder-en][data-placeholder-hi]"
-        ).forEach(function(input){
 
-            input.placeholder =
-                language === "hi"
-                ? input.getAttribute("data-placeholder-hi")
-                : input.getAttribute("data-placeholder-en");
+        document
+            .querySelectorAll(
+                "[data-placeholder-en][data-placeholder-hi]"
+            )
+            .forEach(function(input){
 
-        });
+                input.placeholder =
+                    language === "hi"
+                    ? input.getAttribute("data-placeholder-hi")
+                    : input.getAttribute("data-placeholder-en");
 
-        localStorage.setItem("tm_language", language);
+            });
+
+
+        localStorage.setItem(
+            "tm_language",
+            language
+        );
 
     }
 
@@ -1246,37 +1353,67 @@
     const savedLanguage =
         localStorage.getItem("tm_language") || "en";
 
-    if(selector){
-        selector.value = savedLanguage;
-        setLanguage(savedLanguage);
 
-        selector.addEventListener("change", function(){
-            setLanguage(this.value);
-        });
+    if(selector){
+
+        selector.value =
+            savedLanguage;
+
+        setLanguage(
+            savedLanguage
+        );
+
+        selector.addEventListener(
+            "change",
+            function(){
+
+                setLanguage(
+                    this.value
+                );
+
+            }
+        );
+
     }
 
 
-    /* ---------- FAQ ---------- */
+    /* ================= FAQ ================= */
 
-    document.querySelectorAll(".tm-faq-question").forEach(function(button){
+    document
+        .querySelectorAll(".tm-faq-question")
+        .forEach(function(button){
 
-        button.addEventListener("click", function(){
+            button.addEventListener(
+                "click",
+                function(){
 
-            const item = this.closest(".tm-faq-item");
+                    const item =
+                        this.closest(".tm-faq-item");
 
-            document.querySelectorAll(".tm-faq-item").forEach(function(other){
 
-                if(other !== item){
-                    other.classList.remove("active");
+                    document
+                        .querySelectorAll(".tm-faq-item")
+                        .forEach(function(other){
+
+                            if(other !== item){
+
+                                other.classList.remove(
+                                    "active"
+                                );
+
+                            }
+
+                        });
+
+
+                    item.classList.toggle(
+                        "active"
+                    );
+
                 }
-
-            });
-
-            item.classList.toggle("active");
+            );
 
         });
-
-    });
 
 })();
 </script>
