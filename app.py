@@ -3,6 +3,10 @@ import json
 import secrets
 import mimetypes
 import re
+import time
+import base64
+import hashlib
+import hmac
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
@@ -629,6 +633,59 @@ def get_customer_id():
 # CUSTOMER ACCESS
 # ============================================================
 
+def make_stream_token(movie_id, ttl_seconds=24 * 60 * 60):
+    customer_id = get_customer_id()
+    expires = int(time.time()) + int(ttl_seconds)
+
+    payload = f"{movie_id}|{customer_id}|{expires}".encode("utf-8")
+    data = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+
+    signature = hmac.new(
+        str(app.secret_key).encode("utf-8"),
+        data.encode("ascii"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    return data + "." + signature
+
+
+def verify_stream_token(token, movie_id):
+    try:
+        token = str(token or "").strip()
+
+        if "." not in token:
+            return False
+
+        data, signature = token.rsplit(".", 1)
+
+        expected = hmac.new(
+            str(app.secret_key).encode("utf-8"),
+            data.encode("ascii"),
+            hashlib.sha256,
+        ).hexdigest()
+
+        if not hmac.compare_digest(signature, expected):
+            return False
+
+        padded = data + ("=" * (-len(data) % 4))
+        payload = base64.urlsafe_b64decode(padded).decode("utf-8")
+        token_movie_id, customer_id, expires = payload.split("|", 2)
+
+        if int(token_movie_id) != int(movie_id):
+            return False
+
+        if int(expires) <= int(time.time()):
+            return False
+
+        if not customer_id or not customer_id.startswith("tm_"):
+            return False
+
+        return True
+
+    except Exception:
+        return False
+
+
 def access_for_movie(movie_id):
 
     customer_id = get_customer_id()
@@ -943,6 +1000,10 @@ def cashfree_request(
 # CREATE CASHFREE ORDER
 # ============================================================
 
+@app.route(
+    "/api/payment/create",
+    methods=["POST"],
+)
 @app.route(
     "/api/payment/create",
     methods=["POST"],
@@ -1280,44 +1341,50 @@ def cashfree_return():
 
         if order_status == "PAID":
 
-            # --------------------------------------------------
-            # ALWAYS restore the paid customer session.
-            # This is important after Cashfree redirects back.
-            # --------------------------------------------------
-            session["customer_id"] = local_order["customer_id"]
-            session["payment_success"] = True
+            # ----------------------------------------------
+            # Prevent duplicate granting
+            # ----------------------------------------------
 
-            # --------------------------------------------------
-            # Mark the local order as PAID (idempotent).
-            # --------------------------------------------------
-            conn = get_db()
-            try:
-                cur = conn.cursor()
-                cur.execute(
-                    """
-                    UPDATE payment_orders
-                    SET
-                        status = 'PAID',
-                        paid_at = COALESCE(paid_at, NOW())
-                    WHERE order_id = %s
-                    """,
-                    (order_id,),
+            if local_order["status"] != "PAID":
+
+                conn = get_db()
+
+                try:
+
+                    cur = conn.cursor()
+
+                    cur.execute(
+                        """
+                        UPDATE payment_orders
+                        SET
+                            status = 'PAID',
+                            paid_at = NOW()
+                        WHERE order_id = %s
+                        """,
+                        (order_id,),
+                    )
+
+                    conn.commit()
+                    cur.close()
+
+                finally:
+                    conn.close()
+
+                grant_access(
+                    local_order[
+                        "customer_id"
+                    ],
+                    local_order[
+                        "movie_id"
+                    ],
+                    local_order[
+                        "payment_type"
+                    ],
                 )
-                conn.commit()
-                cur.close()
-            finally:
-                conn.close()
 
-            # --------------------------------------------------
-            # ALWAYS ensure access exists.
-            # Never skip this just because order status is already
-            # PAID; this makes the flow safe to retry.
-            # --------------------------------------------------
-            grant_access(
-                local_order["customer_id"],
-                local_order["movie_id"],
-                local_order["payment_type"],
-            )
+            session[
+                "payment_success"
+            ] = True
 
             flash(
                 "Payment successful. Access unlocked.",
@@ -1532,6 +1599,7 @@ def movie_page(movie_id):
         movie["video_url"] = url_for(
             "stream_movie",
             movie_id=movie_id,
+            access_token=make_stream_token(movie_id),
         )
 
     else:
@@ -1573,16 +1641,35 @@ def movie_page(movie_id):
 )
 def stream_movie(movie_id):
 
-    access = access_for_movie(
-        movie_id
-    )
+    access_token = request.args.get(
+        "access_token",
+        "",
+    ).strip()
 
-    if not access["watch"]:
-
-        return Response(
-            "Payment required.",
-            status=403,
+    # The movie page creates a signed 24-hour stream token after
+    # payment access is confirmed. This avoids losing access when
+    # the browser's Flask session cookie is not sent with a media
+    # request. The normal session check remains as a fallback.
+    if access_token:
+        if not verify_stream_token(
+            access_token,
+            movie_id,
+        ):
+            return Response(
+                "Invalid or expired stream access.",
+                status=403,
+            )
+    else:
+        access = access_for_movie(
+            movie_id
         )
+
+        if not access["watch"]:
+
+            return Response(
+                "Payment required.",
+                status=403,
+            )
 
     conn = get_db(
         dict_rows=True
