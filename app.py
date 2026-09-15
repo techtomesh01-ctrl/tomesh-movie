@@ -537,6 +537,7 @@ def r2_presigned_url(
     )
 
 
+
 def media_url(key):
     if not key:
         return None
@@ -1537,10 +1538,16 @@ def movie_page(movie_id):
 
     if video_key and access["watch"]:
 
-        movie["video_url"] = url_for(
-            "stream_movie",
-            movie_id=movie_id,
-        )
+        try:
+            # Direct browser -> R2 playback. R2 supports presigned GET URLs
+            # for browser clients; avoid proxying large byte ranges through Flask.
+            movie["video_url"] = r2_presigned_url(
+                video_key,
+                expires=PRESIGNED_EXPIRES,
+            )
+        except Exception as exc:
+            print("VIDEO PRESIGN ERROR:", repr(exc))
+            movie["video_url"] = None
 
     else:
 
@@ -1577,29 +1584,17 @@ def movie_page(movie_id):
 
 @app.route(
     "/stream/<int:movie_id>",
-    methods=["GET", "HEAD", "OPTIONS"],
+    methods=["GET"],
 )
 def stream_movie(movie_id):
-    """Browser-safe same-origin MP4/WebM/MOV stream from Cloudflare R2."""
-
-    if request.method == "OPTIONS":
-        return Response(
-            status=204,
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-                "Access-Control-Allow-Headers": "Range, Content-Type",
-                "Access-Control-Expose-Headers": (
-                    "Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag, Last-Modified"
-                ),
-            },
-        )
 
     access = access_for_movie(movie_id)
+
     if not access["watch"]:
         return Response("Payment required.", status=403)
 
     conn = get_db(dict_rows=True)
+
     try:
         cur = conn.cursor()
         cur.execute(
@@ -1620,191 +1615,31 @@ def stream_movie(movie_id):
 
     try:
         video_key = validate_r2_key(video_key)
-    except Exception:
-        return Response("Invalid video object.", status=400)
-
-    client = get_r2_client()
-
-    try:
-        head = client.head_object(Bucket=R2_BUCKET, Key=video_key)
-    except Exception as exc:
-        print("R2 HEAD ERROR:", repr(exc))
-        return Response("Video object not found in R2.", status=404)
-
-    total_size = int(head.get("ContentLength") or 0)
-    if total_size <= 0:
-        return Response("Video file is empty.", status=404)
-
-    content_type = content_type_for_key(video_key)
-    if content_type == "application/octet-stream":
-        content_type = head.get("ContentType") or "application/octet-stream"
-
-    common_headers = {
-        "Content-Type": content_type,
-        "Accept-Ranges": "bytes",
-        "Cache-Control": "private, max-age=0, must-revalidate",
-        "Content-Disposition": "inline; filename=video",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Expose-Headers": (
-            "Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag, Last-Modified"
-        ),
-        "X-Accel-Buffering": "no",
-    }
-
-    # Do NOT add nosniff here. If an old R2 multipart object has imperfect
-    # metadata, Chromium can otherwise refuse to treat the response as media.
-
-    if head.get("ETag"):
-        common_headers["ETag"] = str(head["ETag"])
-
-    if head.get("LastModified"):
-        try:
-            common_headers["Last-Modified"] = head["LastModified"].strftime(
-                "%a, %d %b %Y %H:%M:%S GMT"
-            )
-        except Exception:
-            pass
-
-    if request.method == "HEAD":
-        common_headers["Content-Length"] = str(total_size)
-        return Response(status=200, headers=common_headers)
-
-    range_header = request.headers.get("Range", "").strip()
-
-    start = 0
-    end = total_size - 1
-    partial = False
-
-    if range_header:
-        try:
-            if not range_header.lower().startswith("bytes="):
-                raise ValueError("Unsupported range unit")
-
-            # Browsers normally send one range for media. Ignore extra ranges
-            # rather than attempting multipart/byteranges responses.
-            value = range_header[6:].split(",", 1)[0].strip()
-            start_text, end_text = value.split("-", 1)
-
-            if start_text == "":
-                suffix_length = int(end_text)
-                if suffix_length <= 0:
-                    raise ValueError("Invalid suffix range")
-                suffix_length = min(suffix_length, total_size)
-                start = total_size - suffix_length
-                end = total_size - 1
-            else:
-                start = int(start_text)
-                if start < 0 or start >= total_size:
-                    raise ValueError("Range start outside object")
-                end = int(end_text) if end_text else total_size - 1
-                end = min(end, total_size - 1)
-                if end < start:
-                    raise ValueError("Invalid range")
-
-            partial = True
-
-        except Exception:
-            return Response(
-                status=416,
-                headers={
-                    **common_headers,
-                    "Content-Range": f"bytes */{total_size}",
-                },
-            )
-
-    content_length = end - start + 1
-
-    try:
-        if partial:
-            obj = client.get_object(
-                Bucket=R2_BUCKET,
-                Key=video_key,
-                Range=f"bytes={start}-{end}",
-            )
-        else:
-            obj = client.get_object(
-                Bucket=R2_BUCKET,
-                Key=video_key,
-            )
-    except Exception as exc:
-        print("R2 VIDEO GET ERROR:", repr(exc))
-        return Response("Unable to load video.", status=502)
-
-    body = obj["Body"]
-
-    def generate():
-        try:
-            while True:
-                chunk = body.read(256 * 1024)
-                if not chunk:
-                    break
-                yield chunk
-        finally:
-            try:
-                body.close()
-            except Exception:
-                pass
-
-    headers = dict(common_headers)
-    headers["Content-Length"] = str(content_length)
-
-    if partial:
-        headers["Content-Range"] = f"bytes {start}-{end}/{total_size}"
-        return Response(
-            generate(),
-            status=206,
-            headers=headers,
-            direct_passthrough=True,
+        url = r2_presigned_url(
+            video_key,
+            expires=PRESIGNED_EXPIRES,
         )
-
-    return Response(
-        generate(),
-        status=200,
-        headers=headers,
-        direct_passthrough=True,
-    )
-
-
-@app.route("/video-debug/<int:movie_id>")
-def video_debug(movie_id):
-    """Free-plan browser diagnostic; no Render Shell required."""
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id, title, video FROM movies WHERE id = %s", (movie_id,))
-        movie = cur.fetchone()
-        cur.close()
-    finally:
-        conn.close()
-
-    if not movie or not movie.get("video"):
-        return json_error("Video not found.", 404)
-
-    key = movie["video"]
-    try:
-        head = r2_head(key)
-        return json_ok(
-            movie_id=movie_id,
-            title=movie["title"],
-            key=key,
-            content_length=int(head.get("ContentLength") or 0),
-            content_type=head.get("ContentType"),
-            etag=head.get("ETag"),
-            accept_ranges=head.get("AcceptRanges"),
-            last_modified=(
-                head.get("LastModified").isoformat()
-                if head.get("LastModified") else None
-            ),
-            app_content_type=content_type_for_key(key),
-        )
+        return redirect(url, code=302)
     except Exception as exc:
-        return json_error("R2 metadata check failed: " + str(exc), 500)
+        print("STREAM PRESIGN ERROR:", repr(exc))
+        return Response("Unable to create video URL.", status=502)
 
 
-@app.route("/video-box-debug/<int:movie_id>")
-def video_box_debug(movie_id):
-    """Inspect MP4 container boxes without Render Shell access."""
+
+# ============================================================
+# DIRECT R2 VIDEO TEST
+# ============================================================
+
+@app.route("/r2-video-test/<int:movie_id>")
+def r2_video_test(movie_id):
+
+    access = access_for_movie(movie_id)
+
+    if not access["watch"]:
+        return Response("Payment required.", status=403)
+
     conn = get_db(dict_rows=True)
+
     try:
         cur = conn.cursor()
         cur.execute(
@@ -1817,124 +1652,20 @@ def video_box_debug(movie_id):
         conn.close()
 
     if not movie or not movie.get("video"):
-        return json_error("Video not found.", 404)
-
-    key = validate_r2_key(movie["video"])
-    client = get_r2_client()
+        return Response("Video not found.", status=404)
 
     try:
-        head = client.head_object(
-            Bucket=R2_BUCKET,
-            Key=key,
+        url = r2_presigned_url(
+            movie["video"],
+            expires=300,
         )
-
-        total = int(head.get("ContentLength") or 0)
-        if total <= 0:
-            return json_error("Video object is empty.", 500)
-
-        probe_size = min(65536, total)
-
-        first_obj = client.get_object(
-            Bucket=R2_BUCKET,
-            Key=key,
-            Range=f"bytes=0-{probe_size - 1}",
-        )
-        first_bytes = first_obj["Body"].read()
-        try:
-            first_obj["Body"].close()
-        except Exception:
-            pass
-
-        last_start = max(0, total - probe_size)
-        last_obj = client.get_object(
-            Bucket=R2_BUCKET,
-            Key=key,
-            Range=f"bytes={last_start}-{total - 1}",
-        )
-        last_bytes = last_obj["Body"].read()
-        try:
-            last_obj["Body"].close()
-        except Exception:
-            pass
-
-        def parse_boxes(data):
-            boxes = []
-            pos = 0
-            length = len(data)
-
-            while pos + 8 <= length and len(boxes) < 50:
-                raw_size = int.from_bytes(data[pos:pos + 4], "big")
-                box_type = data[pos + 4:pos + 8].decode(
-                    "latin1", errors="replace"
-                )
-
-                if raw_size == 1:
-                    if pos + 16 > length:
-                        break
-                    size = int.from_bytes(data[pos + 8:pos + 16], "big")
-                    header = 16
-                elif raw_size == 0:
-                    size = length - pos
-                    header = 8
-                else:
-                    size = raw_size
-                    header = 8
-
-                boxes.append({
-                    "offset": pos,
-                    "size": size,
-                    "type": box_type,
-                    "header_size": header,
-                })
-
-                if size < header:
-                    break
-
-                pos += size
-
-            return boxes
-
-        first_boxes = parse_boxes(first_bytes)
-        last_boxes = parse_boxes(last_bytes)
-
-        def contains(data, needle):
-            return needle in data
-
-        first_types = [x["type"] for x in first_boxes]
-        last_types = [x["type"] for x in last_boxes]
-
-        result = {
-            "ok": True,
-            "movie_id": movie_id,
-            "title": movie["title"],
-            "key": key,
-            "size": total,
-            "content_type": head.get("ContentType"),
-            "etag": head.get("ETag"),
-            "accept_ranges": head.get("AcceptRanges"),
-            "first_boxes": first_boxes,
-            "last_boxes": last_boxes,
-            "first_box_types": first_types,
-            "last_box_types": last_types,
-            "ftyp_in_first_64kb": contains(first_bytes, b"ftyp"),
-            "moov_in_first_64kb": contains(first_bytes, b"moov"),
-            "mdat_in_first_64kb": contains(first_bytes, b"mdat"),
-            "moov_in_last_64kb": contains(last_bytes, b"moov"),
-            "mdat_in_last_64kb": contains(last_bytes, b"mdat"),
-            "probe_first_bytes": len(first_bytes),
-            "probe_last_bytes": len(last_bytes),
-            "last_probe_start": last_start,
-        }
-
-        return jsonify(result)
-
+        return redirect(url, code=302)
     except Exception as exc:
-        print("VIDEO BOX DEBUG ERROR:", repr(exc))
-        return json_error(
-            "Video box diagnostic failed: " + str(exc),
-            500,
+        print("R2 VIDEO TEST ERROR:", repr(exc))
+        return Response(
+            "R2 video URL generation failed: " + str(exc),
+            status=500,
         )
-
 
 # ============================================================
 # DOWNLOAD
@@ -3005,6 +2736,50 @@ def ads_txt():
         mimetype="text/plain",
     )
 
+
+
+# ============================================================
+# R2 VIDEO INFO
+# ============================================================
+
+@app.route("/r2-video-info/<int:movie_id>")
+def r2_video_info(movie_id):
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, title, video FROM movies WHERE id = %s",
+            (movie_id,),
+        )
+        movie = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not movie:
+        return json_error("Movie not found.", 404)
+
+    key = movie.get("video")
+    if not key:
+        return json_error("Video not found.", 404)
+
+    try:
+        head = r2_head(key)
+        return jsonify({
+            "ok": True,
+            "movie_id": movie["id"],
+            "title": movie["title"],
+            "key": key,
+            "content_length": int(head.get("ContentLength", 0)),
+            "content_type": head.get("ContentType"),
+            "accept_ranges": head.get("AcceptRanges"),
+            "etag": head.get("ETag"),
+            "direct_url": r2_presigned_url(key, expires=300),
+        })
+    except Exception as exc:
+        print("R2 VIDEO INFO ERROR:", repr(exc))
+        return json_error(str(exc), 500)
 
 # ============================================================
 # R2 HEALTH
