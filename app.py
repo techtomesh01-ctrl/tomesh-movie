@@ -7,8 +7,6 @@ import time
 import base64
 import hashlib
 import hmac
-import smtplib
-from email.message import EmailMessage
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
@@ -221,6 +219,9 @@ CASHFREE_SECRET_KEY = clean_env_value(CASHFREE_SECRET_KEY)
 # EMAIL OTP SETTINGS
 # ============================================================
 
+# SMTP variables are kept for compatibility with the existing Render
+# environment, but OTP delivery now uses Brevo's HTTPS API instead of
+# an SMTP socket. This avoids the Render SMTP connection timeout.
 SMTP_HOST = clean_env_value(os.environ.get("SMTP_HOST", ""))
 SMTP_PORT_RAW = clean_env_value(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = clean_env_value(os.environ.get("SMTP_USER", ""))
@@ -234,6 +235,17 @@ try:
     SMTP_PORT = int(SMTP_PORT_RAW or "587")
 except ValueError:
     SMTP_PORT = 587
+
+BREVO_API_KEY = clean_env_value(
+    os.environ.get("BREVO_API_KEY", "")
+)
+BREVO_FROM = clean_env_value(
+    os.environ.get("BREVO_FROM", "")
+) or SMTP_FROM
+BREVO_FROM_NAME = clean_env_value(
+    os.environ.get("BREVO_FROM_NAME", "Tomesh Movies")
+) or "Tomesh Movies"
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 OTP_LENGTH = 6
 OTP_EXPIRY_MINUTES = 10
@@ -739,21 +751,28 @@ def otp_hash(email, otp):
 
 
 def send_otp_email(email, otp):
-    if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD or not SMTP_FROM:
+    """
+    Send the login OTP through Brevo's HTTPS API.
+
+    The old SMTP implementation opened a socket from Render and could hang
+    during socket.create_connection(). Brevo's transactional API uses HTTPS,
+    so the OTP request does not depend on an SMTP port being reachable.
+    """
+    if not BREVO_API_KEY:
         raise RuntimeError(
-            "SMTP settings missing. Add SMTP_HOST, SMTP_PORT, SMTP_USER, "
-            "SMTP_PASSWORD and SMTP_FROM in Render Environment."
+            "BREVO_API_KEY missing. Add BREVO_API_KEY in Render Environment."
         )
 
-    message = EmailMessage()
-    message["Subject"] = "Tomesh Movies - Your Login OTP"
-    message["From"] = SMTP_FROM
-    message["To"] = email
+    if not BREVO_FROM:
+        raise RuntimeError(
+            "BREVO_FROM missing. Add the verified Brevo sender email in Render Environment."
+        )
 
-    message.set_content(
+    otp_text = str(otp)
+    text_content = (
         "Tomesh Movies login verification\n\n"
         "Your one-time verification code is: "
-        + str(otp)
+        + otp_text
         + "\n\n"
         + "This OTP expires in "
         + str(OTP_EXPIRY_MINUTES)
@@ -763,36 +782,109 @@ def send_otp_email(email, otp):
         + "Tomesh Movies"
     )
 
-    if SMTP_PORT == 465:
-        with smtplib.SMTP_SSL(
-            SMTP_HOST,
-            SMTP_PORT,
-            timeout=30,
-        ) as smtp:
-            smtp.ehlo()
-            smtp.login(
-                SMTP_USER,
-                SMTP_PASSWORD,
+    html_content = (
+        "<!doctype html>"
+        "<html><body style=\"margin:0;padding:24px;background:#080808;"
+        "font-family:Arial,sans-serif;color:#ffffff;\">"
+        "<div style=\"max-width:520px;margin:auto;background:#121212;"
+        "border:1px solid #2b2b2b;border-radius:16px;padding:28px;\">"
+        "<h2 style=\"margin:0 0 12px;color:#ffc400;\">Tomesh Movies</h2>"
+        "<p style=\"color:#dddddd;\">Your login verification code is:</p>"
+        "<div style=\"font-size:34px;font-weight:700;letter-spacing:8px;"
+        "color:#ffffff;background:#1d1d1d;border-radius:12px;padding:18px;"
+        "text-align:center;\">"
+        + otp_text
+        + "</div>"
+        + "<p style=\"color:#aaaaaa;margin-top:18px;\">This OTP expires in "
+        + str(OTP_EXPIRY_MINUTES)
+        + " minutes.</p>"
+        + "<p style=\"color:#888888;font-size:13px;\">Do not share this code with anyone.</p>"
+        + "</div></body></html>"
+    )
+
+    payload = {
+        "sender": {
+            "name": BREVO_FROM_NAME,
+            "email": BREVO_FROM,
+        },
+        "to": [
+            {
+                "email": email,
+            }
+        ],
+        "subject": "Tomesh Movies - Your Login OTP",
+        "textContent": text_content,
+        "htmlContent": html_content,
+    }
+
+    body = json.dumps(payload).encode("utf-8")
+
+    req = Request(
+        BREVO_API_URL,
+        data=body,
+        headers={
+            "accept": "application/json",
+            "api-key": BREVO_API_KEY,
+            "content-type": "application/json",
+            "user-agent": "Tomesh-Movies/1.0",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(req, timeout=15) as response:
+            raw = response.read().decode(
+                "utf-8",
+                errors="replace",
             )
-            smtp.send_message(message)
-        return
 
-    with smtplib.SMTP(
-        SMTP_HOST,
-        SMTP_PORT,
-        timeout=30,
-    ) as smtp:
-        smtp.ehlo()
+        if not raw:
+            return
 
-        if SMTP_USE_TLS:
-            smtp.starttls()
-            smtp.ehlo()
+        try:
+            result = json.loads(raw)
+        except Exception:
+            result = {}
 
-        smtp.login(
-            SMTP_USER,
-            SMTP_PASSWORD,
+        if isinstance(result, dict) and result.get("messageId"):
+            print(
+                "OTP EMAIL SENT:",
+                result.get("messageId"),
+            )
+
+    except HTTPError as exc:
+        raw = exc.read().decode(
+            "utf-8",
+            errors="replace",
         )
-        smtp.send_message(message)
+        print(
+            "BREVO HTTP ERROR:",
+            exc.code,
+            raw,
+        )
+        raise RuntimeError(
+            "Brevo email API "
+            + str(exc.code)
+            + ": "
+            + raw
+        )
+
+    except URLError as exc:
+        print(
+            "BREVO CONNECTION ERROR:",
+            repr(exc),
+        )
+        raise RuntimeError(
+            "Brevo connection failed: "
+            + str(exc)
+        )
+
+    except Exception as exc:
+        print(
+            "BREVO EMAIL ERROR:",
+            repr(exc),
+        )
+        raise
 
 
 def bind_customer_email(email):
@@ -1055,7 +1147,7 @@ def request_otp():
             conn.close()
 
         flash(
-            "OTP email send nahi hua. Render me SMTP settings check karo.",
+            "OTP email send nahi hua. Render me BREVO_API_KEY aur BREVO_FROM check karo.",
             "error",
         )
         return redirect(
