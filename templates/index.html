@@ -1,24 +1,23 @@
 ```html
 {% extends "base.html" %}
 
-{% block title %}Tomesh Movies — Unlimited Movies & More{% endblock %}
+{% block title %}Tomesh Movies — Unlimited Movies, Shows & More{% endblock %}
 
 {% block content %}
 
 <style>
 /* =========================================================
-   TOMESH MOVIES
-   Netflix-inspired premium homepage
+   TOMESH MOVIES — NETFLIX INSPIRED HOME
+   Latest Movie Hero + Trending + Reasons + FAQ
    PC + Mobile Responsive
    ========================================================= */
 
 :root{
     --tm-red:#e50914;
-    --tm-red-dark:#b20710;
     --tm-black:#000;
-    --tm-bg:#050505;
+    --tm-dark:#0b0b0b;
     --tm-card:#181818;
-    --tm-text:#fff;
+    --tm-white:#fff;
     --tm-muted:#b3b3b3;
 }
 
@@ -26,17 +25,16 @@
     box-sizing:border-box;
 }
 
-body{
-    margin:0;
+.tm-home{
+    min-height:100vh;
     background:#000;
     color:#fff;
     font-family:Arial,Helvetica,sans-serif;
+    overflow:hidden;
 }
 
-.tm-home{
-    background:#000;
-    min-height:100vh;
-    overflow:hidden;
+.tm-home a{
+    color:inherit;
 }
 
 /* ================= HEADER ================= */
@@ -46,8 +44,8 @@ body{
     top:0;
     left:0;
     right:0;
-    z-index:50;
     height:80px;
+    z-index:100;
     padding:0 4%;
     display:flex;
     align-items:center;
@@ -62,10 +60,10 @@ body{
 
 .tm-logo{
     color:#e50914;
+    text-decoration:none;
     font-size:30px;
     font-weight:900;
     letter-spacing:-1.5px;
-    text-decoration:none;
 }
 
 .tm-header-right{
@@ -75,73 +73,139 @@ body{
 }
 
 .tm-language{
-    background:rgba(0,0,0,.75);
+    background:rgba(0,0,0,.8);
     color:#fff;
     border:1px solid #777;
     border-radius:4px;
     padding:8px 12px;
-    font-size:14px;
 }
 
 .tm-login{
     background:#e50914;
     color:#fff;
+    text-decoration:none;
     padding:9px 17px;
     border-radius:4px;
-    text-decoration:none;
-    font-size:14px;
     font-weight:700;
-}
-
-.tm-login:hover{
-    background:#f6121d;
+    font-size:14px;
 }
 
 /* ================= HERO ================= */
 
 .tm-hero{
-    min-height:720px;
     position:relative;
+    min-height:760px;
+    overflow:hidden;
     display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    padding:110px 20px 80px;
-    background:
-        radial-gradient(
-            circle at 50% 25%,
-            rgba(100,0,0,.35),
-            transparent 38%
-        ),
-        linear-gradient(
-            180deg,
-            #280000 0%,
-            #100000 32%,
-            #050505 68%,
-            #000 100%
-        );
+    align-items:flex-end;
 }
 
-.tm-hero::before{
+.tm-hero-bg{
+    position:absolute;
+    inset:0;
+    background-size:cover;
+    background-position:center top;
+    background-repeat:no-repeat;
+    background-color:#111;
+}
+
+.tm-hero-bg::after{
     content:"";
     position:absolute;
     inset:0;
     background:
         linear-gradient(
-            to right,
-            rgba(0,0,0,.72),
-            rgba(0,0,0,.20),
-            rgba(0,0,0,.72)
+            90deg,
+            rgba(0,0,0,.96) 0%,
+            rgba(0,0,0,.75) 28%,
+            rgba(0,0,0,.25) 62%,
+            rgba(0,0,0,.55) 100%
+        ),
+        linear-gradient(
+            0deg,
+            #000 0%,
+            transparent 35%,
+            rgba(0,0,0,.15) 100%
         );
 }
 
-.tm-hero::after{
-    content:"";
+.tm-hero-content{
+    position:relative;
+    z-index:5;
+    width:100%;
+    max-width:650px;
+    margin-left:7%;
+    margin-bottom:120px;
+}
+
+.tm-new{
+    display:inline-block;
+    margin-bottom:15px;
+    color:#ddd;
+    font-size:15px;
+    font-weight:800;
+    letter-spacing:2px;
+}
+
+.tm-hero-title{
+    font-size:clamp(40px,5vw,70px);
+    line-height:1.05;
+    font-weight:900;
+    margin:0 0 18px;
+    text-shadow:0 3px 20px #000;
+}
+
+.tm-hero-description{
+    max-width:600px;
+    color:#ddd;
+    font-size:18px;
+    line-height:1.5;
+    margin-bottom:25px;
+}
+
+.tm-hero-buttons{
+    display:flex;
+    gap:10px;
+}
+
+.tm-watch-btn,
+.tm-info-btn{
+    border:0;
+    border-radius:4px;
+    padding:13px 24px;
+    font-size:17px;
+    font-weight:800;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+}
+
+.tm-watch-btn{
+    background:#fff;
+    color:#000 !important;
+}
+
+.tm-watch-btn:hover{
+    background:#ddd;
+}
+
+.tm-info-btn{
+    background:rgba(90,90,90,.8);
+    color:#fff !important;
+}
+
+.tm-info-btn:hover{
+    background:rgba(110,110,110,.9);
+}
+
+.tm-hero-bottom{
     position:absolute;
+    bottom:0;
     left:0;
     right:0;
-    bottom:0;
     height:180px;
+    z-index:4;
     background:linear-gradient(
         to bottom,
         transparent,
@@ -149,101 +213,21 @@ body{
     );
 }
 
-.tm-hero-content{
-    position:relative;
-    z-index:2;
-    max-width:900px;
-}
-
-.tm-hero h1{
-    margin:0 auto 20px;
-    font-size:clamp(38px,6vw,72px);
-    line-height:1.05;
-    font-weight:900;
-    letter-spacing:-2px;
-}
-
-.tm-hero-sub{
-    font-size:clamp(20px,3vw,28px);
-    font-weight:500;
-    margin-bottom:18px;
-}
-
-.tm-hero-small{
-    font-size:18px;
-    line-height:1.5;
-    margin-bottom:25px;
-    color:#eee;
-}
-
-.tm-email-row{
-    display:flex;
-    justify-content:center;
-    gap:8px;
-    max-width:650px;
-    margin:auto;
-}
-
-.tm-email{
-    flex:1;
-    min-width:0;
-    height:58px;
-    padding:0 18px;
-    border-radius:4px;
-    border:1px solid #777;
-    background:rgba(20,20,20,.85);
-    color:#fff;
-    font-size:17px;
-    outline:none;
-}
-
-.tm-email:focus{
-    border-color:#fff;
-}
-
-.tm-start{
-    height:58px;
-    padding:0 25px;
-    border:0;
-    border-radius:4px;
-    background:#e50914;
-    color:#fff;
-    font-size:20px;
-    font-weight:800;
-    cursor:pointer;
-    white-space:nowrap;
-}
-
-.tm-start:hover{
-    background:#f6121d;
-}
-
-/* ================= DIVIDER ================= */
-
-.tm-divider{
-    height:8px;
-    background:#222;
-}
-
 /* ================= SECTION ================= */
 
 .tm-section{
-    padding:55px 4%;
     max-width:1500px;
     margin:auto;
+    padding:55px 4%;
 }
 
 .tm-section-title{
+    margin:0 0 25px;
     font-size:30px;
     font-weight:800;
-    margin:0 0 25px;
 }
 
 /* ================= TRENDING ================= */
-
-.tm-trending{
-    position:relative;
-}
 
 .tm-trending-row{
     display:grid;
@@ -253,13 +237,15 @@ body{
 
 .tm-movie-card{
     position:relative;
+    display:block;
     min-width:0;
-    transition:.25s ease;
+    text-decoration:none;
+    transition:transform .25s ease;
 }
 
 .tm-movie-card:hover{
-    transform:scale(1.04);
-    z-index:3;
+    transform:scale(1.045);
+    z-index:10;
 }
 
 .tm-poster{
@@ -269,20 +255,18 @@ body{
     display:block;
     border-radius:5px;
     background:#222;
-    box-shadow:0 5px 25px rgba(0,0,0,.5);
 }
 
 .tm-number{
     position:absolute;
     left:-12px;
-    bottom:-12px;
-    font-size:105px;
-    line-height:.75;
+    bottom:22px;
+    font-size:100px;
+    line-height:.7;
     font-weight:900;
     color:#000;
     -webkit-text-stroke:3px #777;
     text-shadow:2px 2px 0 #000;
-    z-index:5;
 }
 
 .tm-movie-name{
@@ -290,7 +274,7 @@ body{
     margin-top:16px;
     padding-left:8px;
     font-size:15px;
-    font-weight:600;
+    font-weight:700;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
@@ -300,114 +284,58 @@ body{
 
 .tm-reasons-grid{
     display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:15px;
+    grid-template-columns:repeat(2,1fr);
+    gap:16px;
 }
 
 .tm-reason{
-    min-height:270px;
-    padding:25px;
+    position:relative;
+    min-height:220px;
+    padding:27px;
+    overflow:hidden;
     border-radius:12px;
+    border:1px solid #292929;
     background:
         linear-gradient(
-            145deg,
-            #21101b,
-            #12101c
+            135deg,
+            #21121d,
+            #11101c
         );
-    border:1px solid #292929;
-    position:relative;
 }
 
 .tm-reason h3{
     margin:0 0 15px;
     font-size:22px;
+    max-width:75%;
 }
 
 .tm-reason p{
     margin:0;
+    max-width:75%;
     color:#bdbdbd;
     line-height:1.55;
     font-size:15px;
 }
 
-.tm-reason-icon{
+/* clean Netflix-inspired line icons */
+
+.tm-icon{
     position:absolute;
-    right:20px;
-    bottom:18px;
-    font-size:48px;
+    right:24px;
+    bottom:22px;
+    width:58px;
+    height:58px;
+    opacity:.9;
 }
 
-/* ================= PRICING ================= */
-
-.tm-pricing{
-    background:#000;
-}
-
-.tm-price-note{
-    color:#b3b3b3;
-    margin:-10px 0 25px;
-}
-
-.tm-pricing-grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:18px;
-}
-
-.tm-price-card{
-    background:linear-gradient(145deg,#1c1c1c,#101010);
-    border:1px solid #333;
-    border-radius:10px;
-    padding:30px 25px;
-    min-height:310px;
-    display:flex;
-    flex-direction:column;
-}
-
-.tm-price-card.featured{
-    border:2px solid #e50914;
-    transform:translateY(-8px);
-    box-shadow:0 15px 45px rgba(229,9,20,.18);
-}
-
-.tm-price-card h3{
-    font-size:24px;
-    margin:0 0 15px;
-}
-
-.tm-price{
-    font-size:43px;
-    font-weight:900;
-    margin-bottom:8px;
-}
-
-.tm-price small{
-    font-size:15px;
-    color:#aaa;
-    font-weight:400;
-}
-
-.tm-price-card ul{
-    padding-left:20px;
-    margin:20px 0;
-    color:#ccc;
-    line-height:1.9;
-    flex:1;
-}
-
-.tm-price-btn{
-    display:block;
-    text-align:center;
-    padding:13px 15px;
-    border-radius:4px;
-    background:#e50914;
-    color:#fff;
-    text-decoration:none;
-    font-weight:800;
-}
-
-.tm-price-btn:hover{
-    background:#f6121d;
+.tm-icon svg{
+    width:100%;
+    height:100%;
+    fill:none;
+    stroke:#fff;
+    stroke-width:1.7;
+    stroke-linecap:round;
+    stroke-linejoin:round;
 }
 
 /* ================= FAQ ================= */
@@ -428,8 +356,8 @@ body{
     padding:22px 25px;
     font-size:20px;
     display:flex;
-    justify-content:space-between;
     align-items:center;
+    justify-content:space-between;
 }
 
 .tm-faq summary::-webkit-details-marker{
@@ -457,20 +385,56 @@ body{
 
 .tm-bottom-cta{
     text-align:center;
-    padding:70px 20px 80px;
-    background:#000;
+    padding:65px 20px 80px;
 }
 
 .tm-bottom-cta h2{
     font-size:30px;
+    margin:0 0 15px;
+}
+
+.tm-bottom-small{
+    color:#ddd;
+    font-size:17px;
     margin-bottom:25px;
+}
+
+.tm-email-row{
+    display:flex;
+    max-width:650px;
+    margin:auto;
+    gap:8px;
+}
+
+.tm-email{
+    flex:1;
+    min-width:0;
+    height:56px;
+    padding:0 18px;
+    border:1px solid #777;
+    border-radius:4px;
+    background:rgba(20,20,20,.9);
+    color:#fff;
+    font-size:16px;
+}
+
+.tm-start{
+    height:56px;
+    padding:0 24px;
+    border:0;
+    border-radius:4px;
+    background:#e50914;
+    color:#fff;
+    font-size:19px;
+    font-weight:800;
+    cursor:pointer;
 }
 
 /* ================= FOOTER ================= */
 
 .tm-footer{
     border-top:8px solid #222;
-    padding:55px 4% 35px;
+    padding:50px 4% 35px;
     color:#aaa;
 }
 
@@ -482,26 +446,21 @@ body{
 .tm-footer-links{
     display:grid;
     grid-template-columns:repeat(4,1fr);
-    gap:15px;
-    margin:25px 0 35px;
+    gap:18px;
+    margin:28px 0 35px;
 }
 
 .tm-footer a{
     color:#aaa;
-    text-decoration:underline;
     font-size:14px;
-}
-
-.tm-footer a:hover{
-    color:#fff;
 }
 
 .tm-copy{
-    font-size:14px;
     color:#777;
+    font-size:14px;
 }
 
-/* ================= MOBILE ================= */
+/* ================= TABLET ================= */
 
 @media(max-width:1000px){
 
@@ -509,22 +468,13 @@ body{
         grid-template-columns:repeat(3,1fr);
     }
 
-    .tm-reasons-grid{
-        grid-template-columns:repeat(2,1fr);
+    .tm-hero-content{
+        margin-left:5%;
     }
 
-    .tm-pricing-grid{
-        grid-template-columns:1fr;
-    }
-
-    .tm-price-card.featured{
-        transform:none;
-    }
-
-    .tm-footer-links{
-        grid-template-columns:repeat(2,1fr);
-    }
 }
+
+/* ================= MOBILE ================= */
 
 @media(max-width:650px){
 
@@ -534,7 +484,7 @@ body{
     }
 
     .tm-logo{
-        font-size:23px;
+        font-size:22px;
     }
 
     .tm-language{
@@ -548,35 +498,51 @@ body{
     }
 
     .tm-hero{
-        min-height:620px;
-        padding:100px 20px 70px;
+        min-height:650px;
+        align-items:flex-end;
     }
 
-    .tm-hero h1{
-        font-size:40px;
+    .tm-hero-bg{
+        background-position:center top;
+    }
+
+    .tm-hero-bg::after{
+        background:
+            linear-gradient(
+                0deg,
+                rgba(0,0,0,1) 5%,
+                rgba(0,0,0,.72) 45%,
+                rgba(0,0,0,.20) 100%
+            );
+    }
+
+    .tm-hero-content{
+        margin:0;
+        padding:0 20px 75px;
+        max-width:100%;
+    }
+
+    .tm-new{
+        font-size:13px;
+    }
+
+    .tm-hero-title{
+        font-size:39px;
         letter-spacing:-1px;
     }
 
-    .tm-hero-sub{
-        font-size:20px;
+    .tm-hero-description{
+        font-size:15px;
     }
 
-    .tm-hero-small{
-        font-size:16px;
+    .tm-hero-buttons{
+        flex-wrap:wrap;
     }
 
-    .tm-email-row{
-        flex-direction:column;
-    }
-
-    .tm-email,
-    .tm-start{
-        width:100%;
-        height:54px;
-    }
-
-    .tm-start{
-        font-size:18px;
+    .tm-watch-btn,
+    .tm-info-btn{
+        font-size:15px;
+        padding:11px 18px;
     }
 
     .tm-section{
@@ -591,7 +557,7 @@ body{
         display:flex;
         overflow-x:auto;
         gap:18px;
-        padding:10px 12px 30px 25px;
+        padding:10px 10px 30px 25px;
         scrollbar-width:none;
     }
 
@@ -607,7 +573,7 @@ body{
     .tm-number{
         font-size:78px;
         left:-9px;
-        bottom:-7px;
+        bottom:22px;
         -webkit-text-stroke:2px #777;
     }
 
@@ -620,11 +586,15 @@ body{
     }
 
     .tm-reason{
-        min-height:220px;
+        min-height:210px;
     }
 
-    .tm-price-card{
-        min-height:280px;
+    .tm-reason h3{
+        font-size:20px;
+    }
+
+    .tm-reason p{
+        font-size:14px;
     }
 
     .tm-faq summary{
@@ -637,8 +607,13 @@ body{
         font-size:15px;
     }
 
-    .tm-bottom-cta h2{
-        font-size:24px;
+    .tm-email-row{
+        flex-direction:column;
+    }
+
+    .tm-email,
+    .tm-start{
+        width:100%;
     }
 
     .tm-footer{
@@ -646,7 +621,7 @@ body{
     }
 
     .tm-footer-links{
-        grid-template-columns:1fr 1fr;
+        grid-template-columns:repeat(2,1fr);
     }
 }
 </style>
@@ -654,486 +629,523 @@ body{
 
 <div class="tm-home">
 
-    <!-- HEADER -->
-    <header class="tm-header">
+{% set latest = movies[0] if movies else none %}
 
-        <a href="{{ url_for('index') }}" class="tm-logo">
-            TOMESH MOVIES
+<!-- =====================================================
+     HEADER
+     ===================================================== -->
+
+<header class="tm-header">
+
+    <a href="{{ url_for('index') }}" class="tm-logo">
+        TOMESH MOVIES
+    </a>
+
+    <div class="tm-header-right">
+
+        <select class="tm-language" aria-label="Language">
+            <option>English</option>
+            <option>हिन्दी</option>
+        </select>
+
+        <a href="{{ url_for('login') }}" class="tm-login">
+            Sign In
         </a>
 
-        <div class="tm-header-right">
+    </div>
 
-            <select class="tm-language" aria-label="Language">
-                <option>English</option>
-                <option>हिन्दी</option>
-            </select>
+</header>
 
-            <a href="{{ url_for('login') }}" class="tm-login">
-                Sign In
-            </a>
+
+<!-- =====================================================
+     LATEST MOVIE HERO
+     ===================================================== -->
+
+{% if latest %}
+
+<section class="tm-hero">
+
+    <div
+        class="tm-hero-bg"
+        {% if latest.poster_url %}
+        style="background-image:url('{{ latest.poster_url }}');"
+        {% endif %}
+    ></div>
+
+    <div class="tm-hero-content">
+
+        <div class="tm-new">
+            NEW MOVIE
+        </div>
+
+        <h1 class="tm-hero-title">
+            {{ latest.title }}
+        </h1>
+
+        <div class="tm-hero-description">
+
+            {% if latest.description %}
+                {{ latest.description }}
+            {% else %}
+                Watch {{ latest.title }} on Tomesh Movies.
+            {% endif %}
 
         </div>
 
-    </header>
-
-
-    <!-- HERO -->
-    <section class="tm-hero">
-
-        <div class="tm-hero-content">
-
-            <h1>
-                Unlimited Movies, Shows & More
-            </h1>
-
-            <div class="tm-hero-sub">
-                Starts at ₹9. Cancel anytime.
-            </div>
-
-            <div class="tm-hero-small">
-                Ready to watch? Enter your email to create or restart your membership.
-            </div>
-
-            <form class="tm-email-row" action="{{ url_for('index') }}" method="get">
-
-                <input
-                    class="tm-email"
-                    type="email"
-                    name="email"
-                    placeholder="Email address"
-                    autocomplete="email"
-                >
-
-                <button class="tm-start" type="submit">
-                    Get Started
-                </button>
-
-            </form>
-
-        </div>
-
-    </section>
-
-
-    <div class="tm-divider"></div>
-
-
-    <!-- TRENDING -->
-    <section class="tm-section tm-trending">
-
-        <h2 class="tm-section-title">
-            Trending Now
-        </h2>
-
-        <div class="tm-trending-row">
-
-            {% for movie in movies[:10] %}
+        <div class="tm-hero-buttons">
 
             <a
-                href="{{ url_for('movie_page', movie_id=movie.id) }}"
-                class="tm-movie-card"
-                style="text-decoration:none;color:#fff;"
+                href="{{ url_for('movie_page', movie_id=latest.id) }}"
+                class="tm-watch-btn"
             >
-
-                {% if movie.poster_url %}
-
-                    <img
-                        class="tm-poster"
-                        src="{{ movie.poster_url }}"
-                        alt="{{ movie.title }}"
-                        loading="lazy"
-                    >
-
-                {% else %}
-
-                    <div
-                        class="tm-poster"
-                        style="
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            font-weight:bold;
-                            color:#888;
-                        "
-                    >
-                        NO POSTER
-                    </div>
-
-                {% endif %}
-
-                <span class="tm-number">
-                    {{ loop.index }}
-                </span>
-
-                <span class="tm-movie-name">
-                    {{ movie.title }}
-                </span>
-
+                ▶ Watch Now
             </a>
+
+            <a
+                href="{{ url_for('movie_page', movie_id=latest.id) }}"
+                class="tm-info-btn"
+            >
+                ⓘ More Info
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="tm-hero-bottom"></div>
+
+</section>
+
+{% else %}
+
+<section class="tm-hero">
+
+    <div class="tm-hero-content">
+
+        <div class="tm-new">
+            TOMESH MOVIES
+        </div>
+
+        <h1 class="tm-hero-title">
+            Unlimited Movies, Shows & More
+        </h1>
+
+        <div class="tm-hero-description">
+            Discover movies and entertainment on Tomesh Movies.
+        </div>
+
+    </div>
+
+</section>
+
+{% endif %}
+
+
+<!-- =====================================================
+     TRENDING
+     ===================================================== -->
+
+<section class="tm-section">
+
+    <h2 class="tm-section-title">
+        Trending Now
+    </h2>
+
+    <div class="tm-trending-row">
+
+        {% for movie in movies[:10] %}
+
+        <a
+            href="{{ url_for('movie_page', movie_id=movie.id) }}"
+            class="tm-movie-card"
+        >
+
+            {% if movie.poster_url %}
+
+            <img
+                src="{{ movie.poster_url }}"
+                class="tm-poster"
+                alt="{{ movie.title }}"
+                loading="lazy"
+            >
 
             {% else %}
 
-            <div style="color:#aaa;">
-                Movies coming soon...
+            <div
+                class="tm-poster"
+                style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    color:#888;
+                "
+            >
+                NO POSTER
             </div>
 
-            {% endfor %}
+            {% endif %}
 
-        </div>
+            <span class="tm-number">
+                {{ loop.index }}
+            </span>
 
-    </section>
+            <span class="tm-movie-name">
+                {{ movie.title }}
+            </span>
 
+        </a>
 
-    <div class="tm-divider"></div>
+        {% else %}
 
-
-    <!-- PRICING -->
-    <section class="tm-section tm-pricing">
-
-        <h2 class="tm-section-title">
-            Choose your plan
-        </h2>
-
-        <p class="tm-price-note">
-            Start watching from just ₹9.
+        <p style="color:#aaa;">
+            Movies coming soon...
         </p>
 
-        <div class="tm-pricing-grid">
+        {% endfor %}
 
-            <div class="tm-price-card">
+    </div>
 
-                <h3>Watch</h3>
-
-                <div class="tm-price">
-                    ₹9
-                    <small>/ 24 Hours</small>
-                </div>
-
-                <ul>
-                    <li>Watch selected movie</li>
-                    <li>24-hour access</li>
-                    <li>HD streaming</li>
-                </ul>
-
-                <a href="#trending" class="tm-price-btn">
-                    Choose Watch
-                </a>
-
-            </div>
+</section>
 
 
-            <div class="tm-price-card">
-
-                <h3>Download</h3>
-
-                <div class="tm-price">
-                    ₹9
-                    <small>/ 30 Days</small>
-                </div>
-
-                <ul>
-                    <li>Download selected movie</li>
-                    <li>30-day access</li>
-                    <li>Watch anytime</li>
-                </ul>
-
-                <a href="#trending" class="tm-price-btn">
-                    Choose Download
-                </a>
-
-            </div>
+<div style="height:8px;background:#222;"></div>
 
 
-            <div class="tm-price-card featured">
+<!-- =====================================================
+     MORE REASONS
+     ===================================================== -->
 
-                <h3>Premium</h3>
+<section class="tm-section">
 
-                <div class="tm-price">
-                    ₹109
-                    <small>/ 1 Year</small>
-                </div>
+    <h2 class="tm-section-title">
+        More reasons to join
+    </h2>
 
-                <ul>
-                    <li>Premium access</li>
-                    <li>Watch movies</li>
-                    <li>Best value</li>
-                    <li>1-year membership</li>
-                </ul>
+    <div class="tm-reasons-grid">
 
-                <a href="#trending" class="tm-price-btn">
-                    Choose Premium
-                </a>
+
+        <!-- TV -->
+
+        <div class="tm-reason">
+
+            <h3>
+                Enjoy on your TV
+            </h3>
+
+            <p>
+                Watch your favourite movies on your smart TV,
+                laptop, tablet and other supported devices.
+            </p>
+
+            <div class="tm-icon">
+
+                <svg viewBox="0 0 64 64">
+
+                    <rect x="8" y="12" width="48" height="34" rx="4"></rect>
+
+                    <path d="M22 54h20"></path>
+
+                    <path d="M32 46v8"></path>
+
+                </svg>
 
             </div>
 
         </div>
 
-    </section>
+
+        <!-- DOWNLOAD -->
+
+        <div class="tm-reason">
+
+            <h3>
+                Download your movies
+            </h3>
+
+            <p>
+                Save supported movies and enjoy them whenever
+                you want, wherever you are.
+            </p>
+
+            <div class="tm-icon">
+
+                <svg viewBox="0 0 64 64">
+
+                    <path d="M32 8v34"></path>
+
+                    <path d="M18 30l14 14 14-14"></path>
+
+                    <path d="M10 54h44"></path>
+
+                </svg>
+
+            </div>
+
+        </div>
 
 
-    <div class="tm-divider"></div>
+        <!-- WATCH EVERYWHERE -->
+
+        <div class="tm-reason">
+
+            <h3>
+                Watch everywhere
+            </h3>
+
+            <p>
+                Stream movies on your phone, tablet,
+                laptop and TV with a simple experience.
+            </p>
+
+            <div class="tm-icon">
+
+                <svg viewBox="0 0 64 64">
+
+                    <rect x="7" y="17" width="31" height="29" rx="3"></rect>
+
+                    <rect x="44" y="10" width="13" height="27" rx="2"></rect>
+
+                    <path d="M15 53h15"></path>
+
+                    <path d="M20 46v7"></path>
+
+                </svg>
+
+            </div>
+
+        </div>
 
 
-    <!-- REASONS -->
-    <section class="tm-section">
+        <!-- PREMIUM EXPERIENCE -->
+
+        <div class="tm-reason">
+
+            <h3>
+                Premium experience
+            </h3>
+
+            <p>
+                Get premium access and enjoy the growing
+                Tomesh Movies collection.
+            </p>
+
+            <div class="tm-icon">
+
+                <svg viewBox="0 0 64 64">
+
+                    <path d="M9 18l9 10 14-18 14 18 9-10-5 32H14z"></path>
+
+                    <path d="M14 54h36"></path>
+
+                </svg>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<div style="height:8px;background:#222;"></div>
+
+
+<!-- =====================================================
+     FAQ
+     ===================================================== -->
+
+<section class="tm-section">
+
+    <div class="tm-faq">
 
         <h2 class="tm-section-title">
-            More reasons to join
+            Frequently Asked Questions
         </h2>
 
-        <div class="tm-reasons-grid">
 
-            <div class="tm-reason">
+        <details>
 
-                <h3>Enjoy on your TV</h3>
+            <summary>
+                What is Tomesh Movies?
+            </summary>
 
-                <p>
-                    Watch your favourite movies on your smart TV,
-                    laptop, tablet and other supported devices.
-                </p>
-
-                <div class="tm-reason-icon">
-                    📺
-                </div>
-
+            <div class="tm-faq-answer">
+                Tomesh Movies is a movie portal for movies
+                and content that are legally available to be published.
             </div>
 
+        </details>
 
-            <div class="tm-reason">
 
-                <h3>Download your movies</h3>
+        <details>
 
-                <p>
-                    Save supported movies and enjoy them whenever
-                    you want, wherever you are.
-                </p>
+            <summary>
+                How much does Tomesh Movies cost?
+            </summary>
 
-                <div class="tm-reason-icon">
-                    ⬇️
-                </div>
-
+            <div class="tm-faq-answer">
+                Access starts at ₹9.
             </div>
 
+        </details>
 
-            <div class="tm-reason">
 
-                <h3>Watch everywhere</h3>
+        <details>
 
-                <p>
-                    Stream movies on your phone, tablet, laptop
-                    and TV with a simple experience.
-                </p>
+            <summary>
+                Where can I watch?
+            </summary>
 
-                <div class="tm-reason-icon">
-                    🌎
-                </div>
-
+            <div class="tm-faq-answer">
+                You can watch supported movies on compatible
+                phones, tablets, laptops and TVs.
             </div>
 
+        </details>
 
-            <div class="tm-reason">
 
-                <h3>Premium experience</h3>
+        <details>
 
-                <p>
-                    Get premium access and enjoy the growing
-                    Tomesh Movies collection.
-                </p>
+            <summary>
+                How do I cancel?
+            </summary>
 
-                <div class="tm-reason-icon">
-                    👑
-                </div>
-
+            <div class="tm-faq-answer">
+                Access is provided according to the applicable
+                movie access option.
             </div>
+
+        </details>
+
+
+        <details>
+
+            <summary>
+                What can I watch on Tomesh Movies?
+            </summary>
+
+            <div class="tm-faq-answer">
+                The available collection depends on the movies
+                Tomesh Movies is legally permitted to publish.
+            </div>
+
+        </details>
+
+
+        <details>
+
+            <summary>
+                Is Tomesh Movies good for kids?
+            </summary>
+
+            <div class="tm-faq-answer">
+                Movie suitability depends on each individual title.
+            </div>
+
+        </details>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     BOTTOM CTA
+     ===================================================== -->
+
+<section class="tm-bottom-cta">
+
+    <h2>
+        Ready to watch?
+    </h2>
+
+    <div class="tm-bottom-small">
+        Enter your email to get started.
+    </div>
+
+    <form
+        class="tm-email-row"
+        action="{{ url_for('index') }}"
+        method="get"
+    >
+
+        <input
+            type="email"
+            name="email"
+            class="tm-email"
+            placeholder="Email address"
+            autocomplete="email"
+            required
+        >
+
+        <button
+            type="submit"
+            class="tm-start"
+        >
+            Get Started
+        </button>
+
+    </form>
+
+</section>
+
+
+<!-- =====================================================
+     FOOTER
+     ===================================================== -->
+
+<footer class="tm-footer">
+
+    <div class="tm-footer-inner">
+
+        <div>
+            Questions? Contact Tomesh Movies support.
+        </div>
+
+        <div class="tm-footer-links">
+
+            <a href="{{ url_for('index') }}">
+                Home
+            </a>
+
+            <a href="#faq">
+                FAQ
+            </a>
+
+            <a href="{{ url_for('login') }}">
+                Account
+            </a>
+
+            <a href="/ads.txt">
+                Ads
+            </a>
+
+            <a href="#">
+                Terms of Use
+            </a>
+
+            <a href="#">
+                Privacy
+            </a>
+
+            <a href="#">
+                Cookie Preferences
+            </a>
+
+            <a href="#">
+                Contact Us
+            </a>
 
         </div>
 
-    </section>
-
-
-    <div class="tm-divider"></div>
-
-
-    <!-- FAQ -->
-    <section class="tm-section">
-
-        <div class="tm-faq">
-
-            <h2 class="tm-section-title">
-                Frequently Asked Questions
-            </h2>
-
-
-            <details>
-
-                <summary>
-                    What is Tomesh Movies?
-                </summary>
-
-                <div class="tm-faq-answer">
-                    Tomesh Movies is a movie portal for movies
-                    that are legally available to be published and watched.
-                </div>
-
-            </details>
-
-
-            <details>
-
-                <summary>
-                    How much does Tomesh Movies cost?
-                </summary>
-
-                <div class="tm-faq-answer">
-                    Plans start at ₹9. Watch access is ₹9 for 24 hours,
-                    Download access is ₹9 for 30 days, and Premium is
-                    ₹109 for 1 year.
-                </div>
-
-            </details>
-
-
-            <details>
-
-                <summary>
-                    Where can I watch?
-                </summary>
-
-                <div class="tm-faq-answer">
-                    You can watch supported movies on compatible phones,
-                    tablets, laptops and TVs.
-                </div>
-
-            </details>
-
-
-            <details>
-
-                <summary>
-                    How do I cancel?
-                </summary>
-
-                <div class="tm-faq-answer">
-                    Access plans are time-limited. Contact the site
-                    support if you need help with your account.
-                </div>
-
-            </details>
-
-
-            <details>
-
-                <summary>
-                    What can I watch on Tomesh Movies?
-                </summary>
-
-                <div class="tm-faq-answer">
-                    The available collection depends on movies that
-                    Tomesh Movies is legally permitted to publish.
-                </div>
-
-            </details>
-
-
-            <details>
-
-                <summary>
-                    Is Tomesh Movies good for kids?
-                </summary>
-
-                <div class="tm-faq-answer">
-                    Movie suitability depends on the individual title.
-                    Please check the movie information before watching.
-                </div>
-
-            </details>
-
+        <div class="tm-copy">
+            © 2026 Tomesh Movies. All rights reserved.
         </div>
 
-    </section>
+    </div>
 
-
-    <!-- BOTTOM CTA -->
-    <section class="tm-bottom-cta">
-
-        <h2>
-            Ready to watch?
-        </h2>
-
-        <div class="tm-hero-small">
-            Enter your email to get started.
-        </div>
-
-        <form class="tm-email-row" action="{{ url_for('index') }}" method="get">
-
-            <input
-                class="tm-email"
-                type="email"
-                name="email"
-                placeholder="Email address"
-            >
-
-            <button class="tm-start" type="submit">
-                Get Started
-            </button>
-
-        </form>
-
-    </section>
-
-
-    <!-- FOOTER -->
-    <footer class="tm-footer">
-
-        <div class="tm-footer-inner">
-
-            <div style="margin-bottom:20px;">
-                Questions? Contact Tomesh Movies support.
-            </div>
-
-            <div class="tm-footer-links">
-
-                <a href="{{ url_for('index') }}">
-                    Home
-                </a>
-
-                <a href="#faq">
-                    FAQ
-                </a>
-
-                <a href="{{ url_for('login') }}">
-                    Account
-                </a>
-
-                <a href="/ads.txt">
-                    Ads
-                </a>
-
-                <a href="#">
-                    Terms of Use
-                </a>
-
-                <a href="#">
-                    Privacy
-                </a>
-
-                <a href="#">
-                    Cookie Preferences
-                </a>
-
-                <a href="#">
-                    Contact Us
-                </a>
-
-            </div>
-
-            <div class="tm-copy">
-                © 2026 Tomesh Movies. All rights reserved.
-            </div>
-
-        </div>
-
-    </footer>
+</footer>
 
 </div>
 
