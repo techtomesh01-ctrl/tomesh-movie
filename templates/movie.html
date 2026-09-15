@@ -1984,7 +1984,10 @@ async function startPayment(type){
                 data.payment_session_id,
 
             redirectTarget:
-                "_self"
+                "_self",
+
+            returnUrl:
+                `${window.location.origin}/payment/return?movie_id=${encodeURIComponent(TM_MOVIE_ID)}&order_id={order_id}`
 
         });
 
