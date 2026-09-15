@@ -1,2 +1,253 @@
-{% extends "base.html" %}{% block title %}Admin Login{% endblock %}
-{% block content %}<div class="login"><h1>Admin Login</h1><form method="post"><input name="username" placeholder="Username" required><input name="password" type="password" placeholder="Password" required><button>Login</button></form><p>पहली बार चलाते समय ADMIN_PASSWORD जरूर बदलें।</p></div>{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Login | Tomesh Movies{% endblock %}
+
+{% block content %}
+
+<style>
+    .tm-login-page{
+        min-height:100vh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:30px 16px;
+        color:#fff;
+        background:
+            radial-gradient(circle at 20% 10%,rgba(229,9,20,.22),transparent 30%),
+            radial-gradient(circle at 85% 80%,rgba(120,40,220,.20),transparent 32%),
+            #050505;
+    }
+
+    .tm-login-box{
+        width:min(460px,100%);
+        padding:38px 32px;
+        border:1px solid rgba(255,255,255,.12);
+        border-radius:18px;
+        background:rgba(15,15,15,.94);
+        box-shadow:0 25px 80px rgba(0,0,0,.55);
+    }
+
+    .tm-login-logo{
+        text-align:center;
+        font-size:25px;
+        font-weight:900;
+        letter-spacing:1px;
+        margin-bottom:8px;
+    }
+
+    .tm-login-logo span{
+        color:#e50914;
+    }
+
+    .tm-login-title{
+        text-align:center;
+        font-size:28px;
+        font-weight:800;
+        margin:22px 0 8px;
+    }
+
+    .tm-login-subtitle{
+        text-align:center;
+        color:#aaa;
+        font-size:14px;
+        line-height:1.6;
+        margin-bottom:26px;
+    }
+
+    .tm-login-label{
+        display:block;
+        margin-bottom:8px;
+        font-size:13px;
+        font-weight:700;
+        color:#ddd;
+    }
+
+    .tm-login-input{
+        width:100%;
+        height:54px;
+        padding:0 16px;
+        border-radius:8px;
+        border:1px solid #555;
+        outline:none;
+        background:#181818;
+        color:#fff;
+        font-size:16px;
+    }
+
+    .tm-login-input:focus{
+        border-color:#e50914;
+        box-shadow:0 0 0 2px rgba(229,9,20,.18);
+    }
+
+    .tm-login-btn{
+        width:100%;
+        height:54px;
+        margin-top:18px;
+        border:0;
+        border-radius:8px;
+        background:#e50914;
+        color:#fff;
+        font-size:16px;
+        font-weight:800;
+        cursor:pointer;
+        transition:.2s ease;
+    }
+
+    .tm-login-btn:hover{
+        background:#f6121d;
+        transform:translateY(-1px);
+    }
+
+    .tm-login-note{
+        margin-top:20px;
+        text-align:center;
+        color:#888;
+        font-size:12px;
+        line-height:1.6;
+    }
+
+    .tm-back-home{
+        display:block;
+        margin-top:20px;
+        text-align:center;
+        color:#aaa;
+        text-decoration:none;
+        font-size:13px;
+    }
+
+    .tm-back-home:hover{
+        color:#fff;
+    }
+
+    .tm-otp-box{
+        margin-top:20px;
+        padding:14px;
+        border-radius:10px;
+        background:#111;
+        border:1px solid rgba(255,255,255,.08);
+        color:#aaa;
+        font-size:13px;
+        text-align:center;
+    }
+
+    @media(max-width:500px){
+        .tm-login-box{
+            padding:30px 20px;
+        }
+
+        .tm-login-title{
+            font-size:25px;
+        }
+    }
+</style>
+
+<div class="tm-login-page">
+
+    <div class="tm-login-box">
+
+        <div class="tm-login-logo">
+            TOMESH <span>MOVIES</span>
+        </div>
+
+        {% if otp_sent %}
+
+            <div class="tm-login-title">
+                Enter OTP
+            </div>
+
+            <div class="tm-login-subtitle">
+                हमने OTP आपके email पर भेज दिया है।
+                <br>
+                <strong>{{ email }}</strong>
+            </div>
+
+            <form method="POST" action="{{ url_for('verify_otp') }}">
+
+                <input
+                    type="hidden"
+                    name="email"
+                    value="{{ email }}"
+                >
+
+                <label class="tm-login-label">
+                    6-Digit OTP
+                </label>
+
+                <input
+                    class="tm-login-input"
+                    type="text"
+                    name="otp"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                    placeholder="Enter 6-digit OTP"
+                    required
+                >
+
+                <button class="tm-login-btn" type="submit">
+                    Verify OTP
+                </button>
+
+            </form>
+
+            <div class="tm-otp-box">
+                OTP की validity 10 minutes है।
+            </div>
+
+            <a
+                class="tm-back-home"
+                href="{{ url_for('login') }}"
+            >
+                ← Change Email
+            </a>
+
+        {% else %}
+
+            <div class="tm-login-title">
+                Sign In
+            </div>
+
+            <div class="tm-login-subtitle">
+                अपना email डालें और हम आपको एक OTP भेजेंगे।
+            </div>
+
+            <form method="POST" action="{{ url_for('login') }}">
+
+                <label class="tm-login-label">
+                    Email address
+                </label>
+
+                <input
+                    class="tm-login-input"
+                    type="email"
+                    name="email"
+                    autocomplete="email"
+                    placeholder="you@example.com"
+                    required
+                >
+
+                <button class="tm-login-btn" type="submit">
+                    Get OTP
+                </button>
+
+            </form>
+
+            <div class="tm-login-note">
+                Sign in करके आप Tomesh Movies का इस्तेमाल कर सकते हैं।
+            </div>
+
+        {% endif %}
+
+        <a
+            class="tm-back-home"
+            href="{{ url_for('index') }}"
+        >
+            ← Back to Home
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}
