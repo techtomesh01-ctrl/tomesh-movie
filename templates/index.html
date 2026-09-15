@@ -6,24 +6,9 @@
 {% block content %}
 
 <style>
-/* =========================================================
-   TOMESH MOVIES — PREMIUM NETFLIX STYLE HOME
-   ========================================================= */
+*{box-sizing:border-box}
 
-:root{
-    --red:#e50914;
-    --purple:#b84cff;
-    --cyan:#00e5ff;
-    --gold:#ffc107;
-    --bg:#000;
-}
-
-*{
-    box-sizing:border-box;
-}
-
-html,
-body{
+html,body{
     margin:0;
     padding:0;
     background:#000;
@@ -33,13 +18,11 @@ body{
 .tm-home{
     width:100%;
     min-height:100vh;
-    overflow:hidden;
     background:#000;
+    overflow:hidden;
 }
 
-/* =========================================================
-   HEADER
-   ========================================================= */
+/* ================= HEADER ================= */
 
 .tm-header{
     position:absolute;
@@ -54,20 +37,21 @@ body{
 
     display:flex;
     align-items:center;
-    justify-content:space-between;
 
-    padding:0 clamp(14px,5vw,70px);
+    padding:0 24px;
 
-    background:
-        linear-gradient(
-            180deg,
-            rgba(0,0,0,.90),
-            rgba(0,0,0,.45),
-            transparent
-        );
+    background:linear-gradient(
+        180deg,
+        rgba(0,0,0,.92),
+        rgba(0,0,0,.45),
+        transparent
+    );
 }
 
 .tm-logo{
+    flex:1 1 auto;
+    min-width:0;
+
     display:flex;
     align-items:center;
 
@@ -80,16 +64,15 @@ body{
 
     white-space:nowrap;
 
-    text-shadow:
-        0 0 15px rgba(229,9,20,.35);
+    text-shadow:0 0 15px rgba(229,9,20,.35);
 }
 
 .tm-logo span{
-    color:var(--red);
+    color:#e50914;
 }
 
 .tm-header-right{
-    margin-left:auto;
+    flex:0 0 auto;
 
     display:flex;
     align-items:center;
@@ -97,11 +80,13 @@ body{
 
     gap:10px;
 
-    flex-shrink:0;
+    margin-left:auto;
+    padding:0;
 }
 
 .tm-language{
     width:120px;
+    min-width:120px;
     height:38px;
 
     padding:0 10px;
@@ -109,8 +94,7 @@ body{
     border:1px solid rgba(255,255,255,.65);
     border-radius:4px;
 
-    background:rgba(0,0,0,.65);
-
+    background:rgba(0,0,0,.72);
     color:#fff;
 
     font-size:13px;
@@ -126,6 +110,8 @@ body{
 }
 
 .tm-signin{
+    width:auto;
+    min-width:80px;
     height:38px;
 
     padding:0 18px;
@@ -134,11 +120,13 @@ body{
     align-items:center;
     justify-content:center;
 
+    flex-shrink:0;
+
     border-radius:4px;
 
-    background:var(--red);
-
+    background:#e50914;
     color:#fff;
+
     text-decoration:none;
 
     font-size:14px;
@@ -146,17 +134,14 @@ body{
 
     white-space:nowrap;
 
-    transition:.2s ease;
+    transition:.2s;
 }
 
 .tm-signin:hover{
     background:#f40612;
-    transform:translateY(-1px);
 }
 
-/* =========================================================
-   HERO
-   ========================================================= */
+/* ================= HERO ================= */
 
 .tm-hero{
     position:relative;
@@ -174,26 +159,25 @@ body{
     background:
         linear-gradient(
             90deg,
-            rgba(0,0,0,.88),
-            rgba(0,0,0,.42),
-            rgba(0,0,0,.88)
+            rgba(0,0,0,.90),
+            rgba(0,0,0,.40),
+            rgba(0,0,0,.90)
         ),
         url("https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=2200&q=85")
-        center center / cover no-repeat;
+        center/cover no-repeat;
 }
 
 .tm-hero::before{
     content:"";
-
     position:absolute;
     inset:0;
 
     background:
         linear-gradient(
             180deg,
-            rgba(0,0,0,.15) 0%,
-            rgba(0,0,0,.20) 40%,
-            rgba(0,0,0,.68) 78%,
+            rgba(0,0,0,.12),
+            rgba(0,0,0,.25) 45%,
+            rgba(0,0,0,.78) 82%,
             #000 100%
         );
 }
@@ -230,10 +214,9 @@ body{
 
     border-radius:50%;
 
-    background:var(--red);
+    background:#e50914;
 
-    box-shadow:
-        0 0 12px var(--red);
+    box-shadow:0 0 14px #e50914;
 }
 
 .tm-hero h1{
@@ -249,8 +232,7 @@ body{
 
     font-weight:1000;
 
-    text-shadow:
-        0 5px 35px rgba(0,0,0,.8);
+    text-shadow:0 5px 35px rgba(0,0,0,.8);
 }
 
 .tm-hero-sub{
@@ -273,9 +255,7 @@ body{
     color:#eee;
 }
 
-/* =========================================================
-   EMAIL
-   ========================================================= */
+/* ================= EMAIL ================= */
 
 .tm-email-box{
     width:min(700px,100%);
@@ -283,13 +263,11 @@ body{
     margin:0 auto;
 
     display:flex;
-
     gap:8px;
 }
 
 .tm-email{
     flex:1;
-
     min-width:0;
 
     height:58px;
@@ -299,7 +277,7 @@ body{
     border:1px solid rgba(255,255,255,.55);
     border-radius:4px;
 
-    background:rgba(15,15,15,.86);
+    background:rgba(15,15,15,.88);
 
     color:#fff;
 
@@ -326,7 +304,7 @@ body{
     border:0;
     border-radius:4px;
 
-    background:var(--red);
+    background:#e50914;
 
     color:#fff;
 
@@ -335,7 +313,7 @@ body{
 
     cursor:pointer;
 
-    transition:.2s ease;
+    transition:.2s;
 }
 
 .tm-get-started:hover{
@@ -343,16 +321,12 @@ body{
     transform:translateY(-1px);
 }
 
-/* =========================================================
-   COMMON SECTION
-   ========================================================= */
+/* ================= SECTIONS ================= */
 
 .tm-section{
     width:100%;
 
-    padding:
-        58px
-        clamp(18px,5vw,70px);
+    padding:58px clamp(18px,5vw,70px);
 
     background:#000;
 }
@@ -367,9 +341,7 @@ body{
     letter-spacing:-.7px;
 }
 
-/* =========================================================
-   TRENDING
-   ========================================================= */
+/* ================= TRENDING ================= */
 
 .tm-trending{
     display:flex;
@@ -403,7 +375,7 @@ body{
     text-decoration:none;
     color:#fff;
 
-    transition:.25s ease;
+    transition:.25s;
 }
 
 .tm-trend-card:hover{
@@ -430,7 +402,7 @@ body{
         linear-gradient(
             180deg,
             transparent 50%,
-            rgba(0,0,0,.88)
+            rgba(0,0,0,.90)
         );
 }
 
@@ -452,8 +424,7 @@ body{
 
     -webkit-text-stroke:3px #fff;
 
-    text-shadow:
-        4px 5px 0 rgba(0,0,0,.8);
+    text-shadow:4px 5px 0 rgba(0,0,0,.8);
 }
 
 .tm-trend-title{
@@ -469,13 +440,12 @@ body{
     font-weight:800;
 
     white-space:nowrap;
+
     overflow:hidden;
     text-overflow:ellipsis;
 }
 
-/* =========================================================
-   MORE REASONS
-   ========================================================= */
+/* ================= MORE REASONS ================= */
 
 .tm-reasons{
     display:grid;
@@ -524,9 +494,7 @@ body{
     filter:blur(5px);
 }
 
-/* =========================================================
-   PREMIUM SVG ICON
-   ========================================================= */
+/* PREMIUM COLOR ICONS */
 
 .tm-reason-icon{
     width:64px;
@@ -570,30 +538,22 @@ body{
 
 .tm-reason:nth-child(1) .tm-reason-icon{
     color:#ff1744;
-
-    box-shadow:
-        0 0 28px rgba(255,23,68,.18);
+    box-shadow:0 0 28px rgba(255,23,68,.20);
 }
 
 .tm-reason:nth-child(2) .tm-reason-icon{
     color:#00e5ff;
-
-    box-shadow:
-        0 0 28px rgba(0,229,255,.16);
+    box-shadow:0 0 28px rgba(0,229,255,.18);
 }
 
 .tm-reason:nth-child(3) .tm-reason-icon{
     color:#ffc107;
-
-    box-shadow:
-        0 0 28px rgba(255,193,7,.16);
+    box-shadow:0 0 28px rgba(255,193,7,.18);
 }
 
 .tm-reason:nth-child(4) .tm-reason-icon{
     color:#b84cff;
-
-    box-shadow:
-        0 0 28px rgba(184,76,255,.18);
+    box-shadow:0 0 28px rgba(184,76,255,.20);
 }
 
 .tm-reason h3{
@@ -614,9 +574,7 @@ body{
     font-size:14px;
 }
 
-/* =========================================================
-   FAQ
-   ========================================================= */
+/* ================= FAQ ================= */
 
 .tm-faq{
     width:min(1000px,100%);
@@ -668,10 +626,7 @@ body{
 }
 
 .tm-faq-answer{
-    padding:
-        0
-        25px
-        23px;
+    padding:0 25px 23px;
 
     color:#d1d1d1;
 
@@ -680,9 +635,7 @@ body{
     font-size:15px;
 }
 
-/* =========================================================
-   READY
-   ========================================================= */
+/* ================= READY ================= */
 
 .tm-ready{
     text-align:center;
@@ -699,17 +652,12 @@ body{
     font-size:16px;
 }
 
-/* =========================================================
-   FOOTER
-   ========================================================= */
+/* ================= FOOTER ================= */
 
 .tm-footer{
     width:100%;
 
-    padding:
-        55px
-        clamp(20px,5vw,70px)
-        30px;
+    padding:55px clamp(20px,5vw,70px) 30px;
 
     background:#000;
 
@@ -758,18 +706,13 @@ body{
     font-size:13px;
 }
 
-/* =========================================================
-   TABLET
-   ========================================================= */
+/* ================= TABLET ================= */
 
 @media(max-width:850px){
 
     .tm-header{
         height:72px;
-
-        padding:
-            0
-            18px;
+        padding:0 18px;
     }
 
     .tm-logo{
@@ -782,25 +725,19 @@ body{
 
     .tm-language{
         width:96px;
-
+        min-width:96px;
         height:36px;
-
         font-size:12px;
     }
 
     .tm-signin{
         height:36px;
-
-        padding:
-            0
-            13px;
-
+        padding:0 13px;
         font-size:12px;
     }
 
     .tm-hero{
         min-height:92vh;
-
         height:auto;
 
         padding:
@@ -814,9 +751,7 @@ body{
     }
 
     .tm-hero h1{
-        font-size:
-            clamp(35px,10vw,55px);
-
+        font-size:clamp(35px,10vw,55px);
         letter-spacing:-2px;
     }
 
@@ -826,14 +761,12 @@ body{
 
     .tm-email-box{
         flex-direction:column;
-
         gap:10px;
     }
 
     .tm-email,
     .tm-get-started{
         width:100%;
-
         height:54px;
     }
 
@@ -842,22 +775,17 @@ body{
     }
 
     .tm-section{
-        padding:
-            42px
-            18px;
+        padding:42px 18px;
     }
 
     .tm-trend-card{
         flex-basis:145px;
-
         height:215px;
     }
 
     .tm-number{
         font-size:76px;
-
         bottom:-12px;
-
         -webkit-text-stroke:2px #fff;
     }
 
@@ -870,29 +798,17 @@ body{
     }
 
     .tm-faq summary{
-        padding:
-            20px
-            50px
-            20px
-            18px;
-
+        padding:20px 50px 20px 18px;
         font-size:16px;
     }
 
     .tm-faq-answer{
-        padding:
-            0
-            18px
-            20px;
-
+        padding:0 18px 20px;
         font-size:14px;
     }
 
     .tm-footer{
-        padding:
-            42px
-            18px
-            25px;
+        padding:42px 18px 25px;
     }
 
     .tm-footer-grid{
@@ -900,58 +816,58 @@ body{
     }
 }
 
-/* =========================================================
-   SMALL MOBILE
-   ========================================================= */
+/* ================= SMALL MOBILE ================= */
 
-@media(max-width:480px){
+@media(max-width:600px){
 
     .tm-header{
-        padding:
-            0
-            10px;
+        padding:0 12px;
     }
 
     .tm-logo{
-        font-size:17px;
+        font-size:18px;
     }
 
     .tm-header-right{
-        gap:4px;
+        gap:5px;
     }
 
     .tm-language{
-        width:78px;
+        width:82px;
+        min-width:82px;
+        height:35px;
 
-        min-width:78px;
-
-        padding:
-            0
-            5px;
+        padding:0 4px;
 
         font-size:10px;
     }
 
     .tm-signin{
-        padding:
-            0
-            9px;
+        min-width:68px;
+        height:35px;
+
+        padding:0 9px;
 
         font-size:11px;
     }
+}
 
-    .tm-hero{
-        padding-top:120px;
+@media(max-width:400px){
+
+    .tm-logo{
+        font-size:16px;
     }
 
-    .tm-hero-badge{
+    .tm-language{
+        width:75px;
+        min-width:75px;
+        font-size:9px;
+    }
+
+    .tm-signin{
+        min-width:62px;
+        padding:0 7px;
         font-size:10px;
-    }
-
-    .tm-footer-grid{
-        grid-template-columns:1fr 1fr;
-
-        gap:25px 15px;
     }
 }
 </style>
@@ -959,9 +875,7 @@ body{
 
 <div class="tm-home">
 
-    <!-- =====================================================
-         HEADER
-         ===================================================== -->
+    <!-- HEADER -->
 
     <header class="tm-header">
 
@@ -996,9 +910,7 @@ body{
     </header>
 
 
-    <!-- =====================================================
-         HERO
-         ===================================================== -->
+    <!-- HERO -->
 
     <section class="tm-hero">
 
@@ -1055,9 +967,7 @@ body{
     </section>
 
 
-    <!-- =====================================================
-         TRENDING NOW
-         ===================================================== -->
+    <!-- TRENDING -->
 
     <section class="tm-section">
 
@@ -1138,9 +1048,7 @@ body{
     </section>
 
 
-    <!-- =====================================================
-         MORE REASONS
-         ===================================================== -->
+    <!-- MORE REASONS -->
 
     <section class="tm-section">
 
@@ -1309,9 +1217,7 @@ body{
     </section>
 
 
-    <!-- =====================================================
-         FAQ
-         ===================================================== -->
+    <!-- FAQ -->
 
     <section class="tm-section">
 
@@ -1415,9 +1321,7 @@ body{
     </section>
 
 
-    <!-- =====================================================
-         READY TO WATCH
-         ===================================================== -->
+    <!-- READY TO WATCH -->
 
     <section class="tm-section tm-ready">
 
@@ -1459,9 +1363,7 @@ body{
     </section>
 
 
-    <!-- =====================================================
-         FOOTER
-         ===================================================== -->
+    <!-- FOOTER -->
 
     <footer class="tm-footer">
 
