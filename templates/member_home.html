@@ -5,22 +5,12 @@
 {% block content %}
 
 <style>
-/* =========================================================
-   TOMESH MOVIES — PREMIUM MEMBER HOME
-   Netflix-inspired member dashboard
-   Public Home remains untouched
-   ========================================================= */
-
 .tm-member-page{
     min-height:100vh;
     background:#050505;
     color:#fff;
     overflow:hidden;
 }
-
-/* =========================
-   NAVBAR
-   ========================= */
 
 .tm-member-nav{
     position:fixed;
@@ -152,10 +142,6 @@
     overflow:hidden;
     text-overflow:ellipsis;
 }
-
-/* =========================
-   HERO
-   ========================= */
 
 .tm-member-hero{
     position:relative;
@@ -300,10 +286,6 @@
     color:#fff;
 }
 
-/* =========================
-   CONTENT
-   ========================= */
-
 .tm-member-content{
     position:relative;
     z-index:10;
@@ -355,10 +337,6 @@
     display:none;
 }
 
-/* =========================
-   MOVIE CARD
-   ========================= */
-
 .tm-movie-card{
     position:relative;
     flex:0 0 190px;
@@ -384,8 +362,7 @@
     width:100%;
     height:270px;
     overflow:hidden;
-    background:
-        linear-gradient(135deg,#181818,#090909);
+    background:linear-gradient(135deg,#181818,#090909);
 }
 
 .tm-poster-wrap img{
@@ -473,10 +450,6 @@
     font-weight:700;
 }
 
-/* =========================
-   CATEGORY CHIPS
-   ========================= */
-
 .tm-category-row{
     display:flex;
     gap:9px;
@@ -505,10 +478,6 @@
     color:#fff;
 }
 
-/* =========================
-   EMPTY
-   ========================= */
-
 .tm-empty{
     margin:30px 4.5%;
     padding:50px 25px;
@@ -518,10 +487,6 @@
     background:#101010;
     color:#888;
 }
-
-/* =========================
-   FOOTER
-   ========================= */
 
 .tm-member-footer{
     margin-top:45px;
@@ -555,10 +520,6 @@
 .tm-footer-links a:hover{
     color:#fff;
 }
-
-/* =========================
-   MOBILE
-   ========================= */
 
 @media(max-width:900px){
 
@@ -709,10 +670,6 @@
 <div class="tm-member-page">
 
 ```
-<!-- =====================================================
-     NAVIGATION
-     ===================================================== -->
-
 <nav class="tm-member-nav" id="tmMemberNav">
 
     <div class="tm-member-left">
@@ -749,11 +706,13 @@
 
         <label class="tm-search">
             <span class="tm-search-icon">⌕</span>
+
             <input
                 id="tmMovieSearch"
                 type="search"
                 placeholder="Search"
                 autocomplete="off">
+
         </label>
 
         <a class="tm-account"
@@ -773,11 +732,6 @@
     </div>
 
 </nav>
-
-
-<!-- =====================================================
-     HERO
-     ===================================================== -->
 
 {% if movies %}
 
@@ -803,8 +757,13 @@
                 </span>
 
                 {% if featured.category %}
+
                     <span class="tm-meta-dot">•</span>
-                    <span>{{ featured.category }}</span>
+
+                    <span>
+                        {{ featured.category }}
+                    </span>
+
                 {% endif %}
 
                 <span class="tm-meta-dot">•</span>
@@ -836,14 +795,7 @@
 
     </section>
 
-
-    <!-- =================================================
-         MOVIE CONTENT
-         ================================================= -->
-
     <main class="tm-member-content">
-
-        <!-- TRENDING -->
 
         <section class="tm-movie-section"
                  id="trending">
@@ -861,8 +813,7 @@
 
             </div>
 
-            <div class="tm-movie-row"
-                 data-row>
+            <div class="tm-movie-row">
 
                 {% for movie in movies %}
 
@@ -916,9 +867,6 @@
 
         </section>
 
-
-        <!-- CATEGORIES -->
-
         <section class="tm-movie-section"
                  id="categories">
 
@@ -937,7 +885,9 @@
                 {% for movie in movies %}
 
                     {% if movie.category and movie.category not in category_list %}
+
                         {% set _ = category_list.append(movie.category) %}
+
                     {% endif %}
 
                 {% endfor %}
@@ -948,7 +898,9 @@
 
                         <a class="tm-category-chip"
                            href="#trending">
+
                             {{ category }}
+
                         </a>
 
                     {% endfor %}
@@ -965,9 +917,6 @@
 
         </section>
 
-
-        <!-- ALL MOVIES -->
-
         <section class="tm-movie-section"
                  id="my-list">
 
@@ -979,8 +928,7 @@
 
             </div>
 
-            <div class="tm-movie-row"
-                 data-row>
+            <div class="tm-movie-row">
 
                 {% for movie in movies %}
 
@@ -1039,7 +987,9 @@
 {% else %}
 
     <section class="tm-member-hero">
+
         <div class="tm-hero-content">
+
             <div class="tm-welcome">
                 <span class="tm-welcome-dot"></span>
                 Welcome to Tomesh Movies
@@ -1052,7 +1002,9 @@
             <p class="tm-hero-description">
                 अभी कोई movie उपलब्ध नहीं है।
             </p>
+
         </div>
+
     </section>
 
     <div class="tm-empty">
@@ -1060,11 +1012,6 @@
     </div>
 
 {% endif %}
-
-
-<!-- =====================================================
-     FOOTER
-     ===================================================== -->
 
 <footer class="tm-member-footer">
 
@@ -1106,60 +1053,71 @@
 <script>
 (function(){
 
-    /* Navbar background on scroll */
     const nav = document.getElementById("tmMemberNav");
 
     function updateNav(){
+
         if(!nav) return;
 
         if(window.scrollY > 20){
+
             nav.classList.add("scrolled");
+
         }else{
+
             nav.classList.remove("scrolled");
+
         }
+
     }
 
-    window.addEventListener("scroll", updateNav, {
-        passive:true
-    });
+    window.addEventListener(
+        "scroll",
+        updateNav,
+        { passive:true }
+    );
 
     updateNav();
 
-
-    /* Search movies */
-    const search = document.getElementById("tmMovieSearch");
+    const search =
+        document.getElementById("tmMovieSearch");
 
     if(search){
 
-        search.addEventListener("input", function(){
+        search.addEventListener(
+            "input",
+            function(){
 
-            const query = this.value
-                .trim()
-                .toLowerCase();
+                const query =
+                    this.value
+                        .trim()
+                        .toLowerCase();
 
-            const cards = document.querySelectorAll(
-                ".tm-searchable-movie"
-            );
+                const cards =
+                    document.querySelectorAll(
+                        ".tm-searchable-movie"
+                    );
 
-            cards.forEach(function(card){
+                cards.forEach(function(card){
 
-                const title =
-                    card.dataset.title || "";
+                    const title =
+                        card.dataset.title || "";
 
-                const category =
-                    card.dataset.category || "";
+                    const category =
+                        card.dataset.category || "";
 
-                const matched =
-                    !query ||
-                    title.includes(query) ||
-                    category.includes(query);
+                    const matched =
+                        !query ||
+                        title.includes(query) ||
+                        category.includes(query);
 
-                card.style.display =
-                    matched ? "" : "none";
+                    card.style.display =
+                        matched ? "" : "none";
 
-            });
+                });
 
-        });
+            }
+        );
 
     }
 
