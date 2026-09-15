@@ -827,212 +827,159 @@ def otp_hash(
         payload,
         hashlib.sha256,
     ).hexdigest()
+def send_otp_email(email, otp):
+"""
+Send customer login OTP using Resend API.
+"""
+email = normalize_email(email)
 
-
-# ============================================================
-# RESEND OTP EMAIL
-# ============================================================
-
-def send_otp_email(
-    email,
-    otp
-):
-    """
-    Send customer login OTP using Resend API.
-    """
-
-    if not RESEND_API_KEY:
-        raise RuntimeError(
-            "RESEND_API_KEY missing. "
-            "Add RESEND_API_KEY in Render Environment."
-        )
-
-    if not RESEND_FROM:
-        raise RuntimeError(
-            "RESEND_FROM missing. "
-            "Add RESEND_FROM in Render Environment."
-        )
-
-    payload = {
-        "from": RESEND_FROM,
-        "to": [email],
-        "subject": (
-            "Tomesh Movies - Your Login OTP"
-        ),
-        "html": (
-            """
-            <div style="
-                font-family:Arial,sans-serif;
-                background:#080808;
-                color:#ffffff;
-                padding:30px;
-            ">
-                <div style="
-                    max-width:520px;
-                    margin:auto;
-                    background:#111111;
-                    border:1px solid #292929;
-                    border-radius:16px;
-                    padding:28px;
-                ">
-
-                    <h1 style="
-                        margin:0 0 12px;
-                        font-size:24px;
-                    ">
-                        TOMESH
-                        <span style="
-                            color:#e50914;
-                        ">
-                            MOVIES
-                        </span>
-                    </h1>
-
-                    <p style="
-                        color:#cccccc;
-                        font-size:15px;
-                        line-height:1.6;
-                    ">
-                        Your Tomesh Movies
-                        login verification code is:
-                    </p>
-
-                    <div style="
-                        margin:24px 0;
-                        padding:18px;
-                        background:#1b1b1b;
-                        border-radius:12px;
-                        text-align:center;
-                        font-size:34px;
-                        font-weight:bold;
-                        letter-spacing:10px;
-                        color:#ffffff;
-                    ">
-                    """
-            + str(otp)
-            + """
-                    </div>
-
-                    <p style="
-                        color:#999999;
-                        font-size:13px;
-                        line-height:1.6;
-                    ">
-                        This OTP expires in """
-            + str(OTP_EXPIRY_MINUTES)
-            + """
-                        minutes.
-                    </p>
-
-                    <p style="
-                        color:#999999;
-                        font-size:13px;
-                        line-height:1.6;
-                    ">
-                        Do not share this code
-                        with anyone.
-                    </p>
-
-                    <hr style="
-                        border:0;
-                        border-top:1px solid #292929;
-                        margin:24px 0;
-                    ">
-
-                    <p style="
-                        color:#666666;
-                        font-size:11px;
-                    ">
-                        If you did not request
-                        this code, you can safely
-                        ignore this email.
-                    </p>
-
-                </div>
-            </div>
-            """
-        ),
-    }
-
-    body = json.dumps(
-        payload
-    ).encode("utf-8")
-
-    req = Request(
-        RESEND_API_URL,
-        data=body,
-        headers={
-            "Authorization":
-                "Bearer "
-                + RESEND_API_KEY,
-
-            "Content-Type":
-                "application/json",
-
-            "Accept":
-                "application/json",
-        },
-        method="POST",
+```
+if not RESEND_API_KEY:
+    raise RuntimeError(
+        "RESEND_API_KEY missing. Add it in Render Environment."
     )
 
-    try:
+if not RESEND_FROM:
+    raise RuntimeError(
+        "RESEND_FROM missing. Add it in Render Environment."
+    )
 
-        with urlopen(
-            req,
-            timeout=30,
-        ) as response:
+payload = {
+    "from": RESEND_FROM,
+    "to": [email],
+    "subject": "Tomesh Movies - Your Login OTP",
+    "html": f"""
+    <div style="font-family:Arial,sans-serif;
+                background:#050505;
+                color:#ffffff;
+                padding:30px;">
+        <div style="max-width:520px;
+                    margin:auto;
+                    background:#111111;
+                    border:1px solid #333333;
+                    border-radius:16px;
+                    padding:30px;">
 
-            raw = response.read().decode(
-                "utf-8",
-                errors="replace",
-            )
+            <h2 style="margin:0 0 15px;
+                       color:#e50914;">
+                TOMESH MOVIES
+            </h2>
 
-            if not raw:
-                return {}
+            <p style="color:#cccccc;
+                      font-size:15px;">
+                आपका Tomesh Movies verification code है:
+            </p>
 
-            result = json.loads(raw)
+            <div style="margin:25px 0;
+                        padding:20px;
+                        text-align:center;
+                        background:#050505;
+                        border-radius:12px;
+                        font-size:34px;
+                        font-weight:900;
+                        letter-spacing:10px;
+                        color:#ffffff;">
+                {otp}
+            </div>
 
-            print(
-                "RESEND OTP EMAIL SENT:",
-                result,
-            )
+            <p style="color:#999999;
+                      font-size:13px;">
+                यह OTP 10 minutes तक valid है।
+            </p>
 
-            return result
+            <p style="color:#777777;
+                      font-size:12px;
+                      line-height:1.6;">
+                अगर आपने यह login request नहीं की है,
+                तो इस email को ignore करें।
+            </p>
 
-    except HTTPError as exc:
+        </div>
+    </div>
+    """,
+}
 
-        raw = exc.read().decode(
+body = json.dumps(payload).encode("utf-8")
+
+req = Request(
+    RESEND_API_URL,
+    data=body,
+    method="POST",
+    headers={
+        "Authorization": "Bearer " + RESEND_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "Tomesh-Movies/1.0",
+    },
+)
+
+try:
+    with urlopen(req, timeout=30) as response:
+        response_body = response.read().decode(
             "utf-8",
             errors="replace",
         )
 
         print(
-            "RESEND HTTP ERROR:",
-            exc.code,
-            raw,
+            "RESEND OTP EMAIL SENT:",
+            response.status,
+            response_body,
         )
 
-        try:
-            detail = json.loads(raw)
+        if response.status < 200 or response.status >= 300:
+            raise RuntimeError(
+                "Resend API HTTP "
+                + str(response.status)
+                + ": "
+                + response_body
+            )
 
-        except Exception:
-            detail = {
-                "message": raw
-            }
+        return True
 
-        raise RuntimeError(
-            "Resend API "
-            + str(exc.code)
-            + ": "
-            + str(detail)
-        )
+except HTTPError as exc:
+    raw = exc.read().decode(
+        "utf-8",
+        errors="replace",
+    )
 
-    except URLError as exc:
+    print(
+        "RESEND HTTP ERROR:",
+        exc.code,
+        raw,
+    )
 
-        raise RuntimeError(
-            "Resend connection failed: "
-            + str(exc)
-        )
+    raise RuntimeError(
+        "Resend API "
+        + str(exc.code)
+        + ": "
+        + raw
+    ) from exc
+
+except URLError as exc:
+    print(
+        "RESEND CONNECTION ERROR:",
+        repr(exc),
+    )
+
+    raise RuntimeError(
+        "Resend connection failed: "
+        + str(exc)
+    ) from exc
+
+except Exception as exc:
+    print(
+        "RESEND SEND ERROR:",
+        repr(exc),
+    )
+    raise
+```
+
+def bind_customer_email(email):
+
+
+# ============================================================
+# RESEND OTP EMAIL
+# ============================================================
 
 
 # ============================================================
