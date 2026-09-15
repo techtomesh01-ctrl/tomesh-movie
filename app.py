@@ -1656,11 +1656,11 @@ def stream_movie(movie_id):
         "",
     ).strip()
 
-    # The movie page creates a signed 24-hour stream token after
-    # payment access is confirmed. This avoids losing access when
-    # the browser's Flask session cookie is not sent with a media
-    # request. The normal session check remains as a fallback.
+    # --------------------------------------------------------
+    # Verify paid watch access.
+    # --------------------------------------------------------
     if access_token:
+
         if not verify_stream_token(
             access_token,
             movie_id,
@@ -1669,18 +1669,22 @@ def stream_movie(movie_id):
                 "Invalid or expired stream access.",
                 status=403,
             )
+
     else:
+
         access = access_for_movie(
             movie_id
         )
 
         if not access["watch"]:
-
             return Response(
                 "Payment required.",
                 status=403,
             )
 
+    # --------------------------------------------------------
+    # Get movie/video key.
+    # --------------------------------------------------------
     conn = get_db(
         dict_rows=True
     )
@@ -1730,14 +1734,15 @@ def stream_movie(movie_id):
             status=400,
         )
 
+    # --------------------------------------------------------
+    # Verify the object exists before handing the browser a
+    # direct R2 URL. R2 handles HTTP Range/206 natively, which
+    # is more reliable for browser MP4 playback than proxying
+    # every media range through the Render Flask worker.
+    # --------------------------------------------------------
     try:
 
-        client = get_r2_client()
-
-        head = client.head_object(
-            Bucket=R2_BUCKET,
-            Key=video_key,
-        )
+        head = r2_head(video_key)
 
     except Exception as exc:
 
@@ -1765,208 +1770,51 @@ def stream_movie(movie_id):
         )
 
     content_type = (
-        head.get(
-            "ContentType"
-        )
-        or content_type_for_key(
-            video_key
-        )
+        content_type_for_key(video_key)
+        or head.get("ContentType")
+        or "video/mp4"
     )
 
-    range_header = request.headers.get(
-        "Range"
-    )
-
-    start = 0
-    end = total_size - 1
-
-    if range_header:
-
-        try:
-
-            if not range_header.startswith(
-                "bytes="
-            ):
-                raise ValueError()
-
-            value = (
-                range_header
-               .replace(
-                    "bytes=",
-                    "",
-                    1,
-                )
-                .split(",", 1)[0]
-                .strip()
-            )
-
-            if "-" not in value:
-                raise ValueError()
-
-            start_text, end_text = value.split(
-                "-",
-                1,
-            )
-
-            if not start_text:
-
-                suffix = int(
-                    end_text
-                )
-
-                if suffix <= 0:
-                    raise ValueError()
-
-                suffix = min(
-                    suffix,
-                    total_size,
-                )
-
-                start = (
-                    total_size - suffix
-                )
-
-                end = total_size - 1
-
-            else:
-
-                start = int(
-                    start_text
-                )
-
-                end = (
-                    int(end_text)
-                    if end_text
-                    else total_size - 1
-                )
-
-            if start < 0:
-                raise ValueError()
-
-            if start >= total_size:
-                raise ValueError()
-
-            end = min(
-                end,
-                total_size - 1,
-            )
-
-            if end < start:
-                raise ValueError()
-
-        except Exception:
-
-            return Response(
-                "Range Not Satisfiable",
-                status=416,
-                headers={
-                    "Content-Range":
-                        "bytes */"
-                        + str(total_size)
-                },
-            )
-
-    content_length = (
-        end - start + 1
-    )
-
+    # --------------------------------------------------------
+    # Direct presigned R2 URL. Browser talks to R2 directly and
+    # gets native Range support, correct Content-Type and inline
+    # playback behavior.
+    # --------------------------------------------------------
     try:
 
-        if range_header:
+        client = get_r2_client()
 
-            obj = client.get_object(
-                Bucket=R2_BUCKET,
-                Key=video_key,
-                Range=(
-                    "bytes="
-                    + str(start)
-                    + "-"
-                    + str(end)
-                ),
-            )
+        url = client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": R2_BUCKET,
+                "Key": video_key,
+                "ResponseContentType": content_type,
+                "ResponseContentDisposition": "inline",
+                "ResponseCacheControl": "private, max-age=300",
+            },
+            ExpiresIn=min(
+                PRESIGNED_EXPIRES,
+                3600,
+            ),
+        )
 
-        else:
-
-            obj = client.get_object(
-                Bucket=R2_BUCKET,
-                Key=video_key,
-            )
+        return redirect(
+            url,
+            code=302,
+        )
 
     except Exception as exc:
 
         print(
-            "R2 VIDEO GET ERROR:",
+            "R2 STREAM URL ERROR:",
             repr(exc),
         )
 
         return Response(
-            "Unable to load video.",
+            "Unable to prepare video stream.",
             status=502,
         )
-
-    body = obj["Body"]
-
-    def generate():
-
-        try:
-
-            while True:
-
-                chunk = body.read(
-                    1024 * 1024
-                )
-
-                if not chunk:
-                    break
-
-                yield chunk
-
-        finally:
-
-            try:
-                body.close()
-            except Exception:
-                pass
-
-    headers = {
-        "Content-Type": content_type,
-        "Content-Length": str(
-            content_length
-        ),
-        "Accept-Ranges": "bytes",
-        "Cache-Control":
-            "private, max-age=300",
-        "Content-Disposition": "inline",
-        "X-Content-Type-Options":
-            "nosniff",
-    }
-
-    if range_header:
-
-        headers[
-            "Content-Range"
-        ] = (
-            "bytes "
-            + str(start)
-            + "-"
-            + str(end)
-            + "/"
-            + str(total_size)
-        )
-
-        return Response(
-            generate(),
-            status=206,
-            headers=headers,
-            direct_passthrough=True,
-        )
-
-    return Response(
-        generate(),
-        status=200,
-        headers=headers,
-        direct_passthrough=True,
-    )
 
 
 # ============================================================
