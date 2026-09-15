@@ -1577,294 +1577,179 @@ def movie_page(movie_id):
 
 @app.route(
     "/stream/<int:movie_id>",
-    methods=["GET"],
+    methods=["GET", "HEAD", "OPTIONS"],
 )
 def stream_movie(movie_id):
+    """Same-origin R2 media endpoint with browser-compatible byte ranges."""
 
-    access = access_for_movie(
-        movie_id
-    )
-
-    if not access["watch"]:
-
+    if request.method == "OPTIONS":
         return Response(
-            "Payment required.",
-            status=403,
+            status=204,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+                "Access-Control-Allow-Headers": "Range, Content-Type",
+                "Access-Control-Expose-Headers": (
+                    "Accept-Ranges, Content-Length, Content-Range, ETag, Last-Modified"
+                ),
+            },
         )
 
-    conn = get_db(
-        dict_rows=True
-    )
+    access = access_for_movie(movie_id)
+    if not access["watch"]:
+        return Response("Payment required.", status=403)
 
+    conn = get_db(dict_rows=True)
     try:
-
         cur = conn.cursor()
-
         cur.execute(
-            """
-            SELECT id, title, video
-            FROM movies
-            WHERE id = %s
-            """,
+            "SELECT id, title, video FROM movies WHERE id = %s",
             (movie_id,),
         )
-
         movie = cur.fetchone()
         cur.close()
-
     finally:
         conn.close()
 
     if not movie:
-        return Response(
-            "Movie not found.",
-            status=404,
-        )
+        return Response("Movie not found.", status=404)
 
-    video_key = movie.get(
-        "video"
-    )
-
+    video_key = movie.get("video")
     if not video_key:
-        return Response(
-            "Video not found.",
-            status=404,
-        )
+        return Response("Video not found.", status=404)
 
     try:
-        video_key = validate_r2_key(
-            video_key
-        )
+        video_key = validate_r2_key(video_key)
     except Exception:
-        return Response(
-            "Invalid video object.",
-            status=400,
-        )
+        return Response("Invalid video object.", status=400)
+
+    client = get_r2_client()
 
     try:
-
-        client = get_r2_client()
-
         head = client.head_object(
             Bucket=R2_BUCKET,
             Key=video_key,
         )
-
     except Exception as exc:
+        print("R2 HEAD ERROR:", repr(exc))
+        return Response("Video object not found in R2.", status=404)
 
-        print(
-            "R2 HEAD ERROR:",
-            repr(exc),
-        )
-
-        return Response(
-            "Video object not found in R2.",
-            status=404,
-        )
-
-    total_size = int(
-        head.get(
-            "ContentLength",
-            0,
-        )
-    )
-
+    total_size = int(head.get("ContentLength") or 0)
     if total_size <= 0:
-        return Response(
-            "Video file is empty.",
-            status=404,
+        return Response("Video file is empty.", status=404)
+
+    # Always choose a browser-safe MIME type from the extension.
+    # For .mp4 this is always video/mp4, even if old R2 metadata is wrong.
+    content_type = content_type_for_key(video_key)
+    if content_type == "application/octet-stream":
+        content_type = head.get("ContentType") or "video/mp4"
+
+    common_headers = {
+        "Content-Type": content_type,
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "private, no-cache, no-transform",
+        "Content-Disposition": "inline",
+        "X-Content-Type-Options": "nosniff",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Expose-Headers": (
+            "Accept-Ranges, Content-Length, Content-Range, ETag, Last-Modified"
+        ),
+    }
+
+    if head.get("ETag"):
+        common_headers["ETag"] = str(head["ETag"])
+
+    if head.get("LastModified"):
+        common_headers["Last-Modified"] = head["LastModified"].strftime(
+            "%a, %d %b %Y %H:%M:%S GMT"
         )
 
-    content_type = (
-        head.get(
-            "ContentType"
-        )
-        or content_type_for_key(
-            video_key
-        )
-    )
+    if request.method == "HEAD":
+        common_headers["Content-Length"] = str(total_size)
+        return Response(status=200, headers=common_headers)
 
-    range_header = request.headers.get(
-        "Range"
-    )
-
+    range_header = request.headers.get("Range", "").strip()
     start = 0
     end = total_size - 1
+    partial = False
 
     if range_header:
-
         try:
+            if not range_header.lower().startswith("bytes="):
+                raise ValueError("Unsupported range unit")
 
-            if not range_header.startswith(
-                "bytes="
-            ):
-                raise ValueError()
-
-            value = (
-                range_header
-               .replace(
-                    "bytes=",
-                    "",
-                    1,
-                )
-                .split(",", 1)[0]
-                .strip()
-            )
-
+            value = range_header[6:].split(",", 1)[0].strip()
             if "-" not in value:
-                raise ValueError()
+                raise ValueError("Invalid range")
 
-            start_text, end_text = value.split(
-                "-",
-                1,
-            )
+            start_text, end_text = value.split("-", 1)
 
-            if not start_text:
-
-                suffix = int(
-                    end_text
-                )
-
-                if suffix <= 0:
-                    raise ValueError()
-
-                suffix = min(
-                    suffix,
-                    total_size,
-                )
-
-                start = (
-                    total_size - suffix
-                )
-
+            if start_text == "":
+                suffix_length = int(end_text)
+                if suffix_length <= 0:
+                    raise ValueError("Invalid suffix range")
+                suffix_length = min(suffix_length, total_size)
+                start = total_size - suffix_length
                 end = total_size - 1
-
             else:
+                start = int(start_text)
+                end = int(end_text) if end_text else total_size - 1
+                if start < 0 or start >= total_size:
+                    raise ValueError("Range outside object")
+                end = min(end, total_size - 1)
+                if end < start:
+                    raise ValueError("Invalid range")
 
-                start = int(
-                    start_text
-                )
-
-                end = (
-                    int(end_text)
-                    if end_text
-                    else total_size - 1
-                )
-
-            if start < 0:
-                raise ValueError()
-
-            if start >= total_size:
-                raise ValueError()
-
-            end = min(
-                end,
-                total_size - 1,
-            )
-
-            if end < start:
-                raise ValueError()
-
+            partial = True
         except Exception:
-
             return Response(
                 "Range Not Satisfiable",
                 status=416,
                 headers={
-                    "Content-Range":
-                        "bytes */"
-                        + str(total_size)
+                    **common_headers,
+                    "Content-Range": f"bytes */{total_size}",
                 },
             )
 
-    content_length = (
-        end - start + 1
-    )
+    content_length = end - start + 1
 
     try:
-
-        if range_header:
-
+        if partial:
             obj = client.get_object(
                 Bucket=R2_BUCKET,
                 Key=video_key,
-                Range=(
-                    "bytes="
-                    + str(start)
-                    + "-"
-                    + str(end)
-                ),
+                Range=f"bytes={start}-{end}",
             )
-
         else:
-
             obj = client.get_object(
                 Bucket=R2_BUCKET,
                 Key=video_key,
             )
-
     except Exception as exc:
-
-        print(
-            "R2 VIDEO GET ERROR:",
-            repr(exc),
-        )
-
-        return Response(
-            "Unable to load video.",
-            status=502,
-        )
+        print("R2 VIDEO GET ERROR:", repr(exc))
+        return Response("Unable to load video.", status=502)
 
     body = obj["Body"]
 
     def generate():
-
         try:
-
             while True:
-
-                chunk = body.read(
-                    1024 * 1024
-                )
-
+                chunk = body.read(1024 * 1024)
                 if not chunk:
                     break
-
                 yield chunk
-
         finally:
-
             try:
                 body.close()
             except Exception:
                 pass
 
-    headers = {
-        "Content-Type": content_type,
-        "Content-Length": str(
-            content_length
-        ),
-        "Accept-Ranges": "bytes",
-        "Cache-Control":
-            "private, max-age=300",
-        "Content-Disposition": "inline",
-        "X-Content-Type-Options":
-            "nosniff",
-    }
+    headers = dict(common_headers)
+    headers["Content-Length"] = str(content_length)
 
-    if range_header:
-
-        headers[
-            "Content-Range"
-        ] = (
-            "bytes "
-            + str(start)
-            + "-"
-            + str(end)
-            + "/"
-            + str(total_size)
-        )
-
+    if partial:
+        headers["Content-Range"] = f"bytes {start}-{end}/{total_size}"
         return Response(
             generate(),
             status=206,
