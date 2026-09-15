@@ -5,16 +5,21 @@
 {% block content %}
 
 <style>
+    *{
+        box-sizing:border-box;
+    }
+
     .tm-login-page{
         min-height:100vh;
+        width:100%;
         display:flex;
         align-items:center;
         justify-content:center;
         padding:30px 16px;
         color:#fff;
         background:
-            radial-gradient(circle at 20% 10%,rgba(229,9,20,.22),transparent 30%),
-            radial-gradient(circle at 85% 80%,rgba(120,40,220,.20),transparent 32%),
+            radial-gradient(circle at 15% 10%,rgba(229,9,20,.22),transparent 30%),
+            radial-gradient(circle at 85% 85%,rgba(120,40,220,.20),transparent 32%),
             #050505;
     }
 
@@ -23,8 +28,10 @@
         padding:38px 32px;
         border:1px solid rgba(255,255,255,.12);
         border-radius:18px;
-        background:rgba(15,15,15,.94);
-        box-shadow:0 25px 80px rgba(0,0,0,.55);
+        background:rgba(15,15,15,.96);
+        box-shadow:
+            0 25px 80px rgba(0,0,0,.60),
+            0 0 50px rgba(229,9,20,.05);
     }
 
     .tm-login-logo{
@@ -51,7 +58,23 @@
         color:#aaa;
         font-size:14px;
         line-height:1.6;
-        margin-bottom:26px;
+        margin:0 0 26px;
+    }
+
+    .tm-login-email{
+        margin:0 0 22px;
+        padding:13px 15px;
+        border-radius:9px;
+        border:1px solid rgba(255,255,255,.10);
+        background:#111;
+        color:#ddd;
+        text-align:center;
+        font-size:13px;
+        word-break:break-all;
+    }
+
+    .tm-login-email strong{
+        color:#fff;
     }
 
     .tm-login-label{
@@ -72,6 +95,7 @@
         background:#181818;
         color:#fff;
         font-size:16px;
+        transition:.2s ease;
     }
 
     .tm-login-input:focus{
@@ -79,9 +103,21 @@
         box-shadow:0 0 0 2px rgba(229,9,20,.18);
     }
 
+    .tm-login-input::placeholder{
+        color:#777;
+    }
+
+    .tm-otp-input{
+        text-align:center;
+        font-size:25px;
+        font-weight:900;
+        letter-spacing:9px;
+        padding-left:22px;
+    }
+
     .tm-login-btn{
         width:100%;
-        height:54px;
+        min-height:54px;
         margin-top:18px;
         border:0;
         border-radius:8px;
@@ -98,12 +134,36 @@
         transform:translateY(-1px);
     }
 
+    .tm-login-btn:active{
+        transform:translateY(0);
+    }
+
+    .tm-login-secondary{
+        background:#202020;
+        border:1px solid rgba(255,255,255,.12);
+    }
+
+    .tm-login-secondary:hover{
+        background:#292929;
+    }
+
     .tm-login-note{
         margin-top:20px;
         text-align:center;
         color:#888;
         font-size:12px;
         line-height:1.6;
+    }
+
+    .tm-otp-box{
+        margin-top:20px;
+        padding:14px;
+        border-radius:10px;
+        background:#111;
+        border:1px solid rgba(255,255,255,.08);
+        color:#999;
+        font-size:13px;
+        text-align:center;
     }
 
     .tm-back-home{
@@ -119,134 +179,208 @@
         color:#fff;
     }
 
-    .tm-otp-box{
-        margin-top:20px;
-        padding:14px;
-        border-radius:10px;
-        background:#111;
-        border:1px solid rgba(255,255,255,.08);
-        color:#aaa;
-        font-size:13px;
+    .tm-change-email{
+        display:block;
+        margin-top:14px;
         text-align:center;
+        color:#aaa;
+        text-decoration:none;
+        font-size:13px;
+        font-weight:700;
+    }
+
+    .tm-change-email:hover{
+        color:#fff;
     }
 
     @media(max-width:500px){
+
+        .tm-login-page{
+            padding:20px 12px;
+            align-items:flex-start;
+        }
+
         .tm-login-box{
+            margin-top:20px;
             padding:30px 20px;
+            border-radius:16px;
         }
 
         .tm-login-title{
             font-size:25px;
+        }
+
+        .tm-login-logo{
+            font-size:22px;
+        }
+
+        .tm-otp-input{
+            font-size:22px;
+            letter-spacing:7px;
         }
     }
 </style>
 
 <div class="tm-login-page">
 
-    <div class="tm-login-box">
+```
+<div class="tm-login-box">
 
-        <div class="tm-login-logo">
-            TOMESH <span>MOVIES</span>
+    <div class="tm-login-logo">
+        TOMESH <span>MOVIES</span>
+    </div>
+
+
+    {% if step == "otp" %}
+
+        <!-- =========================
+             OTP VERIFICATION SCREEN
+             ========================= -->
+
+        <div class="tm-login-title">
+            Enter OTP
         </div>
 
-        {% if otp_sent %}
+        <div class="tm-login-subtitle">
+            हमने आपके email पर 6-digit OTP भेजा है।
+            <br>
+            नीचे OTP डालकर continue करें।
+        </div>
 
-            <div class="tm-login-title">
-                Enter OTP
-            </div>
+        <div class="tm-login-email">
+            📧 <strong>{{ email }}</strong>
+        </div>
 
-            <div class="tm-login-subtitle">
-                हमने OTP आपके email पर भेज दिया है।
-                <br>
-                <strong>{{ email }}</strong>
-            </div>
 
-            <form method="POST" action="{{ url_for('verify_otp') }}">
+        <form
+            method="POST"
+            action="{{ url_for('verify_otp') }}"
+            autocomplete="off"
+        >
 
-                <input
-                    type="hidden"
-                    name="email"
-                    value="{{ email }}"
-                >
+            <label class="tm-login-label">
+                6-Digit OTP
+            </label>
 
-                <label class="tm-login-label">
-                    6-Digit OTP
-                </label>
-
-                <input
-                    class="tm-login-input"
-                    type="text"
-                    name="otp"
-                    inputmode="numeric"
-                    autocomplete="one-time-code"
-                    maxlength="6"
-                    pattern="[0-9]{6}"
-                    placeholder="Enter 6-digit OTP"
-                    required
-                >
-
-                <button class="tm-login-btn" type="submit">
-                    Verify OTP
-                </button>
-
-            </form>
-
-            <div class="tm-otp-box">
-                OTP की validity 10 minutes है।
-            </div>
-
-            <a
-                class="tm-back-home"
-                href="{{ url_for('login') }}"
+            <input
+                class="tm-login-input tm-otp-input"
+                type="text"
+                name="otp"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                minlength="6"
+                pattern="[0-9]{6}"
+                placeholder="••••••"
+                required
+                autofocus
             >
-                ← Change Email
-            </a>
 
-        {% else %}
+            <button
+                class="tm-login-btn"
+                type="submit"
+            >
+                Verify OTP →
+            </button>
 
-            <div class="tm-login-title">
-                Sign In
-            </div>
+        </form>
 
-            <div class="tm-login-subtitle">
-                अपना email डालें और हम आपको एक OTP भेजेंगे।
-            </div>
 
-            <form method="POST" action="{{ url_for('login') }}">
+        <div class="tm-otp-box">
+            🔐 OTP की validity 10 minutes है।
+        </div>
 
-                <label class="tm-login-label">
-                    Email address
-                </label>
 
-                <input
-                    class="tm-login-input"
-                    type="email"
-                    name="email"
-                    autocomplete="email"
-                    placeholder="you@example.com"
-                    required
-                >
+        <form
+            method="POST"
+            action="{{ url_for('request_otp') }}"
+        >
 
-                <button class="tm-login-btn" type="submit">
-                    Get OTP
-                </button>
+            <input
+                type="hidden"
+                name="email"
+                value="{{ email }}"
+            >
 
-            </form>
+            <button
+                type="submit"
+                class="tm-login-btn tm-login-secondary"
+            >
+                Resend OTP
+            </button>
 
-            <div class="tm-login-note">
-                Sign in करके आप Tomesh Movies का इस्तेमाल कर सकते हैं।
-            </div>
+        </form>
 
-        {% endif %}
 
         <a
-            class="tm-back-home"
-            href="{{ url_for('index') }}"
+            class="tm-change-email"
+            href="{{ url_for('login') }}"
         >
-            ← Back to Home
+            ← Change Email
         </a>
 
-    </div>
+
+    {% else %}
+
+        <!-- =========================
+             EMAIL LOGIN SCREEN
+             ========================= -->
+
+        <div class="tm-login-title">
+            Sign In
+        </div>
+
+        <div class="tm-login-subtitle">
+            अपना email डालें और हम आपको एक OTP भेजेंगे।
+        </div>
+
+
+        <form
+            method="POST"
+            action="{{ url_for('request_otp') }}"
+            autocomplete="off"
+        >
+
+            <label class="tm-login-label">
+                Email address
+            </label>
+
+            <input
+                class="tm-login-input"
+                type="email"
+                name="email"
+                value="{{ email or '' }}"
+                autocomplete="email"
+                placeholder="you@example.com"
+                required
+            >
+
+            <button
+                class="tm-login-btn"
+                type="submit"
+            >
+                Get OTP →
+            </button>
+
+        </form>
+
+
+        <div class="tm-login-note">
+            Sign in करके आप Tomesh Movies का इस्तेमाल कर सकते हैं।
+        </div>
+
+    {% endif %}
+
+
+    <a
+        class="tm-back-home"
+        href="{{ url_for('home') }}"
+    >
+        ← Back to Home
+    </a>
+
+</div>
+```
 
 </div>
 
