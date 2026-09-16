@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Admin Login | Tomesh Movies</title>
+
+    <style>
+        *{
+            box-sizing:border-box;
+            margin:0;
+            padding:0;
+        }
+
+        body{
+            min-height:100vh;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-family:Arial,Helvetica,sans-serif;
+            background:
+                radial-gradient(circle at 20% 20%,rgba(255,193,7,.15),transparent 30%),
+                radial-gradient(circle at 80% 80%,rgba(140,0,255,.18),transparent 30%),
+                #070707;
+            color:#fff;
+            padding:20px;
+        }
+
+        .login-box{
+            width:100%;
+            max-width:430px;
+            padding:38px 32px;
+            border:1px solid rgba(255,193,7,.35);
+            border-radius:22px;
+            background:rgba(15,15,15,.95);
+            box-shadow:
+                0 0 50px rgba(255,193,7,.10),
+                0 0 80px rgba(120,0,255,.08);
+        }
+
+        .logo{
+            text-align:center;
+            font-size:30px;
+            font-weight:900;
+            letter-spacing:2px;
+            color:#ffc107;
+            margin-bottom:8px;
+        }
+
+        .subtitle{
+            text-align:center;
+            color:#aaa;
+            font-size:13px;
+            margin-bottom:30px;
+        }
+
+        .admin-badge{
+            width:70px;
+            height:70px;
+            margin:0 auto 18px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:50%;
+            background:linear-gradient(135deg,#ffc107,#ff9800);
+            color:#111;
+            font-size:30px;
+            box-shadow:0 0 30px rgba(255,193,7,.25);
+        }
+
+        label{
+            display:block;
+            margin:0 0 8px;
+            color:#ddd;
+            font-size:14px;
+            font-weight:600;
+        }
+
+        input{
+            width:100%;
+            padding:14px 15px;
+            margin-bottom:18px;
+            border:1px solid #333;
+            border-radius:12px;
+            outline:none;
+            background:#111;
+            color:#fff;
+            font-size:15px;
+        }
+
+        input:focus{
+            border-color:#ffc107;
+            box-shadow:0 0 0 3px rgba(255,193,7,.08);
+        }
+
+        button{
+            width:100%;
+            padding:14px;
+            border:0;
+            border-radius:12px;
+            cursor:pointer;
+            font-size:16px;
+            font-weight:800;
+            background:linear-gradient(135deg,#ffc107,#ff9800);
+            color:#111;
+            transition:.2s;
+        }
+
+        button:hover{
+            transform:translateY(-1px);
+            box-shadow:0 8px 25px rgba(255,193,7,.20);
+        }
+
+        .back{
+            display:block;
+            text-align:center;
+            margin-top:22px;
+            color:#aaa;
+            text-decoration:none;
+            font-size:14px;
+        }
+
+        .back:hover{
+            color:#ffc107;
+        }
+
+        .flash{
+            margin-bottom:18px;
+            padding:12px 14px;
+            border-radius:10px;
+            background:#2a1111;
+            border:1px solid #6b2222;
+            color:#ff8a8a;
+            font-size:14px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="login-box">
+
+    <div class="admin-badge">🔐</div>
+
+    <div class="logo">TOMESH MOVIES</div>
+    <div class="subtitle">ADMIN CONTROL CENTER</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('admin_login') }}">
+
+        <label>Admin Username</label>
+        <input
+            type="text"
+            name="username"
+            placeholder="Enter admin username"
+            autocomplete="username"
+            required
+        >
+
+        <label>Admin Password</label>
+        <input
+            type="password"
+            name="password"
+            placeholder="Enter admin password"
+            autocomplete="current-password"
+            required
+        >
+
+        <button type="submit">
+            LOGIN TO ADMIN PANEL
+        </button>
+
+    </form>
+
+    <a class="back" href="{{ url_for('home') }}">
+        ← Back to Tomesh Movies
+    </a>
+
+</div>
+
+</body>
+</html>
