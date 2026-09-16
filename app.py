@@ -688,59 +688,17 @@ def admin_required(view_func):
             "admin_logged_in"
         ):
             return redirect(
-                url_for("admin_login")
+                url_for("login")
             )
 
         return view_func(
             *args,
-          **kwargs
+            **kwargs
         )
-  
+
     return wrapper
 
-# ============================================================
-# ADMIN LOGIN
-# ============================================================
 
-@app.route("/admin/login", methods=["GET", "POST"])
-def admin_login():
-
-    if session.get("admin_logged_in"):
-        return redirect(url_for("admin"))
-
-    error = ""
-
-    if request.method == "POST":
-
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-
-        if username == ADMIN_USER and password == ADMIN_PASSWORD:
-
-            session["admin_logged_in"] = True
-            session["admin_user"] = ADMIN_USER
-
-            return redirect(url_for("admin"))
-
-        error = "Invalid admin username or password."
-
-    return render_template(
-        "admin_login.html",
-        error=error
-    )
-
-
-# ============================================================
-# ADMIN LOGOUT
-# ============================================================
-
-@app.route("/admin/logout")
-def admin_logout():
-
-    session.pop("admin_logged_in", None)
-    session.pop("admin_user", None)
-
-    return redirect(url_for("admin_login"))
 # ============================================================
 # CUSTOMER ID
 # ============================================================
@@ -2975,14 +2933,40 @@ def login():
             )
         ).strip().lower()
 
-     if login_type == "customer":
-    return redirect(
-        url_for("request_otp")
-    )
+        if login_type == "customer":
+            return redirect(
+                url_for(
+                    "request_otp"
+                )
+            )
 
-return redirect(
-    url_for("admin_login")
-)   
+        username = request.form.get(
+            "username",
+            "",
+        ).strip()
+
+        password = request.form.get(
+            "password",
+            "",
+        )
+
+        if (
+            username == ADMIN_USER
+            and password == ADMIN_PASSWORD
+        ):
+
+            session[
+                "admin_logged_in"
+            ] = True
+
+            return redirect(
+                url_for("admin")
+            )
+
+        flash(
+            "Invalid username or password.",
+            "error",
+        )
 
     step = str(
         request.args.get(
