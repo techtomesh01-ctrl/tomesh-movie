@@ -2621,10 +2621,11 @@ def movie_page(movie_id):
 
     if video_key and access["watch"]:
 
-        movie["video_url"] = url_for(
-            "stream_movie",
-            movie_id=movie_id,
-            access_token=make_stream_token(movie_id),
+        # FAST PLAYBACK: browser fetches the video directly from R2
+        # using a time-limited presigned URL.
+        movie["video_url"] = r2_presigned_url(
+            video_key,
+            expires=PRESIGNED_EXPIRES,
         )
 
     else:
