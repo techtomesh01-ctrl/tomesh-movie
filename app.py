@@ -154,7 +154,8 @@ R2_ENDPOINT = os.environ.get(
 )
 
 R2_PUBLIC_URL = os.environ.get(
-    "R2_PUBLIC_URL", ""
+    "R2_PUBLIC_URL",
+    "https://pub-5b61d97d7d2347c89cab7e3e72f17e07.r2.dev",
 )
 
 
@@ -947,10 +948,6 @@ def cashfree_request(
     "/api/payment/create",
     methods=["POST"],
 )
-@app.route(
-    "/api/payment/create",
-    methods=["POST"],
-)
 def create_payment():
 
     data = (
@@ -1284,95 +1281,34 @@ def cashfree_return():
 
         if order_status == "PAID":
 
-            # Restore the exact customer session that created
-            # this successful Cashfree order.
-            session["customer_id"] = local_order["customer_id"]
+            # ----------------------------------------------
+            # Prevent duplicate granting
+            # ----------------------------------------------
 
-            # Mark the local order as paid. This is safe to repeat.
-            conn = get_db()
+            if local_order["status"] != "PAID":
 
-            try:
+                conn = get_db()
 
-                cur = conn.cursor()
+                try:
 
-                cur.execute(
-                    """
-                    UPDATE payment_orders
-                    SET
-                        status = 'PAID',
-                        paid_at = COALESCE(paid_at, NOW())
-                    WHERE order_id = %s
-                    """,
-                    (order_id,),
-                )
+                    cur = conn.cursor()
 
-                conn.commit()
-                cur.close()
-
-            finally:
-                conn.close()
-
-            # Check whether the access row is already active.
-            conn = get_db(
-                dict_rows=True
-            )
-
-            try:
-
-                cur = conn.cursor()
-
-                cur.execute(
-                    """
-                    SELECT
-                        watch_until,
-                        download_until,
-                        premium_until
-                    FROM customer_access
-                    WHERE customer_id = %s
-                      AND movie_id = %s
-                    ORDER BY id DESC
-                    LIMIT 1
-                    """,
-                    (
-                        local_order["customer_id"],
-                        local_order["movie_id"],
-                    ),
-                )
-
-                access_row = cur.fetchone()
-                cur.close()
-
-            finally:
-                conn.close()
-
-            now = datetime.now()
-            active = False
-
-            if access_row:
-
-                if local_order["payment_type"] == "watch":
-
-                    active = (
-                        access_row["watch_until"] is not None
-                        and access_row["watch_until"] > now
+                    cur.execute(
+                        """
+                        UPDATE payment_orders
+                        SET
+                            status = 'PAID',
+                            paid_at = NOW()
+                        WHERE order_id = %s
+                        """,
+                        (order_id,),
                     )
 
-                elif local_order["payment_type"] == "download":
+                    conn.commit()
+                    cur.close()
 
-                    active = (
-                        access_row["download_until"] is not None
-                        and access_row["download_until"] > now
-                    )
-
-                elif local_order["payment_type"] == "premium":
-
-                    active = (
-                        access_row["premium_until"] is not None
-                        and access_row["premium_until"] > now
-                    )
-
-            # If access is missing/expired, grant it again.
-            if not active:
+                finally:
+                    conn.close()
 
                 grant_access(
                     local_order[
@@ -1389,6 +1325,20 @@ def cashfree_return():
             session[
                 "payment_success"
             ] = True
+
+            flash(
+                "Payment successful. Access unlocked.",
+                "success",
+            )
+
+            return redirect(
+                url_for(
+                    "movie_page",
+                    movie_id=local_order[
+                        "movie_id"
+                    ],
+                )
+            )
 
         flash(
             "Payment was not completed. Status: "
@@ -1586,10 +1536,7 @@ def movie_page(movie_id):
 
     if video_key and access["watch"]:
 
-        movie["video_url"] = url_for(
-            "stream_movie",
-            movie_id=movie_id,
-        )
+        movie["video_url"] = r2_presigned_url(video_key, expires=PRESIGNED_EXPIRES)
 
     else:
 
@@ -1990,10 +1937,10 @@ def download_movie(movie_id):
 
     try:
 
-        url = r2_presigned_url(
-            video_key,
-            expires=600,
-        )
+        url = r2_public_url(video_key)
+
+        if not url:
+            raise RuntimeError("R2 public URL is not configured.")
 
         return redirect(url)
 
@@ -3029,6 +2976,39 @@ def r2_health():
             "R2 ERROR: " + str(exc),
             500,
         )
+
+
+# ============================================================
+# PUBLIC VIDEO TEST
+# ============================================================
+
+@app.route("/public-video-test/<int:movie_id>")
+def public_video_test(movie_id):
+
+    conn = get_db(dict_rows=True)
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT video FROM movies WHERE id = %s",
+            (movie_id,),
+        )
+        movie = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not movie or not movie.get("video"):
+        return Response("Video not found.", status=404)
+
+    try:
+        url = r2_public_url(movie["video"])
+        if not url:
+            return Response("R2 public URL is not configured.", status=500)
+        return redirect(url, code=302)
+    except Exception as exc:
+        print("PUBLIC VIDEO TEST ERROR:", repr(exc))
+        return Response("Unable to load public video.", status=502)
 
 
 # ============================================================
