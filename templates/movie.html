@@ -121,6 +121,7 @@
 .tm-retry{border:0;border-radius:10px;padding:10px 16px;color:#fff;background:linear-gradient(135deg,#e51f48,#9b233e);font-weight:900;cursor:pointer;}
 .tm-pip-btn{display:flex;}
 .tm-rotate-btn{display:flex;}
+.tm-rotate-btn{display:flex;}
 @media(max-width:700px){.tm-rotate-btn{display:flex;}}
 @media(max-width:700px){.tm-player-box{border-radius:13px}.tm-center-play{width:62px;height:62px;font-size:22px}.tm-controls{padding:34px 7px 7px}.tm-control-btn{width:34px;height:34px;font-size:14px}.tm-volume-wrap{display:none}.tm-time{font-size:10px}.tm-player-title{left:10px;top:10px;font-size:10px}.tm-settings-menu{bottom:39px;width:165px}}
 @media(max-width:420px){.tm-controls{padding-left:4px;padding-right:4px}.tm-control-btn{width:31px}.tm-time{margin-left:3px}.tm-pip-btn{display:none}.tm-center-play{width:56px;height:56px}}
@@ -900,7 +901,7 @@
     <div class="tm-player-title">{{ movie.title }}</div>
 
     <video id="tmVideo" class="tm-video" playsinline preload="none" poster="{{ movie.poster_url or movie.poster or '' }}">
-        <source src="{{ movie.video_url }}" type="{{ movie.video_mime or 'video/mp4' }}">
+        <source data-src="{{ movie.video_url }}" type="{{ movie.video_mime or 'video/mp4' }}">
         Your browser does not support HTML5 video.
     </video>
 
@@ -954,6 +955,7 @@
                     </div>
                 </div>
                 <button id="tmRotate" class="tm-control-btn" type="button" aria-label="Rotate video">↻</button>
+                <button id="tmRotate" class="tm-control-btn" type="button" aria-label="Rotate / Landscape">↻</button>
                 <button id="tmFullscreen" class="tm-control-btn" type="button" aria-label="Fullscreen">⛶</button>
             </div>
         </div>
@@ -1539,9 +1541,25 @@ async function startPayment(type){
         player.classList.add("active"); clearTimeout(hideTimer);
         if(!video.paused){ hideTimer=setTimeout(()=>{ if(!settings.classList.contains("open")) player.classList.remove("active"); },3000); }
     }
+    function ensureSource(){
+        if(sourceLoaded) return;
+        const source=video.querySelector("source");
+        const src=source && source.dataset ? source.dataset.src : "";
+        if(!src){
+            setError("Video source nahi mila.");
+            return;
+        }
+        source.src=src;
+        sourceLoaded=true;
+        video.load();
+    }
+
     function togglePlay(){
         if(video.paused){
-            video.play().catch(()=>{ setError("Browser ne video play ko block kar diya."); });
+            clearError();
+            setBuffering(true);
+            ensureSource();
+            video.play().catch(()=>{ setError("Video start nahi ho paya. Retry दबाएँ."); });
         }else video.pause();
         showControls();
     }
@@ -1598,6 +1616,7 @@ async function startPayment(type){
     mobileMuteBtn.addEventListener("click",toggleMute);
     volume.addEventListener("input",()=>setVolume(volume.value));
     fullscreenBtn.addEventListener("click",()=>{toggleFullscreen();showControls();});
+    if(rotateBtn) rotateBtn.addEventListener("click",toggleRotate);
     if(rotateBtn) rotateBtn.addEventListener("click",rotatePlayer);
     retryBtn.addEventListener("click",retry);
     progressWrap.addEventListener("click",e=>{seekAt(e.clientX);showControls();});
