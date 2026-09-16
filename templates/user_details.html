@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="hi">
+
+<head>
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width,initial-scale=1,viewport-fit=cover"
+    >
+
+    <title>User Details | Tomesh Movies</title>
+
+    <meta
+        name="description"
+        content="Complete your Tomesh Movies account details."
+    >
+
+    <meta name="theme-color" content="#050505">
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <style>
+
+        *{
+            box-sizing:border-box;
+        }
+
+        html{
+            background:#000;
+            scroll-behavior:smooth;
+        }
+
+        body{
+            margin:0;
+            min-height:100vh;
+            overflow-x:hidden;
+
+            color:#fff;
+
+            font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background:
+                radial-gradient(
+                    circle at 15% 10%,
+                    rgba(111,32,170,.30),
+                    transparent 34%
+                ),
+                radial-gradient(
+                    circle at 88% 82%,
+                    rgba(220,20,60,.22),
+                    transparent 32%
+                ),
+                #000;
+        }
+
+        .tm-details-page{
+            min-height:100vh;
+
+            display:flex;
+            align-items:center;
+            justify-content:center;
+
+            padding:
+                30px
+                18px
+                40px;
+        }
+
+        .tm-details-box{
+            width:min(470px,100%);
+
+            padding:34px 30px 30px;
+
+            border:1px solid rgba(255,255,255,.10);
+            border-radius:22px;
+
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(25,25,25,.94),
+                    rgba(7,7,7,.98)
+                );
+
+            box-shadow:
+                0 30px 90px rgba(0,0,0,.65),
+                0 0 55px rgba(111,32,170,.10);
+
+            backdrop-filter:blur(18px);
+        }
+
+        /* =====================================================
+           LOGO
+        ===================================================== */
+
+        .tm-logo{
+            text-align:center;
+            margin-bottom:30px;
+        }
+
+        .tm-logo-main{
+            display:block;
+
+            font-size:28px;
+            line-height:1;
+
+            font-weight:950;
+            letter-spacing:3px;
+
+            color:#fff;
+        }
+
+        .tm-logo-sub{
+            display:block;
+
+            margin-top:7px;
+
+            font-size:13px;
+            line-height:1;
+
+            font-weight:900;
+            letter-spacing:6px;
+
+            color:#d7a72b;
+        }
+
+        /* =====================================================
+           HEADING
+        ===================================================== */
+
+        .tm-heading{
+            text-align:center;
+            margin-bottom:25px;
+        }
+
+        .tm-heading h1{
+            margin:0;
+
+            font-size:27px;
+            font-weight:900;
+
+            letter-spacing:-.5px;
+        }
+
+        .tm-heading p{
+            margin:9px 0 0;
+
+            color:#aaa;
+
+            font-size:13px;
+            line-height:1.6;
+        }
+
+        /* =====================================================
+           FORM
+        ===================================================== */
+
+        .tm-form{
+            display:flex;
+            flex-direction:column;
+            gap:17px;
+        }
+
+        .tm-field{
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+        }
+
+        .tm-field label{
+            color:#ddd;
+
+            font-size:13px;
+            font-weight:800;
+        }
+
+        .tm-input-wrap{
+            position:relative;
+        }
+
+        .tm-input-icon{
+            position:absolute;
+
+            left:15px;
+            top:50%;
+
+            transform:translateY(-50%);
+
+            font-size:16px;
+
+            opacity:.8;
+
+            pointer-events:none;
+        }
+
+        .tm-input{
+            width:100%;
+
+            min-height:52px;
+
+            padding:
+                0
+                15px
+                0
+                45px;
+
+            border:1px solid rgba(255,255,255,.12);
+            border-radius:13px;
+
+            outline:none;
+
+            background:rgba(255,255,255,.055);
+
+            color:#fff;
+
+            font-size:14px;
+            font-weight:600;
+
+            transition:
+                border-color .2s ease,
+                background .2s ease,
+                box-shadow .2s ease;
+        }
+
+        .tm-input::placeholder{
+            color:#777;
+        }
+
+        .tm-input:focus{
+            border-color:rgba(215,167,43,.75);
+
+            background:rgba(255,255,255,.075);
+
+            box-shadow:
+                0 0 0 3px rgba(215,167,43,.08);
+        }
+
+        .tm-input[readonly]{
+            color:#bbb;
+            cursor:not-allowed;
+        }
+
+        /* =====================================================
+           CONTINUE BUTTON
+        ===================================================== */
+
+        .tm-continue{
+            width:100%;
+
+            min-height:54px;
+
+            margin-top:5px;
+
+            border:0;
+            border-radius:14px;
+
+            cursor:pointer;
+
+            color:#050505;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #f2c94c,
+                    #d7a72b
+                );
+
+            font-size:15px;
+            font-weight:950;
+
+            letter-spacing:.2px;
+
+            box-shadow:
+                0 12px 30px rgba(215,167,43,.20);
+
+            transition:
+                transform .18s ease,
+                box-shadow .18s ease,
+                filter .18s ease;
+        }
+
+        .tm-continue:hover{
+            transform:translateY(-2px);
+
+            box-shadow:
+                0 16px 38px rgba(215,167,43,.30);
+
+            filter:brightness(1.06);
+        }
+
+        .tm-continue:active{
+            transform:translateY(0);
+        }
+
+        /* =====================================================
+           SECURITY
+        ===================================================== */
+
+        .tm-secure{
+            display:flex;
+            align-items:flex-start;
+            gap:10px;
+
+            margin-top:21px;
+            padding:14px;
+
+            border:1px solid rgba(255,255,255,.07);
+            border-radius:12px;
+
+            background:rgba(255,255,255,.025);
+        }
+
+        .tm-secure-icon{
+            flex:0 0 auto;
+
+            font-size:17px;
+        }
+
+        .tm-secure-text{
+            color:#8f8f8f;
+
+            font-size:11px;
+            line-height:1.6;
+        }
+
+        .tm-secure-text strong{
+            color:#bbb;
+        }
+
+        /* =====================================================
+           PAYMENT NOTE
+        ===================================================== */
+
+        .tm-access-note{
+            margin-top:18px;
+
+            text-align:center;
+
+            color:#777;
+
+            font-size:11px;
+            line-height:1.6;
+        }
+
+        /* =====================================================
+           FLASH
+        ===================================================== */
+
+        .tm-error{
+            margin-bottom:17px;
+
+            padding:12px 14px;
+
+            border:1px solid rgba(255,70,70,.25);
+            border-radius:11px;
+
+            background:rgba(130,20,20,.16);
+
+            color:#ff9b9b;
+
+            text-align:center;
+
+            font-size:12px;
+            font-weight:700;
+        }
+
+        /* =====================================================
+           MOBILE
+        ===================================================== */
+
+        @media(max-width:520px){
+
+            .tm-details-page{
+                align-items:flex-start;
+
+                padding:
+                    25px
+                    14px
+                    30px;
+            }
+
+            .tm-details-box{
+                margin-top:10px;
+
+                padding:
+                    28px
+                    18px
+                    22px;
+
+                border-radius:19px;
+            }
+
+            .tm-logo{
+                margin-bottom:27px;
+            }
+
+            .tm-logo-main{
+                font-size:24px;
+            }
+
+            .tm-heading h1{
+                font-size:24px;
+            }
+
+            .tm-heading p{
+                font-size:12px;
+            }
+
+        }
+
+        @media(prefers-reduced-motion:reduce){
+
+            html{
+                scroll-behavior:auto;
+            }
+
+            .tm-continue{
+                transition:none;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="tm-details-page">
+
+    <section class="tm-details-box">
+
+        <!-- =================================================
+             LOGO
+        ================================================== -->
+
+        <div class="tm-logo">
+
+            <span class="tm-logo-main">
+                TOMESH
+            </span>
+
+            <span class="tm-logo-sub">
+                MOVIES
+            </span>
+
+        </div>
+
+
+        <!-- =================================================
+             HEADING
+        ================================================== -->
+
+        <div class="tm-heading">
+
+            <h1>
+                Complete Your Details
+            </h1>
+
+            <p>
+                अपनी details भरें ताकि आपका Tomesh Movies
+                account तैयार किया जा सके।
+            </p>
+
+        </div>
+
+
+        <!-- =================================================
+             ERROR / FLASH
+        ================================================== -->
+
+        {% with messages = get_flashed_messages() %}
+
+            {% if messages %}
+
+                {% for message in messages %}
+
+                    <div class="tm-error">
+                        {{ message }}
+                    </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+        {% endwith %}
+
+
+        <!-- =================================================
+             FORM
+        ================================================== -->
+
+        <form
+            class="tm-form"
+            method="POST"
+            action="{{ url_for('user_details') }}"
+        >
+
+            <!-- FULL NAME -->
+
+            <div class="tm-field">
+
+                <label for="full_name">
+                    Full Name
+                </label>
+
+                <div class="tm-input-wrap">
+
+                    <span class="tm-input-icon">
+                        👤
+                    </span>
+
+                    <input
+                        class="tm-input"
+                        id="full_name"
+                        name="full_name"
+                        type="text"
+                        value="{{ customer.full_name if customer and customer.full_name else '' }}"
+                        placeholder="अपना पूरा नाम डालें"
+                        autocomplete="name"
+                        maxlength="100"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <!-- MOBILE -->
+
+            <div class="tm-field">
+
+                <label for="mobile">
+                    Mobile Number
+                </label>
+
+                <div class="tm-input-wrap">
+
+                    <span class="tm-input-icon">
+                        📱
+                    </span>
+
+                    <input
+                        class="tm-input"
+                        id="mobile"
+                        name="mobile"
+                        type="tel"
+                        value="{{ customer.mobile if customer and customer.mobile else '' }}"
+                        placeholder="10 digit mobile number"
+                        autocomplete="tel"
+                        inputmode="numeric"
+                        maxlength="10"
+                        pattern="[0-9]{10}"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <!-- EMAIL -->
+
+            <div class="tm-field">
+
+                <label for="email">
+                    Gmail / Email
+                </label>
+
+                <div class="tm-input-wrap">
+
+                    <span class="tm-input-icon">
+                        ✉
+                    </span>
+
+                    <input
+                        class="tm-input"
+                        id="email"
+                        name="email"
+                        type="email"
+                        value="{{ customer.email if customer and customer.email else email if email else '' }}"
+                        placeholder="yourname@gmail.com"
+                        autocomplete="email"
+                        maxlength="160"
+                        readonly
+                    >
+
+                </div>
+
+            </div>
+
+
+            <!-- CONTINUE -->
+
+            <button
+                class="tm-continue"
+                type="submit"
+            >
+                Continue →
+            </button>
+
+        </form>
+
+
+        <!-- =================================================
+             SECURITY
+        ================================================== -->
+
+        <div class="tm-secure">
+
+            <div class="tm-secure-icon">
+                🔒
+            </div>
+
+            <div class="tm-secure-text">
+
+                <strong>
+                    Your details are secure
+                </strong>
+
+                <br>
+
+                आपकी account information सुरक्षित तरीके से
+                save की जाती है और payment के लिए secure
+                checkout इस्तेमाल किया जाएगा।
+
+            </div>
+
+        </div>
+
+
+        <div class="tm-access-note">
+
+            Details complete करने के बाद आप secure
+            payment screen पर जाएंगे।
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<script>
+
+    const mobileInput =
+        document.getElementById("mobile");
+
+    if(mobileInput){
+
+        mobileInput.addEventListener("input", function(){
+
+            this.value =
+                this.value.replace(/\D/g, "").slice(0, 10);
+
+        });
+
+    }
+
+</script>
+
+</body>
+
+</html>
