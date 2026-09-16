@@ -2132,13 +2132,13 @@ def create_payment():
     finally:
         conn.close()
 
-    if not movie:
+        if not movie:
         return json_error(
             "Movie not found.",
             404,
         )
 
-        if payment_type == "watch":
+    if payment_type == "watch":
 
         amount = WATCH_PRICE
 
@@ -2148,6 +2148,12 @@ def create_payment():
         )
 
     elif payment_type == "premium":
+
+        amount = PREMIUM_PRICE
+
+        description = (
+            "Tomesh Movies Premium - 30 Days"
+        )
 
         amount = PREMIUM_PRICE
 
