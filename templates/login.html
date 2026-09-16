@@ -5,125 +5,123 @@
 {% block content %}
 
 <style>
+    * {
+        box-sizing: border-box;
+    }
+
     .tm-login-page {
-        min-height: calc(100vh - 80px);
+        min-height: calc(100vh - 70px);
+        margin: -20px;
+        padding: 45px 18px 55px;
         display: flex;
-        align-items: center;
         justify-content: center;
-        padding: 45px 18px 70px;
-        position: relative;
-        overflow: hidden;
+        align-items: center;
+
         background:
-            radial-gradient(circle at 15% 10%, rgba(120, 35, 190, .28), transparent 32%),
-            radial-gradient(circle at 90% 15%, rgba(220, 30, 70, .20), transparent 30%),
-            radial-gradient(circle at 50% 100%, rgba(255, 180, 40, .10), transparent 35%),
-            #050507;
-    }
+            radial-gradient(
+                circle at 50% 0%,
+                rgba(229, 9, 20, 0.22),
+                transparent 38%
+            ),
+            radial-gradient(
+                circle at 10% 90%,
+                rgba(180, 0, 0, 0.10),
+                transparent 35%
+            ),
+            #050505;
 
-    .tm-login-page::before {
-        content: "";
-        position: absolute;
-        width: 420px;
-        height: 420px;
-        border-radius: 50%;
-        background: rgba(120, 40, 220, .10);
-        filter: blur(90px);
-        top: -180px;
-        left: -160px;
-        pointer-events: none;
-    }
-
-    .tm-login-page::after {
-        content: "";
-        position: absolute;
-        width: 360px;
-        height: 360px;
-        border-radius: 50%;
-        background: rgba(220, 30, 70, .08);
-        filter: blur(90px);
-        bottom: -160px;
-        right: -120px;
-        pointer-events: none;
+        color: #fff;
     }
 
     .tm-login-card {
         width: 100%;
-        max-width: 450px;
-        position: relative;
-        z-index: 2;
-        padding: 34px 30px 30px;
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 24px;
-        background:
-            linear-gradient(
-                145deg,
-                rgba(24, 18, 34, .96),
-                rgba(9, 9, 13, .97)
-            );
+        max-width: 460px;
+        padding: 38px 34px 32px;
+
+        background: rgba(18, 18, 18, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        border-radius: 14px;
+
         box-shadow:
-            0 30px 80px rgba(0,0,0,.65),
-            0 0 45px rgba(116, 38, 190, .13);
-        backdrop-filter: blur(18px);
+            0 25px 80px rgba(0, 0, 0, 0.75),
+            0 0 45px rgba(229, 9, 20, 0.10);
+
+        backdrop-filter: blur(12px);
     }
+
+    /* HEADER */
 
     .tm-brand {
         text-align: center;
-        margin-bottom: 25px;
+        margin-bottom: 32px;
     }
 
     .tm-brand-icon {
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 12px;
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 10px;
+
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 18px;
-        font-size: 31px;
-        background:
-            linear-gradient(135deg, #7428c7, #d51e50);
+
+        border-radius: 12px;
+
+        background: linear-gradient(
+            145deg,
+            #e50914,
+            #a50009
+        );
+
+        font-size: 25px;
+
         box-shadow:
-            0 12px 35px rgba(116,40,199,.35);
+            0 8px 25px rgba(229, 9, 20, 0.35);
     }
 
     .tm-brand-name {
-        color: #fff;
-        font-size: 24px;
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.05;
         font-weight: 900;
         letter-spacing: 1.5px;
-    }
-
-    .tm-brand-sub {
-        margin-top: 5px;
-        color: #b8a9c8;
-        font-size: 11px;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-    }
-
-    .tm-heading {
-        text-align: center;
         color: #fff;
-        font-size: 27px;
-        font-weight: 800;
-        margin: 0;
     }
 
-    .tm-description {
-        text-align: center;
-        color: #aaa1b3;
-        font-size: 14px;
-        line-height: 1.6;
-        margin: 9px 0 25px;
+    .tm-brand-tagline {
+        margin: 7px 0 0;
+        font-size: 13px;
+        letter-spacing: 1px;
+        color: #a7a7a7;
     }
+
+    /* TITLE */
+
+    .tm-login-title {
+        margin: 0 0 8px;
+        font-size: 28px;
+        font-weight: 800;
+        color: #fff;
+    }
+
+    .tm-login-subtitle {
+        margin: 0 0 25px;
+        color: #a9a9a9;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    /* LABEL */
 
     .tm-label {
         display: block;
-        color: #ddd5e4;
-        font-size: 13px;
-        font-weight: 700;
         margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #e8e8e8;
     }
+
+    /* INPUT */
 
     .tm-input-wrap {
         position: relative;
@@ -141,211 +139,259 @@
 
     .tm-input {
         width: 100%;
-        height: 54px;
-        box-sizing: border-box;
-        border-radius: 13px;
-        border: 1px solid rgba(255,255,255,.12);
+        height: 52px;
+        padding: 0 15px 0 50px;
+
+        border-radius: 7px;
+        border: 1px solid #555;
         outline: none;
+
+        background: #181818;
         color: #fff;
-        background: rgba(255,255,255,.055);
-        padding: 0 15px 0 48px;
+
         font-size: 15px;
-        transition: .2s ease;
+
+        transition: 0.2s ease;
     }
 
     .tm-input::placeholder {
-        color: #77717e;
+        color: #858585;
     }
 
     .tm-input:focus {
-        border-color: rgba(174,75,255,.75);
-        background: rgba(255,255,255,.075);
-        box-shadow: 0 0 0 3px rgba(139,54,220,.12);
+        border-color: #e50914;
+        background: #202020;
+
+        box-shadow:
+            0 0 0 2px rgba(229, 9, 20, 0.18);
     }
 
-    .tm-otp-section {
-        margin-top: 24px;
-        padding-top: 22px;
-        border-top: 1px solid rgba(255,255,255,.08);
-    }
+    /* RED BUTTON */
 
-    .tm-otp-input {
-        text-align: center;
-        letter-spacing: 9px;
-        font-size: 21px;
-        font-weight: 800;
-        padding-left: 18px;
-    }
-
-    .tm-otp-input::placeholder {
-        letter-spacing: 4px;
-    }
-
-    .tm-main-btn {
+    .tm-red-btn {
         width: 100%;
-        height: 54px;
+        height: 52px;
+
         border: 0;
-        border-radius: 13px;
+        border-radius: 7px;
+
+        background: #e50914;
         color: #fff;
+
         font-size: 15px;
         font-weight: 800;
+
         cursor: pointer;
-        background:
-            linear-gradient(135deg, #792bd0, #c51f54);
-        box-shadow:
-            0 12px 28px rgba(113,36,190,.25);
-        transition: .2s ease;
+
+        transition:
+            transform 0.15s ease,
+            background 0.15s ease,
+            box-shadow 0.15s ease;
     }
 
-    .tm-main-btn:hover {
+    .tm-red-btn:hover {
+        background: #f6121d;
+
+        box-shadow:
+            0 8px 25px rgba(229, 9, 20, 0.28);
+
         transform: translateY(-1px);
-        box-shadow:
-            0 15px 34px rgba(113,36,190,.38);
     }
 
-    .tm-verify-btn {
-        background:
-            linear-gradient(135deg, #9b45df, #e02d58);
-        margin-top: 4px;
+    .tm-red-btn:active {
+        transform: translateY(0);
     }
 
-    .tm-or {
+    /* OTP SECTION */
+
+    .tm-otp-section {
+        margin-top: 25px;
+        padding-top: 24px;
+
+        border-top: 1px solid rgba(255, 255, 255, 0.10);
+    }
+
+    /* DIVIDER */
+
+    .tm-divider {
         display: flex;
         align-items: center;
         gap: 12px;
-        margin: 25px 0 18px;
-        color: #77717e;
-        font-size: 12px;
+
+        margin: 27px 0 17px;
+
+        color: #777;
+        font-size: 11px;
         font-weight: 700;
+        letter-spacing: 1px;
     }
 
-    .tm-or::before,
-    .tm-or::after {
+    .tm-divider::before,
+    .tm-divider::after {
         content: "";
         height: 1px;
         flex: 1;
-        background: rgba(255,255,255,.09);
+
+        background: #303030;
+    }
+
+    /* SOCIAL BUTTONS */
+
+    .tm-social-row {
+        display: flex;
+        gap: 10px;
+        width: 100%;
     }
 
     .tm-social-btn {
-        width: 100%;
-        height: 51px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,.11);
-        background: rgba(255,255,255,.045);
-        color: #fff;
+        flex: 1;
+        min-width: 0;
+
+        height: 48px;
+        padding: 0 10px;
+
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 11px;
-        font-size: 14px;
+        gap: 8px;
+
+        border: 1px solid #454545;
+        border-radius: 6px;
+
+        background: #181818;
+        color: #fff;
+
+        font-size: 13px;
         font-weight: 700;
+
         cursor: pointer;
-        margin-top: 10px;
-        transition: .2s ease;
+
+        transition: 0.2s ease;
     }
 
     .tm-social-btn:hover {
-        background: rgba(255,255,255,.085);
-        border-color: rgba(255,255,255,.20);
-        transform: translateY(-1px);
+        background: #252525;
+        border-color: #666;
     }
 
-    .tm-google-icon {
+    .tm-google {
         font-size: 20px;
         font-weight: 900;
+        color: #fff;
     }
 
-    .tm-gmail-icon {
-        font-size: 19px;
+    .tm-gmail {
+        font-size: 18px;
     }
+
+    /* SECURITY */
 
     .tm-security {
+        margin-top: 23px;
+
         text-align: center;
-        color: #81798a;
+
+        color: #777;
         font-size: 11px;
-        margin-top: 22px;
+        line-height: 1.5;
     }
+
+    /* BACK */
 
     .tm-back {
         display: block;
+        margin-top: 25px;
+
         text-align: center;
-        margin-top: 20px;
-        color: #c9a8ff;
+
+        color: #aaa;
         text-decoration: none;
+
         font-size: 13px;
         font-weight: 600;
+
+        transition: 0.2s ease;
     }
 
     .tm-back:hover {
         color: #fff;
     }
 
-    .tm-flashes {
-        margin-bottom: 15px;
-    }
-
-    .tm-flash {
-        padding: 12px 14px;
-        border-radius: 11px;
-        margin-bottom: 8px;
-        color: #fff;
-        background: rgba(220,30,70,.14);
-        border: 1px solid rgba(220,30,70,.28);
-        font-size: 13px;
-        line-height: 1.45;
-    }
+    /* MOBILE */
 
     @media (max-width: 520px) {
+
         .tm-login-page {
-            padding: 25px 12px 45px;
+            margin: -15px;
+            padding: 25px 12px 40px;
+            align-items: flex-start;
         }
 
         .tm-login-card {
-            padding: 28px 20px 24px;
-            border-radius: 20px;
+            margin-top: 15px;
+            padding: 30px 20px 27px;
+            border-radius: 11px;
         }
 
-        .tm-heading {
-            font-size: 24px;
+        .tm-brand {
+            margin-bottom: 27px;
         }
 
         .tm-brand-name {
-            font-size: 21px;
+            font-size: 25px;
+        }
+
+        .tm-brand-tagline {
+            font-size: 11px;
+        }
+
+        .tm-login-title {
+            font-size: 25px;
+        }
+
+        .tm-social-btn {
+            font-size: 12px;
         }
     }
 </style>
+
 
 <div class="tm-login-page">
 
     <div class="tm-login-card">
 
+        <!-- BRAND -->
+
         <div class="tm-brand">
-            <div class="tm-brand-icon">🎬</div>
-            <div class="tm-brand-name">TOMESH MOVIES</div>
-            <div class="tm-brand-sub">Your Cinematic World</div>
+
+            <div class="tm-brand-icon">
+                🎬
+            </div>
+
+            <h1 class="tm-brand-name">
+                TOMESH MOVIES
+            </h1>
+
+            <p class="tm-brand-tagline">
+                Your Cinematic World
+            </p>
+
         </div>
 
-        <h1 class="tm-heading">Welcome Back 👋</h1>
 
-        <p class="tm-description">
+        <!-- LOGIN TITLE -->
+
+        <h2 class="tm-login-title">
+            Welcome Back 👋
+        </h2>
+
+        <p class="tm-login-subtitle">
             Sign in with your mobile number and continue watching.
         </p>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="tm-flashes">
-                    {% for category, message in messages %}
-                        <div class="tm-flash">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
 
+        <!-- MOBILE OTP REQUEST -->
 
-        <!-- MOBILE NUMBER -->
         <form method="POST"
               action="{{ url_for('request_otp') }}">
 
@@ -354,7 +400,10 @@
             </label>
 
             <div class="tm-input-wrap">
-                <span class="tm-input-icon">🇮🇳</span>
+
+                <span class="tm-input-icon">
+                    🇮🇳
+                </span>
 
                 <input
                     class="tm-input"
@@ -364,14 +413,14 @@
                     autocomplete="tel"
                     maxlength="10"
                     placeholder="Enter 10-digit mobile number"
-                    value="{{ mobile or session.get('otp_mobile', '') }}"
                     required
                 >
+
             </div>
 
             <button
-                type="submit"
-                class="tm-main-btn">
+                class="tm-red-btn"
+                type="submit">
                 GET OTP →
             </button>
 
@@ -379,32 +428,38 @@
 
 
         <!-- OTP -->
+
         <div class="tm-otp-section">
+
+            <label class="tm-label">
+                Enter OTP
+            </label>
 
             <form method="POST"
                   action="{{ url_for('verify_otp') }}">
 
-                <label class="tm-label">
-                    Enter OTP
-                </label>
-
                 <div class="tm-input-wrap">
-                    <span class="tm-input-icon">🔐</span>
+
+                    <span class="tm-input-icon">
+                        🔐
+                    </span>
 
                     <input
-                        class="tm-input tm-otp-input"
+                        class="tm-input"
                         type="text"
                         name="otp"
                         inputmode="numeric"
                         autocomplete="one-time-code"
                         maxlength="6"
-                        placeholder="• • • • • •"
+                        placeholder="Enter 6-digit OTP"
+                        required
                     >
+
                 </div>
 
                 <button
-                    type="submit"
-                    class="tm-main-btn tm-verify-btn">
+                    class="tm-red-btn"
+                    type="submit">
                     VERIFY OTP ✓
                 </button>
 
@@ -413,39 +468,61 @@
         </div>
 
 
-        <!-- GOOGLE / GMAIL -->
-        <div class="tm-or">
+        <!-- SOCIAL -->
+
+        <div class="tm-divider">
             OR CONTINUE WITH
         </div>
 
-        <button
-            type="button"
-            class="tm-social-btn"
-            onclick="alert('Google sign-in will be connected here.')">
 
-            <span class="tm-google-icon">G</span>
-            <span>Continue with Google</span>
+        <div class="tm-social-row">
 
-        </button>
+            <button
+                type="button"
+                class="tm-social-btn"
+                onclick="alert('Google login will be available soon.')">
 
-        <button
-            type="button"
-            class="tm-social-btn"
-            onclick="alert('Gmail sign-in will be connected here.')">
+                <span class="tm-google">
+                    G
+                </span>
 
-            <span class="tm-gmail-icon">✉️</span>
-            <span>Continue with Gmail</span>
+                <span>
+                    Continue with Google
+                </span>
 
-        </button>
+            </button>
 
+
+            <button
+                type="button"
+                class="tm-social-btn"
+                onclick="alert('Gmail login will be available soon.')">
+
+                <span class="tm-gmail">
+                    ✉️
+                </span>
+
+                <span>
+                    Continue with Gmail
+                </span>
+
+            </button>
+
+        </div>
+
+
+        <!-- SECURITY -->
 
         <div class="tm-security">
             🔒 Secure login • Your information is protected
         </div>
 
+
+        <!-- BACK -->
+
         <a
-            href="{{ url_for('home') }}"
-            class="tm-back">
+            class="tm-back"
+            href="{{ url_for('home') }}">
             ← Back to Tomesh Movies
         </a>
 
