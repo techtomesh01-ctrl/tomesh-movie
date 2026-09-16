@@ -173,6 +173,7 @@ POSTER_PREFIX = "posters/"
 # ============================================================
 
 def clean_env_value(value):
+
     if value is None:
         return ""
 
@@ -192,6 +193,7 @@ def clean_env_value(value):
 
 
 def clean_endpoint(value):
+
     value = clean_env_value(value).rstrip("/")
 
     bucket_suffix = "/" + R2_BUCKET
@@ -278,10 +280,13 @@ EMAIL_RE = re.compile(
 # ============================================================
 
 def json_ok(**kwargs):
+
     data = {
         "ok": True
     }
+
     data.update(kwargs)
+
     return jsonify(data)
 
 
@@ -290,11 +295,14 @@ def json_error(
     status=400,
     **kwargs
 ):
+
     data = {
         "ok": False,
         "error": message,
     }
+
     data.update(kwargs)
+
     return jsonify(data), status
 
 
@@ -303,6 +311,7 @@ def json_error(
 # ============================================================
 
 def get_extension(filename):
+
     filename = str(filename or "")
 
     if "." not in filename:
@@ -315,6 +324,7 @@ def get_extension(filename):
 
 
 def allowed_video(filename):
+
     return (
         get_extension(filename)
         in ALLOWED_VIDEOS
@@ -322,6 +332,7 @@ def allowed_video(filename):
 
 
 def allowed_poster(filename):
+
     return (
         get_extension(filename)
         in ALLOWED_POSTERS
@@ -329,6 +340,7 @@ def allowed_poster(filename):
 
 
 def safe_filename(filename):
+
     filename = secure_filename(
         str(filename or "")
     )
@@ -337,6 +349,7 @@ def safe_filename(filename):
 
 
 def content_type_for_key(key):
+
     ext = get_extension(key)
 
     mapping = {
@@ -364,14 +377,17 @@ def content_type_for_key(key):
 # ============================================================
 
 def validate_r2_key(key):
+
     key = str(key or "").strip()
 
     if not key:
+
         raise ValueError(
             "R2 object key missing."
         )
 
     if "\r" in key or "\n" in key:
+
         raise ValueError(
             "Invalid R2 object key."
         )
@@ -394,6 +410,7 @@ def validate_r2_key(key):
 def get_db(dict_rows=False):
 
     if not DATABASE_URL:
+
         raise RuntimeError(
             "DATABASE_URL is not configured."
         )
@@ -524,6 +541,7 @@ def init_db():
         cur.close()
 
     finally:
+
         conn.close()
 
 
@@ -561,6 +579,7 @@ def get_setting(
         return row[0] or default
 
     finally:
+
         conn.close()
 
 
@@ -592,6 +611,7 @@ def set_setting(
         cur.close()
 
     finally:
+
         conn.close()
 
 
@@ -760,6 +780,7 @@ def admin_required(view_func):
         if not session.get(
             "admin_logged_in"
         ):
+
             return redirect(
                 url_for("login")
             )
@@ -884,11 +905,13 @@ def send_otp_email(
 ):
 
     if not BREVO_API_KEY:
+
         raise RuntimeError(
             "BREVO_API_KEY missing. Add BREVO_API_KEY in Render Environment."
         )
 
     if not BREVO_FROM:
+
         raise RuntimeError(
             "BREVO_FROM missing. Add the verified Brevo sender email in Render Environment."
         )
@@ -985,6 +1008,7 @@ def send_otp_email(
             isinstance(result, dict)
             and result.get("messageId")
         ):
+
             print(
                 "OTP EMAIL SENT:",
                 result.get("messageId"),
@@ -2840,6 +2864,10 @@ def cashfree_return():
             ]
 
             session[
+                "customer_logged_in"
+            ] = True
+
+            session[
                 "payment_success"
             ] = True
 
@@ -3074,10 +3102,6 @@ def movie_page(movie_id):
         "poster"
     )
 
-    # --------------------------------------------------------
-    # Correct video MIME type
-    # --------------------------------------------------------
-
     movie["video_mime"] = (
         content_type_for_key(
             video_key
@@ -3085,15 +3109,6 @@ def movie_page(movie_id):
         if video_key
         else "video/mp4"
     )
-
-    # --------------------------------------------------------
-    # IMPORTANT PLAYBACK FIX
-    #
-    # Do NOT give the browser a permanent/fresh R2 URL here.
-    #
-    # Browser first opens /stream/<movie_id>.
-    # That route checks access and creates a fresh R2 URL.
-    # --------------------------------------------------------
 
     if (
         video_key
@@ -3108,10 +3123,6 @@ def movie_page(movie_id):
     else:
 
         movie["video_url"] = None
-
-    # --------------------------------------------------------
-    # Poster
-    # --------------------------------------------------------
 
     if poster_key:
 
@@ -3151,20 +3162,111 @@ def movie_page(movie_id):
 # STREAM MOVIE
 # ============================================================
 
+def parse_http_range(
+    range_header,
+    total_size
+):
+
+    if not range_header:
+        return None
+
+    range_header = str(
+        range_header
+    ).strip()
+
+    if not range_header.lower().startswith(
+        "bytes="
+    ):
+        return None
+
+    value = (
+        range_header[6:]
+        .split(",", 1)[0]
+        .strip()
+    )
+
+    if "-" not in value:
+        return None
+
+    start_text, end_text = value.split(
+        "-",
+        1
+    )
+
+    try:
+
+        # bytes=-500
+        if start_text == "":
+
+            suffix_length = int(
+                end_text
+            )
+
+            if suffix_length <= 0:
+                return None
+
+            if suffix_length > total_size:
+                suffix_length = total_size
+
+            start = (
+                total_size
+                - suffix_length
+            )
+
+            end = total_size - 1
+
+        else:
+
+            start = int(
+                start_text
+            )
+
+            if (
+                start < 0
+                or start >= total_size
+            ):
+                return None
+
+            if end_text == "":
+
+                end = total_size - 1
+
+            else:
+
+                end = int(
+                    end_text
+                )
+
+                if end < start:
+                    return None
+
+                if end >= total_size:
+                    end = total_size - 1
+
+        return start, end
+
+    except (
+        ValueError,
+        TypeError
+    ):
+
+        return None
+
+
 @app.route(
     "/stream/<int:movie_id>",
     methods=["GET"],
 )
 def stream_movie(movie_id):
 
+    # --------------------------------------------------------
+    # ACCESS CHECK
+    # --------------------------------------------------------
+
     access_token = request.args.get(
         "access_token",
         "",
     ).strip()
-
-    # --------------------------------------------------------
-    # Verify paid/token access
-    # --------------------------------------------------------
 
     if access_token:
 
@@ -3176,6 +3278,7 @@ def stream_movie(movie_id):
             return Response(
                 "Invalid or expired stream access.",
                 status=403,
+                mimetype="text/plain",
             )
 
     else:
@@ -3189,10 +3292,11 @@ def stream_movie(movie_id):
             return Response(
                 "Payment required.",
                 status=403,
+                mimetype="text/plain",
             )
 
     # --------------------------------------------------------
-    # Get movie/video key
+    # GET MOVIE
     # --------------------------------------------------------
 
     conn = get_db(
@@ -3225,6 +3329,7 @@ def stream_movie(movie_id):
         return Response(
             "Movie not found.",
             status=404,
+            mimetype="text/plain",
         )
 
     video_key = movie.get(
@@ -3236,7 +3341,12 @@ def stream_movie(movie_id):
         return Response(
             "Video not found.",
             status=404,
+            mimetype="text/plain",
         )
+
+    # --------------------------------------------------------
+    # VALIDATE R2 KEY
+    # --------------------------------------------------------
 
     try:
 
@@ -3244,15 +3354,31 @@ def stream_movie(movie_id):
             video_key
         )
 
-    except Exception:
+        if not video_key.startswith(
+            VIDEO_PREFIX
+        ):
+
+            return Response(
+                "Invalid video object.",
+                status=400,
+                mimetype="text/plain",
+            )
+
+    except Exception as exc:
+
+        print(
+            "STREAM KEY ERROR:",
+            repr(exc),
+        )
 
         return Response(
             "Invalid video object.",
             status=400,
+            mimetype="text/plain",
         )
 
     # --------------------------------------------------------
-    # Verify R2 object
+    # R2 HEAD
     # --------------------------------------------------------
 
     try:
@@ -3264,13 +3390,14 @@ def stream_movie(movie_id):
     except Exception as exc:
 
         print(
-            "R2 HEAD ERROR:",
+            "STREAM R2 HEAD ERROR:",
             repr(exc),
         )
 
         return Response(
             "Video object not found in R2.",
             status=404,
+            mimetype="text/plain",
         )
 
     total_size = int(
@@ -3278,6 +3405,7 @@ def stream_movie(movie_id):
             "ContentLength",
             0,
         )
+        or 0
     )
 
     if total_size <= 0:
@@ -3285,10 +3413,11 @@ def stream_movie(movie_id):
         return Response(
             "Video file is empty.",
             status=404,
+            mimetype="text/plain",
         )
 
     # --------------------------------------------------------
-    # Correct MIME type
+    # CONTENT TYPE
     # --------------------------------------------------------
 
     content_type = (
@@ -3301,48 +3430,187 @@ def stream_movie(movie_id):
         or "video/mp4"
     )
 
+    if content_type == "application/octet-stream":
+
+        content_type = "video/mp4"
+
     # --------------------------------------------------------
-    # Fresh R2 presigned URL
-    #
-    # R2 handles Range / 206 requests directly.
-    # Render does NOT proxy the video bytes.
+    # RANGE REQUEST
+    # --------------------------------------------------------
+
+    range_header = request.headers.get(
+        "Range"
+    )
+
+    byte_range = parse_http_range(
+        range_header,
+        total_size,
+    )
+
+    # --------------------------------------------------------
+    # INVALID RANGE
+    # --------------------------------------------------------
+
+    if (
+        range_header
+        and byte_range is None
+    ):
+
+        response = Response(
+            "Requested Range Not Satisfiable.",
+            status=416,
+            mimetype="text/plain",
+        )
+
+        response.headers[
+            "Content-Range"
+        ] = (
+            f"bytes */{total_size}"
+        )
+
+        response.headers[
+            "Accept-Ranges"
+        ] = "bytes"
+
+        return response
+
+    # --------------------------------------------------------
+    # CALCULATE RANGE
+    # --------------------------------------------------------
+
+    if byte_range:
+
+        start, end = byte_range
+
+        content_length = (
+            end
+            - start
+            + 1
+        )
+
+        status_code = 206
+
+    else:
+
+        start = 0
+        end = total_size - 1
+        content_length = total_size
+        status_code = 200
+
+    # --------------------------------------------------------
+    # R2 GET
     # --------------------------------------------------------
 
     try:
 
         client = get_r2_client()
 
-        url = client.generate_presigned_url(
-            "get_object",
-            Params={
-                "Bucket": R2_BUCKET,
-                "Key": video_key,
-                "ResponseContentType": content_type,
-                "ResponseContentDisposition": "inline",
-                "ResponseCacheControl": "private, max-age=300",
-            },
-            ExpiresIn=min(
-                PRESIGNED_EXPIRES,
-                3600,
-            ),
+        params = {
+            "Bucket": R2_BUCKET,
+            "Key": video_key,
+        }
+
+        if byte_range:
+
+            params["Range"] = (
+                f"bytes={start}-{end}"
+            )
+
+        r2_response = client.get_object(
+            **params
         )
 
-        return redirect(
-            url,
-            code=302,
-        )
+        body = r2_response["Body"]
 
     except Exception as exc:
 
         print(
-            "R2 STREAM URL ERROR:",
+            "STREAM R2 GET ERROR:",
             repr(exc),
         )
 
         return Response(
-            "Unable to prepare video stream.",
+            "Unable to read video from R2.",
             status=502,
+            mimetype="text/plain",
         )
+
+    # --------------------------------------------------------
+    # GENERATOR
+    # --------------------------------------------------------
+
+    def generate_video():
+
+        try:
+
+            while True:
+
+                chunk = body.read(
+                    1024 * 1024
+                )
+
+                if not chunk:
+                    break
+
+                yield chunk
+
+        except Exception as exc:
+
+            print(
+                "VIDEO STREAM ERROR:",
+                repr(exc),
+            )
+
+        finally:
+
+            try:
+                body.close()
+            except Exception:
+                pass
+
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
+
+    response = Response(
+        generate_video(),
+        status=status_code,
+        direct_passthrough=True,
+    )
+
+    response.headers[
+        "Content-Type"
+    ] = content_type
+
+    response.headers[
+        "Accept-Ranges"
+    ] = "bytes"
+
+    response.headers[
+        "Content-Length"
+    ] = str(content_length)
+
+    response.headers[
+        "Content-Disposition"
+    ] = "inline"
+
+    response.headers[
+        "Cache-Control"
+    ] = "private, max-age=300"
+
+    response.headers[
+        "X-Content-Type-Options"
+    ] = "nosniff"
+
+    if byte_range:
+
+        response.headers[
+            "Content-Range"
+        ] = (
+            f"bytes {start}-{end}/{total_size}"
+        )
+
+    return response
 
 
 # ============================================================
@@ -3464,7 +3732,7 @@ def login():
 
         password = request.form.get(
             "password",
-            "",
+            ""
         )
 
         if (
@@ -3810,7 +4078,6 @@ def admin_add():
             )
 
         except Exception:
-
             pass
 
         if poster_key:
@@ -3822,7 +4089,6 @@ def admin_add():
                 )
 
             except Exception:
-
                 pass
 
         flash(
