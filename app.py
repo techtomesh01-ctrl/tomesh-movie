@@ -631,6 +631,13 @@ def get_customer_id():
 # ============================================================
 
 def access_for_movie(movie_id):
+    """
+    Current playback mode: movie streaming is open so the player can be
+    tested without payment. Download access remains payment-controlled.
+
+    Payment/Cashfree code is intentionally kept in the app for the later
+    payment phase; this function currently does not block movie playback.
+    """
 
     customer_id = get_customer_id()
 
@@ -660,7 +667,6 @@ def access_for_movie(movie_id):
         )
 
         row = cur.fetchone()
-
         cur.close()
 
     finally:
@@ -668,34 +674,33 @@ def access_for_movie(movie_id):
 
     now = datetime.now()
 
-    if not row:
-        return {
-            "watch": False,
-            "download": False,
-            "premium": False,
-        }
+    watch = False
+    download = False
+    premium = False
 
-    watch = (
-        row["watch_until"] is not None
-        and row["watch_until"] > now
-    )
+    if row:
+        watch = (
+            row["watch_until"] is not None
+            and row["watch_until"] > now
+        )
 
-    download = (
-        row["download_until"] is not None
-        and row["download_until"] > now
-    )
+        download = (
+            row["download_until"] is not None
+            and row["download_until"] > now
+        )
 
-    premium = (
-        row["premium_until"] is not None
-        and row["premium_until"] > now
-    )
+        premium = (
+            row["premium_until"] is not None
+            and row["premium_until"] > now
+        )
 
+    # PLAYBACK OPEN FOR NOW: this removes the payment block from /stream.
+    # Premium still counts as active, and download remains protected.
     return {
-        "watch": watch or premium,
+        "watch": True,
         "download": download or premium,
         "premium": premium,
     }
-
 
 def grant_access(
     customer_id,
