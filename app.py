@@ -1582,9 +1582,44 @@ def user_details():
 
 @app.route("/member")
 @customer_login_required
-def member_home(): 
+def member_home():
+    movies = get_member_movies_data()
+    saved_movies = [
+        movie for movie in movies
+        if movie.get("in_my_list")
+    ]
 
-@app.route("/member")
+    categories = []
+    seen_categories = set()
+
+    for movie in movies:
+        raw_category = str(
+            movie.get("category") or ""
+        ).strip()
+
+        if not raw_category:
+            continue
+
+        for part in raw_category.split(","):
+            category = part.strip()
+
+            if category and category.lower() not in seen_categories:
+                seen_categories.add(category.lower())
+                categories.append(category)
+
+    return render_template(
+        "member_home.html",
+        movies=movies,
+        saved_movies=saved_movies,
+        my_list_movies=saved_movies,
+        saved_movie_ids=[
+            int(movie["id"])
+            for movie in saved_movies
+        ],
+        categories=categories,
+        customer_email=session.get("customer_email", ""),
+        premium=has_active_premium(),
+    )
 @customer_login_required
 def member_home():
     movies = get_member_movies_data()
