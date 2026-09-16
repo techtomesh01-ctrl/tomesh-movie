@@ -671,11 +671,6 @@
     border-color:#a143d3;
     box-shadow:0 0 0 3px rgba(161,67,211,.12);
 }
-.tm-pay-grid{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:12px;
-}
 .tm-pay-btn{
     width:100%;
     padding:15px;
@@ -808,9 +803,6 @@
         display:inline-flex;
         margin-top:10px;
     }
-    .tm-pay-grid{
-        grid-template-columns:1fr;
-    }
     .tm-poster-card{
         width:180px;
     }
@@ -844,12 +836,9 @@
         ← Back to Home
     </a>
 
-```
-<div class="tm-brand-mini">
-    TOMESH MOVIES
-</div>
-```
-
+    <div class="tm-brand-mini">
+        TOMESH MOVIES
+    </div>
 </div>
 
 <!-- PLAYER -->
@@ -860,19 +849,12 @@
 
 <div id="tmPlayer" class="tm-player" tabindex="0">
 
-```
 <div class="tm-video-top"></div>
 
 <div class="tm-player-title">
     {{ movie.title }}
 </div>
 
-<!--
-    IMPORTANT:
-    Native controls enabled.
-    R2 signed URL is used directly.
-    Force MP4 MIME because the R2 object is video/mp4.
--->
 <video
     id="tmVideo"
     class="tm-video"
@@ -1115,7 +1097,6 @@
 
     </div>
 </div>
-```
 
 </div>
 
@@ -1123,7 +1104,6 @@
 
 <div class="tm-lock">
 
-```
 <div class="tm-lock-box">
 
     <div class="tm-lock-icon-wrap">
@@ -1149,7 +1129,6 @@
     </a>
 
 </div>
-```
 
 </div>
 
@@ -1168,7 +1147,6 @@
 
 <div class="tm-info-main">
 
-```
 <div class="tm-eyebrow">
 
     {% if movie.category %}
@@ -1236,6 +1214,7 @@
 {% endif %}
 
 <!-- ACTIONS -->
+
 <div class="tm-action-row">
 
     {% if access.watch %}
@@ -1266,6 +1245,7 @@
 </div>
 
 <!-- PAYMENT -->
+
 {% if not access.watch or not access.download %}
 
 <div
@@ -1282,7 +1262,7 @@
             </h2>
 
             <p class="tm-payment-sub">
-                Secure Cashfree checkout के जरिए payment करें।
+                Is movie ke liye Premium access unlock karein.
             </p>
 
         </div>
@@ -1303,52 +1283,6 @@
         placeholder="10 digit mobile number"
     >
 
-    <div class="tm-pay-grid">
-
-        {% if not access.watch %}
-
-        <button
-            type="button"
-            class="tm-pay-btn"
-            onclick="startPayment('watch')"
-        >
-
-            <div class="tm-pay-title">
-                <span>₹1 Watch</span>
-                <span>▶</span>
-            </div>
-
-            <small>
-                24 hours movie watch access
-            </small>
-
-        </button>
-
-        {% endif %}
-
-        {% if not access.download %}
-
-        <button
-            type="button"
-            class="tm-pay-btn"
-            onclick="startPayment('download')"
-        >
-
-            <div class="tm-pay-title">
-                <span>₹9 Download</span>
-                <span>⬇</span>
-            </div>
-
-            <small>
-                This movie download access
-            </small>
-
-        </button>
-
-        {% endif %}
-
-    </div>
-
     {% if not access.premium %}
 
     <button
@@ -1363,12 +1297,12 @@
 
                 <div class="tm-pay-title">
                     <span>
-                        👑 ₹109 Premium
+                        👑 ₹99 / Month Premium
                     </span>
                 </div>
 
                 <small>
-                    1 year watch + download on Tomesh Movies
+                    ▶ Watch + ⬇ Download — 1 month access on Tomesh Movies
                 </small>
 
             </div>
@@ -1389,7 +1323,8 @@
     ></div>
 
     <div class="tm-payment-note">
-        Payment complete होने के बाद access automatically update होगा।
+        Premium payment complete होने के बाद
+        Watch + Download access automatically update होगा।
         Page refresh करने पर नया access दिखाई देगा।
     </div>
 
@@ -1400,7 +1335,6 @@
 <div class="tm-foot-note">
     Tomesh Movies पर केवल अपनी या properly licensed content ही publish करें।
 </div>
-```
 
 </div>
 
@@ -1408,7 +1342,6 @@
 
 <div class="tm-poster-card">
 
-```
 <img
     class="tm-poster"
     src="{{ movie.poster_url or movie.poster }}"
@@ -1419,7 +1352,6 @@
 <div class="tm-poster-shade">
     {{ movie.title }}
 </div>
-```
 
 </div>
 
@@ -1956,10 +1888,6 @@ async function startPayment(type){
 
         setBuffering(true);
 
-        /*
-         * Reload the existing R2 signed URL.
-         * No new server upload/download is performed.
-         */
         video.load();
 
         video.play()
@@ -2537,13 +2465,8 @@ async function startPayment(type){
     updateTime();
     updatePlayIcon();
 
-    /*
-     * Do NOT automatically play.
-     * User clicks Play so browser autoplay policies
-     * do not interfere with the R2 video.
-     */
-
 })();
+
 </script>
 
 {% endblock %}
