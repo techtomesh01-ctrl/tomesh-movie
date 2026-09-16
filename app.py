@@ -106,9 +106,6 @@ PREMIUM_PRICE = 99.00
 
 PREMIUM_DAYS = 30
 
-WATCH_HOURS = 24
-
-DOWNLOAD_DAYS = 30
 
 
 # ============================================================
