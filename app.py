@@ -3,11 +3,7 @@ import json
 import secrets
 import mimetypes
 import re
-import time
-import base64
-import hashlib
-import hmac
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -53,13 +49,11 @@ app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 # ============================================================
 
 ADMIN_USER = os.environ.get(
-    "ADMIN_USER",
-    "admin",
+    "ADMIN_USER", "admin"
 ).strip() or "admin"
 
 ADMIN_PASSWORD = os.environ.get(
-    "ADMIN_PASSWORD",
-    "change-me-now",
+    "ADMIN_PASSWORD", "change-me-now"
 ).strip() or "change-me-now"
 
 
@@ -68,8 +62,7 @@ ADMIN_PASSWORD = os.environ.get(
 # ============================================================
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "",
+    "DATABASE_URL", ""
 ).strip()
 
 
@@ -78,18 +71,15 @@ DATABASE_URL = os.environ.get(
 # ============================================================
 
 CASHFREE_APP_ID = os.environ.get(
-    "CASHFREE_APP_ID",
-    "",
+    "CASHFREE_APP_ID", ""
 ).strip()
 
 CASHFREE_SECRET_KEY = os.environ.get(
-    "CASHFREE_SECRET_KEY",
-    "",
+    "CASHFREE_SECRET_KEY", ""
 ).strip()
 
 CASHFREE_ENV = os.environ.get(
-    "CASHFREE_ENV",
-    "sandbox",
+    "CASHFREE_ENV", "sandbox"
 ).strip().lower()
 
 CASHFREE_API_VERSION = "2025-01-01"
@@ -111,7 +101,9 @@ DOWNLOAD_PRICE = 9.00
 PREMIUM_PRICE = 109.00
 
 PREMIUM_DAYS = 365
+
 WATCH_HOURS = 24
+
 DOWNLOAD_DAYS = 30
 
 
@@ -142,34 +134,30 @@ MAX_POSTER_SIZE = 25 * 1024 * 1024
 # ============================================================
 
 R2_ACCOUNT_ID = os.environ.get(
-    "R2_ACCOUNT_ID",
-    "",
+    "R2_ACCOUNT_ID", ""
 )
 
 R2_ACCESS_KEY_ID = os.environ.get(
-    "R2_ACCESS_KEY_ID",
-    "",
+    "R2_ACCESS_KEY_ID", ""
 )
 
 R2_SECRET_ACCESS_KEY = os.environ.get(
-    "R2_SECRET_ACCESS_KEY",
-    "",
+    "R2_SECRET_ACCESS_KEY", ""
 )
 
 R2_BUCKET = os.environ.get(
-    "R2_BUCKET",
-    "tomesh-movies",
+    "R2_BUCKET", "tomesh-movies"
 )
 
 R2_ENDPOINT = os.environ.get(
-    "R2_ENDPOINT",
-    "",
+    "R2_ENDPOINT", ""
 )
 
 R2_PUBLIC_URL = os.environ.get(
     "R2_PUBLIC_URL",
-    "",
+    "https://pub-5b61d97d7d2347c89cab7e3e72f17e07.r2.dev",
 )
+
 
 PART_SIZE = 10 * 1024 * 1024
 PARALLEL_PARTS = 3
@@ -226,117 +214,21 @@ CASHFREE_SECRET_KEY = clean_env_value(CASHFREE_SECRET_KEY)
 
 
 # ============================================================
-# EMAIL OTP SETTINGS
-# ============================================================
-
-SMTP_HOST = clean_env_value(
-    os.environ.get("SMTP_HOST", "")
-)
-
-SMTP_PORT_RAW = clean_env_value(
-    os.environ.get("SMTP_PORT", "587")
-)
-
-SMTP_USER = clean_env_value(
-    os.environ.get("SMTP_USER", "")
-)
-
-SMTP_PASSWORD = clean_env_value(
-    os.environ.get("SMTP_PASSWORD", "")
-)
-
-SMTP_FROM = (
-    clean_env_value(
-        os.environ.get("SMTP_FROM", "")
-    )
-    or SMTP_USER
-)
-
-SMTP_USE_TLS = (
-    clean_env_value(
-        os.environ.get(
-            "SMTP_USE_TLS",
-            "true",
-        )
-    ).lower()
-    != "false"
-)
-
-try:
-    SMTP_PORT = int(
-        SMTP_PORT_RAW or "587"
-    )
-except ValueError:
-    SMTP_PORT = 587
-
-BREVO_API_KEY = clean_env_value(
-    os.environ.get(
-        "BREVO_API_KEY",
-        "",
-    )
-)
-
-BREVO_FROM = (
-    clean_env_value(
-        os.environ.get(
-            "BREVO_FROM",
-            "",
-        )
-    )
-    or SMTP_FROM
-)
-
-BREVO_FROM_NAME = (
-    clean_env_value(
-        os.environ.get(
-            "BREVO_FROM_NAME",
-            "Tomesh Movies",
-        )
-    )
-    or "Tomesh Movies"
-)
-
-BREVO_API_URL = (
-    "https://api.brevo.com/v3/smtp/email"
-)
-
-OTP_LENGTH = 6
-OTP_EXPIRY_MINUTES = 10
-OTP_RESEND_SECONDS = 60
-OTP_MAX_ATTEMPTS = 5
-
-EMAIL_RE = re.compile(
-    r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+"
-    r"@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$"
-)
-
-
-# ============================================================
-# JSON HELPERS
+# JSON
 # ============================================================
 
 def json_ok(**kwargs):
-    data = {
-        "ok": True
-    }
-
+    data = {"ok": True}
     data.update(kwargs)
-
     return jsonify(data)
 
 
-def json_error(
-    message,
-    status=400,
-    **kwargs,
-):
+def json_error(message, status=400, **kwargs):
     data = {
         "ok": False,
         "error": message,
     }
-
     data.update(kwargs)
-
     return jsonify(data), status
 
 
@@ -345,31 +237,22 @@ def json_error(
 # ============================================================
 
 def get_extension(filename):
-    filename = str(
-        filename or ""
-    )
+    filename = str(filename or "")
 
     if "." not in filename:
         return ""
 
     return filename.rsplit(
-        ".",
-        1,
+        ".", 1
     )[1].lower().strip()
 
 
 def allowed_video(filename):
-    return (
-        get_extension(filename)
-        in ALLOWED_VIDEOS
-    )
+    return get_extension(filename) in ALLOWED_VIDEOS
 
 
 def allowed_poster(filename):
-    return (
-        get_extension(filename)
-        in ALLOWED_POSTERS
-    )
+    return get_extension(filename) in ALLOWED_POSTERS
 
 
 def safe_filename(filename):
@@ -396,45 +279,31 @@ def content_type_for_key(key):
 
     return (
         mapping.get(ext)
-        or mimetypes.guess_type(
-            str(key or "")
-        )[0]
+        or mimetypes.guess_type(str(key or ""))[0]
         or "application/octet-stream"
     )
 
 
 # ============================================================
-# R2 KEY VALIDATION
+# R2 VALIDATION
 # ============================================================
 
 def validate_r2_key(key):
-    key = str(
-        key or ""
-    ).strip()
+    key = str(key or "").strip()
 
     if not key:
-        raise ValueError(
-            "R2 object key missing."
-        )
+        raise ValueError("R2 object key missing.")
 
     if "\r" in key or "\n" in key:
-        raise ValueError(
-            "Invalid R2 object key."
-        )
+        raise ValueError("Invalid R2 object key.")
 
-    if key.startswith(
-        VIDEO_PREFIX
-    ):
+    if key.startswith(VIDEO_PREFIX):
         return key
 
-    if key.startswith(
-        POSTER_PREFIX
-    ):
+    if key.startswith(POSTER_PREFIX):
         return key
 
-    raise ValueError(
-        "Invalid R2 object prefix."
-    )
+    raise ValueError("Invalid R2 object prefix.")
 
 
 # ============================================================
@@ -442,7 +311,6 @@ def validate_r2_key(key):
 # ============================================================
 
 def get_db(dict_rows=False):
-
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL is not configured."
@@ -451,19 +319,15 @@ def get_db(dict_rows=False):
     return psycopg2.connect(
         DATABASE_URL,
         cursor_factory=(
-            RealDictCursor
-            if dict_rows
-            else None
+            RealDictCursor if dict_rows else None
         ),
     )
 
 
 def init_db():
-
     conn = get_db()
 
     try:
-
         cur = conn.cursor()
 
         cur.execute("""
@@ -486,6 +350,10 @@ def init_db():
             )
         """)
 
+        # ----------------------------------------------------
+        # PAYMENT ORDERS
+        # ----------------------------------------------------
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS payment_orders (
                 id SERIAL PRIMARY KEY,
@@ -500,6 +368,10 @@ def init_db():
             )
         """)
 
+        # ----------------------------------------------------
+        # CUSTOMER ACCESS
+        # ----------------------------------------------------
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS customer_access (
                 id SERIAL PRIMARY KEY,
@@ -513,60 +385,12 @@ def init_db():
         """)
 
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS customer_users (
-                id SERIAL PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
-                customer_id TEXT UNIQUE NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_login_at TIMESTAMP
-            )
-        """)
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS customer_movie_list (
-                customer_id TEXT NOT NULL,
-                movie_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (customer_id, movie_id),
-                FOREIGN KEY (movie_id)
-                    REFERENCES movies(id)
-                    ON DELETE CASCADE
-            )
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS
-            idx_customer_movie_list_customer
-            ON customer_movie_list(customer_id)
-        """)
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS email_otps (
-                id SERIAL PRIMARY KEY,
-                email TEXT NOT NULL,
-                otp_hash TEXT NOT NULL,
-                expires_at TIMESTAMP NOT NULL,
-                attempts INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                used_at TIMESTAMP
-            )
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS
-            idx_customer_access_customer
+            CREATE INDEX IF NOT EXISTS idx_customer_access_customer
             ON customer_access(customer_id)
         """)
 
         cur.execute("""
-            CREATE INDEX IF NOT EXISTS
-            idx_email_otps_email
-            ON email_otps(email)
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS
-            idx_payment_orders_order
+            CREATE INDEX IF NOT EXISTS idx_payment_orders_order
             ON payment_orders(order_id)
         """)
 
@@ -581,15 +405,10 @@ def init_db():
 # SETTINGS
 # ============================================================
 
-def get_setting(
-    key,
-    default="",
-):
-
+def get_setting(key, default=""):
     conn = get_db()
 
     try:
-
         cur = conn.cursor()
 
         cur.execute(
@@ -602,7 +421,6 @@ def get_setting(
         )
 
         row = cur.fetchone()
-
         cur.close()
 
         if not row:
@@ -614,15 +432,10 @@ def get_setting(
         conn.close()
 
 
-def set_setting(
-    key,
-    value,
-):
-
+def set_setting(key, value):
     conn = get_db()
 
     try:
-
         cur = conn.cursor()
 
         cur.execute(
@@ -632,10 +445,7 @@ def set_setting(
             ON CONFLICT(key)
             DO UPDATE SET value = EXCLUDED.value
             """,
-            (
-                key,
-                value,
-            ),
+            (key, value),
         )
 
         conn.commit()
@@ -646,20 +456,10 @@ def set_setting(
 
 
 def get_ads():
-
     return {
-        "top": get_setting(
-            "ad_top",
-            "",
-        ),
-        "player": get_setting(
-            "ad_player",
-            "",
-        ),
-        "bottom": get_setting(
-            "ad_bottom",
-            "",
-        ),
+        "top": get_setting("ad_top", ""),
+        "player": get_setting("ad_player", ""),
+        "bottom": get_setting("ad_bottom", ""),
     }
 
 
@@ -670,29 +470,19 @@ def get_ads():
 def get_r2_client():
 
     if not R2_ACCOUNT_ID:
-        raise RuntimeError(
-            "R2_ACCOUNT_ID missing."
-        )
+        raise RuntimeError("R2_ACCOUNT_ID missing.")
 
     if not R2_ACCESS_KEY_ID:
-        raise RuntimeError(
-            "R2_ACCESS_KEY_ID missing."
-        )
+        raise RuntimeError("R2_ACCESS_KEY_ID missing.")
 
     if not R2_SECRET_ACCESS_KEY:
-        raise RuntimeError(
-            "R2_SECRET_ACCESS_KEY missing."
-        )
+        raise RuntimeError("R2_SECRET_ACCESS_KEY missing.")
 
     if not R2_BUCKET:
-        raise RuntimeError(
-            "R2_BUCKET missing."
-        )
+        raise RuntimeError("R2_BUCKET missing.")
 
     if not R2_ENDPOINT:
-        raise RuntimeError(
-            "R2_ENDPOINT missing."
-        )
+        raise RuntimeError("R2_ENDPOINT missing.")
 
     return boto3.client(
         "s3",
@@ -736,7 +526,6 @@ def r2_presigned_url(
     key,
     expires=PRESIGNED_EXPIRES,
 ):
-
     key = validate_r2_key(key)
 
     client = get_r2_client()
@@ -752,15 +541,12 @@ def r2_presigned_url(
 
 
 def media_url(key):
-
     if not key:
         return None
 
     try:
         return r2_presigned_url(key)
-
     except Exception:
-
         public = r2_public_url(key)
 
         if public:
@@ -770,7 +556,6 @@ def media_url(key):
 
 
 def r2_head(key):
-
     key = validate_r2_key(key)
 
     return get_r2_client().head_object(
@@ -795,7 +580,7 @@ def r2_delete(key):
 
 
 # ============================================================
-# ADMIN AUTH - COMPLETELY SEPARATE
+# ADMIN AUTH
 # ============================================================
 
 def admin_required(view_func):
@@ -807,7 +592,7 @@ def admin_required(view_func):
             "admin_logged_in"
         ):
             return redirect(
-                url_for("admin_login")
+                url_for("login")
             )
 
         return view_func(
@@ -816,89 +601,6 @@ def admin_required(view_func):
         )
 
     return wrapper
-
-
-# ============================================================
-# ADMIN LOGIN
-# ============================================================
-
-@app.route(
-    "/admin/login",
-    methods=["GET", "POST"],
-)
-def admin_login():
-
-    if session.get(
-        "admin_logged_in"
-    ):
-        return redirect(
-            url_for("admin")
-        )
-
-    error = ""
-
-    if request.method == "POST":
-
-        username = request.form.get(
-            "username",
-            "",
-        ).strip()
-
-        password = request.form.get(
-            "password",
-            "",
-        )
-
-        if (
-            username == ADMIN_USER
-            and password == ADMIN_PASSWORD
-        ):
-
-            session[
-                "admin_logged_in"
-            ] = True
-
-            session[
-                "admin_user"
-            ] = ADMIN_USER
-
-            return redirect(
-                url_for("admin")
-            )
-
-        error = (
-            "Invalid admin username "
-            "or password."
-        )
-
-    return render_template(
-        "admin_login.html",
-        error=error,
-    )
-
-
-# ============================================================
-# ADMIN LOGOUT
-# ============================================================
-
-@app.route(
-    "/admin/logout"
-)
-def admin_logout():
-
-    session.pop(
-        "admin_logged_in",
-        None,
-    )
-
-    session.pop(
-        "admin_user",
-        None,
-    )
-
-    return redirect(
-        url_for("admin_login")
-    )
 
 
 # ============================================================
@@ -912,7 +614,6 @@ def get_customer_id():
     )
 
     if not customer_id:
-
         customer_id = (
             "tm_"
             + secrets.token_hex(16)
@@ -926,1396 +627,10 @@ def get_customer_id():
 
 
 # ============================================================
-# EMAIL OTP
+# CUSTOMER ACCESS
 # ============================================================
 
-def normalize_email(value):
-
-    return str(
-        value or ""
-    ).strip().lower()
-
-
-def valid_email(email):
-
-    return bool(
-        EMAIL_RE.fullmatch(
-            email or ""
-        )
-    )
-
-
-def mask_email(email):
-
-    email = normalize_email(email)
-
-    if "@" not in email:
-        return email
-
-    local, domain = email.split(
-        "@",
-        1,
-    )
-
-    if len(local) <= 2:
-
-        masked_local = (
-            local[:1]
-            + "*"
-        )
-
-    else:
-
-        masked_local = (
-            local[:1]
-            + "***"
-            + local[-1:]
-        )
-
-    return (
-        masked_local
-        + "@"
-        + domain
-    )
-
-
-def generate_otp():
-
-    return str(
-        secrets.randbelow(900000)
-        + 100000
-    )
-
-
-def otp_hash(
-    email,
-    otp,
-):
-
-    payload = (
-        normalize_email(email)
-        + ":"
-        + str(otp)
-    ).encode("utf-8")
-
-    return hmac.new(
-        str(
-            app.secret_key
-        ).encode("utf-8"),
-        payload,
-        hashlib.sha256,
-    ).hexdigest()
-
-
-def send_otp_email(
-    email,
-    otp,
-):
-
-    if not BREVO_API_KEY:
-        raise RuntimeError(
-            "BREVO_API_KEY missing. "
-            "Add BREVO_API_KEY in Render Environment."
-        )
-
-    if not BREVO_FROM:
-        raise RuntimeError(
-            "BREVO_FROM missing. "
-            "Add the verified Brevo sender email."
-        )
-
-    otp_text = str(otp)
-
-    text_content = (
-        "Tomesh Movies login verification\n\n"
-        "Your one-time verification code is: "
-        + otp_text
-        + "\n\n"
-        + "This OTP expires in "
-        + str(OTP_EXPIRY_MINUTES)
-        + " minutes.\n"
-        + "Do not share this code with anyone.\n\n"
-        + "Tomesh Movies"
-    )
-
-    html_content = (
-        "<!doctype html>"
-        "<html><body style=\"margin:0;padding:24px;"
-        "background:#080808;font-family:Arial,sans-serif;"
-        "color:#ffffff;\">"
-        "<div style=\"max-width:520px;margin:auto;"
-        "background:#121212;border:1px solid #2b2b2b;"
-        "border-radius:16px;padding:28px;\">"
-        "<h2 style=\"margin:0 0 12px;color:#ffc400;\">"
-        "Tomesh Movies"
-        "</h2>"
-        "<p style=\"color:#dddddd;\">"
-        "Your login verification code is:"
-        "</p>"
-        "<div style=\"font-size:34px;font-weight:700;"
-        "letter-spacing:8px;color:#ffffff;"
-        "background:#1d1d1d;border-radius:12px;"
-        "padding:18px;text-align:center;\">"
-        + otp_text
-        + "</div>"
-        + "<p style=\"color:#aaaaaa;margin-top:18px;\">"
-        "This OTP expires in "
-        + str(OTP_EXPIRY_MINUTES)
-        + " minutes.</p>"
-        + "<p style=\"color:#888888;font-size:13px;\">"
-        "Do not share this code with anyone."
-        "</p>"
-        + "</div></body></html>"
-    )
-
-    payload = {
-        "sender": {
-            "name": BREVO_FROM_NAME,
-            "email": BREVO_FROM,
-        },
-        "to": [
-            {
-                "email": email,
-            }
-        ],
-        "subject": (
-            "Tomesh Movies - Your Login OTP"
-        ),
-        "textContent": text_content,
-        "htmlContent": html_content,
-    }
-
-    body = json.dumps(
-        payload
-    ).encode("utf-8")
-
-    req = Request(
-        BREVO_API_URL,
-        data=body,
-        headers={
-            "accept": "application/json",
-            "api-key": BREVO_API_KEY,
-            "content-type": "application/json",
-            "user-agent": "Tomesh-Movies/1.0",
-        },
-        method="POST",
-    )
-
-    try:
-
-        with urlopen(
-            req,
-            timeout=15,
-        ) as response:
-
-            raw = response.read().decode(
-                "utf-8",
-                errors="replace",
-            )
-
-        if not raw:
-            return
-
-        try:
-            result = json.loads(raw)
-        except Exception:
-            result = {}
-
-        if (
-            isinstance(result, dict)
-            and result.get("messageId")
-        ):
-
-            print(
-                "OTP EMAIL SENT:",
-                result.get("messageId"),
-            )
-
-    except HTTPError as exc:
-
-        raw = exc.read().decode(
-            "utf-8",
-            errors="replace",
-        )
-
-        print(
-            "BREVO HTTP ERROR:",
-            exc.code,
-            raw,
-        )
-
-        raise RuntimeError(
-            "Brevo email API "
-            + str(exc.code)
-            + ": "
-            + raw
-        )
-
-    except URLError as exc:
-
-        print(
-            "BREVO CONNECTION ERROR:",
-            repr(exc),
-        )
-
-        raise RuntimeError(
-            "Brevo connection failed: "
-            + str(exc)
-        )
-
-    except Exception as exc:
-
-        print(
-            "BREVO EMAIL ERROR:",
-            repr(exc),
-        )
-
-        raise
-
-
-# ============================================================
-# BIND CUSTOMER EMAIL
-# ============================================================
-
-def bind_customer_email(email):
-
-    email = normalize_email(email)
-
-    old_customer_id = session.get(
-        "customer_id"
-    )
-
-    if not old_customer_id:
-
-        old_customer_id = (
-            "tm_"
-            + secrets.token_hex(16)
-        )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
-    try:
-
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT id, customer_id
-            FROM customer_users
-            WHERE email = %s
-            FOR UPDATE
-            """,
-            (email,),
-        )
-
-        user = cur.fetchone()
-
-        if user:
-
-            target_customer_id = (
-                user["customer_id"]
-            )
-
-            if (
-                old_customer_id
-                != target_customer_id
-            ):
-
-                cur.execute(
-                    """
-                    UPDATE customer_access
-                    SET customer_id = %s
-                    WHERE customer_id = %s
-                    """,
-                    (
-                        target_customer_id,
-                        old_customer_id,
-                    ),
-                )
-
-                cur.execute(
-                    """
-                    UPDATE payment_orders
-                    SET customer_id = %s
-                    WHERE customer_id = %s
-                    """,
-                    (
-                        target_customer_id,
-                        old_customer_id,
-                    ),
-                )
-
-            cur.execute(
-                """
-                UPDATE customer_users
-                SET last_login_at = NOW()
-                WHERE id = %s
-                """,
-                (user["id"],),
-            )
-
-        else:
-
-            target_customer_id = (
-                old_customer_id
-            )
-
-            cur.execute(
-                """
-                INSERT INTO customer_users
-                (
-                    email,
-                    customer_id,
-                    last_login_at
-                )
-                VALUES(%s, %s, NOW())
-                """,
-                (
-                    email,
-                    target_customer_id,
-                ),
-            )
-
-        conn.commit()
-        cur.close()
-
-    except Exception:
-
-        conn.rollback()
-        raise
-
-    finally:
-
-        conn.close()
-
-    session[
-        "customer_id"
-    ] = target_customer_id
-
-    session[
-        "customer_logged_in"
-    ] = True
-
-    session[
-        "customer_email"
-    ] = email
-
-    return target_customer_id
-
-
-# ============================================================
-# REQUEST OTP
-# ============================================================
-
-@app.route(
-    "/login/request-otp",
-    methods=["POST"],
-)
-def request_otp():
-
-    email = normalize_email(
-        request.form.get(
-            "email",
-            "",
-        )
-    )
-
-    if not valid_email(email):
-
-        flash(
-            "Please enter a valid email address.",
-            "error",
-        )
-
-        return redirect(
-            url_for("login")
-        )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
-    otp_row_id = None
-
-    try:
-
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT created_at
-            FROM email_otps
-            WHERE email = %s
-              AND used_at IS NULL
-            ORDER BY id DESC
-            LIMIT 1
-            """,
-            (email,),
-        )
-
-        previous = cur.fetchone()
-
-        if (
-            previous
-            and previous["created_at"]
-        ):
-
-            elapsed = (
-                datetime.now()
-                - previous["created_at"]
-            ).total_seconds()
-
-            if (
-                elapsed
-                < OTP_RESEND_SECONDS
-            ):
-
-                cur.close()
-
-                return redirect(
-                    url_for(
-                        "login",
-                        step="otp",
-                    )
-                )
-
-        cur.execute(
-            """
-            UPDATE email_otps
-            SET used_at = NOW()
-            WHERE email = %s
-              AND used_at IS NULL
-            """,
-            (email,),
-        )
-
-        otp = generate_otp()
-
-        expires_at = (
-            datetime.now()
-            + timedelta(
-                minutes=OTP_EXPIRY_MINUTES
-            )
-        )
-
-        cur.execute(
-            """
-            INSERT INTO email_otps
-            (
-                email,
-                otp_hash,
-                expires_at,
-                attempts
-            )
-            VALUES(%s, %s, %s, 0)
-            RETURNING id
-            """,
-            (
-                email,
-                otp_hash(
-                    email,
-                    otp,
-                ),
-                expires_at,
-            ),
-        )
-
-        otp_row = cur.fetchone()
-
-        otp_row_id = otp_row["id"]
-
-        conn.commit()
-        cur.close()
-
-    except Exception:
-
-        conn.rollback()
-        conn.close()
-        raise
-
-    finally:
-
-        try:
-            conn.close()
-        except Exception:
-            pass
-
-    try:
-
-        send_otp_email(
-            email,
-            otp,
-        )
-
-    except Exception as exc:
-
-        print(
-            "OTP EMAIL SEND ERROR:",
-            repr(exc),
-        )
-
-        conn = get_db()
-
-        try:
-
-            cur = conn.cursor()
-
-            if otp_row_id:
-
-                cur.execute(
-                    """
-                    UPDATE email_otps
-                    SET used_at = NOW()
-                    WHERE id = %s
-                    """,
-                    (otp_row_id,),
-                )
-
-            conn.commit()
-            cur.close()
-
-        finally:
-
-            conn.close()
-
-        flash(
-            "OTP email send nahi hua. "
-            "Render me BREVO_API_KEY aur BREVO_FROM check karo.",
-            "error",
-        )
-
-        return redirect(
-            url_for("login")
-        )
-
-    session[
-        "otp_email"
-    ] = email
-
-    session[
-        "otp_sent_at"
-    ] = datetime.now().isoformat()
-
-    flash(
-        "OTP sent to "
-        + mask_email(email)
-        + ".",
-        "success",
-    )
-
-    return redirect(
-        url_for(
-            "login",
-            step="otp",
-        )
-    )
-
-
-# ============================================================
-# VERIFY OTP
-# ============================================================
-
-@app.route(
-    "/login/verify-otp",
-    methods=["POST"],
-)
-def verify_otp():
-
-    email = normalize_email(
-        session.get(
-            "otp_email",
-            "",
-        )
-    )
-
-    otp = str(
-        request.form.get(
-            "otp",
-            "",
-        )
-    ).strip()
-
-    if (
-        not email
-        or not valid_email(email)
-    ):
-
-        flash(
-            "OTP session expired. Please request a new OTP.",
-            "error",
-        )
-
-        return redirect(
-            url_for("login")
-        )
-
-    if not re.fullmatch(
-        r"\d{6}",
-        otp,
-    ):
-
-        flash(
-            "Enter the 6 digit OTP.",
-            "error",
-        )
-
-        return redirect(
-            url_for(
-                "login",
-                step="otp",
-            )
-        )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
-    try:
-
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT
-                id,
-                otp_hash,
-                expires_at,
-                attempts
-            FROM email_otps
-            WHERE email = %s
-              AND used_at IS NULL
-            ORDER BY id DESC
-            LIMIT 1
-            """,
-            (email,),
-        )
-
-        row = cur.fetchone()
-
-        if not row:
-
-            cur.close()
-
-            flash(
-                "OTP expired or not found. Please request a new OTP.",
-                "error",
-            )
-
-            return redirect(
-                url_for("login")
-            )
-
-        if int(
-            row["attempts"] or 0
-        ) >= OTP_MAX_ATTEMPTS:
-
-            cur.execute(
-                """
-                UPDATE email_otps
-                SET used_at = NOW()
-                WHERE id = %s
-                """,
-                (row["id"],),
-            )
-
-            conn.commit()
-            cur.close()
-
-            flash(
-                "Too many wrong attempts. Request a new OTP.",
-                "error",
-            )
-
-            return redirect(
-                url_for("login")
-            )
-
-        if (
-            row["expires_at"]
-            <= datetime.now()
-        ):
-
-            cur.execute(
-                """
-                UPDATE email_otps
-                SET used_at = NOW()
-                WHERE id = %s
-                """,
-                (row["id"],),
-            )
-
-            conn.commit()
-            cur.close()
-
-            flash(
-                "OTP expired. Please request a new OTP.",
-                "error",
-            )
-
-            return redirect(
-                url_for("login")
-            )
-
-        expected_hash = otp_hash(
-            email,
-            otp,
-        )
-
-        if not hmac.compare_digest(
-            str(row["otp_hash"]),
-            expected_hash,
-        ):
-
-            new_attempts = (
-                int(
-                    row["attempts"] or 0
-                )
-                + 1
-            )
-
-            if (
-                new_attempts
-                >= OTP_MAX_ATTEMPTS
-            ):
-
-                cur.execute(
-                    """
-                    UPDATE email_otps
-                    SET
-                        attempts = %s,
-                        used_at = NOW()
-                    WHERE id = %s
-                    """,
-                    (
-                        new_attempts,
-                        row["id"],
-                    ),
-                )
-
-            else:
-
-                cur.execute(
-                    """
-                    UPDATE email_otps
-                    SET attempts = %s
-                    WHERE id = %s
-                    """,
-                    (
-                        new_attempts,
-                        row["id"],
-                    ),
-                )
-
-            conn.commit()
-            cur.close()
-
-            remaining = max(
-                0,
-                OTP_MAX_ATTEMPTS
-                - new_attempts,
-            )
-
-            if remaining:
-
-                flash(
-                    "Wrong OTP. "
-                    + str(remaining)
-                    + " attempts left.",
-                    "error",
-                )
-
-            else:
-
-                flash(
-                    "Too many wrong attempts. Request a new OTP.",
-                    "error",
-                )
-
-            return redirect(
-                url_for(
-                    "login",
-                    step=(
-                        "otp"
-                        if remaining
-                        else "email"
-                    ),
-                )
-            )
-
-        cur.execute(
-            """
-            UPDATE email_otps
-            SET used_at = NOW()
-            WHERE id = %s
-            """,
-            (row["id"],),
-        )
-
-        conn.commit()
-        cur.close()
-
-    except Exception:
-
-        conn.rollback()
-        raise
-
-    finally:
-
-        conn.close()
-
-    try:
-
-        bind_customer_email(
-            email
-        )
-
-    except Exception as exc:
-
-        print(
-            "CUSTOMER EMAIL BIND ERROR:",
-            repr(exc),
-        )
-
-        flash(
-            "Email verified, but account setup failed. Please try again.",
-            "error",
-        )
-
-        return redirect(
-            url_for("login")
-        )
-
-    session.pop(
-        "otp_email",
-        None,
-    )
-
-    session.pop(
-        "otp_sent_at",
-        None,
-    )
-
-    flash(
-        "Email verified. Welcome to Tomesh Movies!",
-        "success",
-    )
-
-    return redirect(
-        url_for("member_home")
-    )
-
-
-# ============================================================
-# MEMBER LOGIN REQUIRED
-# ============================================================
-
-def customer_login_required(
-    view_func
-):
-
-    @wraps(view_func)
-    def wrapper(
-        *args,
-        **kwargs
-    ):
-
-        if not session.get(
-            "customer_logged_in"
-        ):
-
-            return redirect(
-                url_for("login")
-            )
-
-        return view_func(
-            *args,
-            **kwargs
-        )
-
-    return wrapper
-
-
-# ============================================================
-# MEMBER MOVIES
-# ============================================================
-
-def get_member_movies_data():
-
-    customer_id = session.get(
-        "customer_id"
-    )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
-    try:
-
-        cur = conn.cursor()
-
-        if customer_id:
-
-            cur.execute(
-                """
-                SELECT
-                    m.*,
-                    CASE
-                        WHEN cml.movie_id IS NOT NULL
-                        THEN TRUE
-                        ELSE FALSE
-                    END AS in_my_list
-                FROM movies m
-                LEFT JOIN customer_movie_list cml
-                    ON cml.movie_id = m.id
-                   AND cml.customer_id = %s
-                ORDER BY m.id DESC
-                """,
-                (customer_id,),
-            )
-
-        else:
-
-            cur.execute(
-                """
-                SELECT
-                    m.*,
-                    FALSE AS in_my_list
-                FROM movies m
-                ORDER BY m.id DESC
-                """
-            )
-
-        movies = cur.fetchall()
-
-        cur.close()
-
-    finally:
-
-        conn.close()
-
-    for movie in movies:
-
-        try:
-
-            movie["poster_url"] = (
-                media_url(
-                    movie.get("poster")
-                )
-                if movie.get("poster")
-                else None
-            )
-
-        except Exception:
-
-            movie["poster_url"] = None
-
-        movie["in_my_list"] = bool(
-            movie.get(
-                "in_my_list"
-            )
-        )
-
-        movie["views"] = int(
-            movie.get("views") or 0
-        )
-
-    return movies
-
-
-# ============================================================
-# MEMBER HOME
-# ============================================================
-
-@app.route("/member")
-@customer_login_required
-def member_home():
-
-    movies = (
-        get_member_movies_data()
-    )
-
-    saved_movies = [
-        movie
-        for movie in movies
-        if movie.get(
-            "in_my_list"
-        )
-    ]
-
-    categories = []
-    seen_categories = set()
-
-    for movie in movies:
-
-        raw_category = str(
-            movie.get(
-                "category"
-            )
-            or ""
-        ).strip()
-
-        if not raw_category:
-            continue
-
-        for part in raw_category.split(
-            ","
-        ):
-
-            category = part.strip()
-
-            if (
-                category
-                and category.lower()
-                not in seen_categories
-            ):
-
-                seen_categories.add(
-                    category.lower()
-                )
-
-                categories.append(
-                    category
-                )
-
-    return render_template(
-        "member_home.html",
-        movies=movies,
-        saved_movies=saved_movies,
-        my_list_movies=saved_movies,
-        saved_movie_ids=[
-            int(movie["id"])
-            for movie in saved_movies
-        ],
-        categories=categories,
-        customer_email=session.get(
-            "customer_email",
-            "",
-        ),
-        premium=has_active_premium(),
-    )
-
-
-# ============================================================
-# MY LIST
-# ============================================================
-
-@app.route(
-    "/api/my-list/<int:movie_id>",
-    methods=["POST", "DELETE"],
-)
-@customer_login_required
-def api_my_list(movie_id):
-
-    customer_id = session.get(
-        "customer_id"
-    )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
-    try:
-
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT id
-            FROM movies
-            WHERE id = %s
-            """,
-            (movie_id,),
-        )
-
-        movie = cur.fetchone()
-
-        if not movie:
-
-            cur.close()
-
-            return json_error(
-                "Movie not found.",
-                404,
-            )
-
-        if request.method == "POST":
-
-            cur.execute(
-                """
-                INSERT INTO customer_movie_list
-                (customer_id, movie_id)
-                VALUES(%s, %s)
-                ON CONFLICT(customer_id, movie_id)
-                DO NOTHING
-                """,
-                (
-                    customer_id,
-                    movie_id,
-                ),
-            )
-
-            conn.commit()
-            cur.close()
-
-            return json_ok(
-                saved=True,
-                movie_id=movie_id,
-                message="Added to My List.",
-            )
-
-        cur.execute(
-            """
-            DELETE FROM customer_movie_list
-            WHERE customer_id = %s
-              AND movie_id = %s
-            """,
-            (
-                customer_id,
-                movie_id,
-            ),
-        )
-
-        removed = (
-            cur.rowcount > 0
-        )
-
-        conn.commit()
-        cur.close()
-
-        return json_ok(
-            saved=False,
-            removed=removed,
-            movie_id=movie_id,
-            message="Removed from My List.",
-        )
-
-    except Exception as exc:
-
-        conn.rollback()
-
-        print(
-            "MY LIST ERROR:",
-            repr(exc),
-        )
-
-        return json_error(
-            "My List update failed: "
-            + str(exc),
-            500,
-        )
-
-    finally:
-
-        conn.close()
-
-
-@app.route(
-    "/api/my-list",
-    methods=["GET"],
-)
-@customer_login_required
-def api_my_list_all():
-
-    customer_id = session.get(
-        "customer_id"
-    )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
-    try:
-
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT m.*
-            FROM movies m
-            INNER JOIN customer_movie_list cml
-                ON cml.movie_id = m.id
-            WHERE cml.customer_id = %s
-            ORDER BY cml.created_at DESC, m.id DESC
-            """,
-            (customer_id,),
-        )
-
-        movies = cur.fetchall()
-
-        cur.close()
-
-    finally:
-
-        conn.close()
-
-    for movie in movies:
-
-        try:
-
-            movie["poster_url"] = (
-                media_url(
-                    movie.get("poster")
-                )
-                if movie.get("poster")
-                else None
-            )
-
-        except Exception:
-
-            movie["poster_url"] = None
-
-    return json_ok(
-        movies=movies,
-        movie_ids=[
-            int(movie["id"])
-            for movie in movies
-        ],
-    )
-
-
-# ============================================================
-# ACCESS
-# ============================================================
-
-def make_stream_token(
-    movie_id,
-    ttl_seconds=24 * 60 * 60,
-):
-
-    customer_id = get_customer_id()
-
-    expires = (
-        int(time.time())
-        + int(ttl_seconds)
-    )
-
-    payload = (
-        f"{movie_id}|"
-        f"{customer_id}|"
-        f"{expires}"
-    ).encode("utf-8")
-
-    data = (
-        base64.urlsafe_b64encode(
-            payload
-        )
-        .decode("ascii")
-        .rstrip("=")
-    )
-
-    signature = hmac.new(
-        str(
-            app.secret_key
-        ).encode("utf-8"),
-        data.encode("ascii"),
-        hashlib.sha256,
-    ).hexdigest()
-
-    return (
-        data
-        + "."
-        + signature
-    )
-
-
-def verify_stream_token(
-    token,
-    movie_id,
-):
-
-    try:
-
-        token = str(
-            token or ""
-        ).strip()
-
-        if "." not in token:
-            return False
-
-        data, signature = (
-            token.rsplit(
-                ".",
-                1,
-            )
-        )
-
-        expected = hmac.new(
-            str(
-                app.secret_key
-            ).encode("utf-8"),
-            data.encode("ascii"),
-            hashlib.sha256,
-        ).hexdigest()
-
-        if not hmac.compare_digest(
-            signature,
-            expected,
-        ):
-            return False
-
-        padded = (
-            data
-            + (
-                "="
-                * (-len(data) % 4)
-            )
-        )
-
-        payload = (
-            base64.urlsafe_b64decode(
-                padded
-            )
-            .decode("utf-8")
-        )
-
-        (
-            token_movie_id,
-            customer_id,
-            expires,
-        ) = payload.split(
-            "|",
-            2,
-        )
-
-        if int(token_movie_id) != int(
-            movie_id
-        ):
-            return False
-
-        if int(expires) <= int(
-            time.time()
-        ):
-            return False
-
-        if (
-            not customer_id
-            or not customer_id.startswith(
-                "tm_"
-            )
-        ):
-            return False
-
-        return True
-
-    except Exception:
-
-        return False
-
-
-def access_for_movie(
-    movie_id
-):
-
-    member_logged_in = bool(
-        session.get(
-            "customer_logged_in"
-        )
-        and session.get(
-            "customer_id"
-        )
-    )
+def access_for_movie(movie_id):
 
     customer_id = get_customer_id()
 
@@ -2324,7 +639,6 @@ def access_for_movie(
     )
 
     try:
-
         cur = conn.cursor()
 
         cur.execute(
@@ -2350,15 +664,13 @@ def access_for_movie(
         cur.close()
 
     finally:
-
         conn.close()
 
     now = datetime.now()
 
     if not row:
-
         return {
-            "watch": member_logged_in,
+            "watch": False,
             "download": False,
             "premium": False,
         }
@@ -2379,15 +691,8 @@ def access_for_movie(
     )
 
     return {
-        "watch": (
-            member_logged_in
-            or watch
-            or premium
-        ),
-        "download": (
-            download
-            or premium
-        ),
+        "watch": watch or premium,
+        "download": download or premium,
         "premium": premium,
     }
 
@@ -2401,18 +706,14 @@ def grant_access(
     conn = get_db()
 
     try:
-
         cur = conn.cursor()
 
         now = datetime.now()
 
         if payment_type == "watch":
 
-            until = (
-                now
-                + timedelta(
-                    hours=WATCH_HOURS
-                )
+            until = now + timedelta(
+                hours=WATCH_HOURS
             )
 
             cur.execute(
@@ -2434,11 +735,8 @@ def grant_access(
 
         elif payment_type == "download":
 
-            until = (
-                now
-                + timedelta(
-                    days=DOWNLOAD_DAYS
-                )
+            until = now + timedelta(
+                days=DOWNLOAD_DAYS
             )
 
             cur.execute(
@@ -2460,11 +758,8 @@ def grant_access(
 
         elif payment_type == "premium":
 
-            until = (
-                now
-                + timedelta(
-                    days=PREMIUM_DAYS
-                )
+            until = now + timedelta(
+                days=PREMIUM_DAYS
             )
 
             cur.execute(
@@ -2482,6 +777,10 @@ def grant_access(
                     until,
                 ),
             )
+
+            # Premium is account/session-wide.
+            # Also insert movie-specific row so current movie
+            # immediately gets access.
 
             cur.execute(
                 """
@@ -2504,9 +803,12 @@ def grant_access(
         cur.close()
 
     finally:
-
         conn.close()
 
+
+# ============================================================
+# PREMIUM ACCESS CHECK
+# ============================================================
 
 def has_active_premium():
 
@@ -2515,7 +817,6 @@ def has_active_premium():
     conn = get_db()
 
     try:
-
         cur = conn.cursor()
 
         cur.execute(
@@ -2537,7 +838,6 @@ def has_active_premium():
         return bool(row)
 
     finally:
-
         conn.close()
 
 
@@ -2552,13 +852,11 @@ def cashfree_request(
 ):
 
     if not CASHFREE_APP_ID:
-
         raise RuntimeError(
             "CASHFREE_APP_ID is missing."
         )
 
     if not CASHFREE_SECRET_KEY:
-
         raise RuntimeError(
             "CASHFREE_SECRET_KEY is missing."
         )
@@ -2580,7 +878,6 @@ def cashfree_request(
     body = None
 
     if payload is not None:
-
         body = json.dumps(
             payload
         ).encode("utf-8")
@@ -2644,9 +941,13 @@ def cashfree_request(
 
 
 # ============================================================
-# CASHFREE CREATE ORDER
+# CREATE CASHFREE ORDER
 # ============================================================
 
+@app.route(
+    "/api/payment/create",
+    methods=["POST"],
+)
 @app.route(
     "/api/payment/create",
     methods=["POST"],
@@ -2660,9 +961,7 @@ def create_payment():
         or {}
     )
 
-    movie_id = data.get(
-        "movie_id"
-    )
+    movie_id = data.get("movie_id")
 
     payment_type = str(
         data.get(
@@ -2683,13 +982,8 @@ def create_payment():
     )
 
     try:
-
-        movie_id = int(
-            movie_id
-        )
-
+        movie_id = int(movie_id)
     except Exception:
-
         return json_error(
             "Invalid movie."
         )
@@ -2699,7 +993,6 @@ def create_payment():
         "download",
         "premium",
     }:
-
         return json_error(
             "Invalid payment type."
         )
@@ -2708,7 +1001,6 @@ def create_payment():
         r"[6-9]\d{9}",
         phone,
     ):
-
         return json_error(
             "Enter a valid 10 digit Indian mobile number."
         )
@@ -2735,11 +1027,9 @@ def create_payment():
         cur.close()
 
     finally:
-
         conn.close()
 
     if not movie:
-
         return json_error(
             "Movie not found.",
             404,
@@ -2860,10 +1150,10 @@ def create_payment():
             )
 
             conn.commit()
+
             cur.close()
 
         finally:
-
             conn.close()
 
         return json_ok(
@@ -2885,9 +1175,8 @@ def create_payment():
             500,
         )
 
-
 # ============================================================
-# CASHFREE RETURN
+# CASHFREE RETURN / VERIFY
 # ============================================================
 
 @app.route(
@@ -2908,14 +1197,15 @@ def cashfree_return():
     )
 
     if not order_id:
-
         flash(
             "Payment order ID missing.",
             "error",
         )
 
         return redirect(
-            url_for("home")
+            url_for(
+                "home"
+            )
         )
 
     conn = get_db(
@@ -2940,7 +1230,6 @@ def cashfree_return():
         cur.close()
 
     finally:
-
         conn.close()
 
     if not local_order:
@@ -2951,7 +1240,9 @@ def cashfree_return():
         )
 
         return redirect(
-            url_for("home")
+            url_for(
+                "home"
+            )
         )
 
     try:
@@ -2994,10 +1285,11 @@ def cashfree_return():
 
         if order_status == "PAID":
 
-            if (
-                local_order["status"]
-                != "PAID"
-            ):
+            # ----------------------------------------------
+            # Prevent duplicate granting
+            # ----------------------------------------------
+
+            if local_order["status"] != "PAID":
 
                 conn = get_db()
 
@@ -3020,7 +1312,6 @@ def cashfree_return():
                     cur.close()
 
                 finally:
-
                     conn.close()
 
                 grant_access(
@@ -3034,12 +1325,6 @@ def cashfree_return():
                         "payment_type"
                     ],
                 )
-
-            session[
-                "customer_id"
-            ] = local_order[
-                "customer_id"
-            ]
 
             session[
                 "payment_success"
@@ -3078,13 +1363,8 @@ def cashfree_return():
         )
 
     try:
-
-        target_movie = int(
-            movie_id
-        )
-
+        target_movie = int(movie_id)
     except Exception:
-
         target_movie = local_order[
             "movie_id"
         ]
@@ -3103,27 +1383,15 @@ def cashfree_return():
 
 @app.route("/")
 def home():
+    q = request.args.get("q", "").strip()
+    category = request.args.get("category", "").strip()
 
-    q = request.args.get(
-        "q",
-        "",
-    ).strip()
-
-    category = request.args.get(
-        "category",
-        "",
-    ).strip()
-
-    conn = get_db(
-        dict_rows=True
-    )
+    conn = get_db(dict_rows=True)
 
     try:
-
         cur = conn.cursor()
 
         if q:
-
             cur.execute(
                 """
                 SELECT *
@@ -3138,11 +1406,10 @@ def home():
                     f"%{q}%",
                     f"%{q}%",
                     f"%{q}%",
-                ),
+                )
             )
 
         elif category:
-
             cur.execute(
                 """
                 SELECT *
@@ -3152,11 +1419,10 @@ def home():
                 """,
                 (
                     f"%{category}%",
-                ),
+                )
             )
 
         else:
-
             cur.execute(
                 """
                 SELECT *
@@ -3166,29 +1432,21 @@ def home():
             )
 
         movies = cur.fetchall()
-
         cur.close()
 
     finally:
-
         conn.close()
 
     for movie in movies:
-
-        poster_key = movie.get(
-            "poster"
-        )
+        poster_key = movie.get("poster")
 
         try:
-
             movie["poster_url"] = (
                 media_url(poster_key)
                 if poster_key
                 else None
             )
-
         except Exception:
-
             movie["poster_url"] = None
 
     return render_template(
@@ -3201,18 +1459,14 @@ def home():
 
 
 try:
-
     app.add_url_rule(
         "/",
         endpoint="index",
         view_func=home,
     )
-
 except AssertionError:
-
     pass
-
-
+    
 # ============================================================
 # MOVIE PAGE
 # ============================================================
@@ -3242,7 +1496,6 @@ def movie_page(movie_id):
         movie = cur.fetchone()
 
         if not movie:
-
             cur.close()
             abort(404)
 
@@ -3259,7 +1512,6 @@ def movie_page(movie_id):
         cur.close()
 
     finally:
-
         conn.close()
 
     access = access_for_movie(
@@ -3282,17 +1534,13 @@ def movie_page(movie_id):
         else "video/mp4"
     )
 
-    if (
-        video_key
-        and access["watch"]
-    ):
+    # --------------------------------------------------------
+    # Only give stream URL when access exists.
+    # --------------------------------------------------------
 
-        movie["video_url"] = (
-            r2_presigned_url(
-                video_key,
-                expires=PRESIGNED_EXPIRES,
-            )
-        )
+    if video_key and access["watch"]:
+
+        movie["video_url"] = r2_public_url(video_key)
 
     else:
 
@@ -3301,19 +1549,13 @@ def movie_page(movie_id):
     if poster_key:
 
         try:
-
-            movie["poster_url"] = (
-                media_url(
-                    poster_key
-                )
+            movie["poster_url"] = media_url(
+                poster_key
             )
-
         except Exception:
-
             movie["poster_url"] = None
 
     else:
-
         movie["poster_url"] = None
 
     movie["views"] = int(
@@ -3339,35 +1581,16 @@ def movie_page(movie_id):
 )
 def stream_movie(movie_id):
 
-    access_token = request.args.get(
-        "access_token",
-        "",
-    ).strip()
+    access = access_for_movie(
+        movie_id
+    )
 
-    if access_token:
+    if not access["watch"]:
 
-        if not verify_stream_token(
-            access_token,
-            movie_id,
-        ):
-
-            return Response(
-                "Invalid or expired stream access.",
-                status=403,
-            )
-
-    else:
-
-        access = access_for_movie(
-            movie_id
+        return Response(
+            "Payment required.",
+            status=403,
         )
-
-        if not access["watch"]:
-
-            return Response(
-                "Payment required.",
-                status=403,
-            )
 
     conn = get_db(
         dict_rows=True
@@ -3387,15 +1610,12 @@ def stream_movie(movie_id):
         )
 
         movie = cur.fetchone()
-
         cur.close()
 
     finally:
-
         conn.close()
 
     if not movie:
-
         return Response(
             "Movie not found.",
             status=404,
@@ -3406,20 +1626,16 @@ def stream_movie(movie_id):
     )
 
     if not video_key:
-
         return Response(
             "Video not found.",
             status=404,
         )
 
     try:
-
         video_key = validate_r2_key(
             video_key
         )
-
     except Exception:
-
         return Response(
             "Invalid video object.",
             status=400,
@@ -3427,8 +1643,11 @@ def stream_movie(movie_id):
 
     try:
 
-        head = r2_head(
-            video_key
+        client = get_r2_client()
+
+        head = client.head_object(
+            Bucket=R2_BUCKET,
+            Key=video_key,
         )
 
     except Exception as exc:
@@ -3451,57 +1670,214 @@ def stream_movie(movie_id):
     )
 
     if total_size <= 0:
-
         return Response(
             "Video file is empty.",
             status=404,
         )
 
     content_type = (
-        content_type_for_key(
-            video_key
-        )
-        or head.get(
+        head.get(
             "ContentType"
         )
-        or "video/mp4"
+        or content_type_for_key(
+            video_key
+        )
+    )
+
+    range_header = request.headers.get(
+        "Range"
+    )
+
+    start = 0
+    end = total_size - 1
+
+    if range_header:
+
+        try:
+
+            if not range_header.startswith(
+                "bytes="
+            ):
+                raise ValueError()
+
+            value = (
+                range_header
+               .replace(
+                    "bytes=",
+                    "",
+                    1,
+                )
+                .split(",", 1)[0]
+                .strip()
+            )
+
+            if "-" not in value:
+                raise ValueError()
+
+            start_text, end_text = value.split(
+                "-",
+                1,
+            )
+
+            if not start_text:
+
+                suffix = int(
+                    end_text
+                )
+
+                if suffix <= 0:
+                    raise ValueError()
+
+                suffix = min(
+                    suffix,
+                    total_size,
+                )
+
+                start = (
+                    total_size - suffix
+                )
+
+                end = total_size - 1
+
+            else:
+
+                start = int(
+                    start_text
+                )
+
+                end = (
+                    int(end_text)
+                    if end_text
+                    else total_size - 1
+                )
+
+            if start < 0:
+                raise ValueError()
+
+            if start >= total_size:
+                raise ValueError()
+
+            end = min(
+                end,
+                total_size - 1,
+            )
+
+            if end < start:
+                raise ValueError()
+
+        except Exception:
+
+            return Response(
+                "Range Not Satisfiable",
+                status=416,
+                headers={
+                    "Content-Range":
+                        "bytes */"
+                        + str(total_size)
+                },
+            )
+
+    content_length = (
+        end - start + 1
     )
 
     try:
 
-        client = get_r2_client()
+        if range_header:
 
-        url = client.generate_presigned_url(
-            "get_object",
-            Params={
-                "Bucket": R2_BUCKET,
-                "Key": video_key,
-                "ResponseContentType": content_type,
-                "ResponseContentDisposition": "inline",
-                "ResponseCacheControl": "private, max-age=300",
-            },
-            ExpiresIn=min(
-                PRESIGNED_EXPIRES,
-                3600,
-            ),
-        )
+            obj = client.get_object(
+                Bucket=R2_BUCKET,
+                Key=video_key,
+                Range=(
+                    "bytes="
+                    + str(start)
+                    + "-"
+                    + str(end)
+                ),
+            )
 
-        return redirect(
-            url,
-            code=302,
-        )
+        else:
+
+            obj = client.get_object(
+                Bucket=R2_BUCKET,
+                Key=video_key,
+            )
 
     except Exception as exc:
 
         print(
-            "R2 STREAM URL ERROR:",
+            "R2 VIDEO GET ERROR:",
             repr(exc),
         )
 
         return Response(
-            "Unable to prepare video stream.",
+            "Unable to load video.",
             status=502,
         )
+
+    body = obj["Body"]
+
+    def generate():
+
+        try:
+
+            while True:
+
+                chunk = body.read(
+                    1024 * 1024
+                )
+
+                if not chunk:
+                    break
+
+                yield chunk
+
+        finally:
+
+            try:
+                body.close()
+            except Exception:
+                pass
+
+    headers = {
+        "Content-Type": content_type,
+        "Content-Length": str(
+            content_length
+        ),
+        "Accept-Ranges": "bytes",
+        "Cache-Control":
+            "private, max-age=300",
+        "Content-Disposition": "inline",
+        "X-Content-Type-Options":
+            "nosniff",
+    }
+
+    if range_header:
+
+        headers[
+            "Content-Range"
+        ] = (
+            "bytes "
+            + str(start)
+            + "-"
+            + str(end)
+            + "/"
+            + str(total_size)
+        )
+
+        return Response(
+            generate(),
+            status=206,
+            headers=headers,
+            direct_passthrough=True,
+        )
+
+    return Response(
+        generate(),
+        status=200,
+        headers=headers,
+        direct_passthrough=True,
+    )
 
 
 # ============================================================
@@ -3542,15 +1918,12 @@ def download_movie(movie_id):
         )
 
         movie = cur.fetchone()
-
         cur.close()
 
     finally:
-
         conn.close()
 
     if not movie:
-
         return Response(
             "Movie not found.",
             status=404,
@@ -3561,7 +1934,6 @@ def download_movie(movie_id):
     )
 
     if not video_key:
-
         return Response(
             "Video not found.",
             status=404,
@@ -3569,10 +1941,10 @@ def download_movie(movie_id):
 
     try:
 
-        url = r2_presigned_url(
-            video_key,
-            expires=600,
-        )
+        url = r2_public_url(video_key)
+
+        if not url:
+            raise RuntimeError("R2 public URL is not configured.")
 
         return redirect(url)
 
@@ -3590,110 +1962,58 @@ def download_movie(movie_id):
 
 
 # ============================================================
-# CUSTOMER LOGIN - SEPARATE FROM ADMIN
+# LOGIN
 # ============================================================
 
-@app.route("/login", methods=["GET", "POST"])
+@app.route(
+    "/login",
+    methods=["GET", "POST"],
+)
 def login():
 
     if request.method == "POST":
 
-        email = normalize_email(
-            request.form.get(
-                "email",
-                "",
-            )
+        username = request.form.get(
+            "username",
+            "",
+        ).strip()
+
+        password = request.form.get(
+            "password",
+            "",
         )
 
-        if not valid_email(email):
+        if (
+            username == ADMIN_USER
+            and password == ADMIN_PASSWORD
+        ):
 
-            flash(
-                "Please enter a valid email address.",
-                "error",
-            )
+            session[
+                "admin_logged_in"
+            ] = True
 
             return redirect(
-                url_for("login")
+                url_for("admin")
             )
 
-        return redirect(
-            url_for(
-                "request_otp"
-            )
+        flash(
+            "Invalid username or password.",
+            "error",
         )
-
-    step = str(
-        request.args.get(
-            "step",
-            "",
-        )
-    ).strip().lower()
-
-    if step not in {
-        "email",
-        "otp",
-    }:
-
-        step = (
-            "otp"
-            if session.get(
-                "otp_email"
-            )
-            else "email"
-        )
-
-    email = normalize_email(
-        request.args.get(
-            "email",
-            "",
-        )
-        or session.get(
-            "otp_email",
-            "",
-        )
-    )
 
     return render_template(
-        "login.html",
-        step=step,
-        email=email,
-        masked_email=mask_email(email),
+        "login.html"
     )
 
 
 # ============================================================
-# CUSTOMER LOGOUT
+# LOGOUT
 # ============================================================
 
-@app.route(
-    "/logout"
-)
+@app.route("/logout")
 def logout():
 
-    session.pop(
-        "customer_logged_in",
-        None,
-    )
-
-    session.pop(
-        "customer_id",
-        None,
-    )
-
-    session.pop(
-        "customer_email",
-        None,
-    )
-
-    session.pop(
-        "otp_email",
-        None,
-    )
-
-    session.pop(
-        "otp_sent_at",
-        None,
-    )
+    session.clear()
 
     return redirect(
         url_for("login")
@@ -3701,7 +2021,7 @@ def logout():
 
 
 # ============================================================
-# ADMIN DASHBOARD
+# ADMIN
 # ============================================================
 
 @app.route("/admin")
@@ -3741,7 +2061,6 @@ def admin():
         cur.close()
 
     finally:
-
         conn.close()
 
     for movie in movies:
@@ -3750,13 +2069,9 @@ def admin():
 
             movie["poster_url"] = (
                 media_url(
-                    movie.get(
-                        "poster"
-                    )
+                    movie.get("poster")
                 )
-                if movie.get(
-                    "poster"
-                )
+                if movie.get("poster")
                 else None
             )
 
@@ -3769,13 +2084,11 @@ def admin():
         movies=movies,
         total_movies=(
             stats["total_movies"]
-            if stats
-            else 0
+            if stats else 0
         ),
         total_views=(
             stats["total_views"]
-            if stats
-            else 0
+            if stats else 0
         ),
         ads=get_ads(),
     )
@@ -3793,9 +2106,8 @@ def admin():
 def admin_add():
 
     if request.method == "GET":
-
-        return redirect(
-            url_for("admin")
+        return render_template(
+            "admin_add.html"
         )
 
     title = request.form.get(
@@ -3832,10 +2144,7 @@ def admin_add():
             url_for("admin")
         )
 
-    if (
-        not video
-        or not video.filename
-    ):
+    if not video or not video.filename:
 
         flash(
             "Video required.",
@@ -3851,7 +2160,7 @@ def admin_add():
     ):
 
         flash(
-            "Invalid video format. MP4, MKV, WebM or MOV allowed.",
+            "Invalid video format.",
             "error",
         )
 
@@ -3859,10 +2168,7 @@ def admin_add():
             url_for("admin")
         )
 
-    if (
-        poster
-        and poster.filename
-    ):
+    if poster and poster.filename:
 
         if not allowed_poster(
             poster.filename
@@ -3904,10 +2210,7 @@ def admin_add():
             },
         )
 
-        if (
-            poster
-            and poster.filename
-        ):
+        if poster and poster.filename:
 
             poster_key = (
                 POSTER_PREFIX
@@ -3961,7 +2264,6 @@ def admin_add():
             cur.close()
 
         finally:
-
             conn.close()
 
         flash(
@@ -3977,22 +2279,14 @@ def admin_add():
         )
 
         try:
-
-            r2_delete(
-                video_key
-            )
-
+            r2_delete(video_key)
         except Exception:
             pass
 
         if poster_key:
 
             try:
-
-                r2_delete(
-                    poster_key
-                )
-
+                r2_delete(poster_key)
             except Exception:
                 pass
 
@@ -4015,15 +2309,11 @@ def admin_add():
     "/admin/delete/<int:movie_id>"
 )
 @admin_required
-def admin_delete_movie(
-    movie_id
-):
+def admin_delete_movie(movie_id):
 
     conn = get_db(
         dict_rows=True
     )
-
-    movie = None
 
     try:
 
@@ -4055,7 +2345,6 @@ def admin_delete_movie(
         cur.close()
 
     finally:
-
         conn.close()
 
     if movie:
@@ -4068,11 +2357,8 @@ def admin_delete_movie(
             if key:
 
                 try:
-
                     r2_delete(key)
-
                 except Exception as exc:
-
                     print(
                         "R2 DELETE ERROR:",
                         repr(exc),
@@ -4120,27 +2406,18 @@ def r2_multipart_create():
         )
 
         content_type = (
-            data.get(
-                "content_type"
-            )
-            or content_type_for_key(
-                key
-            )
+            data.get("content_type")
+            or content_type_for_key(key)
         )
 
-        result = (
-            get_r2_client()
-            .create_multipart_upload(
-                Bucket=R2_BUCKET,
-                Key=key,
-                ContentType=content_type,
-            )
+        result = get_r2_client().create_multipart_upload(
+            Bucket=R2_BUCKET,
+            Key=key,
+            ContentType=content_type,
         )
 
         return json_ok(
-            upload_id=result[
-                "UploadId"
-            ],
+            upload_id=result["UploadId"],
             key=key,
             part_size=PART_SIZE,
             parallel=PARALLEL_PARTS,
@@ -4193,17 +2470,13 @@ def r2_multipart_urls():
         ).strip()
 
         if not upload_id:
-
             return json_error(
                 "upload_id missing."
             )
 
-        raw_parts = (
-            data.get(
-                "part_numbers"
-            )
-            or []
-        )
+        raw_parts = data.get(
+            "part_numbers"
+        ) or []
 
         part_numbers = []
 
@@ -4215,7 +2488,6 @@ def r2_multipart_urls():
                 number < 1
                 or number > MAX_MULTIPART_PARTS
             ):
-
                 raise ValueError(
                     "Invalid part number."
                 )
@@ -4229,7 +2501,6 @@ def r2_multipart_urls():
         )
 
         if not part_numbers:
-
             return json_error(
                 "part_numbers missing."
             )
@@ -4260,9 +2531,7 @@ def r2_multipart_urls():
             part_size=PART_SIZE,
             parallel=PARALLEL_PARTS,
             expires=PRESIGNED_EXPIRES,
-            total_parts=len(
-                part_numbers
-            ),
+            total_parts=len(part_numbers),
         )
 
     except Exception as exc:
@@ -4310,12 +2579,9 @@ def r2_multipart_complete():
             )
         ).strip()
 
-        raw_parts = (
-            data.get(
-                "parts"
-            )
-            or []
-        )
+        raw_parts = data.get(
+            "parts"
+        ) or []
 
         parts = []
 
@@ -4328,46 +2594,28 @@ def r2_multipart_complete():
                 continue
 
             number = (
-                item.get(
-                    "PartNumber"
-                )
-                or item.get(
-                    "part_number"
-                )
-                or item.get(
-                    "part"
-                )
+                item.get("PartNumber")
+                or item.get("part_number")
+                or item.get("part")
             )
 
             etag = (
-                item.get(
-                    "ETag"
-                )
-                or item.get(
-                    "etag"
-                )
+                item.get("ETag")
+                or item.get("etag")
             )
 
             if number and etag:
 
-                parts.append(
-                    {
-                        "PartNumber": int(
-                            number
-                        ),
-                        "ETag": str(
-                            etag
-                        ),
-                    }
-                )
+                parts.append({
+                    "PartNumber": int(number),
+                    "ETag": str(etag),
+                })
 
         parts.sort(
-            key=lambda x:
-                x["PartNumber"]
+            key=lambda x: x["PartNumber"]
         )
 
         if not parts:
-
             return json_error(
                 "No multipart parts supplied."
             )
@@ -4384,9 +2632,7 @@ def r2_multipart_complete():
             )
         )
 
-        head = r2_head(
-            key
-        )
+        head = r2_head(key)
 
         size = int(
             head.get(
@@ -4396,7 +2642,6 @@ def r2_multipart_complete():
         )
 
         if size <= 0:
-
             return json_error(
                 "R2 object is empty.",
                 500,
@@ -4405,12 +2650,8 @@ def r2_multipart_complete():
         return json_ok(
             key=key,
             size=size,
-            etag=result.get(
-                "ETag"
-            ),
-            public_url=r2_public_url(
-                key
-            ),
+            etag=result.get("ETag"),
+            public_url=r2_public_url(key),
         )
 
     except Exception as exc:
@@ -4497,42 +2738,28 @@ def api_movie_save():
         )
 
         title = str(
-            data.get(
-                "title",
-                "",
-            )
+            data.get("title", "")
         ).strip()
 
         category = str(
-            data.get(
-                "category",
-                "",
-            )
+            data.get("category", "")
         ).strip()
 
         description = str(
-            data.get(
-                "description",
-                "",
-            )
+            data.get("description", "")
         ).strip()
 
         video_key = (
             data.get("video")
-            or data.get(
-                "video_key"
-            )
+            or data.get("video_key")
         )
 
         poster_key = (
             data.get("poster")
-            or data.get(
-                "poster_key"
-            )
+            or data.get("poster_key")
         )
 
         if not title:
-
             return json_error(
                 "Movie title missing."
             )
@@ -4544,7 +2771,6 @@ def api_movie_save():
         if not video_key.startswith(
             VIDEO_PREFIX
         ):
-
             return json_error(
                 "Invalid video key."
             )
@@ -4558,7 +2784,6 @@ def api_movie_save():
             if not poster_key.startswith(
                 POSTER_PREFIX
             ):
-
                 return json_error(
                     "Invalid poster key."
                 )
@@ -4575,13 +2800,11 @@ def api_movie_save():
         )
 
         if video_size <= 0:
-
             return json_error(
                 "Video R2 object is empty."
             )
 
         if video_size > MAX_VIDEO_SIZE:
-
             return json_error(
                 "Video exceeds 4 GB."
             )
@@ -4598,7 +2821,6 @@ def api_movie_save():
                     0,
                 )
             ) <= 0:
-
                 return json_error(
                     "Poster is empty."
                 )
@@ -4637,7 +2859,6 @@ def api_movie_save():
             cur.close()
 
         finally:
-
             conn.close()
 
         return json_ok(
@@ -4720,9 +2941,7 @@ def admin_ads():
 # ADS TXT
 # ============================================================
 
-@app.route(
-    "/ads.txt"
-)
+@app.route("/ads.txt")
 def ads_txt():
 
     return Response(
@@ -4735,9 +2954,7 @@ def ads_txt():
 # R2 HEALTH
 # ============================================================
 
-@app.route(
-    "/r2-health"
-)
+@app.route("/r2-health")
 def r2_health():
 
     try:
@@ -4760,19 +2977,49 @@ def r2_health():
         )
 
         return json_error(
-            "R2 ERROR: "
-            + str(exc),
+            "R2 ERROR: " + str(exc),
             500,
         )
+
+
+# ============================================================
+# PUBLIC VIDEO TEST
+# ============================================================
+
+@app.route("/public-video-test/<int:movie_id>")
+def public_video_test(movie_id):
+
+    conn = get_db(dict_rows=True)
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT video FROM movies WHERE id = %s",
+            (movie_id,),
+        )
+        movie = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not movie or not movie.get("video"):
+        return Response("Video not found.", status=404)
+
+    try:
+        url = r2_public_url(movie["video"])
+        if not url:
+            return Response("R2 public URL is not configured.", status=500)
+        return redirect(url, code=302)
+    except Exception as exc:
+        print("PUBLIC VIDEO TEST ERROR:", repr(exc))
+        return Response("Unable to load public video.", status=502)
 
 
 # ============================================================
 # DB HEALTH
 # ============================================================
 
-@app.route(
-    "/db-health"
-)
+@app.route("/db-health")
 def db_health():
 
     try:
@@ -4782,17 +3029,11 @@ def db_health():
         try:
 
             cur = conn.cursor()
-
-            cur.execute(
-                "SELECT 1"
-            )
-
+            cur.execute("SELECT 1")
             cur.fetchone()
-
             cur.close()
 
         finally:
-
             conn.close()
 
         return json_ok(
@@ -4812,18 +3053,14 @@ def db_health():
 # HEALTH
 # ============================================================
 
-@app.route(
-    "/health"
-)
+@app.route("/health")
 def health():
 
-    return jsonify(
-        {
-            "ok": True,
-            "status": "ok",
-            "app": "Tomesh Movies",
-        }
-    )
+    return jsonify({
+        "ok": True,
+        "status": "ok",
+        "app": "Tomesh Movies",
+    })
 
 
 # ============================================================
@@ -4842,16 +3079,10 @@ def legacy_poster(name):
         if not key.startswith(
             POSTER_PREFIX
         ):
-
-            key = (
-                POSTER_PREFIX
-                + name
-            )
+            key = POSTER_PREFIX + name
 
         return redirect(
-            r2_presigned_url(
-                key
-            )
+            r2_presigned_url(key)
         )
 
     except Exception:
@@ -4878,16 +3109,10 @@ def legacy_video(name):
         if not key.startswith(
             VIDEO_PREFIX
         ):
-
-            key = (
-                VIDEO_PREFIX
-                + name
-            )
+            key = VIDEO_PREFIX + name
 
         return redirect(
-            r2_presigned_url(
-                key
-            )
+            r2_presigned_url(key)
         )
 
     except Exception:
@@ -4903,9 +3128,7 @@ def legacy_video(name):
 # ============================================================
 
 @app.errorhandler(413)
-def request_entity_too_large(
-    error
-):
+def request_entity_too_large(error):
 
     return Response(
         "File too large. Maximum 4 GB.",
@@ -4941,14 +3164,8 @@ def not_found(error):
             text-align:center;
         ">
             <div>
-                <h1 style="font-size:60px;margin:0">
-                    404
-                </h1>
-
-                <p>
-                    Page not found.
-                </p>
-
+                <h1 style="font-size:60px;margin:0">404</h1>
+                <p>Page not found.</p>
                 <a href="/"
                    style="color:#ffc400">
                     Go Home
@@ -5002,11 +3219,7 @@ def internal_error(error):
                 ">
                     500
                 </h1>
-
-                <p>
-                    Server error.
-                </p>
-
+                <p>Server error.</p>
                 <a href="/"
                    style="color:#ffc400">
                     Go Home
@@ -5027,15 +3240,11 @@ def internal_error(error):
 try:
 
     if DATABASE_URL:
-
         init_db()
-
         print(
             "Database initialized successfully."
         )
-
     else:
-
         print(
             "WARNING: DATABASE_URL missing."
         )
