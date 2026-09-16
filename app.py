@@ -2132,14 +2132,13 @@ def create_payment():
     finally:
         conn.close()
 
-            if not movie:
-        return json_error(
-            "Movie not found.",
-            404,
-        )
+                    if not movie:
+            return json_error(
+                "Movie not found.",
+                404,
+            )
 
-    if payment_type == "watch":
-
+        if payment_type == "watch":
         amount = WATCH_PRICE
 
         description = (
