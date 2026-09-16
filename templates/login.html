@@ -13,43 +13,47 @@
         min-height: calc(100vh - 70px);
         margin: -20px;
         padding: 45px 18px 55px;
+
         display: flex;
-        justify-content: center;
         align-items: center;
+        justify-content: center;
+
+        color: #fff;
 
         background:
             radial-gradient(
                 circle at 50% 0%,
-                rgba(229, 9, 20, 0.22),
+                rgba(229, 9, 20, 0.18),
                 transparent 38%
             ),
             radial-gradient(
-                circle at 10% 90%,
-                rgba(180, 0, 0, 0.10),
+                circle at 10% 100%,
+                rgba(229, 9, 20, 0.08),
                 transparent 35%
             ),
             #050505;
-
-        color: #fff;
     }
 
     .tm-login-card {
         width: 100%;
         max-width: 460px;
+
         padding: 38px 34px 32px;
 
-        background: rgba(18, 18, 18, 0.96);
+        background: rgba(17, 17, 17, 0.97);
+
         border: 1px solid rgba(255, 255, 255, 0.10);
         border-radius: 14px;
 
         box-shadow:
-            0 25px 80px rgba(0, 0, 0, 0.75),
-            0 0 45px rgba(229, 9, 20, 0.10);
-
-        backdrop-filter: blur(12px);
+            0 25px 80px rgba(0, 0, 0, 0.80),
+            0 0 45px rgba(229, 9, 20, 0.08);
     }
 
-    /* HEADER */
+
+    /* =========================
+       BRAND
+    ========================= */
 
     .tm-brand {
         text-align: center;
@@ -59,95 +63,137 @@
     .tm-brand-icon {
         width: 48px;
         height: 48px;
-        margin: 0 auto 10px;
+
+        margin: 0 auto 12px;
 
         display: flex;
         align-items: center;
         justify-content: center;
 
-        border-radius: 12px;
+        border-radius: 10px;
 
-        background: linear-gradient(
-            145deg,
-            #e50914,
-            #a50009
-        );
+        background: #e50914;
 
-        font-size: 25px;
+        font-size: 24px;
 
         box-shadow:
-            0 8px 25px rgba(229, 9, 20, 0.35);
+            0 8px 25px rgba(229, 9, 20, 0.30);
     }
 
     .tm-brand-name {
         margin: 0;
+
         font-size: 30px;
-        line-height: 1.05;
+        line-height: 1;
+
         font-weight: 900;
+
         letter-spacing: 1.5px;
-        color: #fff;
+    }
+
+    .tm-tomesh {
+        color: #ffffff;
+    }
+
+    .tm-movies {
+        color: #e50914;
     }
 
     .tm-brand-tagline {
-        margin: 7px 0 0;
+        margin: 10px 0 0;
+
+        color: #cfcfcf;
+
         font-size: 13px;
+        line-height: 1.2;
+
         letter-spacing: 1px;
-        color: #a7a7a7;
     }
 
-    /* TITLE */
+
+    /* =========================
+       LOGIN TITLE
+    ========================= */
 
     .tm-login-title {
         margin: 0 0 8px;
+
+        color: #ffffff;
+
         font-size: 28px;
+        line-height: 1.2;
+
         font-weight: 800;
-        color: #fff;
     }
 
     .tm-login-subtitle {
         margin: 0 0 25px;
-        color: #a9a9a9;
+
+        color: #a5a5a5;
+
         font-size: 14px;
         line-height: 1.55;
     }
 
-    /* LABEL */
+
+    /* =========================
+       LABEL
+    ========================= */
 
     .tm-label {
         display: block;
+
         margin: 0 0 8px;
+
+        color: #eeeeee;
+
         font-size: 14px;
         font-weight: 700;
-        color: #e8e8e8;
     }
 
-    /* INPUT */
+
+    /* =========================
+       INPUT
+    ========================= */
 
     .tm-input-wrap {
         position: relative;
+
         margin-bottom: 15px;
     }
 
     .tm-input-icon {
         position: absolute;
+
         left: 15px;
         top: 50%;
+
         transform: translateY(-50%);
+
+        display: flex;
+        align-items: center;
+
         font-size: 18px;
+
         z-index: 2;
+
+        pointer-events: none;
     }
 
     .tm-input {
         width: 100%;
         height: 52px;
+
         padding: 0 15px 0 50px;
 
-        border-radius: 7px;
         border: 1px solid #555;
+        border-radius: 7px;
+
         outline: none;
 
         background: #181818;
-        color: #fff;
+
+        color: #ffffff;
 
         font-size: 15px;
 
@@ -160,33 +206,35 @@
 
     .tm-input:focus {
         border-color: #e50914;
+
         background: #202020;
 
         box-shadow:
-            0 0 0 2px rgba(229, 9, 20, 0.18);
+            0 0 0 2px rgba(229, 9, 20, 0.16);
     }
 
-    /* RED BUTTON */
+
+    /* =========================
+       RED BUTTON
+    ========================= */
 
     .tm-red-btn {
         width: 100%;
         height: 52px;
 
-        border: 0;
+        border: none;
         border-radius: 7px;
 
         background: #e50914;
-        color: #fff;
+
+        color: #ffffff;
 
         font-size: 15px;
         font-weight: 800;
 
         cursor: pointer;
 
-        transition:
-            transform 0.15s ease,
-            background 0.15s ease,
-            box-shadow 0.15s ease;
+        transition: 0.2s ease;
     }
 
     .tm-red-btn:hover {
@@ -202,7 +250,10 @@
         transform: translateY(0);
     }
 
-    /* OTP SECTION */
+
+    /* =========================
+       OTP SECTION
+    ========================= */
 
     .tm-otp-section {
         margin-top: 25px;
@@ -211,55 +262,72 @@
         border-top: 1px solid rgba(255, 255, 255, 0.10);
     }
 
-    /* DIVIDER */
+
+    /* =========================
+       DIVIDER
+    ========================= */
 
     .tm-divider {
         display: flex;
         align-items: center;
+
         gap: 12px;
 
         margin: 27px 0 17px;
 
-        color: #777;
+        color: #777777;
+
         font-size: 11px;
         font-weight: 700;
+
         letter-spacing: 1px;
     }
 
     .tm-divider::before,
     .tm-divider::after {
         content: "";
+
         height: 1px;
+
         flex: 1;
 
         background: #303030;
     }
 
-    /* SOCIAL BUTTONS */
+
+    /* =========================
+       GOOGLE / GMAIL
+    ========================= */
 
     .tm-social-row {
         display: flex;
+
         gap: 10px;
+
         width: 100%;
     }
 
     .tm-social-btn {
         flex: 1;
+
         min-width: 0;
 
-        height: 48px;
+        height: 50px;
+
         padding: 0 10px;
 
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
 
-        border: 1px solid #454545;
-        border-radius: 6px;
+        gap: 9px;
+
+        border: 1px solid #444444;
+        border-radius: 7px;
 
         background: #181818;
-        color: #fff;
+
+        color: #ffffff;
 
         font-size: 13px;
         font-weight: 700;
@@ -270,41 +338,62 @@
     }
 
     .tm-social-btn:hover {
-        background: #252525;
-        border-color: #666;
+        background: #242424;
+
+        border-color: #666666;
     }
 
-    .tm-google {
-        font-size: 20px;
-        font-weight: 900;
-        color: #fff;
+
+    /* REAL GOOGLE ICON */
+
+    .tm-google-icon {
+        width: 20px;
+        height: 20px;
+
+        flex: 0 0 20px;
     }
 
-    .tm-gmail {
-        font-size: 18px;
+
+    /* REAL GMAIL ICON */
+
+    .tm-gmail-icon {
+        width: 21px;
+        height: 21px;
+
+        flex: 0 0 21px;
     }
 
-    /* SECURITY */
+
+    /* =========================
+       SECURITY
+    ========================= */
 
     .tm-security {
         margin-top: 23px;
 
         text-align: center;
 
-        color: #777;
+        color: #777777;
+
         font-size: 11px;
+
         line-height: 1.5;
     }
 
-    /* BACK */
+
+    /* =========================
+       BACK
+    ========================= */
 
     .tm-back {
         display: block;
+
         margin-top: 25px;
 
         text-align: center;
 
-        color: #aaa;
+        color: #aaaaaa;
+
         text-decoration: none;
 
         font-size: 13px;
@@ -314,22 +403,29 @@
     }
 
     .tm-back:hover {
-        color: #fff;
+        color: #ffffff;
     }
 
-    /* MOBILE */
+
+    /* =========================
+       MOBILE
+    ========================= */
 
     @media (max-width: 520px) {
 
         .tm-login-page {
             margin: -15px;
+
             padding: 25px 12px 40px;
+
             align-items: flex-start;
         }
 
         .tm-login-card {
             margin-top: 15px;
+
             padding: 30px 20px 27px;
+
             border-radius: 11px;
         }
 
@@ -350,7 +446,23 @@
         }
 
         .tm-social-btn {
-            font-size: 12px;
+            font-size: 11px;
+
+            gap: 6px;
+
+            padding: 0 6px;
+        }
+
+        .tm-google-icon {
+            width: 18px;
+            height: 18px;
+            flex-basis: 18px;
+        }
+
+        .tm-gmail-icon {
+            width: 19px;
+            height: 19px;
+            flex-basis: 19px;
         }
     }
 </style>
@@ -360,7 +472,10 @@
 
     <div class="tm-login-card">
 
-        <!-- BRAND -->
+
+        <!-- =========================
+             BRAND
+        ========================== -->
 
         <div class="tm-brand">
 
@@ -369,7 +484,8 @@
             </div>
 
             <h1 class="tm-brand-name">
-                TOMESH MOVIES
+                <span class="tm-tomesh">TOMESH</span>
+                <span class="tm-movies"> MOVIES</span>
             </h1>
 
             <p class="tm-brand-tagline">
@@ -379,7 +495,9 @@
         </div>
 
 
-        <!-- LOGIN TITLE -->
+        <!-- =========================
+             LOGIN TITLE
+        ========================== -->
 
         <h2 class="tm-login-title">
             Welcome Back 👋
@@ -390,10 +508,14 @@
         </p>
 
 
-        <!-- MOBILE OTP REQUEST -->
+        <!-- =========================
+             MOBILE NUMBER
+        ========================== -->
 
-        <form method="POST"
-              action="{{ url_for('request_otp') }}">
+        <form
+            method="POST"
+            action="{{ url_for('request_otp') }}"
+        >
 
             <label class="tm-label">
                 Mobile Number
@@ -412,6 +534,7 @@
                     inputmode="numeric"
                     autocomplete="tel"
                     maxlength="10"
+                    pattern="[0-9]{10}"
                     placeholder="Enter 10-digit mobile number"
                     required
                 >
@@ -420,14 +543,17 @@
 
             <button
                 class="tm-red-btn"
-                type="submit">
+                type="submit"
+            >
                 GET OTP →
             </button>
 
         </form>
 
 
-        <!-- OTP -->
+        <!-- =========================
+             OTP
+        ========================== -->
 
         <div class="tm-otp-section">
 
@@ -435,14 +561,12 @@
                 Enter OTP
             </label>
 
-            <form method="POST"
-                  action="{{ url_for('verify_otp') }}">
+            <form
+                method="POST"
+                action="{{ url_for('verify_otp') }}"
+            >
 
                 <div class="tm-input-wrap">
-
-                    <span class="tm-input-icon">
-                        🔐
-                    </span>
 
                     <input
                         class="tm-input"
@@ -451,6 +575,7 @@
                         inputmode="numeric"
                         autocomplete="one-time-code"
                         maxlength="6"
+                        pattern="[0-9]{6}"
                         placeholder="Enter 6-digit OTP"
                         required
                     >
@@ -459,7 +584,8 @@
 
                 <button
                     class="tm-red-btn"
-                    type="submit">
+                    type="submit"
+                >
                     VERIFY OTP ✓
                 </button>
 
@@ -468,7 +594,9 @@
         </div>
 
 
-        <!-- SOCIAL -->
+        <!-- =========================
+             SOCIAL LOGIN
+        ========================== -->
 
         <div class="tm-divider">
             OR CONTINUE WITH
@@ -477,14 +605,38 @@
 
         <div class="tm-social-row">
 
+
+            <!-- GOOGLE -->
+
             <button
                 type="button"
                 class="tm-social-btn"
-                onclick="alert('Google login will be available soon.')">
+                onclick="alert('Google login will be available soon.')"
+            >
 
-                <span class="tm-google">
-                    G
-                </span>
+                <svg
+                    class="tm-google-icon"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                >
+                    <path
+                        fill="#4285F4"
+                        d="M21.35 12.23c0-.79-.07-1.55-.2-2.28H12v4.31h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"
+                    />
+                    <path
+                        fill="#34A853"
+                        d="M12 21.8c2.63 0 4.84-.87 6.45-2.35l-3.14-2.45c-.87.58-1.98.93-3.31.93-2.54 0-4.69-1.72-5.46-4.03H3.3v2.53A9.75 9.75 0 0 0 12 21.8z"
+                    />
+                    <path
+                        fill="#FBBC05"
+                        d="M6.54 13.9A5.86 5.86 0 0 1 6.23 12c0-.66.11-1.3.31-1.9V7.57H3.3A9.8 9.8 0 0 0 2.2 12c0 1.58.38 3.08 1.1 4.43l3.24-2.53z"
+                    />
+                    <path
+                        fill="#EA4335"
+                        d="M12 6.07c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.16 14.63 2.2 12 2.2a9.75 9.75 0 0 0-8.7 5.37l3.24 2.53C7.31 7.79 9.46 6.07 12 6.07z"
+                    />
+                </svg>
 
                 <span>
                     Continue with Google
@@ -493,14 +645,37 @@
             </button>
 
 
+            <!-- GMAIL -->
+
             <button
                 type="button"
                 class="tm-social-btn"
-                onclick="alert('Gmail login will be available soon.')">
+                onclick="alert('Gmail login will be available soon.')"
+            >
 
-                <span class="tm-gmail">
-                    ✉️
-                </span>
+                <svg
+                    class="tm-gmail-icon"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                >
+
+                    <path
+                        fill="#EA4335"
+                        d="M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5v-13z"
+                    />
+
+                    <path
+                        fill="#FFFFFF"
+                        d="M5.2 6.1v11.8h2.55V9.35L12 12.7l4.25-3.35v8.55h2.55V6.1L12 11.05 5.2 6.1z"
+                    />
+
+                    <path
+                        fill="#C5221F"
+                        d="M5.2 6.1 12 11.05 18.8 6.1v3.3L12 14.35 5.2 9.4V6.1z"
+                    />
+
+                </svg>
 
                 <span>
                     Continue with Gmail
@@ -511,20 +686,26 @@
         </div>
 
 
-        <!-- SECURITY -->
+        <!-- =========================
+             SECURITY
+        ========================== -->
 
         <div class="tm-security">
             🔒 Secure login • Your information is protected
         </div>
 
 
-        <!-- BACK -->
+        <!-- =========================
+             BACK
+        ========================== -->
 
         <a
             class="tm-back"
-            href="{{ url_for('home') }}">
+            href="{{ url_for('home') }}"
+        >
             ← Back to Tomesh Movies
         </a>
+
 
     </div>
 
