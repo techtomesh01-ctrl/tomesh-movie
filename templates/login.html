@@ -5,21 +5,17 @@
 {% block content %}
 
 <style>
+
 .tm-login-page{
-    min-height:100vh;
+    min-height:calc(100vh - 70px);
     margin:-20px;
-    padding:30px 15px;
+    padding:40px 15px 50px;
+
     display:flex;
     align-items:center;
     justify-content:center;
 
-    background:
-        radial-gradient(
-            circle at 50% 0%,
-            rgba(229,9,20,.18),
-            transparent 38%
-        ),
-        #050505;
+    background:#050505;
 
     color:#fff;
 }
@@ -30,6 +26,7 @@
     box-sizing:border-box;
 
     background:#111;
+
     border:1px solid #292929;
     border-radius:12px;
 
@@ -46,49 +43,65 @@
    ========================= */
 
 .tm-brand{
-    text-align:center !important;
-    margin-bottom:30px !important;
+    width:100%;
+    display:block;
+
+    text-align:center;
+
+    margin:0 0 30px 0;
+    padding:0;
 }
 
 .tm-brand-name{
-    display:block !important;
-    text-align:center !important;
-    white-space:nowrap !important;
+    width:100%;
+    display:block;
 
-    margin:0 !important;
-    padding:0 !important;
+    margin:0;
+    padding:0;
 
-    font-family:Arial,sans-serif !important;
-    font-size:31px !important;
-    line-height:1 !important;
+    text-align:center;
 
-    font-weight:900 !important;
-    letter-spacing:2px !important;
+    font-family:Arial,sans-serif;
 
-    color:#fff !important;
+    font-size:31px;
+    line-height:32px;
+
+    font-weight:900;
+
+    letter-spacing:2px;
+
+    white-space:nowrap;
 }
 
-.tm-brand-name .tm-tomesh{
+.tm-tomesh{
     color:#ffffff !important;
 }
 
-.tm-brand-name .tm-movies{
+.tm-movies{
     color:#E50914 !important;
 }
 
 .tm-brand-tagline{
-    display:block !important;
+    width:100%;
 
-    margin-top:9px !important;
+    display:block;
+
+    margin:10px 0 0 0;
+    padding:0;
+
+    text-align:center;
 
     color:#cccccc !important;
 
-    font-size:13px !important;
-    line-height:1.2 !important;
+    font-family:Arial,sans-serif;
 
-    text-align:center !important;
+    font-size:13px;
 
-    letter-spacing:.5px !important;
+    line-height:18px;
+
+    font-weight:400;
+
+    letter-spacing:.5px;
 }
 
 
@@ -102,6 +115,7 @@
     color:#fff;
 
     font-size:27px;
+
     line-height:1.2;
 
     font-weight:800;
@@ -113,6 +127,7 @@
     color:#999;
 
     font-size:14px;
+
     line-height:1.55;
 }
 
@@ -126,15 +141,16 @@
 
     margin:0 0 8px;
 
-    color:#eee;
+    color:#eeeeee;
 
     font-size:14px;
+
     font-weight:700;
 }
 
 
 /* =========================
-   MOBILE
+   MOBILE INPUT
    ========================= */
 
 .tm-mobile-input-wrap{
@@ -157,6 +173,7 @@
     height:25px;
 
     display:flex;
+
     align-items:center;
     justify-content:center;
 
@@ -176,6 +193,7 @@
     padding:0 15px 0 52px;
 
     border:1px solid #555;
+
     border-radius:7px;
 
     outline:none;
@@ -204,7 +222,7 @@
 
 
 /* =========================
-   BUTTON
+   RED BUTTON
    ========================= */
 
 .tm-red-btn{
@@ -212,6 +230,7 @@
     height:53px;
 
     border:0;
+
     border-radius:7px;
 
     background:#E50914 !important;
@@ -219,6 +238,7 @@
     color:#fff;
 
     font-size:15px;
+
     font-weight:800;
 
     cursor:pointer;
@@ -261,6 +281,7 @@
     padding:0 15px;
 
     border:1px solid #555;
+
     border-radius:7px;
 
     outline:none;
@@ -300,6 +321,7 @@
 
 .tm-divider{
     display:flex;
+
     align-items:center;
 
     gap:12px;
@@ -309,6 +331,7 @@
     color:#777;
 
     font-size:10px;
+
     font-weight:800;
 
     letter-spacing:1px;
@@ -350,6 +373,7 @@
     display:flex;
 
     align-items:center;
+
     justify-content:center;
 
     gap:8px;
@@ -363,6 +387,7 @@
     color:#fff;
 
     font-size:12px;
+
     font-weight:700;
 
     cursor:pointer;
@@ -378,7 +403,7 @@
 
 
 /* =========================
-   ICONS
+   GOOGLE ICON
    ========================= */
 
 .google-logo{
@@ -387,6 +412,11 @@
 
     flex-shrink:0;
 }
+
+
+/* =========================
+   GMAIL ICON
+   ========================= */
 
 .gmail-logo{
     width:22px;
@@ -429,6 +459,7 @@
     text-decoration:none;
 
     font-size:13px;
+
     font-weight:600;
 
     transition:.2s ease;
@@ -460,13 +491,17 @@
     }
 
     .tm-brand-name{
-        font-size:26px !important;
+        font-size:26px;
+
+        line-height:28px;
     }
 
     .tm-brand-tagline{
-        font-size:12px !important;
+        margin-top:8px;
 
-        margin-top:8px !important;
+        font-size:12px;
+
+        line-height:17px;
     }
 
     .tm-login-title{
@@ -500,16 +535,12 @@
     <div class="tm-login-card">
 
 
-        <!-- =========================
-             TOMESH MOVIES BRAND
-             ========================= -->
+        <!-- BRAND -->
 
         <div class="tm-brand">
 
             <div class="tm-brand-name">
-
                 <span class="tm-tomesh">TOMESH</span><span class="tm-movies"> MOVIES</span>
-
             </div>
 
             <div class="tm-brand-tagline">
@@ -519,9 +550,7 @@
         </div>
 
 
-        <!-- =========================
-             WELCOME
-             ========================= -->
+        <!-- WELCOME -->
 
         <h2 class="tm-login-title">
             Welcome Back 👋
@@ -532,9 +561,7 @@
         </p>
 
 
-        <!-- =========================
-             MOBILE NUMBER
-             ========================= -->
+        <!-- MOBILE NUMBER -->
 
         <form
             method="POST"
@@ -575,9 +602,7 @@
         </form>
 
 
-        <!-- =========================
-             OTP
-             ========================= -->
+        <!-- OTP -->
 
         <div class="tm-otp-section">
 
@@ -618,9 +643,7 @@
         </div>
 
 
-        <!-- =========================
-             SOCIAL LOGIN
-             ========================= -->
+        <!-- SOCIAL LOGIN -->
 
         <div class="tm-divider">
             OR CONTINUE WITH
@@ -712,18 +735,14 @@
         </div>
 
 
-        <!-- =========================
-             SECURITY
-             ========================= -->
+        <!-- SECURITY -->
 
         <div class="tm-security">
             🔒 Secure login • Your information is protected
         </div>
 
 
-        <!-- =========================
-             BACK
-             ========================= -->
+        <!-- BACK -->
 
         <a
             href="{{ url_for('home') }}"
@@ -731,6 +750,7 @@
         >
             ← Back to Tomesh Movies
         </a>
+
 
     </div>
 
