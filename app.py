@@ -2127,12 +2127,12 @@ def create_payment():
 
         movie = cur.fetchone()
 
-        cur.close()
+                cur.close()
 
-        finally:
+    finally:
         conn.close()
 
-            if not movie:
+    if not movie:
         return json_error(
             "Movie not found.",
             404,
