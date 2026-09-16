@@ -3593,10 +3593,6 @@ def download_movie(movie_id):
 # CUSTOMER LOGIN - SEPARATE FROM ADMIN
 # ============================================================
 
-@app.route(
-    "/login",
-    methods=["GET", "POST"],
-)
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
