@@ -1,169 +1,390 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Login | Tomesh Movies</title>
+```
+<title>Login | Tomesh Movies</title>
 
-    <style>
-        *{
-            box-sizing:border-box;
-            margin:0;
-            padding:0;
-        }
+<style>
+    *{
+        box-sizing:border-box;
+        margin:0;
+        padding:0;
+    }
+
+    html,body{
+        min-height:100%;
+    }
+
+    body{
+        min-height:100vh;
+        font-family:Arial,Helvetica,sans-serif;
+        color:#fff;
+        background:
+            radial-gradient(circle at 10% 0%,rgba(118,35,180,.28),transparent 32%),
+            radial-gradient(circle at 90% 10%,rgba(220,0,70,.20),transparent 30%),
+            radial-gradient(circle at 50% 100%,rgba(105,20,170,.18),transparent 38%),
+            #050505;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:30px 18px;
+        overflow-x:hidden;
+    }
+
+    body::before{
+        content:"";
+        position:fixed;
+        inset:0;
+        pointer-events:none;
+        background:
+            linear-gradient(
+                115deg,
+                transparent 0%,
+                rgba(255,255,255,.025) 45%,
+                transparent 60%
+            );
+    }
+
+    .page{
+        width:100%;
+        max-width:470px;
+        position:relative;
+        z-index:2;
+    }
+
+    /* BRAND */
+
+    .brand{
+        text-align:center;
+        margin-bottom:25px;
+    }
+
+    .brand-icon{
+        width:58px;
+        height:58px;
+        margin:0 auto 13px;
+        border-radius:16px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:27px;
+        background:
+            linear-gradient(135deg,#7c22d8,#d90061);
+        box-shadow:
+            0 12px 35px rgba(126,25,205,.28),
+            0 0 35px rgba(220,0,80,.12);
+    }
+
+    .brand-name{
+        font-size:25px;
+        font-weight:900;
+        letter-spacing:2.5px;
+    }
+
+    .brand-name span{
+        color:#ffcc00;
+    }
+
+    .brand-tagline{
+        margin-top:7px;
+        color:#777;
+        font-size:10px;
+        letter-spacing:3px;
+        text-transform:uppercase;
+    }
+
+    /* CARD */
+
+    .login-card{
+        position:relative;
+        padding:38px 34px 32px;
+        border-radius:24px;
+        border:1px solid rgba(255,255,255,.10);
+        background:
+            linear-gradient(
+                145deg,
+                rgba(28,28,32,.97),
+                rgba(10,10,12,.98)
+            );
+        box-shadow:
+            0 30px 90px rgba(0,0,0,.65),
+            0 0 55px rgba(100,20,170,.13);
+        overflow:hidden;
+    }
+
+    .login-card::before{
+        content:"";
+        position:absolute;
+        top:0;
+        left:10%;
+        right:10%;
+        height:1px;
+        background:linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,204,0,.65),
+            rgba(210,0,100,.55),
+            transparent
+        );
+    }
+
+    .card-title{
+        text-align:center;
+        font-size:28px;
+        font-weight:800;
+        margin-bottom:10px;
+    }
+
+    .subtitle{
+        text-align:center;
+        color:#a7a7a7;
+        font-size:14px;
+        line-height:1.7;
+        margin-bottom:27px;
+    }
+
+    /* FLASH */
+
+    .flash{
+        padding:12px 14px;
+        margin-bottom:18px;
+        border-radius:12px;
+        background:rgba(110,20,20,.28);
+        border:1px solid rgba(255,90,90,.28);
+        color:#ff9b9b;
+        font-size:13px;
+        line-height:1.5;
+    }
+
+    /* FORM */
+
+    label{
+        display:block;
+        margin-bottom:9px;
+        color:#ddd;
+        font-size:13px;
+        font-weight:700;
+    }
+
+    .input-wrap{
+        position:relative;
+    }
+
+    .input-icon{
+        position:absolute;
+        left:15px;
+        top:50%;
+        transform:translateY(-50%);
+        font-size:15px;
+        opacity:.65;
+        pointer-events:none;
+    }
+
+    input{
+        width:100%;
+        height:52px;
+        padding:0 15px 0 44px;
+        border-radius:13px;
+        border:1px solid #303035;
+        outline:none;
+        background:#111114;
+        color:#fff;
+        font-size:15px;
+        transition:.2s ease;
+    }
+
+    input::placeholder{
+        color:#666;
+    }
+
+    input:focus{
+        border-color:#9148d8;
+        background:#151519;
+        box-shadow:
+            0 0 0 3px rgba(145,72,216,.10),
+            0 0 25px rgba(125,35,190,.08);
+    }
+
+    .otp-button{
+        width:100%;
+        height:52px;
+        margin-top:18px;
+        border:0;
+        border-radius:13px;
+        color:#fff;
+        font-size:15px;
+        font-weight:800;
+        letter-spacing:.2px;
+        cursor:pointer;
+        background:
+            linear-gradient(
+                100deg,
+                #7025b8,
+                #a52ad2 48%,
+                #d00062
+            );
+        box-shadow:
+            0 12px 28px rgba(123,35,180,.20);
+        transition:.2s ease;
+    }
+
+    .otp-button:hover{
+        transform:translateY(-2px);
+        box-shadow:
+            0 16px 34px rgba(123,35,180,.28);
+    }
+
+    .otp-button:active{
+        transform:translateY(0);
+    }
+
+    /* SECURITY */
+
+    .secure{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:7px;
+        margin-top:19px;
+        color:#777;
+        font-size:11px;
+    }
+
+    .secure-icon{
+        color:#aaa;
+    }
+
+    .divider{
+        height:1px;
+        background:rgba(255,255,255,.07);
+        margin:24px 0 20px;
+    }
+
+    .info{
+        text-align:center;
+        color:#777;
+        font-size:12px;
+        line-height:1.6;
+    }
+
+    /* BACK */
+
+    .back{
+        display:block;
+        width:max-content;
+        max-width:100%;
+        margin:23px auto 0;
+        color:#aaa;
+        text-decoration:none;
+        font-size:13px;
+        transition:.2s ease;
+    }
+
+    .back:hover{
+        color:#ffcc00;
+    }
+
+    /* FOOTER */
+
+    .footer{
+        text-align:center;
+        margin-top:23px;
+        color:#555;
+        font-size:10px;
+        letter-spacing:.5px;
+    }
+
+    /* MOBILE */
+
+    @media(max-width:520px){
 
         body{
-            min-height:100vh;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-            font-family:Arial,Helvetica,sans-serif;
-            color:#fff;
-            background:
-                radial-gradient(circle at 15% 15%,rgba(130,30,220,.20),transparent 30%),
-                radial-gradient(circle at 85% 80%,rgba(255,0,80,.12),transparent 30%),
-                #070707;
+            padding:22px 14px;
         }
 
-        .login-box{
-            width:100%;
-            max-width:430px;
-            padding:38px 32px;
-            border:1px solid rgba(255,255,255,.10);
-            border-radius:22px;
-            background:rgba(15,15,15,.96);
-            box-shadow:0 0 60px rgba(100,0,180,.12);
+        .brand{
+            margin-bottom:19px;
         }
 
-        .logo{
-            text-align:center;
-            font-size:28px;
-            font-weight:900;
+        .brand-icon{
+            width:52px;
+            height:52px;
+            font-size:24px;
+            border-radius:14px;
+        }
+
+        .brand-name{
+            font-size:21px;
             letter-spacing:2px;
-            margin-bottom:8px;
         }
 
-        .logo span{
-            color:#ffcc00;
+        .brand-tagline{
+            font-size:9px;
+            letter-spacing:2.2px;
         }
 
-        .icon{
-            width:70px;
-            height:70px;
-            margin:0 auto 18px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            border-radius:50%;
-            background:linear-gradient(135deg,#7b2cff,#d000ff);
-            font-size:30px;
+        .login-card{
+            padding:30px 21px 27px;
+            border-radius:20px;
         }
 
-        h1{
-            text-align:center;
-            font-size:25px;
-            margin-bottom:10px;
+        .card-title{
+            font-size:24px;
         }
 
         .subtitle{
-            text-align:center;
-            color:#aaa;
-            font-size:14px;
-            line-height:1.6;
-            margin-bottom:28px;
+            font-size:13px;
+            margin-bottom:23px;
         }
+    }
+</style>
+```
 
-        label{
-            display:block;
-            margin-bottom:8px;
-            font-size:14px;
-            font-weight:600;
-        }
-
-        input{
-            width:100%;
-            padding:14px;
-            border-radius:12px;
-            border:1px solid #333;
-            background:#111;
-            color:#fff;
-            outline:none;
-            font-size:15px;
-            margin-bottom:18px;
-        }
-
-        input:focus{
-            border-color:#9b4dff;
-            box-shadow:0 0 0 3px rgba(155,77,255,.10);
-        }
-
-        button{
-            width:100%;
-            padding:14px;
-            border:0;
-            border-radius:12px;
-            background:linear-gradient(135deg,#7b2cff,#c000ff);
-            color:#fff;
-            font-size:16px;
-            font-weight:800;
-            cursor:pointer;
-        }
-
-        button:hover{
-            transform:translateY(-1px);
-        }
-
-        .info{
-            margin-top:18px;
-            text-align:center;
-            color:#888;
-            font-size:12px;
-            line-height:1.5;
-        }
-
-        .back{
-            display:block;
-            text-align:center;
-            margin-top:22px;
-            color:#aaa;
-            text-decoration:none;
-            font-size:14px;
-        }
-
-        .back:hover{
-            color:#ffcc00;
-        }
-
-        .flash{
-            padding:12px;
-            margin-bottom:18px;
-            border-radius:10px;
-            background:#2a1111;
-            border:1px solid #6b2222;
-            color:#ff8a8a;
-            font-size:14px;
-        }
-    </style>
 </head>
 
 <body>
 
-<div class="login-box">
+<div class="page">
 
-    <div class="icon">🎬</div>
+```
+<!-- TOMESH MOVIES BRAND -->
 
-    <div class="logo">
+<div class="brand">
+
+    <div class="brand-icon">
+        🎬
+    </div>
+
+    <div class="brand-name">
         TOMESH <span>MOVIES</span>
     </div>
 
-    <h1>Welcome back</h1>
+    <div class="brand-tagline">
+        Your Cinematic World
+    </div>
+
+</div>
+
+
+<!-- LOGIN CARD -->
+
+<div class="login-card">
+
+    <h1 class="card-title">
+        Welcome back
+    </h1>
 
     <div class="subtitle">
-        अपना email डालें। हम आपको एक verification code भेजेंगे।
+        अपना email डालें। हम आपको एक verification code भेजेंगे।<br>
         Password याद रखने की जरूरत नहीं।
     </div>
+
+
+    <!-- EXISTING FLASH MESSAGE SYSTEM -->
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -175,31 +396,62 @@
         {% endif %}
     {% endwith %}
 
+
+    <!-- EXISTING LOGIN FORM -->
+
     <form method="POST" action="{{ url_for('login') }}">
 
-        <label>Email address</label>
+        <label for="email">
+            Email address
+        </label>
 
-        <input
-            type="email"
-            name="email"
-            placeholder="Enter your email"
-            autocomplete="email"
-            required
-        >
+        <div class="input-wrap">
 
-        <button type="submit">
+            <span class="input-icon">
+                ✉
+            </span>
+
+            <input
+                id="email"
+                type="email"
+                name="email"
+                placeholder="Enter your email"
+                autocomplete="email"
+                required
+            >
+
+        </div>
+
+        <button class="otp-button" type="submit">
             Get OTP →
         </button>
 
     </form>
 
-    <div class="info">
-        Email verification के बाद आप Tomesh Movies में securely sign in कर पाएंगे।
+
+    <div class="secure">
+        <span class="secure-icon">🔒</span>
+        Secure email verification
     </div>
 
-    <a class="back" href="{{ url_for('home') }}">
-        ← Back to Tomesh Movies
-    </a>
+    <div class="divider"></div>
+
+    <div class="info">
+        Email verification के बाद आप Tomesh Movies में
+        securely sign in कर पाएंगे।
+    </div>
+
+</div>
+
+
+<a class="back" href="{{ url_for('home') }}">
+    ← Back to Tomesh Movies
+</a>
+
+<div class="footer">
+    © 2026 Tomesh Movies • Your Cinematic World
+</div>
+```
 
 </div>
 
