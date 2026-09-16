@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Admin Login | Tomesh Movies</title>
 
     <style>
@@ -18,73 +17,69 @@
             display:flex;
             align-items:center;
             justify-content:center;
-            font-family:Arial,Helvetica,sans-serif;
-            background:
-                radial-gradient(circle at 20% 20%,rgba(255,193,7,.15),transparent 30%),
-                radial-gradient(circle at 80% 80%,rgba(140,0,255,.18),transparent 30%),
-                #070707;
-            color:#fff;
             padding:20px;
+            font-family:Arial,Helvetica,sans-serif;
+            color:#fff;
+            background:
+                radial-gradient(circle at 15% 10%,rgba(255,193,7,.16),transparent 30%),
+                radial-gradient(circle at 85% 90%,rgba(130,30,220,.20),transparent 30%),
+                #050505;
         }
 
-        .login-box{
+        .admin-box{
             width:100%;
             max-width:430px;
-            padding:38px 32px;
+            padding:40px 32px;
+            background:#101010;
             border:1px solid rgba(255,193,7,.35);
             border-radius:22px;
-            background:rgba(15,15,15,.95);
-            box-shadow:
-                0 0 50px rgba(255,193,7,.10),
-                0 0 80px rgba(120,0,255,.08);
+            box-shadow:0 0 60px rgba(255,193,7,.10);
         }
 
-        .logo{
-            text-align:center;
-            font-size:30px;
-            font-weight:900;
-            letter-spacing:2px;
-            color:#ffc107;
-            margin-bottom:8px;
-        }
-
-        .subtitle{
-            text-align:center;
-            color:#aaa;
-            font-size:13px;
-            margin-bottom:30px;
-        }
-
-        .admin-badge{
-            width:70px;
-            height:70px;
+        .icon{
+            width:72px;
+            height:72px;
             margin:0 auto 18px;
             display:flex;
             align-items:center;
             justify-content:center;
             border-radius:50%;
-            background:linear-gradient(135deg,#ffc107,#ff9800);
-            color:#111;
+            background:linear-gradient(135deg,#ffc107,#ff8c00);
             font-size:30px;
-            box-shadow:0 0 30px rgba(255,193,7,.25);
+        }
+
+        .logo{
+            text-align:center;
+            color:#ffc107;
+            font-size:28px;
+            font-weight:900;
+            letter-spacing:2px;
+        }
+
+        .subtitle{
+            text-align:center;
+            color:#999;
+            font-size:13px;
+            margin-top:7px;
+            margin-bottom:30px;
         }
 
         label{
             display:block;
-            margin:0 0 8px;
             color:#ddd;
             font-size:14px;
-            font-weight:600;
+            font-weight:700;
+            margin-bottom:8px;
         }
 
         input{
             width:100%;
-            padding:14px 15px;
+            padding:14px;
             margin-bottom:18px;
             border:1px solid #333;
             border-radius:12px;
             outline:none;
-            background:#111;
+            background:#080808;
             color:#fff;
             font-size:15px;
         }
@@ -99,16 +94,14 @@
             padding:14px;
             border:0;
             border-radius:12px;
-            cursor:pointer;
-            font-size:16px;
-            font-weight:800;
             background:linear-gradient(135deg,#ffc107,#ff9800);
             color:#111;
-            transition:.2s;
+            font-size:16px;
+            font-weight:900;
+            cursor:pointer;
         }
 
         button:hover{
-            transform:translateY(-1px);
             box-shadow:0 8px 25px rgba(255,193,7,.20);
         }
 
@@ -116,7 +109,7 @@
             display:block;
             text-align:center;
             margin-top:22px;
-            color:#aaa;
+            color:#888;
             text-decoration:none;
             font-size:14px;
         }
@@ -126,8 +119,8 @@
         }
 
         .flash{
+            padding:12px;
             margin-bottom:18px;
-            padding:12px 14px;
             border-radius:10px;
             background:#2a1111;
             border:1px solid #6b2222;
@@ -139,12 +132,15 @@
 
 <body>
 
-<div class="login-box">
+<div class="admin-box">
 
-    <div class="admin-badge">🔐</div>
+    <div class="icon">🔐</div>
 
     <div class="logo">TOMESH MOVIES</div>
-    <div class="subtitle">ADMIN CONTROL CENTER</div>
+
+    <div class="subtitle">
+        ADMIN CONTROL CENTER
+    </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -159,6 +155,7 @@
     <form method="POST" action="{{ url_for('admin_login') }}">
 
         <label>Admin Username</label>
+
         <input
             type="text"
             name="username"
@@ -168,6 +165,7 @@
         >
 
         <label>Admin Password</label>
+
         <input
             type="password"
             name="password"
