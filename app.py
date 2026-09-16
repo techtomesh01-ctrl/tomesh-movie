@@ -436,7 +436,7 @@ def init_db():
             )
         """)
 
-        cur.execute("""
+                cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS full_name TEXT
         """)
@@ -449,14 +449,6 @@ def init_db():
         cur.execute("""
             CREATE TABLE IF NOT EXISTS customer_movie_list (
                 customer_id TEXT NOT NULL,
-                movie_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (customer_id, movie_id),
-                FOREIGN KEY (movie_id)
-                REFERENCES movies(id)
-                ON DELETE CASCADE
-            )
-        """) 
                 movie_id INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (customer_id, movie_id),
