@@ -2975,40 +2975,14 @@ def login():
             )
         ).strip().lower()
 
-        if login_type == "customer":
-            return redirect(
-                url_for(
-                    "request_otp"
-                )
-            )
+     if login_type == "customer":
+    return redirect(
+        url_for("request_otp")
+    )
 
-        username = request.form.get(
-            "username",
-            "",
-        ).strip()
-
-        password = request.form.get(
-            "password",
-            "",
-        )
-
-        if (
-            username == ADMIN_USER
-            and password == ADMIN_PASSWORD
-        ):
-
-            session[
-                "admin_logged_in"
-            ] = True
-
-            return redirect(
-                url_for("admin")
-            )
-
-        flash(
-            "Invalid username or password.",
-            "error",
-        )
+return redirect(
+    url_for("admin_login")
+)   
 
     step = str(
         request.args.get(
