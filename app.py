@@ -1784,7 +1784,6 @@ def access_for_movie(movie_id):
         "premium": premium,
     }
 
-
 def grant_access(
     customer_id,
     movie_id,
@@ -1795,7 +1794,6 @@ def grant_access(
 
     try:
         cur = conn.cursor()
-
         now = datetime.now()
 
         if payment_type == "watch":
@@ -1819,7 +1817,6 @@ def grant_access(
             existing = cur.fetchone()
 
             if not existing:
-
                 cur.execute(
                     """
                     INSERT INTO customer_access
@@ -1842,8 +1839,7 @@ def grant_access(
 
             cur.execute(
                 """
-                SELECT
-                    MAX(premium_until)
+                SELECT MAX(premium_until)
                 FROM customer_access
                 WHERE customer_id = %s
                   AND movie_id IS NULL
@@ -1913,108 +1909,6 @@ def grant_access(
     except Exception:
         conn.rollback()
         raise
-
-    finally:
-        conn.close()
-
-    conn = get_db()
-
-    try:
-        cur = conn.cursor()
-
-        now = datetime.now()
-
-        if payment_type == "watch":
-
-            until = now + timedelta(
-                hours=WATCH_HOURS
-            )
-
-            cur.execute(
-                """
-                INSERT INTO customer_access
-                (
-                    customer_id,
-                    movie_id,
-                    watch_until
-                )
-                VALUES(%s, %s, %s)
-                """,
-                (
-                    customer_id,
-                    movie_id,
-                    until,
-                ),
-            )
-
-        elif payment_type == "download":
-
-            until = now + timedelta(
-                days=DOWNLOAD_DAYS
-            )
-
-            cur.execute(
-                """
-                INSERT INTO customer_access
-                (
-                    customer_id,
-                    movie_id,
-                    download_until
-                )
-                VALUES(%s, %s, %s)
-                """,
-                (
-                    customer_id,
-                    movie_id,
-                    until,
-                ),
-            )
-
-        elif payment_type == "premium":
-
-            until = now + timedelta(
-                days=PREMIUM_DAYS
-            )
-
-            cur.execute(
-                """
-                INSERT INTO customer_access
-                (
-                    customer_id,
-                    movie_id,
-                    premium_until
-                )
-                VALUES(%s, NULL, %s)
-                """,
-                (
-                    customer_id,
-                    until,
-                ),
-            )
-
-            # Premium is account/session-wide.
-            # Also insert movie-specific row so current movie
-            # immediately gets access.
-
-            cur.execute(
-                """
-                INSERT INTO customer_access
-                (
-                    customer_id,
-                    movie_id,
-                    premium_until
-                )
-                VALUES(%s, %s, %s)
-                """,
-                (
-                    customer_id,
-                    movie_id,
-                    until,
-                ),
-            )
-
-        conn.commit()
-        cur.close()
 
     finally:
         conn.close()
@@ -2244,7 +2138,7 @@ def create_payment():
             404,
         )
 
-    if payment_type == "watch":
+        if payment_type == "watch":
 
         amount = WATCH_PRICE
 
@@ -2253,7 +2147,7 @@ def create_payment():
             + movie["title"]
         )
 
-        elif payment_type == "premium":
+    elif payment_type == "premium":
 
         amount = PREMIUM_PRICE
 
@@ -3812,7 +3706,7 @@ def r2_multipart_urls():
                 )
             )
 
-        url_map = {str(item["part_number"]): item["url"] for item in urls}
+        url_map = dict(urls)
         return json_ok(
             urls=urls,
             url_map=url_map,
