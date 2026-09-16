@@ -428,14 +428,26 @@ def init_db():
         # CUSTOMER EMAIL ACCOUNTS
         # ----------------------------------------------------
 
+       cur.execute("""
+    CREATE TABLE IF NOT EXISTS customer_users (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        customer_id TEXT UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login_at TIMESTAMP
+    )
+""")
+
+cur.execute("""
+    ALTER TABLE customer_users
+            cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS full_name TEXT
+        """)
+
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS customer_users (
-                id SERIAL PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
-                customer_id TEXT UNIQUE NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_login_at TIMESTAMP
-            )
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS mobile TEXT
         """)
 
         cur.execute("""
@@ -445,20 +457,14 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (customer_id, movie_id),
                 FOREIGN KEY (movie_id)
-                    REFERENCES movies(id)
-                    ON DELETE CASCADE
+                REFERENCES movies(id)
+                ON DELETE CASCADE
             )
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_customer_movie_list_customer
-            ON customer_movie_list(customer_id)
         """)
 
         # ----------------------------------------------------
         # EMAIL OTP CODES
         # ----------------------------------------------------
-
         cur.execute("""
             CREATE TABLE IF NOT EXISTS email_otps (
                 id SERIAL PRIMARY KEY,
@@ -480,7 +486,6 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_email_otps_email
             ON email_otps(email)
         """)
-
 
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_payment_orders_order
@@ -1487,7 +1492,102 @@ def get_member_movies_data():
         )
 
     return movies
+@app.route("/user-details", methods=["GET", "POST"])
+@customer_login_required
+def user_details():
+    customer_id = session.get("customer_id")
 
+    if not customer_id:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        full_name = (request.form.get("full_name") or "").strip()
+        mobile = re.sub(
+            r"\D",
+            "",
+            (request.form.get("mobile") or "").strip(),
+        )
+
+        if not full_name:
+            flash("Please enter your full name.", "error")
+            return render_template(
+                "user_details.html",
+                full_name=full_name,
+                mobile=mobile,
+                customer_email=session.get("customer_email", ""),
+            )
+
+        if not re.fullmatch(r"[6-9]\d{9}", mobile):
+            flash(
+                "Please enter a valid 10-digit mobile number.",
+                "error",
+            )
+            return render_template(
+                "user_details.html",
+                full_name=full_name,
+                mobile=mobile,
+                customer_email=session.get("customer_email", ""),
+            )
+
+        conn = get_db_connection()
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE customer_users
+                    SET full_name = %s,
+                        mobile = %s
+                    WHERE customer_id = %s
+                    """,
+                    (
+                        full_name,
+                        mobile,
+                        customer_id,
+                    ),
+                )
+
+            conn.commit()
+
+        finally:
+            conn.close()
+
+        return redirect(
+            url_for("member_home")
+        )
+
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT full_name, mobile, email
+                FROM customer_users
+                WHERE customer_id = %s
+                LIMIT 1
+                """,
+                (customer_id,),
+            )
+            user = cur.fetchone()
+
+    finally:
+        conn.close()
+
+    return render_template(
+        "user_details.html",
+        full_name=(user or {}).get("full_name", ""),
+        mobile=(user or {}).get("mobile", ""),
+        customer_email=(
+            (user or {}).get("email")
+            or session.get("customer_email", "")
+        ),
+    )
+
+
+@app.route("/member")
+@customer_login_required
+def member_home(): 
 
 @app.route("/member")
 @customer_login_required
@@ -2435,18 +2535,21 @@ def cashfree_return():
             ] = True
 
             flash(
-                "Payment successful. Access unlocked.",
-                "success",
-            )
+    "Payment successful. Access activated.",
+    "success",
+)
 
-            return redirect(
-                url_for(
-                    "movie_page",
-                    movie_id=local_order[
-                        "movie_id"
-                    ],
-                )
-            )
+if local_order["payment_type"] == "watch":
+    return redirect(
+    url_for("user_details")
+)
+
+return redirect(
+    url_for(
+        "movie_page",
+        movie_id=local_order["movie_id"],
+    )
+)
 
         flash(
             "Payment was not completed. Status: "
