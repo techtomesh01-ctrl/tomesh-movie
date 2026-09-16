@@ -1697,21 +1697,28 @@ def verify_stream_token(token, movie_id):
 
 def access_for_movie(movie_id):
 
-    # Logged-in Members can watch movies directly.
-    # Paid access is still required for downloads.
-    member_logged_in = bool(
-        session.get("customer_logged_in")
-        and session.get("customer_id")
-    )
+    customer_id = session.get("customer_id")
 
-    customer_id = get_customer_id()
+    if not customer_id:
+        return {
+            "watch": False,
+            "download": False,
+            "premium": False,
+        }
 
-    conn = get_db(
-        dict_rows=True
-    )
+    conn = get_db(dict_rows=True)
 
     try:
         cur = conn.cursor()
+
+        # Account-wide access:
+        # movie_id IS NULL
+        #
+        # Permanent ₹1 Watch:
+        # watch_until IS NULL
+        #
+        # Premium:
+        # premium_until > NOW()
 
         cur.execute(
             """
@@ -1721,18 +1728,13 @@ def access_for_movie(movie_id):
                 premium_until
             FROM customer_access
             WHERE customer_id = %s
-              AND movie_id = %s
+              AND movie_id IS NULL
             ORDER BY id DESC
-            LIMIT 1
             """,
-            (
-                customer_id,
-                movie_id,
-            ),
+            (customer_id,),
         )
 
-        row = cur.fetchone()
-
+        rows = cur.fetchall()
         cur.close()
 
     finally:
@@ -1740,31 +1742,45 @@ def access_for_movie(movie_id):
 
     now = datetime.now()
 
-    if not row:
-        return {
-            "watch": member_logged_in,
-            "download": False,
-            "premium": False,
-        }
+    permanent_watch = False
+    temporary_watch = False
+    premium = False
+
+    for row in rows:
+
+        # Permanent ₹1 Watch access
+        if (
+            row["watch_until"] is None
+            and row["premium_until"] is None
+        ):
+            permanent_watch = True
+
+        # Legacy/temporary watch access
+        if (
+            row["watch_until"] is not None
+            and row["watch_until"] > now
+        ):
+            temporary_watch = True
+
+        # Active Premium
+        if (
+            row["premium_until"] is not None
+            and row["premium_until"] > now
+        ):
+            premium = True
 
     watch = (
-        row["watch_until"] is not None
-        and row["watch_until"] > now
+        permanent_watch
+        or temporary_watch
+        or premium
     )
 
-    download = (
-        row["download_until"] is not None
-        and row["download_until"] > now
-    )
-
-    premium = (
-        row["premium_until"] is not None
-        and row["premium_until"] > now
-    )
+    # Download is ONLY Premium.
+    download = premium
 
     return {
-        "watch": member_logged_in or watch or premium,
-        "download": download or premium,
+        "watch": watch,
+        "download": download,
         "premium": premium,
     }
 
@@ -1774,6 +1790,132 @@ def grant_access(
     movie_id,
     payment_type,
 ):
+
+    conn = get_db()
+
+    try:
+        cur = conn.cursor()
+
+        now = datetime.now()
+
+        if payment_type == "watch":
+
+            # ₹1 Watch = permanent account-wide access.
+            # movie_id is intentionally NULL.
+
+            cur.execute(
+                """
+                SELECT id
+                FROM customer_access
+                WHERE customer_id = %s
+                  AND movie_id IS NULL
+                  AND watch_until IS NULL
+                  AND premium_until IS NULL
+                LIMIT 1
+                """,
+                (customer_id,),
+            )
+
+            existing = cur.fetchone()
+
+            if not existing:
+
+                cur.execute(
+                    """
+                    INSERT INTO customer_access
+                    (
+                        customer_id,
+                        movie_id,
+                        watch_until,
+                        download_until,
+                        premium_until
+                    )
+                    VALUES(%s, NULL, NULL, NULL, NULL)
+                    """,
+                    (customer_id,),
+                )
+
+        elif payment_type == "premium":
+
+            # ₹99 Premium = 30 days.
+            # Account-wide access.
+
+            cur.execute(
+                """
+                SELECT
+                    MAX(premium_until)
+                FROM customer_access
+                WHERE customer_id = %s
+                  AND movie_id IS NULL
+                """,
+                (customer_id,),
+            )
+
+            row = cur.fetchone()
+
+            current_until = (
+                row[0]
+                if row and row[0]
+                else None
+            )
+
+            if (
+                current_until
+                and current_until > now
+            ):
+                base_time = current_until
+            else:
+                base_time = now
+
+            until = (
+                base_time
+                + timedelta(days=PREMIUM_DAYS)
+            )
+
+            cur.execute(
+                """
+                DELETE FROM customer_access
+                WHERE customer_id = %s
+                  AND movie_id IS NULL
+                  AND premium_until IS NOT NULL
+                """,
+                (customer_id,),
+            )
+
+            cur.execute(
+                """
+                INSERT INTO customer_access
+                (
+                    customer_id,
+                    movie_id,
+                    watch_until,
+                    download_until,
+                    premium_until
+                )
+                VALUES(%s, NULL, NULL, NULL, %s)
+                """,
+                (
+                    customer_id,
+                    until,
+                ),
+            )
+
+        else:
+
+            raise ValueError(
+                "Unsupported payment type: "
+                + str(payment_type)
+            )
+
+        conn.commit()
+        cur.close()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
 
     conn = get_db()
 
@@ -2058,7 +2200,6 @@ def create_payment():
 
     if payment_type not in {
         "watch",
-        "download",
         "premium",
     }:
         return json_error(
@@ -2112,21 +2253,12 @@ def create_payment():
             + movie["title"]
         )
 
-    elif payment_type == "download":
-
-        amount = DOWNLOAD_PRICE
-
-        description = (
-            "Download - "
-            + movie["title"]
-        )
-
-    else:
+        elif payment_type == "premium":
 
         amount = PREMIUM_PRICE
 
         description = (
-            "Tomesh Movies 1 Year Premium"
+            "Tomesh Movies Premium - 30 Days"
         )
 
     customer_id = get_customer_id()
