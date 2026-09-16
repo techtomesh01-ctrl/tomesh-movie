@@ -14,11 +14,13 @@
         linear-gradient(180deg,#050505 0%,#080808 48%,#030303 100%);
     padding:18px 12px 80px;
 }
+
 .tm-watch-wrap{
     width:100%;
     max-width:1320px;
     margin:auto;
 }
+
 .tm-topbar{
     display:flex;
     align-items:center;
@@ -26,6 +28,7 @@
     gap:15px;
     margin-bottom:16px;
 }
+
 .tm-back{
     display:inline-flex;
     align-items:center;
@@ -40,11 +43,13 @@
     backdrop-filter:blur(12px);
     transition:.2s ease;
 }
+
 .tm-back:hover{
     background:rgba(255,255,255,.10);
     border-color:rgba(255,255,255,.18);
     transform:translateY(-1px);
 }
+
 .tm-brand-mini{
     color:#aaa;
     font-size:11px;
@@ -443,7 +448,11 @@
     border-radius:10px;
     padding:10px 16px;
     color:#fff;
-    background:linear-gradient(135deg,#e51f48,#9b233e);
+    background:linear-gradient(
+        135deg,
+        #e51f48,
+        #9b233e
+    );
     font-weight:900;
     cursor:pointer;
 }
@@ -522,7 +531,12 @@
     border-radius:11px;
     color:#fff;
     text-decoration:none;
-    background:linear-gradient(135deg,#7c25ba,#d32e55);
+    background:
+        linear-gradient(
+            135deg,
+            #7c25ba,
+            #d32e55
+        );
     font-weight:900;
 }
 
@@ -669,13 +683,23 @@
 }
 
 .tm-action-btn.primary{
-    background:linear-gradient(135deg,#e51f48,#ff3157);
+    background:
+        linear-gradient(
+            135deg,
+            #e51f48,
+            #ff3157
+        );
     border-color:transparent;
     box-shadow:0 10px 30px rgba(225,30,70,.20);
 }
 
 .tm-action-btn.download{
-    background:linear-gradient(135deg,#9b233e,#cc2f57);
+    background:
+        linear-gradient(
+            135deg,
+            #9b233e,
+            #cc2f57
+        );
     border-color:transparent;
 }
 
@@ -722,10 +746,11 @@
     color:#ddd;
     font-size:12px;
     font-weight:850;
-    background:linear-gradient(
-        transparent,
-        rgba(0,0,0,.90)
-    );
+    background:
+        linear-gradient(
+            transparent,
+            rgba(0,0,0,.90)
+        );
 }
 
 /* =========================================================
@@ -807,7 +832,12 @@
     color:#fff;
     text-align:left;
     cursor:pointer;
-    background:linear-gradient(135deg,#7423b2,#c52c55);
+    background:
+        linear-gradient(
+            135deg,
+            #7423b2,
+            #c52c55
+        );
     box-shadow:0 10px 25px rgba(0,0,0,.25);
     transition:.2s;
 }
@@ -837,7 +867,13 @@
 .tm-premium{
     width:100%;
     margin-top:12px;
-    background:linear-gradient(135deg,#825400,#dca425,#956100);
+    background:
+        linear-gradient(
+            135deg,
+            #825400,
+            #dca425,
+            #956100
+        );
 }
 
 .tm-premium-wrap{
@@ -1032,299 +1068,301 @@
     tabindex="0"
 >
 
-    <div class="tm-video-top"></div>
+<div class="tm-video-top"></div>
 
-    <div class="tm-player-title">
-        {{ movie.title }}
+<div class="tm-player-title">
+    {{ movie.title }}
+</div>
+
+
+<!-- =====================================================
+     IMPORTANT PLAYBACK BLOCK
+===================================================== -->
+
+<video
+    id="tmVideo"
+    class="tm-video"
+    controls
+    playsinline
+    preload="metadata"
+    poster="{{ movie.poster_url or movie.poster or '' }}"
+>
+
+    <source
+        src="{{ movie.video_url }}"
+        type="{{ movie.video_mime or 'video/mp4' }}"
+    >
+
+    Your browser does not support HTML5 video.
+
+</video>
+
+
+<div
+    id="tmLoading"
+    class="tm-loading"
+    aria-label="Loading"
+></div>
+
+
+<button
+    id="tmCenterPlay"
+    class="tm-center-play"
+    type="button"
+    aria-label="Play"
+>
+    ▶
+</button>
+
+
+<div
+    id="tmPlayerError"
+    class="tm-player-error"
+>
+
+    <div class="tm-error-box">
+
+        <div class="tm-error-icon">
+            ⚠️
+        </div>
+
+        <div class="tm-error-title">
+            Video play nahi ho paya
+        </div>
+
+        <div
+            id="tmPlayerErrorText"
+            class="tm-error-text"
+        >
+            Network ya video source problem ho sakti hai.
+        </div>
+
+        <button
+            id="tmRetry"
+            class="tm-retry"
+            type="button"
+        >
+            ↻ Retry
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     CUSTOM CONTROLS
+===================================================== -->
+
+<div
+    id="tmControls"
+    class="tm-controls"
+>
+
+    <div
+        id="tmProgressWrap"
+        class="tm-progress-wrap"
+        aria-label="Seek"
+    >
+
+        <div
+            id="tmProgress"
+            class="tm-progress"
+        >
+
+            <div
+                id="tmBuffered"
+                class="tm-progress-buffer"
+            ></div>
+
+            <div
+                id="tmProgressValue"
+                class="tm-progress-value"
+            ></div>
+
+            <div
+                id="tmProgressDot"
+                class="tm-progress-dot"
+            ></div>
+
+        </div>
+
     </div>
 
 
-    <!-- ===================================================
-         IMPORTANT PLAYBACK FIX
-         No crossorigin attribute.
-         Dynamic MIME type.
-    ==================================================== -->
+    <div class="tm-control-row">
 
-    <video
-        id="tmVideo"
-        class="tm-video"
-        controls
-        playsinline
-        preload="metadata"
-        poster="{{ movie.poster_url or movie.poster or '' }}"
-    >
-
-        <source
-            src="{{ movie.video_url }}"
-            type="{{ movie.video_mime or 'video/mp4' }}"
-        >
-
-        Your browser does not support HTML5 video.
-
-    </video>
-
-
-    <!-- LOADING -->
-
-    <div
-        id="tmLoading"
-        class="tm-loading"
-        aria-label="Loading"
-    ></div>
-
-
-    <!-- CENTER PLAY -->
-
-    <button
-        id="tmCenterPlay"
-        class="tm-center-play"
-        type="button"
-        aria-label="Play"
-    >
-        ▶
-    </button>
-
-
-    <!-- ERROR -->
-
-    <div
-        id="tmPlayerError"
-        class="tm-player-error"
-    >
-
-        <div class="tm-error-box">
-
-            <div class="tm-error-icon">
-                ⚠️
-            </div>
-
-            <div class="tm-error-title">
-                Video play nahi ho paya
-            </div>
-
-            <div
-                id="tmPlayerErrorText"
-                class="tm-error-text"
-            >
-                Network ya video source problem ho sakti hai.
-            </div>
+        <div class="tm-left-controls">
 
             <button
-                id="tmRetry"
-                class="tm-retry"
+                id="tmPlay"
+                class="tm-control-btn"
                 type="button"
             >
-                ↻ Retry
+                ▶
+            </button>
+
+
+            <button
+                id="tmBack10"
+                class="tm-control-btn tm-skip"
+                type="button"
+            >
+                ↶10
+            </button>
+
+
+            <button
+                id="tmForward10"
+                class="tm-control-btn tm-skip"
+                type="button"
+            >
+                10↷
+            </button>
+
+
+            <div class="tm-volume-wrap">
+
+                <button
+                    id="tmMute"
+                    class="tm-control-btn"
+                    type="button"
+                >
+                    🔊
+                </button>
+
+                <input
+                    id="tmVolume"
+                    class="tm-volume-slider"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value="1"
+                >
+
+            </div>
+
+
+            <button
+                id="tmMobileMute"
+                class="tm-control-btn tm-volume-mobile"
+                type="button"
+            >
+                🔊
+            </button>
+
+
+            <div
+                id="tmTime"
+                class="tm-time"
+            >
+                0:00 / 0:00
+            </div>
+
+        </div>
+
+
+        <div class="tm-right-controls">
+
+            <button
+                id="tmPip"
+                class="tm-control-btn tm-pip-btn"
+                type="button"
+            >
+                ▣
+            </button>
+
+
+            <div
+                id="tmSettings"
+                class="tm-settings"
+            >
+
+                <button
+                    id="tmSettingsBtn"
+                    class="tm-control-btn"
+                    type="button"
+                >
+                    ⚙
+                </button>
+
+
+                <div
+                    id="tmSettingsMenu"
+                    class="tm-settings-menu"
+                >
+
+                    <div class="tm-settings-title">
+                        Playback Speed
+                    </div>
+
+
+                    <button
+                        class="tm-speed-btn active"
+                        data-speed="1"
+                        type="button"
+                    >
+                        Normal
+                    </button>
+
+
+                    <button
+                        class="tm-speed-btn"
+                        data-speed="0.75"
+                        type="button"
+                    >
+                        0.75×
+                    </button>
+
+
+                    <button
+                        class="tm-speed-btn"
+                        data-speed="1.25"
+                        type="button"
+                    >
+                        1.25×
+                    </button>
+
+
+                    <button
+                        class="tm-speed-btn"
+                        data-speed="1.5"
+                        type="button"
+                    >
+                        1.5×
+                    </button>
+
+
+                    <button
+                        class="tm-speed-btn"
+                        data-speed="2"
+                        type="button"
+                    >
+                        2×
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <button
+                id="tmFullscreen"
+                class="tm-control-btn"
+                type="button"
+            >
+                ⛶
             </button>
 
         </div>
 
     </div>
 
-
-    <!-- CUSTOM CONTROLS -->
-
-    <div
-        id="tmControls"
-        class="tm-controls"
-    >
-
-        <div
-            id="tmProgressWrap"
-            class="tm-progress-wrap"
-            aria-label="Seek"
-        >
-
-            <div
-                id="tmProgress"
-                class="tm-progress"
-            >
-
-                <div
-                    id="tmBuffered"
-                    class="tm-progress-buffer"
-                ></div>
-
-                <div
-                    id="tmProgressValue"
-                    class="tm-progress-value"
-                ></div>
-
-                <div
-                    id="tmProgressDot"
-                    class="tm-progress-dot"
-                ></div>
-
-            </div>
-
-        </div>
-
-
-        <div class="tm-control-row">
-
-            <div class="tm-left-controls">
-
-                <button
-                    id="tmPlay"
-                    class="tm-control-btn"
-                    type="button"
-                >
-                    ▶
-                </button>
-
-                <button
-                    id="tmBack10"
-                    class="tm-control-btn tm-skip"
-                    type="button"
-                >
-                    ↶10
-                </button>
-
-                <button
-                    id="tmForward10"
-                    class="tm-control-btn tm-skip"
-                    type="button"
-                >
-                    10↷
-                </button>
-
-
-                <div class="tm-volume-wrap">
-
-                    <button
-                        id="tmMute"
-                        class="tm-control-btn"
-                        type="button"
-                    >
-                        🔊
-                    </button>
-
-                    <input
-                        id="tmVolume"
-                        class="tm-volume-slider"
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value="1"
-                    >
-
-                </div>
-
-
-                <button
-                    id="tmMobileMute"
-                    class="tm-control-btn tm-volume-mobile"
-                    type="button"
-                >
-                    🔊
-                </button>
-
-
-                <div
-                    id="tmTime"
-                    class="tm-time"
-                >
-                    0:00 / 0:00
-                </div>
-
-            </div>
-
-
-            <div class="tm-right-controls">
-
-                <button
-                    id="tmPip"
-                    class="tm-control-btn tm-pip-btn"
-                    type="button"
-                >
-                    ▣
-                </button>
-
-
-                <div
-                    id="tmSettings"
-                    class="tm-settings"
-                >
-
-                    <button
-                        id="tmSettingsBtn"
-                        class="tm-control-btn"
-                        type="button"
-                    >
-                        ⚙
-                    </button>
-
-
-                    <div
-                        id="tmSettingsMenu"
-                        class="tm-settings-menu"
-                    >
-
-                        <div class="tm-settings-title">
-                            Playback Speed
-                        </div>
-
-                        <button
-                            class="tm-speed-btn active"
-                            data-speed="1"
-                            type="button"
-                        >
-                            Normal
-                        </button>
-
-                        <button
-                            class="tm-speed-btn"
-                            data-speed="0.75"
-                            type="button"
-                        >
-                            0.75×
-                        </button>
-
-                        <button
-                            class="tm-speed-btn"
-                            data-speed="1.25"
-                            type="button"
-                        >
-                            1.25×
-                        </button>
-
-                        <button
-                            class="tm-speed-btn"
-                            data-speed="1.5"
-                            type="button"
-                        >
-                            1.5×
-                        </button>
-
-                        <button
-                            class="tm-speed-btn"
-                            data-speed="2"
-                            type="button"
-                        >
-                            2×
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <button
-                    id="tmFullscreen"
-                    class="tm-control-btn"
-                    type="button"
-                >
-                    ⛶
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
+</div>
 
 </div>
+
 
 {% else %}
 
@@ -1334,33 +1372,36 @@
 
 <div class="tm-lock">
 
-    <div class="tm-lock-box">
+<div class="tm-lock-box">
 
-        <div class="tm-lock-icon-wrap">
+    <div class="tm-lock-icon-wrap">
 
-            <div class="tm-lock-icon">
-                🔒
-            </div>
-
+        <div class="tm-lock-icon">
+            🔒
         </div>
 
-        <h2>
-            Watch Access Locked
-        </h2>
-
-        <p>
-            Movie watch करने के लिए access unlock करें।
-            Payment section नीचे available है।
-        </p>
-
-        <a
-            href="#tmPaymentBox"
-            class="tm-lock-btn"
-        >
-            🎬 Unlock Movie
-        </a>
-
     </div>
+
+
+    <h2>
+        Watch Access Locked
+    </h2>
+
+
+    <p>
+        Movie watch करने के लिए access unlock करें।
+        Payment section नीचे available है।
+    </p>
+
+
+    <a
+        href="#tmPaymentBox"
+        class="tm-lock-btn"
+    >
+        🎬 Unlock Movie
+    </a>
+
+</div>
 
 </div>
 
@@ -1368,8 +1409,6 @@
 
 </div>
 
-
-<!-- VIDEO STATUS -->
 
 <div
     id="tmVideoStatus"
@@ -1385,261 +1424,268 @@
 
 <div class="tm-info-main">
 
-    <div class="tm-eyebrow">
+<div class="tm-eyebrow">
 
-        {% if movie.category %}
+    {% if movie.category %}
 
-        <span class="tm-eyebrow-badge">
-            {{ movie.category }}
-        </span>
-
-        {% endif %}
-
-
-        <span class="tm-eyebrow-badge hot">
-            TOMESH MOVIES
-        </span>
-
-
-        {% if access.premium %}
-
-        <span class="tm-eyebrow-badge">
-            PREMIUM ACTIVE
-        </span>
-
-        {% endif %}
-
-    </div>
-
-
-    <h1 class="tm-title">
-        {{ movie.title }}
-    </h1>
-
-
-    <div class="tm-meta">
-
-        {% if movie.category %}
-
-        <span class="tm-badge">
-            🎬 {{ movie.category }}
-        </span>
-
-        {% endif %}
-
-
-        <span class="tm-badge">
-            👁 {{ movie.views or 0 }} Views
-        </span>
-
-
-        <span class="tm-badge">
-            HD
-        </span>
-
-
-        {% if access.watch %}
-
-        <span class="tm-badge">
-            ▶ Watch Active
-        </span>
-
-        {% endif %}
-
-
-        {% if access.download %}
-
-        <span class="tm-badge">
-            ⬇ Download Active
-        </span>
-
-        {% endif %}
-
-
-        {% if access.premium %}
-
-        <span class="tm-badge premium">
-            👑 Premium Active
-        </span>
-
-        {% endif %}
-
-    </div>
-
-
-    {% if movie.description %}
-
-    <div class="tm-description">
-        {{ movie.description }}
-    </div>
+    <span class="tm-eyebrow-badge">
+        {{ movie.category }}
+    </span>
 
     {% endif %}
 
 
-    <!-- ===================================================
-         ACTIONS
-    ==================================================== -->
-
-    <div class="tm-action-row">
-
-        {% if access.watch %}
-
-        <a
-            href="#tmPlayer"
-            id="tmWatchNow"
-            class="tm-action-btn primary"
-        >
-            ▶ Watch Now
-        </a>
-
-        {% endif %}
+    <span class="tm-eyebrow-badge hot">
+        TOMESH MOVIES
+    </span>
 
 
-        {% if access.download %}
+    {% if access.premium %}
 
-        <a
-            href="{{ url_for('download_movie', movie_id=movie.id) }}"
-            class="tm-action-btn download"
-        >
-            ⬇ Download Movie
-        </a>
+    <span class="tm-eyebrow-badge">
+        PREMIUM ACTIVE
+    </span>
 
-        {% endif %}
+    {% endif %}
+
+</div>
 
 
-        {% if access.premium %}
+<h1 class="tm-title">
+    {{ movie.title }}
+</h1>
 
-        <div class="tm-active-pill">
-            👑 Premium Access Active
+
+<div class="tm-meta">
+
+    {% if movie.category %}
+
+    <span class="tm-badge">
+        🎬 {{ movie.category }}
+    </span>
+
+    {% endif %}
+
+
+    <span class="tm-badge">
+        👁 {{ movie.views or 0 }} Views
+    </span>
+
+
+    <span class="tm-badge">
+        HD
+    </span>
+
+
+    {% if access.watch %}
+
+    <span class="tm-badge">
+        ▶ Watch Active
+    </span>
+
+    {% endif %}
+
+
+    {% if access.download %}
+
+    <span class="tm-badge">
+        ⬇ Download Active
+    </span>
+
+    {% endif %}
+
+
+    {% if access.premium %}
+
+    <span class="tm-badge premium">
+        👑 Premium Active
+    </span>
+
+    {% endif %}
+
+</div>
+
+
+{% if movie.description %}
+
+<div class="tm-description">
+    {{ movie.description }}
+</div>
+
+{% endif %}
+
+
+<!-- =====================================================
+     ACTIONS
+===================================================== -->
+
+<div class="tm-action-row">
+
+    {% if access.watch %}
+
+    <a
+        href="#tmPlayer"
+        id="tmWatchNow"
+        class="tm-action-btn primary"
+    >
+        ▶ Watch Now
+    </a>
+
+    {% endif %}
+
+
+    {% if access.download %}
+
+    <a
+        href="{{ url_for('download_movie', movie_id=movie.id) }}"
+        class="tm-action-btn download"
+    >
+        ⬇ Download Movie
+    </a>
+
+    {% endif %}
+
+
+    {% if access.premium %}
+
+    <div class="tm-active-pill">
+        👑 Premium Access Active
+    </div>
+
+    {% endif %}
+
+</div>
+
+
+<!-- =====================================================
+     PAYMENT
+===================================================== -->
+
+{% if not access.watch or not access.download %}
+
+<div
+    id="tmPaymentBox"
+    class="tm-payment"
+>
+
+    <div class="tm-payment-top">
+
+        <div>
+
+            <h2>
+                🎬 Unlock {{ movie.title }}
+            </h2>
+
+            <p class="tm-payment-sub">
+                Is movie ke liye Premium access unlock karein.
+            </p>
+
         </div>
 
-        {% endif %}
+
+        <div class="tm-secure">
+            🔒 Secure Payment
+        </div>
 
     </div>
 
 
-    <!-- ===================================================
-         PAYMENT
-    ==================================================== -->
-
-    {% if not access.watch or not access.download %}
-
-    <div
-        id="tmPaymentBox"
-        class="tm-payment"
+    <input
+        id="tmPhone"
+        class="tm-phone"
+        type="tel"
+        inputmode="numeric"
+        maxlength="10"
+        autocomplete="tel"
+        placeholder="10 digit mobile number"
     >
 
-        <div class="tm-payment-top">
+
+    {% if not access.premium %}
+
+    <button
+        type="button"
+        class="tm-pay-btn tm-premium"
+        onclick="startPayment('premium')"
+    >
+
+        <div class="tm-premium-wrap">
 
             <div>
 
-                <h2>
-                    🎬 Unlock {{ movie.title }}
-                </h2>
+                <div class="tm-pay-title">
 
-                <p class="tm-payment-sub">
-                    Is movie ke liye Premium access unlock karein.
-                </p>
+                    <span>
+                        👑 ₹99 / Month Premium
+                    </span>
+
+                </div>
+
+
+                <small>
+                    ▶ Watch + ⬇ Download — 1 month access on Tomesh Movies
+                </small>
 
             </div>
 
-            <div class="tm-secure">
-                🔒 Secure Payment
+
+            <div class="tm-premium-tag">
+                BEST VALUE
             </div>
 
         </div>
 
-
-        <input
-            id="tmPhone"
-            class="tm-phone"
-            type="tel"
-            inputmode="numeric"
-            maxlength="10"
-            autocomplete="tel"
-            placeholder="10 digit mobile number"
-        >
-
-
-        {% if not access.premium %}
-
-        <button
-            type="button"
-            class="tm-pay-btn tm-premium"
-            onclick="startPayment('premium')"
-        >
-
-            <div class="tm-premium-wrap">
-
-                <div>
-
-                    <div class="tm-pay-title">
-                        <span>
-                            👑 ₹99 / Month Premium
-                        </span>
-                    </div>
-
-                    <small>
-                        ▶ Watch + ⬇ Download — 1 month access on Tomesh Movies
-                    </small>
-
-                </div>
-
-                <div class="tm-premium-tag">
-                    BEST VALUE
-                </div>
-
-            </div>
-
-        </button>
-
-        {% endif %}
-
-
-        <div
-            id="tmPaymentStatus"
-            class="tm-status"
-        ></div>
-
-
-        <div class="tm-payment-note">
-
-            Premium payment complete होने के बाद
-            Watch + Download access automatically update होगा।
-            Page refresh करने पर नया access दिखाई देगा।
-
-        </div>
-
-    </div>
+    </button>
 
     {% endif %}
 
 
-    <div class="tm-foot-note">
+    <div
+        id="tmPaymentStatus"
+        class="tm-status"
+    ></div>
 
-        Tomesh Movies पर केवल अपनी या properly licensed content ही publish करें।
+
+    <div class="tm-payment-note">
+
+        Premium payment complete होने के बाद
+        Watch + Download access automatically update होगा।
+        Page refresh करने पर नया access दिखाई देगा।
 
     </div>
 
 </div>
 
+{% endif %}
 
-<!-- POSTER -->
+
+<div class="tm-foot-note">
+
+    Tomesh Movies पर केवल अपनी या properly licensed content ही publish करें।
+
+</div>
+
+</div>
+
+
+<!-- =======================================================
+     POSTER
+======================================================= -->
 
 {% if movie.poster_url or movie.poster %}
 
 <div class="tm-poster-card">
 
-    <img
-        class="tm-poster"
-        src="{{ movie.poster_url or movie.poster }}"
-        alt="{{ movie.title }}"
-        loading="lazy"
-    >
+<img
+    class="tm-poster"
+    src="{{ movie.poster_url or movie.poster }}"
+    alt="{{ movie.title }}"
+    loading="lazy"
+>
 
-    <div class="tm-poster-shade">
-        {{ movie.title }}
-    </div>
+<div class="tm-poster-shade">
+    {{ movie.title }}
+</div>
 
 </div>
 
@@ -1663,8 +1709,11 @@
    PAYMENT
 ========================================================= */
 
-const TM_MOVIE_ID = {{ movie.id | tojson }};
-const TM_CASHFREE_MODE = {{ cashfree_mode | tojson }};
+const TM_MOVIE_ID =
+    {{ movie.id | tojson }};
+
+const TM_CASHFREE_MODE =
+    {{ cashfree_mode | tojson }};
 
 
 function paymentStatus(message){
@@ -1836,7 +1885,7 @@ async function startPayment(type){
 
             box.textContent =
                 error.message ||
-                "Payment शुरू नहीं हो पाया.";
+                "Payment शुरू नहीं हो पाया।";
 
         }
 
@@ -1931,7 +1980,6 @@ async function startPayment(type){
 
 
     let hideTimer = null;
-
     let loadTimer = null;
 
 
@@ -1999,7 +2047,6 @@ async function startPayment(type){
             "tm-error",
             !!err
         );
-
     }
 
 
@@ -2296,6 +2343,7 @@ async function startPayment(type){
 
         updateVolumeIcon();
 
+
         showControls();
 
     }
@@ -2345,6 +2393,7 @@ async function startPayment(type){
 
 
         updateVolumeIcon();
+
 
         showControls();
 
@@ -2418,7 +2467,8 @@ async function startPayment(type){
 
         if(document.fullscreenElement){
 
-            document.exitFullscreen()
+            document
+                .exitFullscreen()
                 .catch(()=>{});
 
             return;
@@ -2427,7 +2477,8 @@ async function startPayment(type){
 
         if(player.requestFullscreen){
 
-            player.requestFullscreen()
+            player
+                .requestFullscreen()
                 .catch(()=>{});
 
         }
@@ -2452,12 +2503,6 @@ async function startPayment(type){
             "Video dobara load ho raha hai..."
         );
 
-
-        /*
-         * Reload the existing stream route.
-         * Flask stream route creates a fresh R2
-         * presigned URL.
-         */
 
         video.load();
 
@@ -2555,11 +2600,8 @@ async function startPayment(type){
         fullscreenBtn.addEventListener(
             "click",
             ()=>{
-
                 toggleFullscreen();
-
                 showControls();
-
             }
         );
 
@@ -2624,14 +2666,16 @@ async function startPayment(type){
                         document.pictureInPictureElement
                     ){
 
-                        await document.exitPictureInPicture();
+                        await document
+                            .exitPictureInPicture();
 
                     }
                     else if(
                         document.pictureInPictureEnabled
                     ){
 
-                        await video.requestPictureInPicture();
+                        await video
+                            .requestPictureInPicture();
 
                     }
 
@@ -2759,7 +2803,9 @@ async function startPayment(type){
         player.addEventListener(
             ev,
             showControls,
-            {passive:true}
+            {
+                passive:true
+            }
         );
 
     });
@@ -2993,6 +3039,7 @@ async function startPayment(type){
                 "active"
             );
 
+
             updatePlayIcon();
 
         }
@@ -3011,8 +3058,7 @@ async function startPayment(type){
             console.error(
                 "Tomesh Movies HTML5 video error:",
                 {
-                    code:
-                        code,
+                    code:code,
 
                     mediaError:
                         video.error,
@@ -3079,8 +3125,7 @@ async function startPayment(type){
         e=>{
 
             const tag =
-                document.activeElement?.tagName ||
-                "";
+                document.activeElement?.tagName || "";
 
 
             if(
@@ -3152,11 +3197,8 @@ async function startPayment(type){
                     ()=>{
 
                         video.scrollIntoView({
-                            behavior:
-                                "smooth",
-
-                            block:
-                                "center"
+                            behavior:"smooth",
+                            block:"center"
                         });
 
                     },
@@ -3190,23 +3232,27 @@ async function startPayment(type){
     updatePlayIcon();
 
 
-    /*
-     * Make sure the browser starts loading the stream.
-     */
+    /* =====================================================
+       INITIAL SOURCE DEBUG
+    ===================================================== */
 
-    try{
+    console.log(
+        "Tomesh Movies video source:",
+        {
+            src:
+                video.currentSrc ||
+                video.querySelector("source")?.src,
 
-        video.load();
+            type:
+                video.querySelector("source")?.type,
 
-    }
-    catch(e){
+            readyState:
+                video.readyState,
 
-        console.warn(
-            "Initial video load failed:",
-            e
-        );
-
-    }
+            networkState:
+                video.networkState
+        }
+    );
 
 })();
 
