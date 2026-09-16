@@ -7,22 +7,24 @@
 <div style="
     min-height:100vh;
     background:#050505;
-    color:white;
-    padding:20px;
+    color:#fff;
+    padding:20px 12px 50px;
 ">
 
     <div style="
-        max-width:1100px;
+        max-width:1200px;
         margin:auto;
         background:#111;
-        border-radius:16px;
+        border-radius:18px;
         overflow:hidden;
+        box-shadow:0 20px 60px rgba(0,0,0,.5);
     ">
 
+        <!-- VIDEO -->
         <div style="
-            background:#000;
             width:100%;
             aspect-ratio:16/9;
+            background:#000;
         ">
 
             <video
@@ -30,13 +32,14 @@
                 controls
                 playsinline
                 preload="metadata"
+                poster="{{ movie.poster_url or movie.poster or '' }}"
                 style="
                     width:100%;
                     height:100%;
                     display:block;
                     background:#000;
+                    object-fit:contain;
                 "
-                poster="{{ movie.poster_url or movie.poster or '' }}"
             >
                 <source
                     src="{{ url_for('stream_movie', movie_id=movie.id) }}"
@@ -48,22 +51,50 @@
 
         </div>
 
-        <div style="padding:20px;">
-            <h1 style="margin-top:0;">
+        <!-- INFO -->
+        <div style="padding:22px;">
+
+            <h1 style="
+                margin:0 0 10px;
+                font-size:30px;
+            ">
                 {{ movie.title }}
             </h1>
 
-            <p style="color:#aaa;">
-                Direct Stream Test
-            </p>
+            <div style="
+                color:#aaa;
+                margin-bottom:15px;
+            ">
+                {{ movie.category or '' }}
 
-            <p>
-                Stream URL:
-                <br>
-                <code style="color:#0f0;">
-                    {{ url_for('stream_movie', movie_id=movie.id) }}
-                </code>
+                {% if movie.year %}
+                    • {{ movie.year }}
+                {% endif %}
+
+                {% if movie.language %}
+                    • {{ movie.language }}
+                {% endif %}
+            </div>
+
+            {% if movie.description %}
+            <p style="
+                color:#ddd;
+                line-height:1.6;
+            ">
+                {{ movie.description }}
             </p>
+            {% endif %}
+
+            <div style="
+                margin-top:20px;
+                padding:14px;
+                background:#181818;
+                border-radius:12px;
+                color:#0f0;
+            ">
+                ✅ Direct stream test enabled
+            </div>
+
         </div>
 
     </div>
