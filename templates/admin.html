@@ -1,525 +1,838 @@
 {% extends "base.html" %}
 
-{% block title %}Login | Tomesh Movies{% endblock %}
+{% block title %}Admin Dashboard | Tomesh Movies{% endblock %}
 
 {% block content %}
 
 <style>
-    * {
-        box-sizing: border-box;
+/* =========================================================
+   TOMESH MOVIES — PREMIUM ADMIN CONTROL CENTER
+   ========================================================= */
+
+.tm-admin{
+    min-height:100vh;
+    background:
+        radial-gradient(circle at 10% 0%,rgba(124,58,237,.18),transparent 28%),
+        radial-gradient(circle at 90% 5%,rgba(220,38,38,.12),transparent 25%),
+        #070707;
+    color:#fff;
+    padding:25px 16px 60px;
+}
+
+.tm-admin-wrap{
+    max-width:1400px;
+    margin:auto;
+}
+
+.tm-admin-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:25px;
+    flex-wrap:wrap;
+}
+
+.tm-brand{
+    font-size:26px;
+    font-weight:900;
+    letter-spacing:1px;
+}
+
+.tm-brand span{
+    color:#c084fc;
+}
+
+.tm-subtitle{
+    color:#999;
+    font-size:13px;
+    margin-top:5px;
+}
+
+.tm-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.tm-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    padding:11px 16px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:700;
+    font-size:13px;
+    border:1px solid #292929;
+    background:#111;
+    color:#fff;
+    transition:.2s;
+}
+
+.tm-btn:hover{
+    transform:translateY(-1px);
+    border-color:#7c3aed;
+}
+
+.tm-btn-purple{
+    background:#6d28d9;
+    border-color:#7c3aed;
+}
+
+.tm-btn-red{
+    background:#991b1b;
+    border-color:#dc2626;
+}
+
+.tm-section-title{
+    font-size:19px;
+    font-weight:900;
+    margin:30px 0 14px;
+}
+
+/* STATS */
+
+.tm-stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:14px;
+}
+
+.tm-stat{
+    background:linear-gradient(145deg,#141414,#0c0c0c);
+    border:1px solid #242424;
+    border-radius:15px;
+    padding:20px;
+    min-height:120px;
+}
+
+.tm-stat-label{
+    color:#999;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.8px;
+}
+
+.tm-stat-value{
+    font-size:30px;
+    font-weight:900;
+    margin-top:12px;
+}
+
+.tm-stat-small{
+    color:#777;
+    font-size:11px;
+    margin-top:5px;
+}
+
+/* CONTROL CARDS */
+
+.tm-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:14px;
+}
+
+.tm-card{
+    background:linear-gradient(145deg,#141414,#0b0b0b);
+    border:1px solid #242424;
+    border-radius:15px;
+    padding:20px;
+    min-height:145px;
+    transition:.2s;
+}
+
+.tm-card:hover{
+    transform:translateY(-2px);
+    border-color:#6d28d9;
+}
+
+.tm-icon{
+    font-size:27px;
+    margin-bottom:12px;
+}
+
+.tm-card h3{
+    margin:0 0 7px;
+    font-size:16px;
+}
+
+.tm-card p{
+    margin:0 0 15px;
+    color:#888;
+    font-size:12px;
+    line-height:1.5;
+}
+
+.tm-card a{
+    display:inline-block;
+    padding:8px 12px;
+    background:#181818;
+    border:1px solid #303030;
+    border-radius:8px;
+    color:#fff;
+    text-decoration:none;
+    font-size:12px;
+    font-weight:700;
+}
+
+/* MOVIE TABLE */
+
+.tm-table-box{
+    background:#0d0d0d;
+    border:1px solid #242424;
+    border-radius:15px;
+    overflow:hidden;
+}
+
+.tm-table-scroll{
+    overflow-x:auto;
+}
+
+.tm-table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:750px;
+}
+
+.tm-table th,
+.tm-table td{
+    padding:14px;
+    text-align:left;
+    border-bottom:1px solid #202020;
+    font-size:12px;
+}
+
+.tm-table th{
+    background:#151515;
+    color:#aaa;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+}
+
+.tm-table td{
+    color:#ddd;
+}
+
+.tm-table tr:hover td{
+    background:#111;
+}
+
+.tm-movie-title{
+    font-weight:800;
+    color:#fff;
+}
+
+.tm-badge{
+    display:inline-block;
+    padding:5px 8px;
+    border-radius:6px;
+    font-size:10px;
+    font-weight:800;
+    background:#191919;
+    color:#bbb;
+}
+
+/* EMPTY */
+
+.tm-empty{
+    padding:35px;
+    text-align:center;
+    color:#777;
+}
+
+/* FOOTER */
+
+.tm-admin-footer{
+    margin-top:35px;
+    padding-top:20px;
+    border-top:1px solid #202020;
+    color:#666;
+    font-size:11px;
+    text-align:center;
+}
+
+/* MOBILE */
+
+@media(max-width:1000px){
+    .tm-stats{
+        grid-template-columns:repeat(2,1fr);
     }
 
-    .tm-login-page {
-        min-height: 100vh;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 35px 18px;
-        color: #fff;
-        background:
-            radial-gradient(circle at 15% 15%, rgba(110, 30, 180, .25), transparent 32%),
-            radial-gradient(circle at 85% 80%, rgba(210, 20, 50, .18), transparent 32%),
-            #050505;
+    .tm-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+}
+
+@media(max-width:600px){
+    .tm-admin{
+        padding:18px 10px 45px;
     }
 
-    .tm-login-shell {
-        width: min(960px, 100%);
-        display: grid;
-        grid-template-columns: 1.15fr .85fr;
-        gap: 20px;
+    .tm-brand{
+        font-size:21px;
     }
 
-    .tm-login-card {
-        position: relative;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 22px;
-        padding: 34px;
-        background:
-            linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
-        box-shadow:
-            0 25px 80px rgba(0,0,0,.55),
-            inset 0 1px 0 rgba(255,255,255,.04);
-        backdrop-filter: blur(14px);
+    .tm-stats{
+        grid-template-columns:1fr 1fr;
+        gap:9px;
     }
 
-    .tm-login-card::before {
-        content: "";
-        position: absolute;
-        width: 180px;
-        height: 180px;
-        top: -90px;
-        right: -90px;
-        border-radius: 50%;
-        background: rgba(160, 35, 220, .16);
-        filter: blur(20px);
-        pointer-events: none;
+    .tm-stat{
+        padding:14px;
+        min-height:95px;
     }
 
-    .tm-login-brand {
-        display: inline-block;
-        margin-bottom: 28px;
-        color: #fff;
-        text-decoration: none;
-        font-size: 22px;
-        font-weight: 1000;
-        letter-spacing: -1px;
+    .tm-stat-value{
+        font-size:23px;
     }
 
-    .tm-login-brand span {
-        color: #e50914;
+    .tm-grid{
+        grid-template-columns:1fr;
     }
 
-    .tm-login-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        margin-bottom: 14px;
-        padding: 7px 11px;
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 999px;
-        color: #ddd;
-        background: rgba(255,255,255,.04);
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: .5px;
-        text-transform: uppercase;
+    .tm-actions{
+        width:100%;
     }
 
-    .tm-login-card h1 {
-        margin: 0 0 10px;
-        font-size: clamp(28px, 4vw, 42px);
-        line-height: 1.05;
-        letter-spacing: -1.5px;
+    .tm-actions .tm-btn{
+        flex:1;
     }
-
-    .tm-login-card h2 {
-        margin: 0 0 10px;
-        font-size: 27px;
-        letter-spacing: -.8px;
-    }
-
-    .tm-login-card .tm-login-subtitle {
-        margin: 0 0 26px;
-        color: #aaa;
-        font-size: 14px;
-        line-height: 1.65;
-    }
-
-    .tm-login-label {
-        display: block;
-        margin: 0 0 8px;
-        color: #ddd;
-        font-size: 12px;
-        font-weight: 800;
-    }
-
-    .tm-login-input {
-        width: 100%;
-        height: 52px;
-        padding: 0 15px;
-        border: 1px solid rgba(255,255,255,.14);
-        border-radius: 11px;
-        outline: none;
-        color: #fff;
-        background: rgba(0,0,0,.48);
-        font-size: 15px;
-        transition: .2s ease;
-    }
-
-    .tm-login-input:focus {
-        border-color: rgba(229,9,20,.85);
-        box-shadow: 0 0 0 3px rgba(229,9,20,.12);
-    }
-
-    .tm-login-input::placeholder {
-        color: #777;
-    }
-
-    .tm-login-form-group {
-        margin-bottom: 16px;
-    }
-
-    .tm-login-btn {
-        width: 100%;
-        min-height: 52px;
-        margin-top: 4px;
-        border: 0;
-        border-radius: 11px;
-        cursor: pointer;
-        color: #fff;
-        background: #e50914;
-        font-size: 15px;
-        font-weight: 900;
-        transition: transform .18s ease, filter .18s ease;
-    }
-
-    .tm-login-btn:hover {
-        filter: brightness(1.12);
-        transform: translateY(-1px);
-    }
-
-    .tm-login-btn:active {
-        transform: translateY(0);
-    }
-
-    .tm-login-btn-secondary {
-        color: #fff;
-        background: rgba(255,255,255,.07);
-        border: 1px solid rgba(255,255,255,.12);
-    }
-
-    .tm-login-btn-secondary:hover {
-        background: rgba(255,255,255,.11);
-    }
-
-    .tm-login-back {
-        display: inline-block;
-        margin-top: 18px;
-        color: #aaa;
-        text-decoration: none;
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .tm-login-back:hover {
-        color: #fff;
-    }
-
-    .tm-login-divider {
-        height: 1px;
-        margin: 25px 0;
-        background: rgba(255,255,255,.08);
-    }
-
-    .tm-login-note {
-        margin-top: 14px;
-        color: #777;
-        font-size: 11px;
-        line-height: 1.6;
-    }
-
-    .tm-otp-email {
-        margin-bottom: 20px;
-        padding: 12px 14px;
-        border-radius: 10px;
-        color: #ddd;
-        background: rgba(255,255,255,.045);
-        border: 1px solid rgba(255,255,255,.08);
-        font-size: 13px;
-    }
-
-    .tm-otp-input {
-        text-align: center;
-        letter-spacing: 10px;
-        font-size: 23px;
-        font-weight: 900;
-        padding-left: 20px;
-    }
-
-    .tm-admin-card {
-        background:
-            linear-gradient(145deg, rgba(255,0,40,.07), rgba(255,255,255,.015));
-    }
-
-    .tm-admin-icon {
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 18px;
-        border-radius: 14px;
-        background: rgba(229,9,20,.12);
-        border: 1px solid rgba(229,9,20,.22);
-        font-size: 22px;
-    }
-
-    .tm-secure-text {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        margin-top: 18px;
-        color: #777;
-        font-size: 11px;
-    }
-
-    @media (max-width: 800px) {
-        .tm-login-page {
-            align-items: flex-start;
-            padding: 22px 13px;
-        }
-
-        .tm-login-shell {
-            grid-template-columns: 1fr;
-            max-width: 560px;
-        }
-
-        .tm-login-card {
-            padding: 27px 21px;
-            border-radius: 18px;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .tm-login-card h1 {
-            font-size: 31px;
-        }
-
-        .tm-login-card h2 {
-            font-size: 24px;
-        }
-
-        .tm-login-brand {
-            font-size: 20px;
-        }
-
-        .tm-otp-input {
-            letter-spacing: 7px;
-        }
-    }
+}
 </style>
 
+<div class="tm-admin">
+<div class="tm-admin-wrap">
 
-<div class="tm-login-page">
+    <!-- HEADER -->
 
-    <div class="tm-login-shell">
+    <div class="tm-admin-top">
 
-        <!-- CUSTOMER LOGIN -->
-        <section class="tm-login-card">
-
-            <a href="{{ url_for('home') }}" class="tm-login-brand">
+        <div>
+            <div class="tm-brand">
                 TOMESH <span>MOVIES</span>
+            </div>
+
+            <div class="tm-subtitle">
+                Super Admin • Control Center
+            </div>
+        </div>
+
+        <div class="tm-actions">
+
+            <a href="{{ url_for('index') }}" class="tm-btn">
+                🌐 Website
             </a>
 
-            <div class="tm-login-badge">
-                🎬 Tomesh Movies
-            </div>
+            <a href="{{ url_for('admin_logout') }}"
+               class="tm-btn tm-btn-red">
+                🚪 Logout
+            </a>
 
-            {% if step == "otp" %}
-
-                <h1>Verify your email</h1>
-
-                <p class="tm-login-subtitle">
-                    हमने आपके email पर 6-digit verification code भेजा है।
-                    नीचे OTP डालकर continue करें।
-                </p>
-
-                <div class="tm-otp-email">
-                    📧 <strong>{{ email }}</strong>
-                </div>
-
-                <form
-                    action="{{ url_for('verify_otp') }}"
-                    method="post"
-                    autocomplete="off"
-                >
-
-                    <div class="tm-login-form-group">
-
-                        <label class="tm-login-label">
-                            Verification Code
-                        </label>
-
-                        <input
-                            class="tm-login-input tm-otp-input"
-                            type="text"
-                            name="otp"
-                            inputmode="numeric"
-                            autocomplete="one-time-code"
-                            maxlength="6"
-                            pattern="[0-9]{6}"
-                            placeholder="••••••"
-                            required
-                            autofocus
-                        >
-
-                    </div>
-
-                    <button
-                        class="tm-login-btn"
-                        type="submit"
-                    >
-                        Verify & Continue →
-                    </button>
-
-                </form>
-
-
-                <div class="tm-login-divider"></div>
-
-                <form
-                    action="{{ url_for('request_otp') }}"
-                    method="post"
-                >
-
-                    <input
-                        type="hidden"
-                        name="email"
-                        value="{{ email }}"
-                    >
-
-                    <button
-                        type="submit"
-                        class="tm-login-btn tm-login-btn-secondary"
-                    >
-                        Resend OTP
-                    </button>
-
-                </form>
-
-                <a
-                    href="{{ url_for('login') }}"
-                    class="tm-login-back"
-                >
-                    ← Change email
-                </a>
-
-                <div class="tm-secure-text">
-                    🔒 Your verification code is private and secure.
-                </div>
-
-            {% else %}
-
-                <h1>Welcome back</h1>
-
-                <p class="tm-login-subtitle">
-                    अपना email डालें। हम आपको एक verification code भेजेंगे।
-                    Password याद रखने की जरूरत नहीं।
-                </p>
-
-                <form
-                    action="{{ url_for('request_otp') }}"
-                    method="post"
-                >
-
-                    <div class="tm-login-form-group">
-
-                        <label class="tm-login-label">
-                            Email address
-                        </label>
-
-                        <input
-                            class="tm-login-input"
-                            type="email"
-                            name="email"
-                            value="{{ email }}"
-                            placeholder="you@example.com"
-                            autocomplete="email"
-                            required
-                        >
-
-                    </div>
-
-                    <button
-                        class="tm-login-btn"
-                        type="submit"
-                    >
-                        Get OTP →
-                    </button>
-
-                </form>
-
-                <div class="tm-login-note">
-                    Email verification के बाद आप Tomesh Movies में
-                    securely sign in कर पाएंगे।
-                </div>
-
-                <a
-                    href="{{ url_for('home') }}"
-                    class="tm-login-back"
-                >
-                    ← Back to Tomesh Movies
-                </a>
-
-            {% endif %}
-
-        </section>
-
-
-        <!-- ADMIN LOGIN -->
-        <section class="tm-login-card tm-admin-card">
-
-            <div class="tm-admin-icon">
-                🔐
-            </div>
-
-            <h2>Admin Login</h2>
-
-            <p class="tm-login-subtitle">
-                Tomesh Movies control panel के लिए administrator
-                credentials से sign in करें।
-            </p>
-
-            <form
-                action="{{ url_for('login') }}"
-                method="post"
-                autocomplete="off"
-            >
-
-                <input
-                    type="hidden"
-                    name="login_type"
-                    value="admin"
-                >
-
-                <div class="tm-login-form-group">
-
-                    <label class="tm-login-label">
-                        Admin Username
-                    </label>
-
-                    <input
-                        class="tm-login-input"
-                        type="text"
-                        name="username"
-                        placeholder="Admin username"
-                        autocomplete="username"
-                        required
-                    >
-
-                </div>
-
-                <div class="tm-login-form-group">
-
-                    <label class="tm-login-label">
-                        Admin Password
-                    </label>
-
-                    <input
-                        class="tm-login-input"
-                        type="password"
-                        name="password"
-                        placeholder="Admin password"
-                        autocomplete="current-password"
-                        required
-                    >
-
-                </div>
-
-                <button
-                    class="tm-login-btn"
-                    type="submit"
-                >
-                    Admin Sign In →
-                </button>
-
-            </form>
-
-            <div class="tm-login-note">
-                ⚠️ यह section सिर्फ website administrator के लिए है।
-                Customer login के लिए ऊपर Email OTP इस्तेमाल करें।
-            </div>
-
-            <div class="tm-secure-text">
-                🛡️ Protected Admin Area
-            </div>
-
-        </section>
+        </div>
 
     </div>
 
+
+    <!-- DASHBOARD -->
+
+    <div class="tm-section-title">
+        📊 Dashboard Overview
+    </div>
+
+    <div class="tm-stats">
+
+        <div class="tm-stat">
+            <div class="tm-stat-label">Total Movies</div>
+
+            <div class="tm-stat-value">
+                {{ total_movies|default(0) }}
+            </div>
+
+            <div class="tm-stat-small">
+                Movies in catalog
+            </div>
+        </div>
+
+
+        <div class="tm-stat">
+            <div class="tm-stat-label">Total Views</div>
+
+            <div class="tm-stat-value">
+                {{ total_views|default(0) }}
+            </div>
+
+            <div class="tm-stat-small">
+                All movie views
+            </div>
+        </div>
+
+
+        <div class="tm-stat">
+            <div class="tm-stat-label">Users</div>
+
+            <div class="tm-stat-value">
+                {{ total_users|default(0) }}
+            </div>
+
+            <div class="tm-stat-small">
+                Registered users
+            </div>
+        </div>
+
+
+        <div class="tm-stat">
+            <div class="tm-stat-label">Revenue</div>
+
+            <div class="tm-stat-value">
+                ₹{{ revenue|default(0) }}
+            </div>
+
+            <div class="tm-stat-small">
+                Payment revenue
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- MAIN CONTROL CENTER -->
+
+    <div class="tm-section-title">
+        🎛️ Control Center
+    </div>
+
+    <div class="tm-grid">
+
+
+        <!-- MOVIES -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">🎬</div>
+
+            <h3>Movies & Catalog</h3>
+
+            <p>
+                Add, edit, delete and manage movies,
+                posters, videos and visibility.
+            </p>
+
+            <a href="{{ url_for('admin_add') }}">
+                Manage Movies →
+            </a>
+
+        </div>
+
+
+        <!-- USERS -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">👥</div>
+
+            <h3>Users</h3>
+
+            <p>
+                View users, login activity,
+                accounts and user information.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                User Center →
+            </a>
+
+        </div>
+
+
+        <!-- PAYMENTS -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">💳</div>
+
+            <h3>Payments</h3>
+
+            <p>
+                Monitor successful, failed and
+                pending payment activity.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Payments →
+            </a>
+
+        </div>
+
+
+        <!-- SUBSCRIPTIONS -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">🔄</div>
+
+            <h3>AutoPay & Subscriptions</h3>
+
+            <p>
+                Manage subscription and mandate
+                information.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Subscriptions →
+            </a>
+
+        </div>
+
+
+        <!-- WATCH ACTIVITY -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">▶️</div>
+
+            <h3>Watch Activity</h3>
+
+            <p>
+                Movie opens, plays, duration,
+                completed and abandoned sessions.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Watch Activity →
+            </a>
+
+        </div>
+
+
+        <!-- ANALYTICS -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">📈</div>
+
+            <h3>Analytics</h3>
+
+            <p>
+                Users, views, watch time,
+                revenue and movie performance.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Analytics →
+            </a>
+
+        </div>
+
+
+        <!-- LIVE ACTIVITY -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">🔴</div>
+
+            <h3>Live Activity</h3>
+
+            <p>
+                Recent logins, plays, payments
+                and system events.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Live Activity →
+            </a>
+
+        </div>
+
+
+        <!-- ADS -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">📢</div>
+
+            <h3>Ads Manager</h3>
+
+            <p>
+                Manage Top, Player and Bottom
+                advertising settings.
+            </p>
+
+            <a href="{{ url_for('admin_ads') }}">
+                Manage Ads →
+            </a>
+
+        </div>
+
+
+        <!-- NOTIFICATIONS -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">🔔</div>
+
+            <h3>Notifications</h3>
+
+            <p>
+                Movie, payment, subscription and
+                promotional notifications.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Notifications →
+            </a>
+
+        </div>
+
+
+        <!-- REPORTS -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">📑</div>
+
+            <h3>Reports</h3>
+
+            <p>
+                Users, views, payments, revenue
+                and subscription reports.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Reports →
+            </a>
+
+        </div>
+
+
+        <!-- R2 -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">☁️</div>
+
+            <h3>R2 Storage</h3>
+
+            <p>
+                Videos, posters, upload status
+                and storage management.
+            </p>
+
+            <a href="/r2-health">
+                R2 Health →
+            </a>
+
+        </div>
+
+
+        <!-- SYSTEM -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">⚙️</div>
+
+            <h3>System Health</h3>
+
+            <p>
+                Database, R2, server and
+                application health.
+            </p>
+
+            <a href="/health">
+                System Health →
+            </a>
+
+        </div>
+
+
+        <!-- SECURITY -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">🔐</div>
+
+            <h3>Security</h3>
+
+            <p>
+                Admin security, sessions,
+                login history and audit controls.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Security →
+            </a>
+
+        </div>
+
+
+        <!-- SETTINGS -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">🛠️</div>
+
+            <h3>Website Settings</h3>
+
+            <p>
+                Site configuration, payment,
+                upload and login settings.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Settings →
+            </a>
+
+        </div>
+
+
+        <!-- GLOBAL SEARCH -->
+
+        <div class="tm-card">
+
+            <div class="tm-icon">🔎</div>
+
+            <h3>Global Search</h3>
+
+            <p>
+                Search users, movies, mobile,
+                email and transaction information.
+            </p>
+
+            <a href="{{ url_for('admin') }}">
+                Search →
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- MOVIE LIST -->
+
+    <div class="tm-section-title">
+        🎞️ Movie Catalog
+    </div>
+
+    <div class="tm-table-box">
+
+        <div class="tm-table-scroll">
+
+            <table class="tm-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Movie</th>
+                        <th>Genre</th>
+                        <th>Views</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                {% if movies %}
+
+                    {% for movie in movies %}
+
+                    <tr>
+
+                        <td>
+                            <div class="tm-movie-title">
+                                {{ movie.title }}
+                            </div>
+                        </td>
+
+                        <td>
+                            {{ movie.genre|default('—') }}
+                        </td>
+
+                        <td>
+                            {{ movie.views|default(0) }}
+                        </td>
+
+                        <td>
+                            <span class="tm-badge">
+                                LIVE
+                            </span>
+                        </td>
+
+                        <td>
+
+                            <a href="{{ url_for('admin_delete', movie_id=movie.id) }}"
+                               class="tm-btn tm-btn-red"
+                               style="padding:7px 10px;font-size:11px;"
+                               onclick="return confirm('Is movie ko delete karna hai?')">
+                                Delete
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <tr>
+                        <td colspan="5">
+                            <div class="tm-empty">
+                                🎬 Abhi koi movie nahi hai.
+                            </div>
+                        </td>
+                    </tr>
+
+                {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- QUICK ACTIONS -->
+
+    <div class="tm-section-title">
+        ⚡ Quick Actions
+    </div>
+
+    <div class="tm-actions">
+
+        <a href="{{ url_for('admin_add') }}"
+           class="tm-btn tm-btn-purple">
+            ➕ Add Movie
+        </a>
+
+        <a href="{{ url_for('admin_ads') }}"
+           class="tm-btn">
+            📢 Ads Settings
+        </a>
+
+        <a href="/r2-health"
+           class="tm-btn">
+            ☁️ Check R2
+        </a>
+
+        <a href="/health"
+           class="tm-btn">
+            ❤️ Server Health
+        </a>
+
+    </div>
+
+
+    <div class="tm-admin-footer">
+        TOMESH MOVIES • SUPER ADMIN CONTROL CENTER
+    </div>
+
+</div>
 </div>
 
 {% endblock %}
