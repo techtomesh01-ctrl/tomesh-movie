@@ -120,9 +120,6 @@
 .tm-error-text{color:#aaa;font-size:12px;line-height:1.6;margin-bottom:14px;}
 .tm-retry{border:0;border-radius:10px;padding:10px 16px;color:#fff;background:linear-gradient(135deg,#e51f48,#9b233e);font-weight:900;cursor:pointer;}
 .tm-pip-btn{display:flex;}
-.tm-rotate-btn{display:flex;}
-.tm-rotate-btn{display:flex;}
-@media(max-width:700px){.tm-rotate-btn{display:flex;}}
 @media(max-width:700px){.tm-player-box{border-radius:13px}.tm-center-play{width:62px;height:62px;font-size:22px}.tm-controls{padding:34px 7px 7px}.tm-control-btn{width:34px;height:34px;font-size:14px}.tm-volume-wrap{display:none}.tm-time{font-size:10px}.tm-player-title{left:10px;top:10px;font-size:10px}.tm-settings-menu{bottom:39px;width:165px}}
 @media(max-width:420px){.tm-controls{padding-left:4px;padding-right:4px}.tm-control-btn{width:31px}.tm-time{margin-left:3px}.tm-pip-btn{display:none}.tm-center-play{width:56px;height:56px}}
 
@@ -955,7 +952,6 @@
                     </div>
                 </div>
                 <button id="tmRotate" class="tm-control-btn" type="button" aria-label="Rotate video">↻</button>
-                <button id="tmRotate" class="tm-control-btn" type="button" aria-label="Rotate / Landscape">↻</button>
                 <button id="tmFullscreen" class="tm-control-btn" type="button" aria-label="Fullscreen">⛶</button>
             </div>
         </div>
@@ -1508,7 +1504,7 @@ async function startPayment(type){
     const pipBtn=$("tmPip"), time=$("tmTime"), progressWrap=$("tmProgressWrap"), progressValue=$("tmProgressValue");
     const progressDot=$("tmProgressDot"), buffered=$("tmBuffered"), settings=$("tmSettings"), settingsBtn=$("tmSettingsBtn");
     const errorLayer=$("tmPlayerError"), errorText=$("tmPlayerErrorText"), retryBtn=$("tmRetry"), status=$("tmVideoStatus");
-    let hideTimer=null, loadTimer=null, sourceStarted=false, rotateState=0;
+    let hideTimer=null, loadTimer=null, sourceLoaded=false;
 
     function formatTime(sec){
         if(!Number.isFinite(sec)||sec<0) return "0:00";
@@ -1542,24 +1538,22 @@ async function startPayment(type){
         if(!video.paused){ hideTimer=setTimeout(()=>{ if(!settings.classList.contains("open")) player.classList.remove("active"); },3000); }
     }
     function ensureSource(){
-        if(sourceLoaded) return;
+        if(sourceLoaded) return true;
         const source=video.querySelector("source");
-        const src=source && source.dataset ? source.dataset.src : "";
-        if(!src){
-            setError("Video source nahi mila.");
-            return;
-        }
+        const src=source && source.dataset.src;
+        if(!src){ setError("Video source nahi mila."); return false; }
         source.src=src;
         sourceLoaded=true;
         video.load();
+        return true;
     }
 
     function togglePlay(){
         if(video.paused){
-            clearError();
+            if(!ensureSource()) return;
             setBuffering(true);
-            ensureSource();
-            video.play().catch(()=>{ setError("Video start nahi ho paya. Retry दबाएँ."); });
+            setStatus("Video loading...");
+            video.play().catch(()=>{ setError("Browser ne video play ko block kar diya."); });
         }else video.pause();
         showControls();
     }
@@ -1587,27 +1581,28 @@ async function startPayment(type){
     }
     function clearError(){ player.classList.remove("error-state"); setStatus(""); }
     function retry(){
-        clearError(); sourceStarted=false; setBuffering(true);
-        video.load();
-        startPlayback();
-    }
-    function startPlayback(){
-        if(sourceStarted) return;
-        sourceStarted=true;
-        setBuffering(true);
         clearError();
-        const p=video.play();
-        if(p && typeof p.catch === "function") p.catch(()=>{ sourceStarted=false; setStatus("Play दबाकर video start करें।"); });
+        setBuffering(true);
+        if(!ensureSource()) return;
+        video.load();
+        video.play().catch(()=>{});
     }
-    function rotatePlayer(){
-        rotateState=(rotateState+1)%4;
-        player.style.transform="rotate("+(rotateState*90)+"deg)";
-        if(rotateState%2){ player.style.width="100vh"; player.style.height="100vw"; player.style.maxWidth="none"; player.style.maxHeight="none"; }
-        else { player.style.width=""; player.style.height=""; player.style.maxWidth=""; player.style.maxHeight=""; }
+
+    async function toggleRotate(){
+        try{
+            if(!document.fullscreenElement){
+                if(player.requestFullscreen) await player.requestFullscreen();
+                else if(player.webkitRequestFullscreen) player.webkitRequestFullscreen();
+            }
+            if(screen.orientation && screen.orientation.lock){
+                const isLandscape=(screen.orientation.type||"").includes("landscape");
+                await screen.orientation.lock(isLandscape ? "portrait-primary" : "landscape-primary");
+            }
+        }catch(e){}
         showControls();
     }
 
-    centerPlay.addEventListener("click",()=>{ if(video.paused) startPlayback(); else togglePlay(); });
+    centerPlay.addEventListener("click",togglePlay);
     playBtn.addEventListener("click",togglePlay);
     video.addEventListener("click",togglePlay);
     back10.addEventListener("click",()=>seek(-10));
@@ -1617,7 +1612,6 @@ async function startPayment(type){
     volume.addEventListener("input",()=>setVolume(volume.value));
     fullscreenBtn.addEventListener("click",()=>{toggleFullscreen();showControls();});
     if(rotateBtn) rotateBtn.addEventListener("click",toggleRotate);
-    if(rotateBtn) rotateBtn.addEventListener("click",rotatePlayer);
     retryBtn.addEventListener("click",retry);
     progressWrap.addEventListener("click",e=>{seekAt(e.clientX);showControls();});
     progressWrap.addEventListener("pointerdown",e=>{seekAt(e.clientX);showControls();});
@@ -1642,9 +1636,9 @@ async function startPayment(type){
     ["mousemove","touchstart","pointerdown"].forEach(ev=>player.addEventListener(ev,showControls,{passive:true}));
     player.addEventListener("mouseleave",()=>{if(!video.paused){clearTimeout(hideTimer);hideTimer=setTimeout(()=>{if(!settings.classList.contains("open"))player.classList.remove("active");},1200);}});
 
-    video.addEventListener("loadstart",()=>{clearTimeout(loadTimer);clearError();setBuffering(true);setStatus("Video loading...");loadTimer=setTimeout(()=>{if(video.readyState<3)setStatus("Video load hone me thoda time lag raha hai...");},12000);});
-    video.addEventListener("loadedmetadata",()=>{clearTimeout(loadTimer);updateTime();setStatus(""); if(video.paused) setBuffering(false);});
-    video.addEventListener("loadeddata",()=>{if(!video.paused) setBuffering(false);setStatus("");});
+    video.addEventListener("loadstart",()=>{clearTimeout(loadTimer);clearError();setBuffering(true);setStatus("Video loading...");loadTimer=setTimeout(()=>{if(video.readyState<3)setStatus("Video load hone me thoda time lag raha hai...");},5000);});
+    video.addEventListener("loadedmetadata",()=>{clearTimeout(loadTimer);setBuffering(false);updateTime();setStatus("");});
+    video.addEventListener("loadeddata",()=>{setBuffering(false);setStatus("");});
     video.addEventListener("canplay",()=>{setBuffering(false);setStatus("");});
     video.addEventListener("playing",()=>{setBuffering(false);clearError();updatePlayIcon();showControls();});
     video.addEventListener("pause",()=>{updatePlayIcon();showControls();});
@@ -1672,7 +1666,6 @@ async function startPayment(type){
     if(watchNow) watchNow.addEventListener("click",()=>setTimeout(()=>video.scrollIntoView({behavior:"smooth",block:"center"}),100));
 
     video.volume=1; volume.value=1; updateVolumeIcon(); updateTime(); updatePlayIcon();
-    setBuffering(false);
 })();
 </script>
 
