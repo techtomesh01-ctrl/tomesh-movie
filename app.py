@@ -688,14 +688,14 @@ def admin_required(view_func):
             "admin_logged_in"
         ):
             return redirect(
-                url_for("login")
+                url_for("admin_login")
             )
 
         return view_func(
             *args,
-            **kwargs
+          **kwargs
         )
-
+  
     return wrapper
 
 
