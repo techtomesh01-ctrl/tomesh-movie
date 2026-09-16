@@ -435,11 +435,10 @@ def init_db():
                 last_login_at TIMESTAMP
             )
         """)
-
-                cur.execute("""
+        cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS full_name TEXT
-        """)
+        """)                
 
         cur.execute("""
             ALTER TABLE customer_users
