@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Add Movie | Tomesh Movies{% endblock %}
+
+{% block content %}
+<style>
+.tm-add-wrap{min-height:100vh;padding:28px 18px 70px;background:radial-gradient(circle at 10% 0%,rgba(145,65,220,.22),transparent 30%),radial-gradient(circle at 90% 10%,rgba(220,35,60,.16),transparent 28%),#07070a;color:#fff}
+.tm-add{max-width:1100px;margin:0 auto}
+.tm-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:22px;flex-wrap:wrap}
+.tm-title{font-size:30px;font-weight:900;letter-spacing:.5px}.tm-sub{color:#aaa;margin-top:5px}
+.tm-back{display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border:1px solid #333;border-radius:12px;color:#fff;text-decoration:none;background:#111}
+.tm-card{background:linear-gradient(145deg,#111116,#0b0b0f);border:1px solid #28282f;border-radius:20px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.35);margin-bottom:18px}
+.tm-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.tm-full{grid-column:1/-1}
+.tm-label{display:block;font-size:13px;font-weight:800;color:#ddd;margin:0 0 8px}.tm-input,.tm-select,.tm-textarea{width:100%;box-sizing:border-box;background:#08080b;color:#fff;border:1px solid #34343b;border-radius:12px;padding:13px 14px;outline:none;font:inherit}.tm-input:focus,.tm-select:focus,.tm-textarea:focus{border-color:#a855f7;box-shadow:0 0 0 3px rgba(168,85,247,.12)}.tm-textarea{min-height:130px;resize:vertical}
+.tm-file{border:1px dashed #45454d;border-radius:15px;padding:15px;background:#0a0a0e}.tm-file input{width:100%;color:#ddd}.tm-hint{font-size:12px;color:#8e8e98;margin-top:8px}
+.tm-progress{display:none}.tm-progress.show{display:block}.tm-bar{height:12px;background:#24242b;border-radius:99px;overflow:hidden;margin:14px 0}.tm-fill{height:100%;width:0%;background:linear-gradient(90deg,#8b5cf6,#ec4899,#ef4444);transition:width .15s ease}.tm-percent{font-size:28px;font-weight:900}.tm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.tm-stat{background:#0a0a0d;border:1px solid #25252c;border-radius:12px;padding:11px}.tm-stat b{display:block;font-size:15px}.tm-stat span{font-size:11px;color:#888}.tm-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.tm-badge{font-size:11px;font-weight:800;border:1px solid #333;border-radius:999px;padding:7px 10px;color:#cfcfd6;background:#101015}
+.tm-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tm-btn{border:0;border-radius:13px;padding:13px 20px;font-weight:900;cursor:pointer}.tm-save{color:#fff;background:linear-gradient(135deg,#7c3aed,#db2777,#dc2626)}.tm-cancel{color:#fff;background:#202026;border:1px solid #3a3a42}.tm-btn:disabled{opacity:.5;cursor:not-allowed}.tm-msg{margin-top:12px;font-weight:700;min-height:20px}.ok{color:#86efac}.err{color:#fca5a5}
+@media(max-width:760px){.tm-grid{grid-template-columns:1fr}.tm-full{grid-column:auto}.tm-stats{grid-template-columns:1fr 1fr}.tm-title{font-size:24px}}
+</style>
+
+<div class="tm-add-wrap">
+<div class="tm-add">
+  <div class="tm-head">
+    <div>
+      <div class="tm-title">🎬 Add Movie</div>
+      <div class="tm-sub">Direct browser → Cloudflare R2 upload. Render server par video upload nahi hota.</div>
+    </div>
+    <a class="tm-back" href="{{ url_for('admin') }}">← Admin Dashboard</a>
+  </div>
+
+  <form id="movieForm" class="tm-card" novalidate>
+    <div class="tm-grid">
+      <div>
+        <label class="tm-label">Movie Title *</label>
+        <input class="tm-input" id="title" name="title" maxlength="250" required placeholder="e.g. Vishwanath & Sons">
+      </div>
+      <div>
+        <label class="tm-label">Category / Genre</label>
+        <input class="tm-input" id="category" name="category" maxlength="120" placeholder="Drama / Family">
+      </div>
+      <div class="tm-full">
+        <label class="tm-label">Description</label>
+        <textarea class="tm-textarea" id="description" name="description" maxlength="5000" placeholder="Movie description..."></textarea>
+      </div>
+      <div class="tm-file">
+        <label class="tm-label">Video *</label>
+        <input id="video" type="file" accept=".mp4,.mkv,.webm,.mov,video/mp4,video/webm,video/quicktime,video/x-matroska" required>
+        <div class="tm-hint">Allowed: MP4, MKV, WebM, MOV · Maximum 4 GB</div>
+      </div>
+      <div class="tm-file">
+        <label class="tm-label">Poster</label>
+        <input id="poster" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+        <div class="tm-hint">Allowed: JPG, JPEG, PNG, WEBP · Maximum 25 MB</div>
+      </div>
+    </div>
+
+    <div id="progress" class="tm-progress">
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:10px;margin-top:22px">
+        <div><div class="tm-percent" id="percent">0%</div><div id="stage" class="tm-sub">Preparing upload...</div></div>
+        <div style="text-align:right"><b id="uploaded">0 B / 0 B</b><div id="speed" class="tm-sub">Speed 0 B/s</div></div>
+      </div>
+      <div class="tm-bar"><div id="fill" class="tm-fill"></div></div>
+      <div class="tm-stats">
+        <div class="tm-stat"><b id="remaining">—</b><span>Remaining</span></div>
+        <div class="tm-stat"><b>Direct R2</b><span>Upload mode</span></div>
+        <div class="tm-stat"><b>3 Parallel</b><span>Parts at once</span></div>
+        <div class="tm-stat"><b>Auto Retry</b><span>4 attempts / part</span></div>
+      </div>
+      <div class="tm-badges"><span class="tm-badge">10 MB Parts</span><span class="tm-badge">Cancel Anytime</span><span class="tm-badge">MP4 + MKV + WebM + MOV</span></div>
+    </div>
+
+    <div class="tm-actions" style="margin-top:20px">
+      <button id="saveBtn" class="tm-btn tm-save" type="submit">🚀 Upload & Save Movie</button>
+      <button id="cancelBtn" class="tm-btn tm-cancel" type="button" disabled>Cancel Upload</button>
+    </div>
+    <div id="msg" class="tm-msg"></div>
+  </form>
+</div>
+</div>
+
+<script>
+(() => {
+  const form = document.getElementById('movieForm');
+  const title = document.getElementById('title');
+  const category = document.getElementById('category');
+  const description = document.getElementById('description');
+  const videoInput = document.getElementById('video');
+  const posterInput = document.getElementById('poster');
+  const saveBtn = document.getElementById('saveBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const progress = document.getElementById('progress');
+  const percent = document.getElementById('percent');
+  const fill = document.getElementById('fill');
+  const uploaded = document.getElementById('uploaded');
+  const speed = document.getElementById('speed');
+  const remaining = document.getElementById('remaining');
+  const stage = document.getElementById('stage');
+  const msg = document.getElementById('msg');
+
+  const MAX_VIDEO = 4 * 1024 * 1024 * 1024;
+  const MAX_POSTER = 25 * 1024 * 1024;
+  const VIDEO_EXT = ['mp4','mkv','webm','mov'];
+  const POSTER_EXT = ['jpg','jpeg','png','webp'];
+  const PARALLEL = 3;
+  const RETRIES = 4;
+  let cancelled = false;
+  let activeUploads = [];
+  let startedAt = 0;
+  let lastBytes = 0;
+  let lastTime = 0;
+
+  function ext(name){ const p=(name||'').toLowerCase().split('.'); return p.length>1?p.pop():''; }
+  function bytes(n){
+    if (!Number.isFinite(n) || n <= 0) return '0 B';
+    const u=['B','KB','MB','GB','TB']; let i=0, x=n;
+    while(x>=1024 && i<u.length-1){x/=1024;i++;}
+    return (i===0?Math.round(x):x.toFixed(x>=100?0:x>=10?1:2))+' '+u[i];
+  }
+  function timeLeft(sec){
+    if (!Number.isFinite(sec) || sec < 0) return '—';
+    sec=Math.ceil(sec); const h=Math.floor(sec/3600); sec%=3600; const m=Math.floor(sec/60); const s=sec%60;
+    return h ? `${h}h ${m}m` : (m ? `${m}m ${s}s` : `${s}s`);
+  }
+  function setMsg(text, type=''){ msg.textContent=text; msg.className='tm-msg '+type; }
+  function updateProgress(done,total){
+    const pct=total ? Math.min(100,(done/total)*100) : 0;
+    percent.textContent=Math.round(pct)+'%'; fill.style.width=pct+'%'; uploaded.textContent=bytes(done)+' / '+bytes(total);
+    const now=performance.now();
+    if(!startedAt) startedAt=now;
+    const elapsed=(now-startedAt)/1000;
+    const instant=(done-lastBytes)/Math.max(.2,(now-lastTime)/1000);
+    const avg=done/Math.max(.2,elapsed);
+    const rate=Number.isFinite(instant)&&instant>0 ? instant : avg;
+    speed.textContent='Speed '+bytes(rate)+'/s';
+    remaining.textContent=rate>0 ? timeLeft((total-done)/rate) : '—';
+    lastBytes=done; lastTime=now;
+  }
+  async function json(url, options){
+    const r=await fetch(url, options);
+    let d={}; try{d=await r.json();}catch(e){}
+    if(!r.ok || d.ok===false) throw new Error(d.error || d.message || ('Request failed: '+r.status));
+    return d;
+  }
+  function keyFor(prefix, file){
+    const e=ext(file.name);
+    return prefix + crypto.randomUUID().replaceAll('-','') + '.' + e;
+  }
+  async function createMultipart(key, file){
+    return json('/api/r2/multipart/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,content_type:file.type||undefined})});
+  }
+  async function getPartUrls(key, uploadId, nums){
+    return json('/api/r2/multipart/urls',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,upload_id:uploadId,part_numbers:nums})});
+  }
+  async function abortMultipart(key, uploadId){
+    if(!uploadId) return;
+    try{await fetch('/api/r2/multipart/abort',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,upload_id:uploadId})});}catch(e){}
+  }
+  async function putPart(url, blob, onBytes){
+    for(let attempt=1;attempt<=RETRIES;attempt++){
+      if(cancelled) throw new Error('Upload cancelled.');
+      try{
+        const controller=new AbortController(); activeUploads.push(controller);
+        const r=await fetch(url,{method:'PUT',body:blob,signal:controller.signal});
+        activeUploads=activeUploads.filter(x=>x!==controller);
+        if(!r.ok) throw new Error('Part upload HTTP '+r.status);
+        const etag=r.headers.get('ETag') || r.headers.get('etag');
+        if(!etag) throw new Error('ETag header not available. R2 CORS must expose ETag.');
+        onBytes(blob.size);
+        return etag;
+      }catch(e){
+        activeUploads=[];
+        if(cancelled) throw new Error('Upload cancelled.');
+        if(attempt===RETRIES) throw e;
+        stage.textContent='Retrying failed part ('+attempt+'/'+RETRIES+')...';
+        await new Promise(r=>setTimeout(r,700*attempt));
+      }
+    }
+  }
+  async function uploadFile(file,prefix,onTotal){
+    const key=keyFor(prefix,file);
+    let uploadId='';
+    let doneForFile=0;
+    try{
+      const created=await createMultipart(key,file); uploadId=created.upload_id;
+      const partSize=Number(created.part_size)||10*1024*1024;
+      const totalParts=Math.ceil(file.size/partSize);
+      if(totalParts>10000) throw new Error('File is too large for multipart upload.');
+      const nums=Array.from({length:totalParts},(_,i)=>i+1);
+      stage.textContent='Getting secure R2 upload URLs...';
+      const urlData=await getPartUrls(key,uploadId,nums);
+      const map=urlData.urls||urlData.url_map||urlData.part_urls||{};
+      const etags=new Array(totalParts);
+      let next=0;
+      async function worker(){
+        while(true){
+          if(cancelled) throw new Error('Upload cancelled.');
+          const idx=next++; if(idx>=totalParts) return;
+          const start=idx*partSize, end=Math.min(file.size,start+partSize);
+          const blob=file.slice(start,end); const n=idx+1;
+          stage.textContent='Uploading '+prefix.replace('/','')+' part '+n+' / '+totalParts+'...';
+          const etag=await putPart(map[String(n)]||map[n],blob,(sz)=>{doneForFile+=sz; onTotal(sz);});
+          etags[idx]={PartNumber:n,ETag:etag};
+        }
+      }
+      await Promise.all(Array.from({length:Math.min(PARALLEL,totalParts)},()=>worker()));
+      if(cancelled) throw new Error('Upload cancelled.');
+      stage.textContent='Finalizing '+prefix.replace('/','')+' on R2...';
+      await json('/api/r2/multipart/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,upload_id:uploadId,parts:etags})});
+      return key;
+    }catch(e){ await abortMultipart(key,uploadId); throw e; }
+  }
+
+  cancelBtn.addEventListener('click',()=>{
+    cancelled=true;
+    activeUploads.forEach(c=>{try{c.abort();}catch(e){}});
+    activeUploads=[];
+    stage.textContent='Cancelling...';
+    cancelBtn.disabled=true;
+  });
+
+  form.addEventListener('submit',async(e)=>{
+    e.preventDefault(); setMsg('');
+    const video=videoInput.files[0], poster=posterInput.files[0];
+    if(!title.value.trim()) return setMsg('Movie title required.','err');
+    if(!video) return setMsg('Video required.','err');
+    if(!VIDEO_EXT.includes(ext(video.name))) return setMsg('Video केवल MP4, MKV, WebM या MOV होनी चाहिए.','err');
+    if(video.size>MAX_VIDEO) return setMsg('Video 4 GB se badi hai.','err');
+    if(poster && !POSTER_EXT.includes(ext(poster.name))) return setMsg('Poster केवल JPG, JPEG, PNG या WEBP होना चाहिए.','err');
+    if(poster && poster.size>MAX_POSTER) return setMsg('Poster 25 MB se bada hai.','err');
+
+    cancelled=false; activeUploads=[]; startedAt=performance.now(); lastBytes=0; lastTime=startedAt;
+    progress.classList.add('show'); saveBtn.disabled=true; cancelBtn.disabled=false;
+    updateProgress(0,video.size+(poster?poster.size:0));
+    let totalDone=0; const total=video.size+(poster?poster.size:0);
+    const add=(n)=>{totalDone+=n;updateProgress(totalDone,total)};
+    try{
+      stage.textContent='Starting direct R2 video upload...';
+      const videoKey=await uploadFile(video,'videos/',add);
+      let posterKey='';
+      if(poster){stage.textContent='Starting direct R2 poster upload...'; posterKey=await uploadFile(poster,'posters/',add);}
+      if(cancelled) throw new Error('Upload cancelled.');
+      stage.textContent='Saving movie in PostgreSQL...';
+      const saved=await json('/api/movie/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title.value.trim(),category:category.value.trim(),description:description.value.trim(),video_key:videoKey,poster_key:posterKey})});
+      updateProgress(total,total); stage.textContent='Movie saved successfully.'; setMsg('✅ Movie upload + database save successful. Movie ID: '+saved.movie_id,'ok');
+      setTimeout(()=>{window.location.href='/admin';},1200);
+    }catch(err){
+      setMsg(cancelled?'Upload cancelled.':('Upload failed: '+err.message),'err');
+      stage.textContent=cancelled?'Upload cancelled.':'Upload failed.';
+    }finally{saveBtn.disabled=false;cancelBtn.disabled=true;}
+  });
+})();
+</script>
+{% endblock %}
