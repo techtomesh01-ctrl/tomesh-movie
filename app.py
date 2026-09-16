@@ -241,6 +241,18 @@ BREVO_FROM_NAME = clean_env_value(
 ) or "Tomesh Movies"
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
+# ============================================================
+# MOBILE OTP - MSG91
+# ============================================================
+MSG91_AUTHKEY = clean_env_value(
+    os.environ.get("MSG91_AUTHKEY", "")
+)
+MSG91_TEMPLATE_ID = clean_env_value(
+    os.environ.get("MSG91_TEMPLATE_ID", "")
+)
+MSG91_OTP_URL = "https://control.msg91.com/api/v5/otp"
+MSG91_VERIFY_URL = "https://control.msg91.com/api/v5/otp/verify"
+
 OTP_LENGTH = 6
 OTP_EXPIRY_MINUTES = 10
 OTP_RESEND_SECONDS = 60
@@ -445,6 +457,19 @@ def init_db():
             ADD COLUMN IF NOT EXISTS mobile TEXT
         """)
 
+        # Mobile OTP login uses the verified mobile as the primary login identity.
+        # Existing email accounts remain compatible.
+        cur.execute("""
+            ALTER TABLE customer_users
+            ALTER COLUMN email DROP NOT NULL
+        """)
+
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_users_mobile
+            ON customer_users(mobile)
+            WHERE mobile IS NOT NULL
+        """)
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS customer_movie_list (
                 customer_id TEXT NOT NULL,
@@ -484,6 +509,25 @@ def init_db():
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_email_otps_email
             ON email_otps(email)
+        """)
+
+        # MSG91 handles the OTP value itself. This table stores only the
+        # mobile number, request id, timing and attempt state for our login flow.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mobile_otps (
+                id SERIAL PRIMARY KEY,
+                mobile TEXT NOT NULL,
+                request_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                attempts INTEGER DEFAULT 0,
+                used_at TIMESTAMP
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_mobile_otps_mobile
+            ON mobile_otps(mobile)
         """)
 
 
@@ -690,7 +734,7 @@ def admin_required(view_func):
             "admin_logged_in"
         ):
             return redirect(
-                url_for("login")
+                url_for("admin_login")
             )
 
         return view_func(
@@ -904,6 +948,371 @@ def send_otp_email(email, otp):
             repr(exc),
         )
         raise
+
+
+def normalize_mobile(value):
+    mobile = re.sub(r"\D", "", str(value or ""))
+    if mobile.startswith("91") and len(mobile) == 12:
+        mobile = mobile[2:]
+    return mobile
+
+
+def valid_mobile(mobile):
+    return bool(re.fullmatch(r"[6-9]\d{9}", mobile or ""))
+
+
+def mask_mobile(mobile):
+    mobile = normalize_mobile(mobile)
+    if len(mobile) != 10:
+        return mobile
+    return mobile[:2] + "******" + mobile[-2:]
+
+
+def send_mobile_otp(mobile):
+    if not MSG91_AUTHKEY:
+        raise RuntimeError(
+            "MSG91_AUTHKEY missing. Add MSG91_AUTHKEY in Render Environment."
+        )
+    if not MSG91_TEMPLATE_ID:
+        raise RuntimeError(
+            "MSG91_TEMPLATE_ID missing. Add MSG91_TEMPLATE_ID in Render Environment."
+        )
+
+    url = (
+        MSG91_OTP_URL
+        + "?template_id=" + quote(MSG91_TEMPLATE_ID)
+        + "&mobile=91" + quote(mobile)
+        + "&authkey=" + quote(MSG91_AUTHKEY)
+    )
+
+    req = Request(
+        url,
+        data=b"{}",
+        headers={
+            "accept": "application/json",
+            "content-type": "application/json",
+            "user-agent": "Tomesh-Movies/1.0",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(req, timeout=20) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+    except HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        print("MSG91 SEND HTTP ERROR:", exc.code, raw)
+        raise RuntimeError(
+            "MSG91 OTP send failed: " + str(exc.code) + " " + raw
+        )
+    except URLError as exc:
+        print("MSG91 SEND CONNECTION ERROR:", repr(exc))
+        raise RuntimeError("MSG91 connection failed: " + str(exc))
+
+    try:
+        result = json.loads(raw or "{}")
+    except Exception:
+        result = {}
+
+    if str(result.get("type", "")).lower() != "success":
+        raise RuntimeError(
+            "MSG91 OTP send failed: " + str(result)
+        )
+
+    return str(
+        result.get("request_id")
+        or result.get("requestId")
+        or result.get("message")
+        or ""
+    )
+
+
+def verify_mobile_otp(mobile, otp):
+    if not MSG91_AUTHKEY:
+        raise RuntimeError("MSG91_AUTHKEY missing.")
+
+    url = (
+        MSG91_VERIFY_URL
+        + "?otp=" + quote(str(otp))
+        + "&mobile=91" + quote(mobile)
+    )
+
+    req = Request(
+        url,
+        headers={
+            "accept": "application/json",
+            "authkey": MSG91_AUTHKEY,
+            "user-agent": "Tomesh-Movies/1.0",
+        },
+        method="GET",
+    )
+
+    try:
+        with urlopen(req, timeout=20) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+    except HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        print("MSG91 VERIFY HTTP ERROR:", exc.code, raw)
+        return False, raw
+    except URLError as exc:
+        print("MSG91 VERIFY CONNECTION ERROR:", repr(exc))
+        raise RuntimeError("MSG91 connection failed: " + str(exc))
+
+    try:
+        result = json.loads(raw or "{}")
+    except Exception:
+        result = {}
+
+    message = str(result.get("message", "")).lower()
+    ok = (
+        result.get("type") == "success"
+        or "otp verified success" in message
+        or "number_verified_successfully" in message
+    )
+    return ok, result
+
+
+def bind_customer_mobile(mobile):
+    mobile = normalize_mobile(mobile)
+    old_customer_id = session.get("customer_id")
+
+    if not old_customer_id:
+        old_customer_id = "tm_" + secrets.token_hex(16)
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, customer_id, email
+            FROM customer_users
+            WHERE mobile = %s
+            FOR UPDATE
+            """,
+            (mobile,),
+        )
+        user = cur.fetchone()
+
+        if user:
+            target_customer_id = user["customer_id"]
+
+            if old_customer_id != target_customer_id:
+                cur.execute(
+                    """
+                    UPDATE customer_access
+                    SET customer_id = %s
+                    WHERE customer_id = %s
+                    """,
+                    (target_customer_id, old_customer_id),
+                )
+                cur.execute(
+                    """
+                    UPDATE payment_orders
+                    SET customer_id = %s
+                    WHERE customer_id = %s
+                    """,
+                    (target_customer_id, old_customer_id),
+                )
+
+            cur.execute(
+                """
+                UPDATE customer_users
+                SET last_login_at = NOW()
+                WHERE id = %s
+                """,
+                (user["id"],),
+            )
+        else:
+            target_customer_id = old_customer_id
+            cur.execute(
+                """
+                INSERT INTO customer_users
+                (email, customer_id, mobile, last_login_at)
+                VALUES(NULL, %s, %s, NOW())
+                """,
+                (target_customer_id, mobile),
+            )
+
+        conn.commit()
+        cur.close()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    session["customer_id"] = target_customer_id
+    session["customer_logged_in"] = True
+    session["customer_mobile"] = mobile
+    session["customer_email"] = (
+        user.get("email") if user else ""
+    ) or ""
+
+    return target_customer_id
+
+
+@app.route("/login/request-mobile-otp", methods=["POST"])
+def request_mobile_otp():
+    mobile = normalize_mobile(request.form.get("mobile", ""))
+
+    if not valid_mobile(mobile):
+        flash("Please enter a valid 10-digit mobile number.", "error")
+        return redirect(url_for("login"))
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT created_at
+            FROM mobile_otps
+            WHERE mobile = %s AND used_at IS NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (mobile,),
+        )
+        previous = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if previous and previous.get("created_at"):
+        elapsed = (datetime.now() - previous["created_at"]).total_seconds()
+        if elapsed < OTP_RESEND_SECONDS:
+            flash(
+                "Please wait " + str(max(1, int(OTP_RESEND_SECONDS - elapsed))) + " seconds before requesting another OTP.",
+                "error",
+            )
+            return redirect(url_for("login", step="otp"))
+
+    try:
+        request_id = send_mobile_otp(mobile)
+    except Exception as exc:
+        print("MOBILE OTP SEND ERROR:", repr(exc))
+        flash(str(exc), "error")
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE mobile_otps
+            SET used_at = NOW()
+            WHERE mobile = %s AND used_at IS NULL
+            """,
+            (mobile,),
+        )
+        cur.execute(
+            """
+            INSERT INTO mobile_otps
+            (mobile, request_id, expires_at, attempts)
+            VALUES(%s, %s, %s, 0)
+            """,
+            (
+                mobile,
+                request_id,
+                datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+            ),
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    session["otp_mobile"] = mobile
+    session["otp_mobile_sent_at"] = datetime.now().isoformat()
+    flash("OTP sent to " + mask_mobile(mobile) + ".", "success")
+    return redirect(url_for("login", step="otp"))
+
+
+@app.route("/login/verify-mobile-otp", methods=["POST"])
+def verify_mobile_otp_route():
+    mobile = normalize_mobile(session.get("otp_mobile", ""))
+    otp = str(request.form.get("otp", "")).strip()
+
+    if not valid_mobile(mobile):
+        flash("OTP session expired. Please request a new OTP.", "error")
+        return redirect(url_for("login"))
+
+    if not re.fullmatch(r"\d{4,9}", otp):
+        flash("Enter the OTP received on your mobile.", "error")
+        return redirect(url_for("login", step="otp"))
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, expires_at, attempts
+            FROM mobile_otps
+            WHERE mobile = %s AND used_at IS NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (mobile,),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            flash("OTP expired or not found. Please request a new OTP.", "error")
+            return redirect(url_for("login"))
+
+        if int(row.get("attempts") or 0) >= OTP_MAX_ATTEMPTS:
+            cur.execute("UPDATE mobile_otps SET used_at = NOW() WHERE id = %s", (row["id"],))
+            conn.commit()
+            cur.close()
+            flash("Too many wrong attempts. Request a new OTP.", "error")
+            return redirect(url_for("login"))
+
+        if row["expires_at"] <= datetime.now():
+            cur.execute("UPDATE mobile_otps SET used_at = NOW() WHERE id = %s", (row["id"],))
+            conn.commit()
+            cur.close()
+            flash("OTP expired. Please request a new OTP.", "error")
+            return redirect(url_for("login"))
+
+        ok, result = verify_mobile_otp(mobile, otp)
+
+        if not ok:
+            new_attempts = int(row.get("attempts") or 0) + 1
+            if new_attempts >= OTP_MAX_ATTEMPTS:
+                cur.execute(
+                    "UPDATE mobile_otps SET attempts = %s, used_at = NOW() WHERE id = %s",
+                    (new_attempts, row["id"]),
+                )
+            else:
+                cur.execute(
+                    "UPDATE mobile_otps SET attempts = %s WHERE id = %s",
+                    (new_attempts, row["id"]),
+                )
+            conn.commit()
+            cur.close()
+            remaining = max(0, OTP_MAX_ATTEMPTS - new_attempts)
+            flash(
+                "Wrong OTP. " + str(remaining) + " attempts left." if remaining else "Too many wrong attempts. Request a new OTP.",
+                "error",
+            )
+            return redirect(url_for("login", step="otp" if remaining else "mobile"))
+
+        cur.execute("UPDATE mobile_otps SET used_at = NOW() WHERE id = %s", (row["id"],))
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    try:
+        bind_customer_mobile(mobile)
+    except Exception as exc:
+        print("CUSTOMER MOBILE BIND ERROR:", repr(exc))
+        flash("Mobile verified, but account setup failed. Please try again.", "error")
+        return redirect(url_for("login"))
+
+    session.pop("otp_mobile", None)
+    session.pop("otp_mobile_sent_at", None)
+    flash("Mobile number verified. Welcome to Tomesh Movies!", "success")
+    return redirect(url_for("user_details"))
 
 
 def bind_customer_email(email):
@@ -2494,88 +2903,40 @@ def download_movie(movie_id):
 
 @app.route(
     "/login",
-    methods=["GET", "POST"],
+    methods=["GET"],
 )
 def login():
+    step = str(request.args.get("step", "")).strip().lower()
 
-    if request.method == "POST":
+    if step not in {"mobile", "otp"}:
+        step = "otp" if session.get("otp_mobile") else "mobile"
 
-        login_type = str(
-            request.form.get(
-                "login_type",
-                "admin",
-            )
-        ).strip().lower()
-
-        if login_type == "customer":
-            return redirect(
-                url_for(
-                    "request_otp"
-                )
-            )
-
-        username = request.form.get(
-            "username",
-            "",
-        ).strip()
-
-        password = request.form.get(
-            "password",
-            "",
-        )
-
-        if (
-            username == ADMIN_USER
-            and password == ADMIN_PASSWORD
-        ):
-
-            session[
-                "admin_logged_in"
-            ] = True
-
-            return redirect(
-                url_for("admin")
-            )
-
-        flash(
-            "Invalid username or password.",
-            "error",
-        )
-
-    step = str(
-        request.args.get(
-            "step",
-            "",
-        )
-    ).strip().lower()
-
-    if step not in {
-        "email",
-        "otp",
-    }:
-        step = (
-            "otp"
-            if session.get("otp_email")
-            else "email"
-        )
-
-    email = normalize_email(
-        request.args.get(
-            "email",
-            "",
-        )
-        or session.get(
-            "otp_email",
-            "",
-        )
+    mobile = normalize_mobile(
+        request.args.get("mobile", "")
+        or session.get("otp_mobile", "")
     )
 
     return render_template(
         "login.html",
         step=step,
-        email=email,
-        masked_email=mask_email(email),
+        mobile=mobile,
+        masked_mobile=mask_mobile(mobile),
     )
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        if username == ADMIN_USER and password == ADMIN_PASSWORD:
+            session["admin_logged_in"] = True
+            return redirect(url_for("admin"))
+
+        flash("Invalid username or password.", "error")
+
+    return render_template("admin_login.html")
 
 
 # LOGOUT
@@ -2613,7 +2974,10 @@ def user_details():
 
     if request.method == "POST":
         full_name = (request.form.get("full_name") or "").strip()
-        mobile = re.sub(r"\D", "", request.form.get("mobile") or "")
+        mobile = normalize_mobile(
+            request.form.get("mobile")
+            or session.get("customer_mobile", "")
+        )
         if not full_name:
             flash("Please enter your full name.", "error")
             return redirect(url_for("user_details"))
