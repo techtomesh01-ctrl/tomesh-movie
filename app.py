@@ -101,11 +101,8 @@ else:
 # ============================================================
 
 WATCH_PRICE = 1.00
-# DOWNLOAD_PRICE removed
 PREMIUM_PRICE = 99.00
-
 PREMIUM_DAYS = 30
-
 
 
 # ============================================================
@@ -408,9 +405,10 @@ def init_db():
             )
         """)
 
-               # ----------------------------------------------------
+        # ----------------------------------------------------
         # CUSTOMER ACCESS
         # ----------------------------------------------------
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS customer_access (
                 id SERIAL PRIMARY KEY,
@@ -426,6 +424,7 @@ def init_db():
         # ----------------------------------------------------
         # CUSTOMER EMAIL ACCOUNTS
         # ----------------------------------------------------
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS customer_users (
                 id SERIAL PRIMARY KEY,
@@ -435,10 +434,11 @@ def init_db():
                 last_login_at TIMESTAMP
             )
         """)
+
         cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS full_name TEXT
-        """)                
+        """)
 
         cur.execute("""
             ALTER TABLE customer_users
@@ -451,15 +451,19 @@ def init_db():
                 movie_id INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (customer_id, movie_id),
-                FOREIGN KEY (movie_id)
-                REFERENCES movies(id)
-                ON DELETE CASCADE
+                FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
             )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_movie_list_customer
+            ON customer_movie_list(customer_id)
         """)
 
         # ----------------------------------------------------
         # EMAIL OTP CODES
         # ----------------------------------------------------
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS email_otps (
                 id SERIAL PRIMARY KEY,
@@ -481,6 +485,7 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_email_otps_email
             ON email_otps(email)
         """)
+
 
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_payment_orders_order
@@ -1412,359 +1417,7 @@ def verify_otp():
     )
 
     return redirect(
-        url_for("member_home")
-    )
-
-
-# ============================================================
-# MEMBER HOME + MY LIST
-# ============================================================
-
-def customer_login_required(view_func):
-    @wraps(view_func)
-    def wrapper(*args, **kwargs):
-        if not session.get("customer_logged_in"):
-            return redirect(url_for("login"))
-        return view_func(*args, **kwargs)
-    return wrapper
-
-
-def get_member_movies_data():
-    customer_id = session.get("customer_id")
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-
-        if customer_id:
-            cur.execute(
-                """
-                SELECT
-                    m.*,
-                    CASE
-                        WHEN cml.movie_id IS NOT NULL THEN TRUE
-                        ELSE FALSE
-                    END AS in_my_list
-                FROM movies m
-                LEFT JOIN customer_movie_list cml
-                    ON cml.movie_id = m.id
-                   AND cml.customer_id = %s
-                ORDER BY m.id DESC
-                """,
-                (customer_id,),
-            )
-        else:
-            cur.execute(
-                """
-                SELECT
-                    m.*,
-                    FALSE AS in_my_list
-                FROM movies m
-                ORDER BY m.id DESC
-                """
-            )
-
-        movies = cur.fetchall()
-        cur.close()
-    finally:
-        conn.close()
-
-    for movie in movies:
-        try:
-            movie["poster_url"] = (
-                media_url(movie.get("poster"))
-                if movie.get("poster")
-                else None
-            )
-        except Exception:
-            movie["poster_url"] = None
-
-        movie["in_my_list"] = bool(
-            movie.get("in_my_list")
-        )
-        movie["views"] = int(
-            movie.get("views") or 0
-        )
-
-    return movies
-@app.route("/user-details", methods=["GET", "POST"])
-@customer_login_required
-def user_details():
-    customer_id = session.get("customer_id")
-
-    if not customer_id:
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        full_name = (request.form.get("full_name") or "").strip()
-        mobile = re.sub(
-            r"\D",
-            "",
-            (request.form.get("mobile") or "").strip(),
-        )
-
-        if not full_name:
-            flash("Please enter your full name.", "error")
-            return render_template(
-                "user_details.html",
-                full_name=full_name,
-                mobile=mobile,
-                customer_email=session.get("customer_email", ""),
-            )
-
-        if not re.fullmatch(r"[6-9]\d{9}", mobile):
-            flash(
-                "Please enter a valid 10-digit mobile number.",
-                "error",
-            )
-            return render_template(
-                "user_details.html",
-                full_name=full_name,
-                mobile=mobile,
-                customer_email=session.get("customer_email", ""),
-            )
-
-        conn = get_db_connection()
-
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE customer_users
-                    SET full_name = %s,
-                        mobile = %s
-                    WHERE customer_id = %s
-                    """,
-                    (
-                        full_name,
-                        mobile,
-                        customer_id,
-                    ),
-                )
-
-            conn.commit()
-
-        finally:
-            conn.close()
-
-        return redirect(
-            url_for("member_home")
-        )
-
-    conn = get_db_connection()
-
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT full_name, mobile, email
-                FROM customer_users
-                WHERE customer_id = %s
-                LIMIT 1
-                """,
-                (customer_id,),
-            )
-            user = cur.fetchone()
-
-    finally:
-        conn.close()
-
-    return render_template(
-        "user_details.html",
-        full_name=(user or {}).get("full_name", ""),
-        mobile=(user or {}).get("mobile", ""),
-        customer_email=(
-            (user or {}).get("email")
-            or session.get("customer_email", "")
-        ),
-    )
-
-
-@app.route("/member")
-@customer_login_required
-def member_home():
-    movies = get_member_movies_data()
-    saved_movies = [
-        movie for movie in movies
-        if movie.get("in_my_list")
-    ]
-
-    categories = []
-    seen_categories = set()
-
-    for movie in movies:
-        raw_category = str(
-            movie.get("category") or ""
-        ).strip()
-
-        if not raw_category:
-            continue
-
-        for part in raw_category.split(","):
-            category = part.strip()
-
-            if category and category.lower() not in seen_categories:
-                seen_categories.add(category.lower())
-                categories.append(category)
-
-    return render_template(
-        "member_home.html",
-        movies=movies,
-        saved_movies=saved_movies,
-        my_list_movies=saved_movies,
-        saved_movie_ids=[
-            int(movie["id"])
-            for movie in saved_movies
-        ],
-        categories=categories,
-        customer_email=session.get("customer_email", ""),
-        premium=has_active_premium(),
-    )
-@customer_login_required
-def member_home():
-    movies = get_member_movies_data()
-    saved_movies = [
-        movie for movie in movies
-        if movie.get("in_my_list")
-    ]
-
-    categories = []
-    seen_categories = set()
-    for movie in movies:
-        raw_category = str(
-            movie.get("category") or ""
-        ).strip()
-        if not raw_category:
-            continue
-        for part in raw_category.split(","):
-            category = part.strip()
-            if category and category.lower() not in seen_categories:
-                seen_categories.add(category.lower())
-                categories.append(category)
-
-    return render_template(
-        "member_home.html",
-        movies=movies,
-        saved_movies=saved_movies,
-        my_list_movies=saved_movies,
-        saved_movie_ids=[
-            int(movie["id"])
-            for movie in saved_movies
-        ],
-        categories=categories,
-        customer_email=session.get("customer_email", ""),
-        premium=has_active_premium(),
-    )
-
-
-@app.route(
-    "/api/my-list/<int:movie_id>",
-    methods=["POST", "DELETE"],
-)
-@customer_login_required
-def api_my_list(movie_id):
-    customer_id = session.get("customer_id")
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT id FROM movies WHERE id = %s",
-            (movie_id,),
-        )
-        movie = cur.fetchone()
-
-        if not movie:
-            cur.close()
-            return json_error("Movie not found.", 404)
-
-        if request.method == "POST":
-            cur.execute(
-                """
-                INSERT INTO customer_movie_list
-                (customer_id, movie_id)
-                VALUES(%s, %s)
-                ON CONFLICT(customer_id, movie_id)
-                DO NOTHING
-                """,
-                (customer_id, movie_id),
-            )
-            conn.commit()
-            cur.close()
-            return json_ok(
-                saved=True,
-                movie_id=movie_id,
-                message="Added to My List.",
-            )
-
-        cur.execute(
-            """
-            DELETE FROM customer_movie_list
-            WHERE customer_id = %s
-              AND movie_id = %s
-            """,
-            (customer_id, movie_id),
-        )
-        removed = cur.rowcount > 0
-        conn.commit()
-        cur.close()
-
-        return json_ok(
-            saved=False,
-            removed=removed,
-            movie_id=movie_id,
-            message="Removed from My List.",
-        )
-
-    except Exception as exc:
-        conn.rollback()
-        print("MY LIST ERROR:", repr(exc))
-        return json_error(
-            "My List update failed: " + str(exc),
-            500,
-        )
-    finally:
-        conn.close()
-
-
-@app.route("/api/my-list", methods=["GET"])
-@customer_login_required
-def api_my_list_all():
-    customer_id = session.get("customer_id")
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT m.*
-            FROM movies m
-            INNER JOIN customer_movie_list cml
-                ON cml.movie_id = m.id
-            WHERE cml.customer_id = %s
-            ORDER BY cml.created_at DESC, m.id DESC
-            """,
-            (customer_id,),
-        )
-        movies = cur.fetchall()
-        cur.close()
-    finally:
-        conn.close()
-
-    for movie in movies:
-        try:
-            movie["poster_url"] = (
-                media_url(movie.get("poster"))
-                if movie.get("poster")
-                else None
-            )
-        except Exception:
-            movie["poster_url"] = None
-
-    return json_ok(
-        movies=movies,
-        movie_ids=[int(movie["id"]) for movie in movies],
+        url_for("user_details")
     )
 
 
@@ -1826,177 +1479,97 @@ def verify_stream_token(token, movie_id):
 
 
 def access_for_movie(movie_id):
-
-    customer_id = session.get("customer_id")
-
-    if not customer_id:
-        return {
-            "watch": False,
-            "download": False,
-            "premium": False,
-        }
+    customer_id = get_customer_id()
 
     conn = get_db(dict_rows=True)
-
     try:
         cur = conn.cursor()
-
-        # Account-wide access:
-        # movie_id IS NULL
-        #
-        # Permanent ₹1 Watch:
-        # watch_until IS NULL
-        #
-        # Premium:
-        # premium_until > NOW()
-
         cur.execute(
             """
-            SELECT
-                watch_until,
-                download_until,
-                premium_until
+            SELECT watch_until, download_until, premium_until
             FROM customer_access
             WHERE customer_id = %s
-              AND movie_id IS NULL
+              AND (movie_id = %s OR movie_id IS NULL)
             ORDER BY id DESC
             """,
-            (customer_id,),
+            (customer_id, movie_id),
         )
-
         rows = cur.fetchall()
         cur.close()
-
     finally:
         conn.close()
 
     now = datetime.now()
-
     permanent_watch = False
     temporary_watch = False
     premium = False
 
     for row in rows:
-
-        # Permanent ₹1 Watch access
         if (
             row["watch_until"] is None
             and row["premium_until"] is None
+            and row["download_until"] is None
         ):
             permanent_watch = True
-
-        # Legacy/temporary watch access
-        if (
-            row["watch_until"] is not None
-            and row["watch_until"] > now
-        ):
+        if row["watch_until"] is not None and row["watch_until"] > now:
             temporary_watch = True
-
-        # Active Premium
-        if (
-            row["premium_until"] is not None
-            and row["premium_until"] > now
-        ):
+        if row["premium_until"] is not None and row["premium_until"] > now:
             premium = True
 
-    watch = (
-        permanent_watch
-        or temporary_watch
-        or premium
-    )
-
-    # Download is ONLY Premium.
-    download = premium
-
     return {
-        "watch": watch,
-        "download": download,
+        "watch": permanent_watch or temporary_watch or premium,
+        "download": premium,
         "premium": premium,
     }
 
-def grant_access(
-    customer_id,
-    movie_id,
-    payment_type,
-):
 
+def grant_access(customer_id, movie_id, payment_type):
     conn = get_db()
-
     try:
         cur = conn.cursor()
         now = datetime.now()
 
         if payment_type == "watch":
-
-            # ₹1 Watch = permanent account-wide access.
-            # movie_id is intentionally NULL.
-
+            # ₹1 gives permanent account-wide watch access.
             cur.execute(
                 """
-                SELECT id
-                FROM customer_access
+                SELECT id FROM customer_access
                 WHERE customer_id = %s
                   AND movie_id IS NULL
                   AND watch_until IS NULL
                   AND premium_until IS NULL
+                  AND download_until IS NULL
                 LIMIT 1
                 """,
                 (customer_id,),
             )
-
-            existing = cur.fetchone()
-
-            if not existing:
+            if not cur.fetchone():
                 cur.execute(
                     """
                     INSERT INTO customer_access
-                    (
-                        customer_id,
-                        movie_id,
-                        watch_until,
-                        download_until,
-                        premium_until
-                    )
+                    (customer_id, movie_id, watch_until, download_until, premium_until)
                     VALUES(%s, NULL, NULL, NULL, NULL)
                     """,
                     (customer_id,),
                 )
 
         elif payment_type == "premium":
-
-            # ₹99 Premium = 30 days.
-            # Account-wide access.
-
             cur.execute(
                 """
-                SELECT MAX(premium_until)
+                SELECT premium_until
                 FROM customer_access
                 WHERE customer_id = %s
                   AND movie_id IS NULL
+                  AND premium_until IS NOT NULL
+                ORDER BY premium_until DESC
+                LIMIT 1
                 """,
                 (customer_id,),
             )
-
             row = cur.fetchone()
-
-            current_until = (
-                row[0]
-                if row and row[0]
-                else None
-            )
-
-            if (
-                current_until
-                and current_until > now
-            ):
-                base_time = current_until
-            else:
-                base_time = now
-
-            until = (
-                base_time
-                + timedelta(days=PREMIUM_DAYS)
-            )
+            current_until = row[0] if row else None
+            base = current_until if current_until and current_until > now else now
+            until = base + timedelta(days=PREMIUM_DAYS)
 
             cur.execute(
                 """
@@ -2007,39 +1580,20 @@ def grant_access(
                 """,
                 (customer_id,),
             )
-
             cur.execute(
                 """
                 INSERT INTO customer_access
-                (
-                    customer_id,
-                    movie_id,
-                    watch_until,
-                    download_until,
-                    premium_until
-                )
+                (customer_id, movie_id, watch_until, download_until, premium_until)
                 VALUES(%s, NULL, NULL, NULL, %s)
                 """,
-                (
-                    customer_id,
-                    until,
-                ),
+                (customer_id, until),
             )
 
         else:
-
-            raise ValueError(
-                "Unsupported payment type: "
-                + str(payment_type)
-            )
+            raise ValueError("Unsupported payment type.")
 
         conn.commit()
         cur.close()
-
-    except Exception:
-        conn.rollback()
-        raise
-
     finally:
         conn.close()
 
@@ -2187,137 +1741,55 @@ def cashfree_request(
     methods=["POST"],
 )
 def create_payment():
-
-    data = (
-        request.get_json(
-            silent=True
-        )
-        or {}
-    )
-
+    data = request.get_json(silent=True) or {}
+    payment_type = str(data.get("payment_type", "")).strip().lower()
     movie_id = data.get("movie_id")
+    phone = re.sub(r"\D", "", str(data.get("phone", "")))
 
-    payment_type = str(
-        data.get(
-            "payment_type",
-            "",
-        )
-    ).strip().lower()
+    if payment_type not in {"watch", "premium"}:
+        return json_error("Invalid payment type. Use watch or premium.")
 
-    phone = re.sub(
-        r"\D",
-        "",
-        str(
-            data.get(
-                "phone",
-                "",
-            )
-        ),
-    )
+    if not re.fullmatch(r"[6-9]\d{9}", phone):
+        return json_error("Enter a valid 10 digit Indian mobile number.")
 
     try:
         movie_id = int(movie_id)
     except Exception:
-        return json_error(
-            "Invalid movie."
-        )
+        return json_error("Invalid movie.")
 
-    if payment_type not in {
-        "watch",
-        "premium",
-    }:
-        return json_error(
-            "Invalid payment type."
-        )
-
-    if not re.fullmatch(
-        r"[6-9]\d{9}",
-        phone,
-    ):
-        return json_error(
-            "Enter a valid 10 digit Indian mobile number."
-        )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
+    conn = get_db(dict_rows=True)
     try:
-
         cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT id, title
-            FROM movies
-            WHERE id = %s
-            """,
-            (movie_id,),
-        )
-
-                movie = cur.fetchone()
-
+        cur.execute("SELECT id, title FROM movies WHERE id = %s", (movie_id,))
+        movie = cur.fetchone()
         cur.close()
-
     finally:
         conn.close()
 
     if not movie:
-        return json_error(
-            "Movie not found.",
-            404,
-        )
+        return json_error("Movie not found.", 404)
 
     if payment_type == "watch":
-        
         amount = WATCH_PRICE
-
-        description = (
-            "Watch - "
-            + movie["title"]
-        )
-
-    elif payment_type == "premium":
-
+        description = "Tomesh Movies Watch Access"
+    else:
         amount = PREMIUM_PRICE
-
-        description = (
-            "Tomesh Movies Premium - 30 Days"
-        )
+        description = "Tomesh Movies 30 Day Premium"
 
     customer_id = get_customer_id()
-
-    order_id = (
-        "tm_"
-        + payment_type
-        + "_"
-        + str(movie_id)
-        + "_"
-        + secrets.token_hex(8)
-    )
-
-    return_url = url_for(
-        "cashfree_return",
-        movie_id=movie_id,
-        _external=True,
-    )
+    order_id = "tm_" + payment_type + "_" + str(movie_id) + "_" + secrets.token_hex(8)
+    return_url = url_for("cashfree_return", movie_id=movie_id, _external=True)
 
     payload = {
         "order_id": order_id,
         "order_amount": amount,
         "order_currency": "INR",
-
         "customer_details": {
             "customer_id": customer_id,
             "customer_phone": phone,
         },
-
-        "order_meta": {
-            "return_url": return_url,
-        },
-
+        "order_meta": {"return_url": return_url},
         "order_note": description,
-
         "order_tags": {
             "movie_id": str(movie_id),
             "payment_type": payment_type,
@@ -2325,58 +1797,24 @@ def create_payment():
     }
 
     try:
-
-        result = cashfree_request(
-            "POST",
-            "/orders",
-            payload,
-        )
-
-        payment_session_id = result.get(
-            "payment_session_id"
-        )
-
+        result = cashfree_request("POST", "/orders", payload)
+        payment_session_id = result.get("payment_session_id")
         if not payment_session_id:
-
-            return json_error(
-                "Cashfree did not return payment session.",
-                502,
-                cashfree=result,
-            )
+            return json_error("Cashfree did not return payment session.", 502, cashfree=result)
 
         conn = get_db()
-
         try:
-
             cur = conn.cursor()
-
             cur.execute(
                 """
                 INSERT INTO payment_orders
-                (
-                    order_id,
-                    customer_id,
-                    movie_id,
-                    payment_type,
-                    amount,
-                    status
-                )
+                (order_id, customer_id, movie_id, payment_type, amount, status)
                 VALUES(%s,%s,%s,%s,%s,%s)
                 """,
-                (
-                    order_id,
-                    customer_id,
-                    movie_id,
-                    payment_type,
-                    amount,
-                    "ACTIVE",
-                ),
+                (order_id, customer_id, movie_id, payment_type, amount, "ACTIVE"),
             )
-
             conn.commit()
-
             cur.close()
-
         finally:
             conn.close()
 
@@ -2386,18 +1824,9 @@ def create_payment():
             amount=amount,
             mode=CASHFREE_JS_MODE,
         )
-
     except Exception as exc:
-
-        print(
-            "CREATE PAYMENT ERROR:",
-            repr(exc),
-        )
-
-        return json_error(
-            str(exc),
-            500,
-        )
+        print("CREATE PAYMENT ERROR:", repr(exc))
+        return json_error(str(exc), 500)
 
 # ============================================================
 # CASHFREE RETURN / VERIFY
@@ -2560,26 +1989,16 @@ def cashfree_return():
                 "customer_id"
             ]
 
-            session[
-                "payment_success"
-            ] = True
+            session["customer_id"] = local_order["customer_id"]
+            session["customer_logged_in"] = True
+            session["payment_success"] = True
 
             flash(
-    "Payment successful. Access activated.",
-    "success",
-)
+                "Payment successful. Access activated.",
+                "success",
+            )
 
-if local_order["payment_type"] == "watch":
-    return redirect(
-    url_for("user_details")
-)
-
-return redirect(
-    url_for(
-        "movie_page",
-        movie_id=local_order["movie_id"],
-    )
-)
+            return redirect(url_for("member_home"))
 
         flash(
             "Payment was not completed. Status: "
@@ -2777,11 +2196,10 @@ def movie_page(movie_id):
 
     if video_key and access["watch"]:
 
-        # FAST PLAYBACK: browser fetches the video directly from R2
-        # using a time-limited presigned URL.
-        movie["video_url"] = r2_presigned_url(
-            video_key,
-            expires=PRESIGNED_EXPIRES,
+        movie["video_url"] = url_for(
+            "stream_movie",
+            movie_id=movie_id,
+            access_token=make_stream_token(movie_id),
         )
 
     else:
@@ -3174,6 +2592,167 @@ def logout():
 
 
 # ============================================================
+# CUSTOMER MEMBER / USER DETAILS / MY LIST
+# ============================================================
+
+def customer_login_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if not session.get("customer_logged_in"):
+            return redirect(url_for("login"))
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+@app.route("/user-details", methods=["GET", "POST"])
+@customer_login_required
+def user_details():
+    customer_id = session.get("customer_id")
+    if not customer_id:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        full_name = (request.form.get("full_name") or "").strip()
+        mobile = re.sub(r"\D", "", request.form.get("mobile") or "")
+        if not full_name:
+            flash("Please enter your full name.", "error")
+            return redirect(url_for("user_details"))
+        if not re.fullmatch(r"[6-9]\d{9}", mobile):
+            flash("Please enter a valid 10-digit mobile number.", "error")
+            return redirect(url_for("user_details"))
+
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                UPDATE customer_users
+                SET full_name = %s, mobile = %s
+                WHERE customer_id = %s
+                """,
+                (full_name, mobile, customer_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+
+        session["customer_mobile"] = mobile
+        return redirect(url_for("member_home"))
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT full_name, mobile, email FROM customer_users WHERE customer_id = %s LIMIT 1",
+            (customer_id,),
+        )
+        user = cur.fetchone() or {}
+        cur.close()
+    finally:
+        conn.close()
+
+    return render_template(
+        "user_details.html",
+        full_name=user.get("full_name", ""),
+        mobile=user.get("mobile", ""),
+        customer_email=user.get("email") or session.get("customer_email", ""),
+    )
+
+
+def get_member_movies_data():
+    customer_id = session.get("customer_id")
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT m.*, CASE WHEN cml.movie_id IS NOT NULL THEN TRUE ELSE FALSE END AS in_my_list
+            FROM movies m
+            LEFT JOIN customer_movie_list cml
+              ON cml.movie_id = m.id AND cml.customer_id = %s
+            ORDER BY m.id DESC
+            """,
+            (customer_id,),
+        )
+        movies = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+
+    for movie in movies:
+        try:
+            movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
+        except Exception:
+            movie["poster_url"] = None
+        movie["in_my_list"] = bool(movie.get("in_my_list"))
+        movie["views"] = int(movie.get("views") or 0)
+    return movies
+
+
+@app.route("/member")
+@customer_login_required
+def member_home():
+    movies = get_member_movies_data()
+    saved_movies = [m for m in movies if m.get("in_my_list")]
+    categories = []
+    seen = set()
+    for movie in movies:
+        for part in str(movie.get("category") or "").split(","):
+            category = part.strip()
+            if category and category.lower() not in seen:
+                seen.add(category.lower())
+                categories.append(category)
+    return render_template(
+        "member_home.html",
+        movies=movies,
+        saved_movies=saved_movies,
+        my_list_movies=saved_movies,
+        saved_movie_ids=[int(m["id"]) for m in saved_movies],
+        categories=categories,
+        customer_email=session.get("customer_email", ""),
+        premium=has_active_premium(),
+    )
+
+
+@app.route("/api/my-list/<int:movie_id>", methods=["POST", "DELETE"])
+@customer_login_required
+def api_my_list(movie_id):
+    customer_id = session.get("customer_id")
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM movies WHERE id = %s", (movie_id,))
+        if not cur.fetchone():
+            cur.close()
+            return json_error("Movie not found.", 404)
+        if request.method == "POST":
+            cur.execute(
+                """
+                INSERT INTO customer_movie_list(customer_id, movie_id)
+                VALUES(%s,%s) ON CONFLICT(customer_id,movie_id) DO NOTHING
+                """,
+                (customer_id, movie_id),
+            )
+            conn.commit()
+            cur.close()
+            return json_ok(saved=True, movie_id=movie_id)
+        cur.execute(
+            "DELETE FROM customer_movie_list WHERE customer_id = %s AND movie_id = %s",
+            (customer_id, movie_id),
+        )
+        removed = cur.rowcount > 0
+        conn.commit()
+        cur.close()
+        return json_ok(saved=False, removed=removed, movie_id=movie_id)
+    except Exception as exc:
+        conn.rollback()
+        return json_error("My List update failed: " + str(exc), 500)
+    finally:
+        conn.close()
+
+
+# ============================================================
 # ADMIN
 # ============================================================
 
@@ -3248,170 +2827,6 @@ def admin():
 
 
 # ============================================================
-# ADMIN CONTROL CENTER MODULES
-# ============================================================
-
-def _admin_module_page(title, subtitle, rows=None, search_box=False):
-    rows = rows or []
-    html_rows = ""
-    for row in rows:
-        html_rows += "<tr>" + "".join("<td>" + ("" if v is None else str(v)) + "</td>" for v in row) + "</tr>"
-    if rows:
-        table = '<div class="table-wrap"><table><tbody>' + html_rows + '</tbody></table></div>'
-    else:
-        table = '<div class="empty">No records available yet.</div>'
-    search = ''
-    if search_box:
-        search = '<form class="search" method="get"><input name="q" value="" placeholder="Search movies, email or transaction ID"><button>Search</button></form>'
-    return (
-        '<!doctype html><html><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        '<title>' + title + ' | Tomesh Movies</title>'
-        '<style>*{box-sizing:border-box}body{margin:0;background:#07070b;color:#fff;font-family:Arial,sans-serif}'
-        '.wrap{max-width:1200px;margin:auto;padding:28px 18px 70px}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:22px}'
-        '.brand{font-size:24px;font-weight:900}.brand span{color:#c084fc}.back{display:inline-block;padding:11px 16px;border-radius:11px;text-decoration:none;color:#fff;background:#17171f;border:1px solid #333;font-weight:800}'
-        '.card{background:linear-gradient(145deg,#121218,#0c0c11);border:1px solid #292932;border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:0 15px 50px rgba(0,0,0,.3)}'
-        'h1{margin:0 0 8px;font-size:30px}.sub{color:#aaa;line-height:1.6}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}'
-        'td{padding:12px;border-bottom:1px solid #25252c;color:#ddd}tr:first-child td{font-weight:800;color:#fff;background:#15151c}'
-        '.empty{padding:35px;text-align:center;color:#999;border:1px dashed #3a3a44;border-radius:14px}.search{display:flex;gap:10px;margin-bottom:18px}'
-        '.search input{flex:1;background:#09090d;border:1px solid #34343d;color:#fff;padding:13px;border-radius:10px}'
-        'button{border:0;border-radius:10px;padding:13px 18px;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-weight:900;cursor:pointer}'
-         '@media(max-width:650px){h1{font-size:24px}.search{flex-direction:column}}</style></head><body>'
-        '<main class="wrap"><div class="top"><div class="brand">TOMESH <span>MOVIES</span></div>'
-        '<a class="back" href="/admin">← Admin Dashboard</a></div>'
-        '<section class="card"><h1>' + title + '</h1><div class="sub">' + subtitle + '</div></section>'
-        + search + '<section class="card">' + table + '</section></main></body></html>'
-    )
-
-
-@app.route("/admin/users")
-@admin_required
-def admin_users():
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor(); cur.execute("SELECT id,email,customer_id,created_at,last_login_at FROM customer_users ORDER BY id DESC"); rows=cur.fetchall(); cur.close()
-    finally: conn.close()
-    data=[("ID","Email","Customer ID","Created","Last Login")]+[tuple(r.get(k) for k in ("id","email","customer_id","created_at","last_login_at")) for r in rows]
-    return _admin_module_page("👥 User Center","Customer accounts and login activity.",data)
-
-@app.route("/admin/payments")
-@admin_required
-def admin_payments():
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor(); cur.execute("SELECT order_id,customer_id,movie_id,payment_type,amount,status,created_at,paid_at FROM payment_orders ORDER BY id DESC"); rows=cur.fetchall(); cur.close()
-    finally: conn.close()
-    data=[("Order ID","Customer","Movie","Type","Amount","Status","Created","Paid")]+[tuple(r.get(k) for k in ("order_id","customer_id","movie_id","payment_type","amount","status","created_at","paid_at")) for r in rows]
-    return _admin_module_page("💳 Payments","Cashfree payment orders and statuses.",data)
-
-@app.route("/admin/subscriptions")
-@admin_required
-def admin_subscriptions():
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor(); cur.execute("SELECT customer_id,movie_id,watch_until,download_until,premium_until,created_at FROM customer_access ORDER BY id DESC"); rows=cur.fetchall(); cur.close()
-    finally: conn.close()
-    data=[("Customer","Movie","Watch Until","Download Until","Premium Until","Created")]+[tuple(r.get(k) for k in ("customer_id","movie_id","watch_until","download_until","premium_until","created_at")) for r in rows]
-    return _admin_module_page("🔄 AutoPay & Subscriptions","Customer premium/access records.",data)
-
-@app.route("/admin/watch-activity")
-@admin_required
-def admin_watch_activity():
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor(); cur.execute("SELECT id,title,category,views,created_at FROM movies ORDER BY views DESC,id DESC"); rows=cur.fetchall(); cur.close()
-    finally: conn.close()
-    data=[("Movie ID","Movie","Category","Views","Created")]+[tuple(r.get(k) for k in ("id","title","category","views","created_at")) for r in rows]
-    return _admin_module_page("▶️ Watch Activity","Current movie view activity.",data)
-
-@app.route("/admin/analytics")
-@admin_required
-def admin_analytics():
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor(); cur.execute("SELECT COUNT(*) AS c,COALESCE(SUM(views),0) AS v FROM movies"); m=cur.fetchone(); cur.execute("SELECT COUNT(*) AS c FROM customer_users"); u=cur.fetchone(); cur.execute("SELECT COUNT(*) AS c,COALESCE(SUM(amount),0) AS r FROM payment_orders WHERE UPPER(status)='PAID'"); pay=cur.fetchone(); cur.close()
-    finally: conn.close()
-    data=[("Metric","Value"),("Total Movies",m["c"]),("Total Views",m["v"]),("Registered Customers",u["c"]),("Paid Orders",pay["c"]),("Revenue","₹"+str(pay["r"]))]
-    return _admin_module_page("📈 Analytics","Current database totals and movie performance.",data)
-
-@app.route("/admin/live-activity")
-@admin_required
-def admin_live_activity():
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor(); cur.execute("SELECT email,created_at,last_login_at FROM customer_users ORDER BY COALESCE(last_login_at,created_at) DESC LIMIT 25"); users=cur.fetchall(); cur.execute("SELECT order_id,payment_type,status,created_at FROM payment_orders ORDER BY id DESC LIMIT 25"); pays=cur.fetchall(); cur.close()
-    finally: conn.close()
-    data=[("Customer","Created","Last Login")]+[tuple(r.get(k) for k in ("email","created_at","last_login_at")) for r in users]
-    data += [("Payment: "+str(r.get("order_id")),r.get("payment_type"),str(r.get("status"))+" · "+str(r.get("created_at"))) for r in pays]
-    return _admin_module_page("🔴 Live Activity","Recent customer and payment events.",data)
-
-@app.route("/admin/notifications")
-@admin_required
-def admin_notifications():
-    return _admin_module_page("🔔 Notifications","Notification center is ready. No notification records are stored yet.")
-
-@app.route("/admin/reports")
-@admin_required
-def admin_reports():
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor(); cur.execute("SELECT COUNT(*) AS c,COALESCE(SUM(views),0) AS v FROM movies"); m=cur.fetchone(); cur.execute("SELECT COUNT(*) AS c,COALESCE(SUM(amount),0) AS r FROM payment_orders WHERE UPPER(status)='PAID'"); pay=cur.fetchone(); cur.execute("SELECT COUNT(*) AS c FROM customer_users"); u=cur.fetchone(); cur.close()
-    finally: conn.close()
-    data=[("Report","Value"),("Users",u["c"]),("Movies",m["c"]),("Views",m["v"]),("Paid Orders",pay["c"]),("Revenue","₹"+str(pay["r"]))]
-    return _admin_module_page("📑 Reports","Summary report from PostgreSQL.",data)
-
-@app.route("/admin/security")
-@admin_required
-def admin_security():
-    data=[("Setting","Status"),("Admin authentication","Enabled"),("Session protection","Enabled"),("R2 upload API","Admin protected"),("Payment API","Customer endpoint"),("Database","PostgreSQL")]
-    return _admin_module_page("🔐 Security","Current application security configuration.",data)
-
-@app.route("/admin/settings")
-@admin_required
-def admin_settings():
-    data=[("Setting","Current"),("Max video upload","4 GB"),("Video formats","MP4, MKV, WebM, MOV"),("Poster formats","JPG, JPEG, PNG, WEBP"),("Storage","Cloudflare R2"),("Database","PostgreSQL"),("Payment","Cashfree")]
-    return _admin_module_page("🛠️ Website Settings","Application configuration overview. Secrets remain hidden.",data)
-
-@app.route("/admin/search")
-@admin_required
-def admin_search():
-    q=request.args.get("q","",type=str).strip()
-    if not q:
-        return _admin_module_page("🔎 Global Search","Search movies, customer emails and transaction IDs.",search_box=True)
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor(); like="%"+q+"%"; cur.execute("SELECT id,title,category,views FROM movies WHERE title ILIKE %s OR category ILIKE %s ORDER BY id DESC LIMIT 50",(like,like)); movies=cur.fetchall(); cur.execute("SELECT email,customer_id FROM customer_users WHERE email ILIKE %s OR customer_id ILIKE %s LIMIT 50",(like,like)); users=cur.fetchall(); cur.execute("SELECT order_id,customer_id,status,amount FROM payment_orders WHERE order_id ILIKE %s OR customer_id ILIKE %s LIMIT 50",(like,like)); pays=cur.fetchall(); cur.close()
-    finally: conn.close()
-    data=[("Type","Result","Details","Value")]
-    data += [("Movie",r.get("title"),r.get("category"),r.get("views")) for r in movies]
-    data += [("User",r.get("email"),r.get("customer_id"),"") for r in users]
-    data += [("Payment",r.get("order_id"),r.get("status"),r.get("amount")) for r in pays]
-    return _admin_module_page("🔎 Global Search","Results for: "+q,data,search_box=True)
-
-@app.route("/admin/r2")
-@admin_required
-def admin_r2():
-    try:
-        client=get_r2_client(); resp=client.list_objects_v2(Bucket=R2_BUCKET,MaxKeys=1000); objs=resp.get("Contents",[]); rows=[("Key","Size","Last Modified")]+[(o.get("Key"),o.get("Size"),o.get("LastModified")) for o in objs]; subtitle="Bucket: "+R2_BUCKET+" · Showing up to 1000 objects."
-    except Exception as exc:
-        rows=[]; subtitle="R2 error: "+str(exc)
-    return _admin_module_page("☁️ R2 Storage",subtitle,rows)
-
-@app.route("/admin/system-health")
-@admin_required
-def admin_system_health():
-    db_status="OK"
-    try:
-        conn=get_db(); cur=conn.cursor(); cur.execute("SELECT 1"); cur.fetchone(); cur.close(); conn.close()
-    except Exception as exc: db_status="ERROR: "+str(exc)
-    try:
-        get_r2_client().list_objects_v2(Bucket=R2_BUCKET,MaxKeys=1); r2_status="OK"
-    except Exception as exc: r2_status="ERROR: "+str(exc)
-    data=[("Component","Status"),("Flask application","OK"),("PostgreSQL",db_status),("Cloudflare R2",r2_status)]
-    return _admin_module_page("⚙️ System Health","Application health checks.",data)
-
-
-# ============================================================
 # LEGACY ADMIN ADD
 # ============================================================
 
@@ -3423,7 +2838,9 @@ def admin_system_health():
 def admin_add():
 
     if request.method == "GET":
-        return render_template("admin_add.html")
+        return redirect(
+            url_for("admin")
+        )
 
     title = request.form.get(
         "title",
@@ -3839,10 +3256,9 @@ def r2_multipart_urls():
                 )
             )
 
-        url_map = dict(urls)
         return json_ok(
             urls=urls,
-            url_map=url_map,
+            url_map=urls,
             part_urls=urls,
             part_size=PART_SIZE,
             parallel=PARALLEL_PARTS,
