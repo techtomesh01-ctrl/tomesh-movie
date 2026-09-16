@@ -101,10 +101,10 @@ else:
 # ============================================================
 
 WATCH_PRICE = 1.00
-DOWNLOAD_PRICE = 9.00
-PREMIUM_PRICE = 109.00
+# DOWNLOAD_PRICE removed
+PREMIUM_PRICE = 99.00
 
-PREMIUM_DAYS = 365
+PREMIUM_DAYS = 30
 
 WATCH_HOURS = 24
 
