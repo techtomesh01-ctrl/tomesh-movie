@@ -408,10 +408,9 @@ def init_db():
             )
         """)
 
-        # ----------------------------------------------------
+               # ----------------------------------------------------
         # CUSTOMER ACCESS
         # ----------------------------------------------------
-
         cur.execute("""
             CREATE TABLE IF NOT EXISTS customer_access (
                 id SERIAL PRIMARY KEY,
@@ -427,20 +426,17 @@ def init_db():
         # ----------------------------------------------------
         # CUSTOMER EMAIL ACCOUNTS
         # ----------------------------------------------------
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customer_users (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                customer_id TEXT UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login_at TIMESTAMP
+            )
+        """)
 
-       cur.execute("""
-    CREATE TABLE IF NOT EXISTS customer_users (
-        id SERIAL PRIMARY KEY,
-        email TEXT UNIQUE NOT NULL,
-        customer_id TEXT UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_login_at TIMESTAMP
-    )
-""")
-
-cur.execute("""
-    ALTER TABLE customer_users
-            cur.execute("""
+        cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS full_name TEXT
         """)
@@ -453,6 +449,14 @@ cur.execute("""
         cur.execute("""
             CREATE TABLE IF NOT EXISTS customer_movie_list (
                 customer_id TEXT NOT NULL,
+                movie_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (customer_id, movie_id),
+                FOREIGN KEY (movie_id)
+                REFERENCES movies(id)
+                ON DELETE CASCADE
+            )
+        """) 
                 movie_id INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (customer_id, movie_id),
