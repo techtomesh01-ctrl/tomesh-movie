@@ -2255,9 +2255,9 @@ def create_payment():
             (movie_id,),
         )
 
-        movie = cur.fetchone()
+                movie = cur.fetchone()
 
-                cur.close()
+        cur.close()
 
     finally:
         conn.close()
