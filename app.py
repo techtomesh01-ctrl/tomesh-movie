@@ -208,8 +208,8 @@ R2_PUBLIC_URL = clean_env_value(R2_PUBLIC_URL).rstrip("/")
 
 CASHFREE_APP_ID = clean_env_value(CASHFREE_APP_ID)
 CASHFREE_SECRET_KEY = clean_env_value(CASHFREE_SECRET_KEY)
-MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(os.environ.get("MESSAGE_CENTRAL_CUSTOMER_ID", ""))
-MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(os.environ.get("MESSAGE_CENTRAL_AUTH_TOKEN", ""))
+MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(MESSAGE_CENTRAL_CUSTOMER_ID)
+MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(MESSAGE_CENTRAL_AUTH_TOKEN)
 
 # ============================================================
 # EMAIL OTP SETTINGS
@@ -1255,11 +1255,6 @@ def bind_customer_mobile(mobile):
 
 @app.route("/login/request-mobile-otp", methods=["POST"])
 def request_mobile_otp():
-    # An already verified customer must not receive another OTP from the
-    # login form during the same authenticated browser session.
-    if session.get("customer_logged_in") and session.get("customer_id"):
-        return redirect(url_for("user_details"))
-
     mobile = normalize_mobile(request.form.get("mobile", ""))
 
     if not valid_mobile(mobile):
@@ -3013,11 +3008,6 @@ def download_movie(movie_id):
     methods=["GET"],
 )
 def login():
-    # Once mobile OTP or Google sign-in has successfully authenticated the
-    # customer in this browser session, never show the login/OTP screen again.
-    if session.get("customer_logged_in") and session.get("customer_id"):
-        return redirect(url_for("user_details"))
-
     step = str(request.args.get("step", "")).strip().lower()
 
     if step not in {"mobile", "otp"}:
@@ -3086,41 +3076,126 @@ def user_details():
 
     if request.method == "POST":
         full_name = (request.form.get("full_name") or "").strip()
+
         mobile = normalize_mobile(
             request.form.get("mobile")
             or session.get("customer_mobile", "")
         )
+
+        customer_email = (
+            request.form.get("email")
+            or request.form.get("customer_email")
+            or ""
+        ).strip().lower()
+
         if not full_name:
             flash("Please enter your full name.", "error")
             return redirect(url_for("user_details"))
+
         if not re.fullmatch(r"[6-9]\d{9}", mobile):
             flash("Please enter a valid 10-digit mobile number.", "error")
             return redirect(url_for("user_details"))
 
-        conn = get_db()
+        conn = get_db(dict_rows=True)
+
         try:
             cur = conn.cursor()
+
+            cur.execute(
+                """
+                SELECT email
+                FROM customer_users
+                WHERE customer_id = %s
+                LIMIT 1
+                """,
+                (customer_id,),
+            )
+
+            existing_user = cur.fetchone() or {}
+            existing_email = (existing_user.get("email") or "").strip().lower()
+
+            if existing_email:
+                customer_email = existing_email
+
+            if not existing_email and customer_email:
+                if not valid_email(customer_email):
+                    flash(
+                        "Please enter a valid Gmail / Email address.",
+                        "error",
+                    )
+                    return redirect(url_for("user_details"))
+
+                cur.execute(
+                    """
+                    SELECT customer_id
+                    FROM customer_users
+                    WHERE LOWER(email) = LOWER(%s)
+                      AND customer_id <> %s
+                    LIMIT 1
+                    """,
+                    (customer_email, customer_id),
+                )
+
+                email_owner = cur.fetchone()
+
+                if email_owner:
+                    flash(
+                        "This Gmail / Email is already linked to another account.",
+                        "error",
+                    )
+                    return redirect(url_for("user_details"))
+
             cur.execute(
                 """
                 UPDATE customer_users
-                SET full_name = %s, mobile = %s
+                SET
+                    full_name = %s,
+                    mobile = %s,
+                    email = %s
                 WHERE customer_id = %s
                 """,
-                (full_name, mobile, customer_id),
+                (
+                    full_name,
+                    mobile,
+                    customer_email or None,
+                    customer_id,
+                ),
             )
+
             conn.commit()
             cur.close()
+
+        except Exception as exc:
+            conn.rollback()
+            print("USER DETAILS SAVE ERROR:", repr(exc))
+            flash(
+                "Unable to save your details. Please try again.",
+                "error",
+            )
+            return redirect(url_for("user_details"))
+
         finally:
             conn.close()
 
         session["customer_mobile"] = mobile
+
+        if customer_email:
+            session["customer_email"] = customer_email
+        else:
+            session.pop("customer_email", None)
+
         return redirect(url_for("member_home"))
 
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT full_name, mobile, email FROM customer_users WHERE customer_id = %s LIMIT 1",
+            """
+            SELECT full_name, mobile, email
+            FROM customer_users
+            WHERE customer_id = %s
+            LIMIT 1
+            """,
             (customer_id,),
         )
         user = cur.fetchone() or {}
@@ -3132,7 +3207,10 @@ def user_details():
         "user_details.html",
         full_name=user.get("full_name", ""),
         mobile=user.get("mobile", ""),
-        customer_email=user.get("email") or session.get("customer_email", ""),
+        customer_email=(
+            user.get("email")
+            or session.get("customer_email", "")
+        ),
     )
 
 
