@@ -1,692 +1,853 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sign In | Tomesh Movies</title>
+
+    {% if google_client_id %}
+    <meta name="google-signin-client_id" content="{{ google_client_id }}">
+    {% endif %}
+
+    <style>
+        *{
+            box-sizing:border-box;
+            margin:0;
+            padding:0;
+        }
+
+        html,
+        body{
+            min-height:100%;
+        }
+
+        body{
+            min-height:100vh;
+            font-family:Arial,Helvetica,sans-serif;
+            color:#fff;
+            background:
+                radial-gradient(
+                    circle at 15% 0%,
+                    rgba(229,9,20,.16),
+                    transparent 34%
+                ),
+                radial-gradient(
+                    circle at 90% 10%,
+                    rgba(130,20,30,.14),
+                    transparent 30%
+                ),
+                #050505;
+
+            display:flex;
+            align-items:center;
+            justify-content:center;
+
+            padding:28px 16px;
+            overflow-x:hidden;
+        }
+
+        .page{
+            width:100%;
+            max-width:440px;
+            position:relative;
+            z-index:2;
+        }
+
+        /* =========================
+           BRAND
+        ========================= */
+
+        .brand{
+            width:100%;
+            text-align:center;
+            margin-bottom:28px;
+        }
+
+        .brand-name{
+            display:block;
+            width:100%;
+
+            font-size:30px;
+            line-height:1;
+            font-weight:900;
+            letter-spacing:3px;
 
-{% block title %}Sign In | Tomesh Movies{% endblock %}
+            white-space:nowrap;
 
-{% block content %}
+            color:#fff;
+        }
 
-<style>
+        .brand-name .movies{
+            color:#E50914;
+        }
 
-.tm-login-page{
-    min-height:calc(100vh - 70px);
-    margin:-20px;
-    padding:40px 15px 50px;
+        .brand-tagline{
+            display:block;
 
-    display:flex;
-    align-items:center;
-    justify-content:center;
+            margin-top:10px;
 
-    background:#050505;
+            color:#cfcfcf;
 
-    color:#fff;
-}
+            font-size:12px;
+            line-height:1.2;
 
-.tm-login-card{
-    width:100%;
-    max-width:450px;
-    box-sizing:border-box;
+            letter-spacing:2.2px;
+            font-weight:500;
+        }
 
-    background:#111;
+        /* =========================
+           CARD
+        ========================= */
 
-    border:1px solid #292929;
-    border-radius:12px;
+        .login-card{
+            position:relative;
 
-    padding:38px 34px 32px;
+            padding:32px 30px 28px;
 
-    box-shadow:
-        0 25px 70px rgba(0,0,0,.85),
-        0 0 45px rgba(229,9,20,.08);
-}
+            border-radius:18px;
 
+            border:1px solid rgba(255,255,255,.09);
 
-/* =========================
-   BRAND
-   ========================= */
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(25,25,27,.98),
+                    rgba(8,8,9,.99)
+                );
 
-.tm-brand{
-    width:100%;
-    display:block;
+            box-shadow:
+                0 28px 75px rgba(0,0,0,.70),
+                0 0 35px rgba(229,9,20,.06);
 
-    text-align:center;
+            overflow:hidden;
+        }
 
-    margin:0 0 30px 0;
-    padding:0;
-}
+        .login-card:before{
+            content:"";
 
-.tm-brand-name{
-    width:100%;
-    display:block;
+            position:absolute;
 
-    margin:0;
-    padding:0;
+            top:0;
+            left:12%;
+            right:12%;
 
-    text-align:center;
+            height:1px;
 
-    font-family:Arial,sans-serif;
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(229,9,20,.85),
+                    transparent
+                );
+        }
 
-    font-size:31px;
-    line-height:32px;
+        .card-title{
+            text-align:center;
 
-    font-weight:900;
+            font-size:26px;
+            line-height:1.2;
 
-    letter-spacing:2px;
+            font-weight:800;
 
-    white-space:nowrap;
-}
+            margin-bottom:9px;
+        }
 
-.tm-tomesh{
-    color:#ffffff !important;
-}
+        .subtitle{
+            text-align:center;
 
-.tm-movies{
-    color:#E50914 !important;
-}
+            color:#a8a8a8;
 
-.tm-brand-tagline{
-    width:100%;
+            font-size:13px;
+            line-height:1.6;
 
-    display:block;
+            margin-bottom:24px;
+        }
 
-    margin:10px 0 0 0;
-    padding:0;
+        /* =========================
+           FLASH
+        ========================= */
 
-    text-align:center;
+        .flash{
+            padding:11px 13px;
 
-    color:#cccccc !important;
+            margin-bottom:16px;
 
-    font-family:Arial,sans-serif;
+            border-radius:10px;
 
-    font-size:13px;
+            background:rgba(100,10,15,.30);
 
-    line-height:18px;
+            border:1px solid rgba(229,9,20,.30);
 
-    font-weight:400;
+            color:#ffb1b1;
 
-    letter-spacing:.5px;
-}
+            font-size:13px;
+            line-height:1.45;
+        }
 
+        /* =========================
+           FORM
+        ========================= */
 
-/* =========================
-   TITLE
-   ========================= */
+        label{
+            display:block;
 
-.tm-login-title{
-    margin:0 0 8px;
+            margin-bottom:8px;
 
-    color:#fff;
+            color:#ddd;
 
-    font-size:27px;
+            font-size:13px;
+            font-weight:700;
+        }
 
-    line-height:1.2;
+        .input-wrap{
+            position:relative;
+        }
 
-    font-weight:800;
-}
+        .country-code{
+            position:absolute;
 
-.tm-login-subtitle{
-    margin:0 0 25px;
+            left:14px;
+            top:50%;
 
-    color:#999;
+            transform:translateY(-50%);
 
-    font-size:14px;
+            display:flex;
+            align-items:center;
 
-    line-height:1.55;
-}
+            gap:5px;
 
+            color:#fff;
 
-/* =========================
-   LABEL
-   ========================= */
+            font-size:14px;
+            font-weight:700;
 
-.tm-label{
-    display:block;
+            pointer-events:none;
 
-    margin:0 0 8px;
+            z-index:2;
+        }
 
-    color:#eeeeee;
+        input{
+            width:100%;
 
-    font-size:14px;
+            height:52px;
 
-    font-weight:700;
-}
+            padding:0 15px 0 68px;
 
+            border-radius:11px;
 
-/* =========================
-   MOBILE INPUT
-   ========================= */
+            border:1px solid #303033;
 
-.tm-mobile-input-wrap{
-    position:relative;
+            outline:none;
 
-    width:100%;
+            background:#111113;
 
-    margin-bottom:15px;
-}
+            color:#fff;
 
-.tm-india-flag{
-    position:absolute;
+            font-size:15px;
 
-    left:15px;
-    top:50%;
+            transition:.2s ease;
+        }
 
-    transform:translateY(-50%);
+        input::placeholder{
+            color:#666;
+        }
 
-    width:25px;
-    height:25px;
+        input:focus{
+            border-color:#E50914;
 
-    display:flex;
+            background:#151516;
 
-    align-items:center;
-    justify-content:center;
+            box-shadow:
+                0 0 0 3px rgba(229,9,20,.09);
+        }
 
-    font-size:19px;
+        .otp-input{
+            padding-left:15px;
 
-    z-index:5;
+            text-align:center;
 
-    pointer-events:none;
-}
+            letter-spacing:7px;
 
-.tm-mobile-input{
-    width:100%;
-    height:53px;
+            font-size:22px;
 
-    box-sizing:border-box;
+            font-weight:800;
+        }
 
-    padding:0 15px 0 52px;
+        /* =========================
+           MAIN BUTTON
+        ========================= */
 
-    border:1px solid #555;
+        .otp-button{
+            width:100%;
 
-    border-radius:7px;
+            height:52px;
 
-    outline:none;
+            margin-top:17px;
 
-    background:#181818;
+            border:0;
 
-    color:#fff;
+            border-radius:11px;
 
-    font-size:15px;
+            color:#fff;
 
-    transition:.2s ease;
-}
+            font-size:14px;
+            font-weight:800;
 
-.tm-mobile-input::placeholder{
-    color:#777;
-}
+            letter-spacing:.2px;
 
-.tm-mobile-input:focus{
-    border-color:#E50914;
+            cursor:pointer;
 
-    background:#1d1d1d;
+            background:
+                linear-gradient(
+                    100deg,
+                    #b20710,
+                    #E50914 55%,
+                    #b20710
+                );
 
-    box-shadow:
-        0 0 0 2px rgba(229,9,20,.14);
-}
+            box-shadow:
+                0 12px 25px rgba(229,9,20,.18);
 
+            transition:.2s ease;
+        }
 
-/* =========================
-   RED BUTTON
-   ========================= */
+        .otp-button:hover{
+            transform:translateY(-1px);
 
-.tm-red-btn{
-    width:100%;
-    height:53px;
+            box-shadow:
+                0 15px 30px rgba(229,9,20,.25);
+        }
 
-    border:0;
+        .otp-button:disabled{
+            opacity:.65;
 
-    border-radius:7px;
+            cursor:not-allowed;
 
-    background:#E50914 !important;
+            transform:none;
+        }
 
-    color:#fff;
+        /* =========================
+           SECURITY
+        ========================= */
 
-    font-size:15px;
+        .secure{
+            display:flex;
 
-    font-weight:800;
+            align-items:center;
+            justify-content:center;
 
-    cursor:pointer;
+            gap:6px;
 
-    transition:.2s ease;
-}
+            margin-top:17px;
 
-.tm-red-btn:hover{
-    background:#F6121D !important;
+            color:#777;
 
-    box-shadow:
-        0 8px 25px rgba(229,9,20,.28);
-}
+            font-size:11px;
+        }
 
+        /* =========================
+           DIVIDER
+        ========================= */
 
-/* =========================
-   OTP
-   ========================= */
+        .divider{
+            display:flex;
 
-.tm-otp-section{
-    margin-top:25px;
+            align-items:center;
 
-    padding-top:24px;
+            gap:12px;
 
-    border-top:1px solid #292929;
-}
+            margin:22px 0 18px;
 
-.tm-otp-input-wrap{
-    width:100%;
+            color:#666;
 
-    margin-bottom:15px;
-}
+            font-size:10px;
 
-.tm-otp-input{
-    width:100%;
-    height:53px;
+            letter-spacing:1.5px;
+        }
 
-    box-sizing:border-box;
+        .divider:before,
+        .divider:after{
+            content:"";
 
-    padding:0 15px;
+            flex:1;
 
-    border:1px solid #555;
+            height:1px;
 
-    border-radius:7px;
+            background:rgba(255,255,255,.08);
+        }
 
-    outline:none;
+        /* =========================
+           GOOGLE / GMAIL
+        ========================= */
 
-    background:#181818;
+        .social-row{
+            display:grid;
 
-    color:#fff;
+            grid-template-columns:1fr 1fr;
 
-    font-size:17px;
+            gap:10px;
 
-    letter-spacing:4px;
+            width:100%;
+        }
 
-    text-align:center;
+        .social-button{
+            min-height:48px;
 
-    transition:.2s ease;
-}
+            border:1px solid #303033;
 
-.tm-otp-input::placeholder{
-    color:#777;
+            border-radius:10px;
 
-    letter-spacing:0;
-}
+            background:#111113;
 
-.tm-otp-input:focus{
-    border-color:#E50914;
+            color:#fff;
 
-    background:#1d1d1d;
+            display:flex;
 
-    box-shadow:
-        0 0 0 2px rgba(229,9,20,.14);
-}
+            align-items:center;
+            justify-content:center;
 
+            gap:8px;
 
-/* =========================
-   DIVIDER
-   ========================= */
+            font-size:12px;
+            font-weight:700;
 
-.tm-divider{
-    display:flex;
+            cursor:pointer;
 
-    align-items:center;
+            transition:.2s ease;
+        }
 
-    gap:12px;
+        .social-button:hover{
+            background:#181819;
 
-    margin:28px 0 17px;
+            border-color:#555;
 
-    color:#777;
+            transform:translateY(-1px);
+        }
 
-    font-size:10px;
+        .social-icon{
+            width:20px;
+            height:20px;
 
-    font-weight:800;
+            flex:0 0 20px;
 
-    letter-spacing:1px;
-}
+            display:flex;
 
-.tm-divider::before,
-.tm-divider::after{
-    content:"";
+            align-items:center;
+            justify-content:center;
+        }
 
-    flex:1;
+        .google-icon{
+            font-size:19px;
+            font-weight:900;
 
-    height:1px;
+            font-family:Arial,sans-serif;
 
-    background:#303030;
-}
+            background:
+                conic-gradient(
+                    from -45deg,
+                    #4285F4 0deg 90deg,
+                    #34A853 90deg 180deg,
+                    #FBBC05 180deg 270deg,
+                    #EA4335 270deg 360deg
+                );
 
+            -webkit-background-clip:text;
+            background-clip:text;
 
-/* =========================
-   SOCIAL
-   ========================= */
+            color:transparent;
+        }
 
-.tm-social-row{
-    width:100%;
+        .gmail-icon{
+            position:relative;
 
-    display:flex;
+            width:20px;
+            height:15px;
 
-    gap:10px;
-}
+            border-radius:2px;
 
-.tm-social-btn{
-    flex:1;
+            background:
+                linear-gradient(
+                    135deg,
+                    #4285F4 0%,
+                    #4285F4 23%,
+                    #EA4335 23%,
+                    #EA4335 48%,
+                    #FBBC05 48%,
+                    #FBBC05 72%,
+                    #34A853 72%,
+                    #34A853 100%
+                );
+        }
 
-    min-width:0;
+        .gmail-icon:after{
+            content:"";
 
-    height:50px;
+            position:absolute;
 
-    padding:0 9px;
+            left:3px;
+            right:3px;
+            top:2px;
 
-    display:flex;
+            height:10px;
 
-    align-items:center;
+            background:#111113;
 
-    justify-content:center;
+            clip-path:polygon(
+                0 0,
+                50% 45%,
+                100% 0,
+                100% 18%,
+                50% 63%,
+                0 18%
+            );
+        }
 
-    gap:8px;
+        /* =========================
+           INFO / BACK
+        ========================= */
 
-    border:1px solid #444;
+        .info{
+            text-align:center;
 
-    border-radius:7px;
+            color:#777;
 
-    background:#181818;
+            font-size:11px;
 
-    color:#fff;
+            line-height:1.55;
 
-    font-size:12px;
+            margin-top:18px;
+        }
 
-    font-weight:700;
+        .change-link{
+            display:block;
 
-    cursor:pointer;
+            text-align:center;
 
-    transition:.2s ease;
-}
+            margin-top:14px;
 
-.tm-social-btn:hover{
-    background:#242424;
+            color:#888;
 
-    border-color:#666;
-}
+            text-decoration:none;
 
+            font-size:12px;
+        }
 
-/* =========================
-   GOOGLE ICON
-   ========================= */
+        .change-link:hover{
+            color:#fff;
+        }
 
-.google-logo{
-    width:20px;
-    height:20px;
+        .back{
+            display:block;
 
-    flex-shrink:0;
-}
+            width:max-content;
 
+            max-width:100%;
 
-/* =========================
-   GMAIL ICON
-   ========================= */
+            margin:20px auto 0;
 
-.gmail-logo{
-    width:22px;
-    height:22px;
+            color:#aaa;
 
-    flex-shrink:0;
-}
+            text-decoration:none;
 
+            font-size:13px;
 
-/* =========================
-   SECURITY
-   ========================= */
+            transition:.2s ease;
+        }
 
-.tm-security{
-    margin-top:23px;
+        .back:hover{
+            color:#E50914;
+        }
 
-    text-align:center;
+        .footer{
+            text-align:center;
 
-    color:#777;
+            margin-top:20px;
 
-    font-size:11px;
+            color:#555;
 
-    line-height:1.5;
-}
+            font-size:10px;
 
+            letter-spacing:.4px;
+        }
 
-/* =========================
-   BACK
-   ========================= */
+        .otp-note{
+            text-align:center;
 
-.tm-back{
-    display:block;
+            color:#999;
 
-    margin-top:25px;
+            font-size:12px;
 
-    text-align:center;
+            margin:0 0 17px;
 
-    color:#aaa;
+            line-height:1.6;
+        }
 
-    text-decoration:none;
+        /* =========================
+           MOBILE
+        ========================= */
 
-    font-size:13px;
+        @media(max-width:520px){
 
-    font-weight:600;
+            body{
+                padding:20px 13px;
+            }
 
-    transition:.2s ease;
-}
+            .brand{
+                margin-bottom:20px;
+            }
 
-.tm-back:hover{
-    color:#fff;
-}
+            .brand-name{
+                font-size:25px;
+                letter-spacing:2.4px;
+            }
 
+            .brand-tagline{
+                font-size:10px;
+                letter-spacing:1.7px;
 
-/* =========================
-   MOBILE
-   ========================= */
+                margin-top:9px;
+            }
 
-@media(max-width:520px){
+            .login-card{
+                padding:27px 19px 24px;
 
-    .tm-login-page{
-        margin:-15px;
+                border-radius:17px;
+            }
 
-        padding:25px 12px 40px;
+            .card-title{
+                font-size:23px;
+            }
 
-        align-items:flex-start;
-    }
+            .subtitle{
+                font-size:12.5px;
 
-    .tm-login-card{
-        margin-top:15px;
+                margin-bottom:21px;
+            }
 
-        padding:30px 20px 27px;
-    }
+            .social-button{
+                font-size:11px;
+            }
+        }
+    </style>
 
-    .tm-brand-name{
-        font-size:26px;
+    {% if google_client_id %}
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {% endif %}
+</head>
 
-        line-height:28px;
-    }
+<body>
 
-    .tm-brand-tagline{
-        margin-top:8px;
+<div class="page">
 
-        font-size:12px;
+    <!-- BRAND -->
+    <div class="brand">
 
-        line-height:17px;
-    }
+        <div class="brand-name">
+            TOMESH <span class="movies">MOVIES</span>
+        </div>
 
-    .tm-login-title{
-        font-size:24px;
-    }
+        <div class="brand-tagline">
+            Your Cinematic World
+        </div>
 
-    .tm-social-btn{
-        font-size:10px;
+    </div>
 
-        gap:5px;
 
-        padding:0 5px;
-    }
+    <!-- LOGIN CARD -->
+    <div class="login-card">
 
-    .google-logo{
-        width:18px;
-        height:18px;
-    }
+        <h1 class="card-title">
+            {% if step == 'otp' %}
+                Enter OTP
+            {% else %}
+                Welcome Back 👋
+            {% endif %}
+        </h1>
 
-    .gmail-logo{
-        width:19px;
-        height:19px;
-    }
-}
 
-</style>
+        <div class="subtitle">
 
+            {% if step == 'otp' %}
 
-<div class="tm-login-page">
+                Enter the OTP sent to your mobile number and continue watching.
 
-    <div class="tm-login-card">
+            {% else %}
 
+                Sign in with your mobile number and continue watching.
 
-        <!-- BRAND -->
-
-        <div class="tm-brand">
-
-            <div class="tm-brand-name">
-                <span class="tm-tomesh">TOMESH</span><span class="tm-movies"> MOVIES</span>
-            </div>
-
-            <div class="tm-brand-tagline">
-                Your Cinematic World
-            </div>
+            {% endif %}
 
         </div>
 
 
-        <!-- WELCOME -->
+        <!-- FLASH MESSAGES -->
 
-        <h2 class="tm-login-title">
-            Welcome Back 👋
-        </h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
 
-        <p class="tm-login-subtitle">
-            Sign in with your mobile number and continue watching.
-        </p>
+            {% if messages %}
+
+                {% for category, message in messages %}
+
+                    <div class="flash">
+                        {{ message }}
+                    </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+        {% endwith %}
 
 
-        <!-- MOBILE NUMBER -->
+        {% if step == 'otp' %}
 
-        <form
-            method="POST"
-            action="{{ url_for('request_otp') }}"
-        >
+            <!-- =========================
+                 OTP STEP
+            ========================= -->
 
-            <label class="tm-label">
-                Mobile Number
-            </label>
+            <div class="otp-note">
 
-            <div class="tm-mobile-input-wrap">
+                OTP sent to
+                <strong>{{ masked_mobile }}</strong>
 
-                <span class="tm-india-flag">
-                    🇮🇳
-                </span>
+                <br>
 
-                <input
-                    class="tm-mobile-input"
-                    type="tel"
-                    name="mobile"
-                    inputmode="numeric"
-                    autocomplete="tel"
-                    maxlength="10"
-                    pattern="[0-9]{10}"
-                    placeholder="Enter 10-digit mobile number"
-                    required
-                >
+                Enter your 6-digit verification code.
 
             </div>
 
-            <button
-                type="submit"
-                class="tm-red-btn"
-            >
-                GET OTP →
-            </button>
-
-        </form>
-
-
-        <!-- OTP -->
-
-        <div class="tm-otp-section">
-
-            <label class="tm-label">
-                Enter OTP
-            </label>
 
             <form
                 method="POST"
-                action="{{ url_for('verify_otp') }}"
+                action="{{ url_for('verify_mobile_otp_route') }}"
+                onsubmit="lockButton(this)"
             >
 
-                <div class="tm-otp-input-wrap">
+                <label for="otp">
+                    Enter OTP
+                </label>
+
+                <div class="input-wrap">
 
                     <input
-                        class="tm-otp-input"
+                        id="otp"
+                        class="otp-input"
                         type="text"
                         name="otp"
                         inputmode="numeric"
                         autocomplete="one-time-code"
                         maxlength="6"
-                        pattern="[0-9]{6}"
+                        pattern="[0-9]{4,6}"
                         placeholder="Enter 6-digit OTP"
                         required
+                        autofocus
                     >
 
                 </div>
 
+
                 <button
+                    class="otp-button"
                     type="submit"
-                    class="tm-red-btn"
                 >
                     VERIFY OTP ✓
                 </button>
 
             </form>
 
+
+            <a
+                class="change-link"
+                href="{{ url_for('login') }}"
+            >
+                ← Change mobile number
+            </a>
+
+
+        {% else %}
+
+            <!-- =========================
+                 MOBILE STEP
+            ========================= -->
+
+            <form
+                method="POST"
+                action="{{ url_for('request_mobile_otp') }}"
+                onsubmit="lockButton(this)"
+            >
+
+                <label for="mobile">
+                    Mobile Number
+                </label>
+
+
+                <div class="input-wrap">
+
+                    <span class="country-code">
+                        🇮🇳 +91
+                    </span>
+
+                    <input
+                        id="mobile"
+                        type="tel"
+                        name="mobile"
+                        inputmode="numeric"
+                        autocomplete="tel"
+                        maxlength="10"
+                        pattern="[6-9][0-9]{9}"
+                        placeholder="Enter 10-digit mobile number"
+                        value="{{ mobile }}"
+                        required
+                        autofocus
+                    >
+
+                </div>
+
+
+                <button
+                    id="otpButton"
+                    class="otp-button"
+                    type="submit"
+                >
+                    GET OTP →
+                </button>
+
+            </form>
+
+
+        {% endif %}
+
+
+        <!-- SECURITY -->
+
+        <div class="secure">
+            <span>🔒</span>
+            Secure login • Your information is protected
         </div>
 
 
         <!-- SOCIAL LOGIN -->
 
-        <div class="tm-divider">
+        <div class="divider">
             OR CONTINUE WITH
         </div>
 
-        <div class="tm-social-row">
 
+        <div class="social-row">
 
             <!-- GOOGLE -->
 
             <button
                 type="button"
-                class="tm-social-btn"
-                onclick="alert('Google login will be available soon.')"
+                class="social-button"
+                onclick="startGoogleLogin()"
             >
 
-                <svg
-                    class="google-logo"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-
-                    <path
-                        fill="#4285F4"
-                        d="M21.35 12.23c0-.79-.07-1.55-.2-2.28H12v4.31h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"
-                    />
-
-                    <path
-                        fill="#34A853"
-                        d="M12 21.8c2.63 0 4.84-.87 6.45-2.35l-3.14-2.45c-.87.58-1.98.93-3.31.93-2.54 0-4.69-1.72-5.46-4.03H3.3v2.53A9.75 9.75 0 0 0 12 21.8z"
-                    />
-
-                    <path
-                        fill="#FBBC05"
-                        d="M6.54 13.9A5.86 5.86 0 0 1 6.23 12c0-.66.11-1.3.31-1.9V7.57H3.3A9.8 9.8 0 0 0 2.2 12c0 1.58.38 3.08 1.1 4.43l3.24-2.53z"
-                    />
-
-                    <path
-                        fill="#EA4335"
-                        d="M12 6.07c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.16 14.63 2.2 12 2.2a9.75 9.75 0 0 0-8.7 5.37l3.24 2.53C7.31 7.79 9.46 6.07 12 6.07z"
-                    />
-
-                </svg>
+                <span class="social-icon google-icon">
+                    G
+                </span>
 
                 <span>
                     Continue with Google
@@ -699,32 +860,11 @@
 
             <button
                 type="button"
-                class="tm-social-btn"
-                onclick="alert('Gmail login will be available soon.')"
+                class="social-button"
+                onclick="startGoogleLogin()"
             >
 
-                <svg
-                    class="gmail-logo"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-
-                    <path
-                        fill="#EA4335"
-                        d="M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5z"
-                    />
-
-                    <path
-                        fill="#fff"
-                        d="M5.5 7.2v10.1h2.6v-6.8l3.9 3.05 3.9-3.05v6.8h2.6V7.2L12 12.05z"
-                    />
-
-                    <path
-                        fill="#C5221F"
-                        d="M5.5 7.2 12 12.05l6.5-4.85v3.25L12 15.3l-6.5-4.85z"
-                    />
-
-                </svg>
+                <span class="social-icon gmail-icon"></span>
 
                 <span>
                     Continue with Gmail
@@ -735,25 +875,157 @@
         </div>
 
 
-        <!-- SECURITY -->
+        <div class="info">
 
-        <div class="tm-security">
-            🔒 Secure login • Your information is protected
+            Mobile verification or Google sign-in ke baad
+            aap Tomesh Movies mein securely continue kar sakte hain.
+
         </div>
 
-
-        <!-- BACK -->
-
-        <a
-            href="{{ url_for('home') }}"
-            class="tm-back"
-        >
-            ← Back to Tomesh Movies
-        </a>
+    </div>
 
 
+    <!-- BACK -->
+
+    <a
+        class="back"
+        href="{{ url_for('home') }}"
+    >
+        ← Back to Tomesh Movies
+    </a>
+
+
+    <div class="footer">
+        © 2026 Tomesh Movies • Your Cinematic World
     </div>
 
 </div>
 
-{% endblock %}
+
+{% if google_client_id %}
+
+<!-- Hidden Google Identity Services container -->
+
+<div
+    id="google-login-container"
+    style="display:none;"
+>
+</div>
+
+{% endif %}
+
+
+<script>
+
+function lockButton(form){
+
+    const button =
+        form.querySelector(
+            "button[type='submit']"
+        );
+
+    if(!button){
+        return;
+    }
+
+    button.disabled = true;
+
+    button.textContent = "Please wait...";
+
+}
+
+
+function startGoogleLogin(){
+
+    {% if google_client_id %}
+
+        if(
+            !window.google ||
+            !google.accounts ||
+            !google.accounts.id
+        ){
+
+            alert(
+                "Google Sign-In is loading. Please try again."
+            );
+
+            return;
+        }
+
+
+        google.accounts.id.initialize({
+
+            client_id:
+                "{{ google_client_id }}",
+
+            callback:
+                handleGoogleCredential,
+
+            auto_select:false,
+
+            cancel_on_tap_outside:true
+
+        });
+
+
+        google.accounts.id.prompt();
+
+    {% else %}
+
+        alert(
+            "Google Sign-In is not configured yet."
+        );
+
+    {% endif %}
+
+}
+
+
+function handleGoogleCredential(response){
+
+    if(
+        !response ||
+        !response.credential
+    ){
+
+        alert(
+            "Google Sign-In failed. Please try again."
+        );
+
+        return;
+    }
+
+
+    const form =
+        document.createElement("form");
+
+    form.method = "POST";
+
+    form.action =
+        "{{ url_for('google_login') }}";
+
+
+    const credential =
+        document.createElement("input");
+
+    credential.type = "hidden";
+
+    credential.name = "credential";
+
+    credential.value =
+        response.credential;
+
+
+    form.appendChild(credential);
+
+
+    document.body.appendChild(form);
+
+    form.submit();
+
+}
+
+</script>
+
+</body>
+</html>
