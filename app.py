@@ -208,7 +208,13 @@ R2_PUBLIC_URL = clean_env_value(R2_PUBLIC_URL).rstrip("/")
 
 CASHFREE_APP_ID = clean_env_value(CASHFREE_APP_ID)
 CASHFREE_SECRET_KEY = clean_env_value(CASHFREE_SECRET_KEY)
-MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(     os.environ.get("MESSAGE_CENTRAL_CUSTOMER_ID", "") )  MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(     os.environ.get("MESSAGE_CENTRAL_AUTH_TOKEN", "") )
+MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(
+    os.environ.get("MESSAGE_CENTRAL_CUSTOMER_ID", "")
+)
+
+MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(
+    os.environ.get("MESSAGE_CENTRAL_AUTH_TOKEN", "")
+)
 MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(MESSAGE_CENTRAL_AUTH_TOKEN)
 
 # ============================================================
