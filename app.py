@@ -254,21 +254,8 @@ MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(
 )
 MESSAGE_CENTRAL_BASE_URL = "https://cpaas.messagecentral.com"
 
-# ============================================================
-# GOOGLE SIGN-IN
-# ============================================================
-GOOGLE_CLIENT_ID = clean_env_value(
-    os.environ.get("GOOGLE_CLIENT_ID", "")
-)
-
-GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
-
 OTP_LENGTH = 6
 OTP_EXPIRY_MINUTES = 10
-# Message Central currently returns a provider timeout of about 60 seconds.
-# Keep our local session slightly shorter so we never accept an OTP after
-# the provider has already expired it.
-MOBILE_OTP_EXPIRY_SECONDS = 55
 OTP_RESEND_SECONDS = 60
 OTP_MAX_ATTEMPTS = 5
 EMAIL_RE = re.compile(
@@ -1268,6 +1255,11 @@ def bind_customer_mobile(mobile):
 
 @app.route("/login/request-mobile-otp", methods=["POST"])
 def request_mobile_otp():
+    # An already verified customer must not receive another OTP from the
+    # login form during the same authenticated browser session.
+    if session.get("customer_logged_in") and session.get("customer_id"):
+        return redirect(url_for("user_details"))
+
     mobile = normalize_mobile(request.form.get("mobile", ""))
 
     if not valid_mobile(mobile):
@@ -1328,7 +1320,7 @@ def request_mobile_otp():
             (
                 mobile,
                 request_id,
-                datetime.now() + timedelta(seconds=MOBILE_OTP_EXPIRY_SECONDS),
+                datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
             ),
         )
         conn.commit()
@@ -1391,22 +1383,6 @@ def verify_mobile_otp_route():
         ok, result = verify_mobile_otp(mobile, otp)
 
         if not ok:
-            provider_message = ""
-            if isinstance(result, dict):
-                provider_message = str(result.get("message", "")).upper()
-
-            provider_code = str(result.get("responseCode", "")) if isinstance(result, dict) else ""
-
-            if provider_message == "VERIFICATION_EXPIRED" or provider_code == "705":
-                cur.execute(
-                    "UPDATE mobile_otps SET used_at = NOW() WHERE id = %s",
-                    (row["id"],),
-                )
-                conn.commit()
-                cur.close()
-                flash("OTP expired. Please request a new OTP and enter it within 60 seconds.", "error")
-                return redirect(url_for("login"))
-
             new_attempts = int(row.get("attempts") or 0) + 1
             if new_attempts >= OTP_MAX_ATTEMPTS:
                 cur.execute(
@@ -1444,105 +1420,6 @@ def verify_mobile_otp_route():
     session.pop("otp_mobile_sent_at", None)
     flash("Mobile number verified. Welcome to Tomesh Movies!", "success")
     return redirect(url_for("user_details"))
-
-
-def verify_google_credential(credential):
-    """
-    Verify a Google Identity Services ID token without adding a new Python
-    dependency. Google validates the token at tokeninfo; we additionally
-    require the configured Tomesh Movies OAuth client id and a verified email.
-    """
-    if not GOOGLE_CLIENT_ID:
-        raise RuntimeError(
-            "GOOGLE_CLIENT_ID missing. Add your Google OAuth Web Client ID in Render Environment."
-        )
-
-    credential = str(credential or "").strip()
-    if not credential:
-        raise RuntimeError("Google credential missing.")
-
-    separator = "?" if "?" not in GOOGLE_TOKENINFO_URL else "&"
-    url = (
-        GOOGLE_TOKENINFO_URL
-        + separator
-        + "id_token="
-        + quote(credential, safe="")
-    )
-
-    req = Request(
-        url,
-        headers={
-            "accept": "application/json",
-            "user-agent": "Tomesh-Movies/1.0",
-        },
-        method="GET",
-    )
-
-    try:
-        with urlopen(req, timeout=15) as response:
-            raw = response.read().decode("utf-8", errors="replace")
-    except HTTPError as exc:
-        raw = exc.read().decode("utf-8", errors="replace")
-        print("GOOGLE TOKEN VERIFY HTTP ERROR:", exc.code, raw)
-        raise RuntimeError("Google Sign-In verification failed.")
-    except URLError as exc:
-        print("GOOGLE TOKEN VERIFY CONNECTION ERROR:", repr(exc))
-        raise RuntimeError("Google Sign-In verification connection failed.")
-
-    try:
-        data = json.loads(raw or "{}")
-    except Exception:
-        data = {}
-
-    if not isinstance(data, dict):
-        raise RuntimeError("Invalid Google verification response.")
-
-    audience = str(data.get("aud", "")).strip()
-    email = normalize_email(data.get("email", ""))
-    email_verified = str(data.get("email_verified", "")).lower() == "true"
-    issuer = str(data.get("iss", "")).strip()
-
-    if audience != GOOGLE_CLIENT_ID:
-        raise RuntimeError("Google client ID does not match.")
-
-    if issuer not in {"accounts.google.com", "https://accounts.google.com"}:
-        raise RuntimeError("Invalid Google token issuer.")
-
-    if not email or not valid_email(email):
-        raise RuntimeError("Google account email is missing or invalid.")
-
-    if not email_verified:
-        raise RuntimeError("Google email is not verified.")
-
-    return {
-        "email": email,
-        "name": str(data.get("name", "")).strip(),
-        "picture": str(data.get("picture", "")).strip(),
-        "sub": str(data.get("sub", "")).strip(),
-    }
-
-
-@app.route("/login/google", methods=["POST"])
-def google_login():
-    """Complete Google/Gmail sign-in from Google Identity Services."""
-    payload = request.get_json(silent=True) or {}
-    credential = payload.get("credential") or request.form.get("credential", "")
-
-    try:
-        google_user = verify_google_credential(credential)
-        bind_customer_email(google_user["email"])
-    except Exception as exc:
-        print("GOOGLE LOGIN ERROR:", repr(exc))
-        return json_error(str(exc), 400)
-
-    session["customer_google"] = True
-    session["customer_google_name"] = google_user.get("name", "")
-    session["customer_google_picture"] = google_user.get("picture", "")
-
-    return json_ok(
-        message="Google Sign-In successful.",
-        redirect=url_for("user_details"),
-    )
 
 
 def bind_customer_email(email):
@@ -3136,6 +3013,11 @@ def download_movie(movie_id):
     methods=["GET"],
 )
 def login():
+    # Once mobile OTP or Google sign-in has successfully authenticated the
+    # customer in this browser session, never show the login/OTP screen again.
+    if session.get("customer_logged_in") and session.get("customer_id"):
+        return redirect(url_for("user_details"))
+
     step = str(request.args.get("step", "")).strip().lower()
 
     if step not in {"mobile", "otp"}:
@@ -3151,7 +3033,6 @@ def login():
         step=step,
         mobile=mobile,
         masked_mobile=mask_mobile(mobile),
-        google_client_id=GOOGLE_CLIENT_ID,
     )
 
 
