@@ -3,162 +3,2584 @@
 {% block title %}{{ movie.title }} | Tomesh Movies{% endblock %}
 
 {% block content %}
+
 <style>
-.tm-watch-page{min-height:100vh;color:#fff;background:radial-gradient(circle at 12% 0%,rgba(112,35,170,.20),transparent 28%),radial-gradient(circle at 90% 8%,rgba(220,35,65,.15),transparent 27%),linear-gradient(180deg,#050505 0%,#080808 48%,#030303 100%);padding:18px 12px 80px}
-.tm-watch-wrap{width:100%;max-width:1320px;margin:auto}
-.tm-topbar{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:16px}
-.tm-back{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:9px 14px;border-radius:11px;color:#fff;text-decoration:none;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(12px);transition:.2s}
-.tm-back:hover{background:rgba(255,255,255,.10);transform:translateY(-1px)}
-.tm-brand-mini{color:#aaa;font-size:11px;font-weight:900;letter-spacing:2px}
-.tm-player-box{position:relative;width:100%;overflow:hidden;background:#000;border-radius:18px;border:1px solid rgba(255,255,255,.08);box-shadow:0 25px 80px rgba(0,0,0,.65),0 0 50px rgba(80,20,120,.08)}
-.tm-player{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;user-select:none}
-.tm-video{display:block;width:100%;height:100%;object-fit:contain;background:#000;cursor:pointer}
-.tm-player::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.50),transparent 22%,transparent 62%,rgba(0,0,0,.88));opacity:0;transition:opacity .22s;z-index:2}
-.tm-player.active::after,.tm-player:hover::after{opacity:1}
-.tm-video-top{position:absolute;left:0;right:0;top:0;height:90px;z-index:4;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.68),transparent);opacity:0;transition:.25s}
-.tm-player.active .tm-video-top{opacity:1}
-.tm-player-title{position:absolute;left:18px;top:16px;z-index:5;color:#fff;font-size:12px;font-weight:850;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:.2s}
-.tm-player.active .tm-player-title{opacity:1}
-.tm-center-play{position:absolute;left:50%;top:50%;z-index:8;width:78px;height:78px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 35px rgba(255,255,255,.07);cursor:pointer;font-size:27px;transition:.2s}
-.tm-center-play:hover{transform:translate(-50%,-50%) scale(1.08);background:rgba(0,0,0,.82)}
-.tm-controls{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:42px 15px 11px;opacity:0;background:linear-gradient(180deg,transparent,rgba(0,0,0,.94));transition:opacity .22s}
-.tm-player.active .tm-controls,.tm-player:hover .tm-controls{opacity:1}
-.tm-progress-wrap{width:100%;padding:9px 0 8px;cursor:pointer;touch-action:none}.tm-progress{position:relative;width:100%;height:5px;border-radius:99px;background:rgba(255,255,255,.28);transition:height .15s}.tm-progress-wrap:hover .tm-progress{height:7px}.tm-progress-buffer,.tm-progress-value{position:absolute;left:0;top:0;height:100%;border-radius:99px;pointer-events:none}.tm-progress-buffer{width:0;background:rgba(255,255,255,.34)}.tm-progress-value{width:0;background:#ff1744}.tm-progress-dot{position:absolute;left:0;top:50%;width:13px;height:13px;transform:translate(-50%,-50%);border-radius:50%;background:#ff1744;opacity:0;transition:.12s;box-shadow:0 0 0 3px rgba(255,23,68,.18)}.tm-progress-wrap:hover .tm-progress-dot{opacity:1}
-.tm-control-row{display:flex;align-items:center;min-height:38px}.tm-left-controls,.tm-right-controls{display:flex;align-items:center;gap:2px}.tm-right-controls{margin-left:auto}.tm-control-btn{width:38px;height:36px;display:flex;align-items:center;justify-content:center;border:0;border-radius:8px;background:transparent;color:#fff;cursor:pointer;font-size:16px}.tm-control-btn:hover{background:rgba(255,255,255,.13)}.tm-skip{font-size:12px;font-weight:900}.tm-time{margin-left:7px;color:#eee;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}.tm-volume-wrap{display:flex;align-items:center;margin-left:2px}.tm-volume-slider{width:78px;height:4px;accent-color:#fff;cursor:pointer}.tm-settings{position:relative}.tm-settings-menu{position:absolute;right:0;bottom:43px;width:180px;padding:8px;border-radius:13px;background:rgba(18,18,18,.98);border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 55px rgba(0,0,0,.65);display:none}.tm-settings.open .tm-settings-menu{display:block}.tm-settings-title{padding:7px 9px;color:#777;font-size:10px;font-weight:900;text-transform:uppercase}.tm-speed-btn{width:100%;padding:9px 10px;border:0;border-radius:8px;background:transparent;color:#fff;text-align:left;cursor:pointer;font-size:12px}.tm-speed-btn:hover,.tm-speed-btn.active{background:rgba(255,255,255,.10)}
-.tm-loading{position:absolute;left:50%;top:50%;z-index:9;width:48px;height:48px;transform:translate(-50%,-50%);border:4px solid rgba(255,255,255,.18);border-top-color:#fff;border-right-color:#ff1744;border-radius:50%;display:none;animation:tmSpin .8s linear infinite}.tm-player.buffering .tm-loading{display:block}@keyframes tmSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-.tm-player-error{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;text-align:center;padding:25px;background:rgba(0,0,0,.76);backdrop-filter:blur(5px)}.tm-player.error-state .tm-player-error{display:flex}.tm-error-box{max-width:420px}.tm-error-icon{font-size:34px;margin-bottom:10px}.tm-error-title{font-size:18px;font-weight:950;margin-bottom:6px}.tm-error-text{color:#aaa;font-size:12px;line-height:1.6;margin-bottom:14px}.tm-retry{border:0;border-radius:10px;padding:10px 16px;color:#fff;background:linear-gradient(135deg,#e51f48,#9b233e);font-weight:900;cursor:pointer}
-.tm-status{display:none;margin-top:10px;padding:11px 13px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#aaa;font-size:13px}.tm-status.tm-error{color:#ffd3da;background:rgba(130,20,38,.16);border-color:rgba(255,55,90,.25)}
-.tm-movie-head{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:30px;align-items:start;padding:28px 2px 0}.tm-info-main{min-width:0}.tm-eyebrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:11px}.tm-eyebrow-badge,.tm-badge{display:inline-flex;align-items:center;min-height:27px;padding:6px 10px;border-radius:999px;color:#ccc;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);font-size:10px;font-weight:900;letter-spacing:.7px;text-transform:uppercase}.tm-eyebrow-badge.hot{color:#ffb7c2;background:rgba(220,35,65,.10);border-color:rgba(220,35,65,.20)}.tm-title{margin:0 0 12px;max-width:1000px;font-size:clamp(30px,5vw,54px);line-height:1.05;font-weight:950;letter-spacing:-1.5px}.tm-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:17px}.tm-badge{font-size:11px;letter-spacing:0;text-transform:none}.tm-badge.premium{color:#ffd66c}.tm-description{max-width:900px;color:#aaa;font-size:15px;line-height:1.85;white-space:pre-line}.tm-details{margin-top:24px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:900px}.tm-detail{padding:13px 14px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.065)}.tm-detail-label{font-size:9px;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:900;margin-bottom:5px}.tm-detail-value{font-size:12px;color:#ddd;line-height:1.45}
-.tm-poster-card{position:relative;overflow:hidden;border-radius:16px;background:#0d0d0d;border:1px solid rgba(255,255,255,.09);box-shadow:0 20px 55px rgba(0,0,0,.45)}.tm-poster{display:block;width:100%;aspect-ratio:2/3;object-fit:cover}.tm-poster-shade{position:absolute;left:0;right:0;bottom:0;padding:32px 14px 14px;color:#ddd;font-size:12px;font-weight:850;background:linear-gradient(transparent,rgba(0,0,0,.90))}
-.tm-unavailable{min-height:360px;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:#aaa;background:#030303}.tm-unavailable-box{max-width:500px}.tm-unavailable-icon{font-size:42px;margin-bottom:12px}.tm-unavailable h2{margin:0 0 8px;color:#fff;font-size:24px}.tm-unavailable p{margin:0;color:#888;line-height:1.7;font-size:13px}
-@media(max-width:950px){.tm-movie-head{grid-template-columns:1fr}.tm-poster-card{width:210px}}
-@media(max-width:700px){.tm-watch-page{padding:12px 8px 60px}.tm-player-box{border-radius:13px}.tm-center-play{width:62px;height:62px;font-size:22px}.tm-controls{padding:35px 7px 7px}.tm-control-btn{width:34px;height:34px;font-size:14px}.tm-volume-wrap{display:none}.tm-time{font-size:10px}.tm-pip-btn{display:none}.tm-title{font-size:30px}.tm-description{font-size:13px;line-height:1.75}.tm-details{grid-template-columns:1fr 1fr}.tm-poster-card{width:180px}}
-@media(max-width:420px){.tm-brand-mini{display:none}.tm-title{font-size:26px}.tm-details{grid-template-columns:1fr}.tm-center-play{width:56px;height:56px}.tm-controls{padding-left:4px;padding-right:4px}.tm-control-btn{width:31px}}
+/* =========================================================
+   TOMESH MOVIES
+   PREMIUM CINEMATIC MOVIE PAGE
+   ========================================================= */
+
+.tm-watch-page{
+    min-height:100vh;
+    color:#fff;
+    background:
+        radial-gradient(circle at 8% 0%,rgba(120,30,180,.22),transparent 30%),
+        radial-gradient(circle at 92% 5%,rgba(255,20,65,.17),transparent 30%),
+        linear-gradient(180deg,#030303 0%,#080808 48%,#020202 100%);
+    padding:18px 12px 80px;
+}
+
+.tm-watch-wrap{
+    width:100%;
+    max-width:1380px;
+    margin:auto;
+}
+
+/* TOP */
+
+.tm-topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    margin-bottom:18px;
+}
+
+.tm-back{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:42px;
+    padding:9px 15px;
+    border-radius:12px;
+    color:#fff;
+    text-decoration:none;
+    background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.10);
+    backdrop-filter:blur(14px);
+    font-size:13px;
+    font-weight:850;
+    transition:.2s;
+}
+
+.tm-back:hover{
+    background:rgba(255,255,255,.11);
+    transform:translateY(-1px);
+}
+
+.tm-brand-mini{
+    color:#aaa;
+    font-size:11px;
+    font-weight:950;
+    letter-spacing:2.5px;
+}
+
+/* PLAYER */
+
+.tm-player-box{
+    position:relative;
+    width:100%;
+    overflow:hidden;
+    background:#000;
+    border-radius:20px;
+    border:1px solid rgba(255,255,255,.09);
+    box-shadow:
+        0 30px 90px rgba(0,0,0,.72),
+        0 0 70px rgba(100,25,150,.09);
+}
+
+.tm-player{
+    position:relative;
+    width:100%;
+    aspect-ratio:16/9;
+    background:#000;
+    overflow:hidden;
+    user-select:none;
+}
+
+.tm-video{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    background:#000;
+    cursor:pointer;
+}
+
+.tm-player::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background:
+        linear-gradient(
+            180deg,
+            rgba(0,0,0,.65),
+            transparent 20%,
+            transparent 60%,
+            rgba(0,0,0,.94)
+        );
+    opacity:0;
+    transition:.22s;
+    z-index:2;
+}
+
+.tm-player.active::after,
+.tm-player:hover::after{
+    opacity:1;
+}
+
+/* PLAYER TITLE */
+
+.tm-video-top{
+    position:absolute;
+    left:0;
+    right:0;
+    top:0;
+    height:105px;
+    z-index:4;
+    pointer-events:none;
+    background:linear-gradient(
+        180deg,
+        rgba(0,0,0,.82),
+        transparent
+    );
+    opacity:0;
+    transition:.25s;
+}
+
+.tm-player.active .tm-video-top{
+    opacity:1;
+}
+
+.tm-player-title{
+    position:absolute;
+    left:20px;
+    top:18px;
+    z-index:5;
+    max-width:72%;
+    color:#fff;
+    font-size:13px;
+    font-weight:900;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    opacity:0;
+    transition:.2s;
+}
+
+.tm-player.active .tm-player-title{
+    opacity:1;
+}
+
+/* CENTER PLAY */
+
+.tm-center-play{
+    position:absolute;
+    left:50%;
+    top:50%;
+    z-index:8;
+    width:86px;
+    height:86px;
+    transform:translate(-50%,-50%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    color:#fff;
+    background:linear-gradient(
+        135deg,
+        #ff1744,
+        #a9133c
+    );
+    border:2px solid rgba(255,255,255,.28);
+    box-shadow:
+        0 20px 60px rgba(0,0,0,.65),
+        0 0 50px rgba(255,20,65,.26);
+    cursor:pointer;
+    font-size:29px;
+    transition:.22s;
+}
+
+.tm-center-play:hover{
+    transform:translate(-50%,-50%) scale(1.09);
+}
+
+/* CONTROLS */
+
+.tm-controls{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:10;
+    padding:45px 16px 12px;
+    opacity:0;
+    background:linear-gradient(
+        180deg,
+        transparent,
+        rgba(0,0,0,.97)
+    );
+    transition:opacity .22s;
+}
+
+.tm-player.active .tm-controls,
+.tm-player:hover .tm-controls{
+    opacity:1;
+}
+
+.tm-progress-wrap{
+    width:100%;
+    padding:9px 0 8px;
+    cursor:pointer;
+    touch-action:none;
+}
+
+.tm-progress{
+    position:relative;
+    width:100%;
+    height:5px;
+    border-radius:99px;
+    background:rgba(255,255,255,.27);
+}
+
+.tm-progress-wrap:hover .tm-progress{
+    height:7px;
+}
+
+.tm-progress-buffer,
+.tm-progress-value{
+    position:absolute;
+    left:0;
+    top:0;
+    height:100%;
+    border-radius:99px;
+    pointer-events:none;
+}
+
+.tm-progress-buffer{
+    width:0;
+    background:rgba(255,255,255,.35);
+}
+
+.tm-progress-value{
+    width:0;
+    background:#ff1744;
+}
+
+.tm-progress-dot{
+    position:absolute;
+    left:0;
+    top:50%;
+    width:13px;
+    height:13px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:#ff1744;
+    opacity:0;
+}
+
+.tm-progress-wrap:hover .tm-progress-dot{
+    opacity:1;
+}
+
+.tm-control-row{
+    display:flex;
+    align-items:center;
+    min-height:40px;
+}
+
+.tm-left-controls,
+.tm-right-controls{
+    display:flex;
+    align-items:center;
+    gap:2px;
+}
+
+.tm-right-controls{
+    margin-left:auto;
+}
+
+.tm-control-btn{
+    width:39px;
+    height:37px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:0;
+    border-radius:9px;
+    background:transparent;
+    color:#fff;
+    cursor:pointer;
+    font-size:16px;
+}
+
+.tm-control-btn:hover{
+    background:rgba(255,255,255,.14);
+}
+
+.tm-skip{
+    font-size:12px;
+    font-weight:950;
+}
+
+.tm-time{
+    margin-left:8px;
+    color:#eee;
+    font-size:12px;
+    white-space:nowrap;
+}
+
+.tm-volume-wrap{
+    display:flex;
+    align-items:center;
+    margin-left:2px;
+}
+
+.tm-volume-slider{
+    width:80px;
+    height:4px;
+    accent-color:#fff;
+    cursor:pointer;
+}
+
+.tm-settings{
+    position:relative;
+}
+
+.tm-settings-menu{
+    position:absolute;
+    right:0;
+    bottom:44px;
+    width:180px;
+    padding:8px;
+    border-radius:13px;
+    background:rgba(17,17,17,.98);
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 20px 55px rgba(0,0,0,.70);
+    display:none;
+}
+
+.tm-settings.open .tm-settings-menu{
+    display:block;
+}
+
+.tm-settings-title{
+    padding:7px 9px;
+    color:#777;
+    font-size:10px;
+    font-weight:900;
+    text-transform:uppercase;
+}
+
+.tm-speed-btn{
+    width:100%;
+    padding:9px 10px;
+    border:0;
+    border-radius:8px;
+    background:transparent;
+    color:#fff;
+    text-align:left;
+    cursor:pointer;
+    font-size:12px;
+}
+
+.tm-speed-btn:hover,
+.tm-speed-btn.active{
+    background:rgba(255,255,255,.10);
+}
+
+/* LOADING */
+
+.tm-loading{
+    position:absolute;
+    left:50%;
+    top:50%;
+    z-index:9;
+    width:48px;
+    height:48px;
+    transform:translate(-50%,-50%);
+    border:4px solid rgba(255,255,255,.18);
+    border-top-color:#fff;
+    border-right-color:#ff1744;
+    border-radius:50%;
+    display:none;
+    animation:tmSpin .8s linear infinite;
+}
+
+.tm-player.buffering .tm-loading{
+    display:block;
+}
+
+@keyframes tmSpin{
+    to{
+        transform:translate(-50%,-50%) rotate(360deg);
+    }
+}
+
+/* ERROR */
+
+.tm-player-error{
+    position:absolute;
+    inset:0;
+    z-index:20;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:25px;
+    background:rgba(0,0,0,.80);
+    backdrop-filter:blur(7px);
+}
+
+.tm-player.error-state .tm-player-error{
+    display:flex;
+}
+
+.tm-error-box{
+    max-width:430px;
+}
+
+.tm-error-icon{
+    font-size:38px;
+    margin-bottom:10px;
+}
+
+.tm-error-title{
+    font-size:19px;
+    font-weight:950;
+    margin-bottom:7px;
+}
+
+.tm-error-text{
+    color:#aaa;
+    font-size:12px;
+    line-height:1.65;
+    margin-bottom:15px;
+}
+
+.tm-retry{
+    border:0;
+    border-radius:10px;
+    padding:11px 18px;
+    color:#fff;
+    background:linear-gradient(135deg,#e51f48,#8f1835);
+    font-weight:900;
+    cursor:pointer;
+}
+
+/* STATUS */
+
+.tm-status{
+    display:none;
+    margin-top:10px;
+    padding:11px 13px;
+    border-radius:10px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.08);
+    color:#aaa;
+    font-size:13px;
+}
+
+.tm-status.tm-error{
+    color:#ffd3da;
+    background:rgba(130,20,38,.16);
+    border-color:rgba(255,55,90,.25);
+}
+
+/* MOVIE INFO */
+
+.tm-movie-head{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 270px;
+    gap:34px;
+    align-items:start;
+    padding:32px 3px 0;
+}
+
+.tm-info-main{
+    min-width:0;
+}
+
+.tm-eyebrow{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:12px;
+}
+
+.tm-eyebrow-badge,
+.tm-badge{
+    display:inline-flex;
+    align-items:center;
+    min-height:28px;
+    padding:6px 10px;
+    border-radius:999px;
+    color:#ccc;
+    background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.08);
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+}
+
+.tm-eyebrow-badge.hot{
+    color:#ffb7c2;
+    background:rgba(220,35,65,.10);
+    border-color:rgba(220,35,65,.20);
+}
+
+.tm-title{
+    margin:0 0 14px;
+    max-width:1050px;
+    font-size:clamp(30px,5vw,56px);
+    line-height:1.05;
+    font-weight:950;
+    letter-spacing:-1.6px;
+}
+
+.tm-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:19px;
+}
+
+.tm-badge{
+    font-size:11px;
+    letter-spacing:0;
+    text-transform:none;
+}
+
+.tm-badge.hd{
+    color:#fff;
+    background:rgba(255,23,68,.13);
+    border-color:rgba(255,23,68,.22);
+}
+
+.tm-description{
+    max-width:950px;
+    color:#aaa;
+    font-size:15px;
+    line-height:1.9;
+    white-space:pre-line;
+}
+
+.tm-details{
+    margin-top:26px;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+    max-width:950px;
+}
+
+.tm-detail{
+    padding:14px;
+    border-radius:13px;
+    background:rgba(255,255,255,.035);
+    border:1px solid rgba(255,255,255,.065);
+}
+
+.tm-detail-label{
+    font-size:9px;
+    color:#666;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    font-weight:900;
+    margin-bottom:6px;
+}
+
+.tm-detail-value{
+    font-size:12px;
+    color:#ddd;
+    line-height:1.5;
+}
+
+/* POSTER */
+
+.tm-poster-card{
+    position:relative;
+    overflow:hidden;
+    border-radius:17px;
+    background:#0d0d0d;
+    border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 25px 65px rgba(0,0,0,.50);
+}
+
+.tm-poster{
+    display:block;
+    width:100%;
+    aspect-ratio:2/3;
+    object-fit:cover;
+}
+
+.tm-poster-shade{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    padding:42px 14px 15px;
+    color:#eee;
+    font-size:12px;
+    font-weight:850;
+    background:linear-gradient(
+        transparent,
+        rgba(0,0,0,.94)
+    );
+}
+
+/* ACTIONS */
+
+.tm-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:11px;
+    margin-top:25px;
+}
+
+.tm-action{
+    min-height:46px;
+    padding:11px 18px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    border-radius:11px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.055);
+    color:#fff;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:900;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.tm-action:hover{
+    background:rgba(255,255,255,.11);
+    transform:translateY(-1px);
+}
+
+.tm-action.download{
+    background:linear-gradient(
+        135deg,
+        #ff1744,
+        #b5123b
+    );
+    border-color:rgba(255,23,68,.35);
+    box-shadow:0 12px 30px rgba(255,23,68,.18);
+}
+
+.tm-action.share{
+    background:linear-gradient(
+        135deg,
+        #7023aa,
+        #42186d
+    );
+    border-color:rgba(150,70,220,.30);
+}
+
+.tm-action.locked{
+    color:#888;
+    background:rgba(255,255,255,.025);
+    border-color:rgba(255,255,255,.06);
+    cursor:not-allowed;
+}
+
+.tm-sub-note{
+    width:100%;
+    color:#777;
+    font-size:11px;
+    line-height:1.5;
+}
+
+/* UNAVAILABLE */
+
+.tm-unavailable{
+    min-height:400px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:30px;
+    color:#aaa;
+    background:#030303;
+}
+
+.tm-unavailable-box{
+    max-width:500px;
+}
+
+.tm-unavailable-icon{
+    font-size:44px;
+    margin-bottom:13px;
+}
+
+.tm-unavailable h2{
+    margin:0 0 9px;
+    color:#fff;
+    font-size:25px;
+}
+
+.tm-unavailable p{
+    margin:0;
+    color:#888;
+    line-height:1.7;
+    font-size:13px;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:950px){
+
+    .tm-movie-head{
+        grid-template-columns:1fr;
+    }
+
+    .tm-poster-card{
+        width:210px;
+    }
+}
+
+@media(max-width:700px){
+
+    .tm-watch-page{
+        padding:11px 7px 60px;
+    }
+
+    .tm-player-box{
+        border-radius:13px;
+    }
+
+    .tm-center-play{
+        width:63px;
+        height:63px;
+        font-size:22px;
+    }
+
+    .tm-controls{
+        padding:34px 7px 7px;
+    }
+
+    .tm-control-btn{
+        width:34px;
+        height:34px;
+        font-size:14px;
+    }
+
+    .tm-volume-wrap{
+        display:none;
+    }
+
+    .tm-time{
+        font-size:10px;
+    }
+
+    .tm-pip-btn{
+        display:none;
+    }
+
+    .tm-title{
+        font-size:30px;
+    }
+
+    .tm-description{
+        font-size:13px;
+        line-height:1.75;
+    }
+
+    .tm-details{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .tm-poster-card{
+        width:180px;
+    }
+
+    .tm-actions{
+        flex-direction:column;
+    }
+
+    .tm-action{
+        width:100%;
+    }
+}
+
+@media(max-width:420px){
+
+    .tm-brand-mini{
+        display:none;
+    }
+
+    .tm-title{
+        font-size:26px;
+    }
+
+    .tm-details{
+        grid-template-columns:1fr;
+    }
+
+    .tm-center-play{
+        width:57px;
+        height:57px;
+    }
+
+    .tm-controls{
+        padding-left:4px;
+        padding-right:4px;
+    }
+
+    .tm-control-btn{
+        width:31px;
+    }
+}
 </style>
 
+
 <div class="tm-watch-page">
+
 <div class="tm-watch-wrap">
+
+
+    <!-- TOP -->
+
     <div class="tm-topbar">
-        <a href="{{ url_for('home') }}" class="tm-back">← Back to Home</a>
-        <div class="tm-brand-mini">TOMESH MOVIES</div>
+
+        <a
+            href="/member#movies"
+            class="tm-back"
+        >
+            ← Back to Movies
+        </a>
+
+        <div class="tm-brand-mini">
+            TOMESH MOVIES
+        </div>
+
     </div>
+
+
+    <!-- PLAYER -->
 
     <div class="tm-player-box">
+
         {% if movie.video_url %}
-        <div id="tmPlayer" class="tm-player" tabindex="0">
+
+        <div
+            id="tmPlayer"
+            class="tm-player"
+            tabindex="0"
+        >
+
             <div class="tm-video-top"></div>
-            <div class="tm-player-title">{{ movie.title }}</div>
-            <video id="tmVideo" class="tm-video" playsinline preload="metadata" poster="{{ movie.poster_url or movie.poster or '' }}">
-                <source src="{{ movie.video_url }}" type="{{ movie.video_mime or 'video/mp4' }}">
+
+            <div class="tm-player-title">
+                {{ movie.title }}
+            </div>
+
+
+            <video
+                id="tmVideo"
+                class="tm-video"
+                playsinline
+                preload="metadata"
+                poster="{{ movie.poster_url or movie.poster or '' }}"
+            >
+
+                <source
+                    src="{{ movie.video_url }}"
+                    type="{{ movie.video_mime or 'video/mp4' }}"
+                >
+
                 Your browser does not support HTML5 video.
+
             </video>
-            <div id="tmLoading" class="tm-loading" aria-label="Loading"></div>
-            <button id="tmCenterPlay" class="tm-center-play" type="button" aria-label="Play">▶</button>
-            <div id="tmPlayerError" class="tm-player-error">
+
+
+            <div
+                id="tmLoading"
+                class="tm-loading"
+            ></div>
+
+
+            <button
+                id="tmCenterPlay"
+                class="tm-center-play"
+                type="button"
+                aria-label="Play"
+            >
+                ▶
+            </button>
+
+
+            <div
+                id="tmPlayerError"
+                class="tm-player-error"
+            >
+
                 <div class="tm-error-box">
-                    <div class="tm-error-icon">⚠️</div>
-                    <div class="tm-error-title">Video play nahi ho paya</div>
-                    <div id="tmPlayerErrorText" class="tm-error-text">Network ya video source problem ho sakti hai.</div>
-                    <button id="tmRetry" class="tm-retry" type="button">↻ Retry</button>
+
+                    <div class="tm-error-icon">
+                        ⚠️
+                    </div>
+
+                    <div class="tm-error-title">
+                        Video play nahi ho paya
+                    </div>
+
+                    <div
+                        id="tmPlayerErrorText"
+                        class="tm-error-text"
+                    >
+                        Network ya video source problem ho sakti hai.
+                    </div>
+
+                    <button
+                        id="tmRetry"
+                        class="tm-retry"
+                        type="button"
+                    >
+                        ↻ Retry
+                    </button>
+
                 </div>
+
             </div>
-            <div id="tmControls" class="tm-controls">
-                <div id="tmProgressWrap" class="tm-progress-wrap" aria-label="Seek">
-                    <div id="tmProgress" class="tm-progress"><div id="tmBuffered" class="tm-progress-buffer"></div><div id="tmProgressValue" class="tm-progress-value"></div><div id="tmProgressDot" class="tm-progress-dot"></div></div>
+
+
+            <!-- CONTROLS -->
+
+            <div
+                id="tmControls"
+                class="tm-controls"
+            >
+
+                <div
+                    id="tmProgressWrap"
+                    class="tm-progress-wrap"
+                >
+
+                    <div
+                        id="tmProgress"
+                        class="tm-progress"
+                    >
+
+                        <div
+                            id="tmBuffered"
+                            class="tm-progress-buffer"
+                        ></div>
+
+                        <div
+                            id="tmProgressValue"
+                            class="tm-progress-value"
+                        ></div>
+
+                        <div
+                            id="tmProgressDot"
+                            class="tm-progress-dot"
+                        ></div>
+
+                    </div>
+
                 </div>
+
+
                 <div class="tm-control-row">
+
                     <div class="tm-left-controls">
-                        <button id="tmPlay" class="tm-control-btn" type="button" aria-label="Play/Pause">▶</button>
-                        <button id="tmBack10" class="tm-control-btn tm-skip" type="button" aria-label="Back 10 seconds">↶10</button>
-                        <button id="tmForward10" class="tm-control-btn tm-skip" type="button" aria-label="Forward 10 seconds">10↷</button>
-                        <div class="tm-volume-wrap"><button id="tmMute" class="tm-control-btn" type="button" aria-label="Mute">🔊</button><input id="tmVolume" class="tm-volume-slider" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div>
-                        <button id="tmMobileMute" class="tm-control-btn" type="button" aria-label="Mute">🔊</button>
-                        <div id="tmTime" class="tm-time">0:00 / 0:00</div>
-                    </div>
-                    <div class="tm-right-controls">
-                        <button id="tmPip" class="tm-control-btn tm-pip-btn" type="button" aria-label="Picture in Picture">▣</button>
-                        <div id="tmSettings" class="tm-settings">
-                            <button id="tmSettingsBtn" class="tm-control-btn" type="button" aria-label="Playback speed">⚙</button>
-                            <div id="tmSettingsMenu" class="tm-settings-menu">
-                                <div class="tm-settings-title">Playback Speed</div>
-                                <button class="tm-speed-btn active" data-speed="1" type="button">Normal</button><button class="tm-speed-btn" data-speed="0.75" type="button">0.75×</button><button class="tm-speed-btn" data-speed="1.25" type="button">1.25×</button><button class="tm-speed-btn" data-speed="1.5" type="button">1.5×</button><button class="tm-speed-btn" data-speed="2" type="button">2×</button>
-                            </div>
+
+                        <button
+                            id="tmPlay"
+                            class="tm-control-btn"
+                            type="button"
+                        >
+                            ▶
+                        </button>
+
+                        <button
+                            id="tmBack10"
+                            class="tm-control-btn tm-skip"
+                            type="button"
+                        >
+                            ↶10
+                        </button>
+
+                        <button
+                            id="tmForward10"
+                            class="tm-control-btn tm-skip"
+                            type="button"
+                        >
+                            10↷
+                        </button>
+
+
+                        <div class="tm-volume-wrap">
+
+                            <button
+                                id="tmMute"
+                                class="tm-control-btn"
+                                type="button"
+                            >
+                                🔊
+                            </button>
+
+                            <input
+                                id="tmVolume"
+                                class="tm-volume-slider"
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                value="1"
+                            >
+
                         </div>
-                        <button id="tmFullscreen" class="tm-control-btn" type="button" aria-label="Fullscreen">⛶</button>
+
+
+                        <button
+                            id="tmMobileMute"
+                            class="tm-control-btn"
+                            type="button"
+                        >
+                            🔊
+                        </button>
+
+
+                        <div
+                            id="tmTime"
+                            class="tm-time"
+                        >
+                            0:00 / 0:00
+                        </div>
+
                     </div>
+
+
+                    <div class="tm-right-controls">
+
+                        <button
+                            id="tmPip"
+                            class="tm-control-btn tm-pip-btn"
+                            type="button"
+                        >
+                            ▣
+                        </button>
+
+
+                        <div
+                            id="tmSettings"
+                            class="tm-settings"
+                        >
+
+                            <button
+                                id="tmSettingsBtn"
+                                class="tm-control-btn"
+                                type="button"
+                            >
+                                ⚙
+                            </button>
+
+
+                            <div
+                                id="tmSettingsMenu"
+                                class="tm-settings-menu"
+                            >
+
+                                <div class="tm-settings-title">
+                                    Playback Speed
+                                </div>
+
+                                <button
+                                    class="tm-speed-btn active"
+                                    data-speed="1"
+                                    type="button"
+                                >
+                                    Normal
+                                </button>
+
+                                <button
+                                    class="tm-speed-btn"
+                                    data-speed="0.75"
+                                    type="button"
+                                >
+                                    0.75×
+                                </button>
+
+                                <button
+                                    class="tm-speed-btn"
+                                    data-speed="1.25"
+                                    type="button"
+                                >
+                                    1.25×
+                                </button>
+
+                                <button
+                                    class="tm-speed-btn"
+                                    data-speed="1.5"
+                                    type="button"
+                                >
+                                    1.5×
+                                </button>
+
+                                <button
+                                    class="tm-speed-btn"
+                                    data-speed="2"
+                                    type="button"
+                                >
+                                    2×
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+                        <button
+                            id="tmFullscreen"
+                            class="tm-control-btn"
+                            type="button"
+                        >
+                            ⛶
+                        </button>
+
+                    </div>
+
                 </div>
+
             </div>
+
         </div>
+
         {% else %}
-        <div class="tm-unavailable"><div class="tm-unavailable-box"><div class="tm-unavailable-icon">🎬</div><h2>Video is currently unavailable</h2><p>Is movie ka video source abhi available nahi hai.</p></div></div>
+
+        <div class="tm-unavailable">
+
+            <div class="tm-unavailable-box">
+
+                <div class="tm-unavailable-icon">
+                    🎬
+                </div>
+
+                <h2>
+                    Video is currently unavailable
+                </h2>
+
+                <p>
+                    Is movie ka video source abhi available nahi hai.
+                </p>
+
+            </div>
+
+        </div>
+
         {% endif %}
+
     </div>
 
-    <div id="tmVideoStatus" class="tm-status"></div>
+
+    <div
+        id="tmVideoStatus"
+        class="tm-status"
+    ></div>
+
+
+    <!-- MOVIE DETAILS -->
 
     <div class="tm-movie-head">
+
+
         <div class="tm-info-main">
-            <div class="tm-eyebrow"><span class="tm-eyebrow-badge hot">TOMESH MOVIES</span></div>
-            <h1 class="tm-title">{{ movie.title }}</h1>
-            <div class="tm-meta">
-                {% if movie.category %}<span class="tm-badge">🎬 {{ movie.category }}</span>{% endif %}
-                <span class="tm-badge">👁 {{ movie.views or 0 }} Views</span>
-                <span class="tm-badge">HD</span>
-                {% if movie.year %}<span class="tm-badge">{{ movie.year }}</span>{% endif %}
+
+
+            <div class="tm-eyebrow">
+
+                <span class="tm-eyebrow-badge hot">
+                    TOMESH MOVIES
+                </span>
+
             </div>
-            {% if movie.description %}<div class="tm-description">{{ movie.description }}</div>{% endif %}
+
+
+            <h1 class="tm-title">
+                {{ movie.title }}
+            </h1>
+
+
+            <div class="tm-meta">
+
+                {% if movie.category %}
+
+                <span class="tm-badge">
+                    🎬 {{ movie.category }}
+                </span>
+
+                {% endif %}
+
+
+                <span class="tm-badge">
+                    👁 {{ movie.views or 0 }} Views
+                </span>
+
+
+                <span class="tm-badge hd">
+                    HD
+                </span>
+
+
+                {% if movie.year %}
+
+                <span class="tm-badge">
+                    {{ movie.year }}
+                </span>
+
+                {% endif %}
+
+            </div>
+
+
+            {% if movie.description %}
+
+            <div class="tm-description">
+                {{ movie.description }}
+            </div>
+
+            {% endif %}
+
+
+            <!-- ACTION BUTTONS -->
+
+            <div class="tm-actions">
+
+
+                {% if subscription_active %}
+
+                <a
+                    href="{{ movie.download_url or movie.video_url }}"
+                    class="tm-action download"
+                    download
+                >
+                    ⬇️ Download
+                </a>
+
+
+                <button
+                    type="button"
+                    class="tm-action share"
+                    id="tmShareBtn"
+                >
+                    🔗 Share
+                </button>
+
+
+                {% else %}
+
+                <button
+                    type="button"
+                    class="tm-action locked"
+                    disabled
+                >
+                    🔒 Download
+                </button>
+
+
+                <button
+                    type="button"
+                    class="tm-action locked"
+                    disabled
+                >
+                    🔒 Share
+                </button>
+
+
+                <div class="tm-sub-note">
+                    👑 Download aur Share features subscription active hone par unlock honge.
+                </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- DETAILS -->
 
             <div class="tm-details">
-                {% if movie.language %}<div class="tm-detail"><div class="tm-detail-label">Language</div><div class="tm-detail-value">{{ movie.language }}</div></div>{% endif %}
-                {% if movie.genre %}<div class="tm-detail"><div class="tm-detail-label">Genre</div><div class="tm-detail-value">{{ movie.genre }}</div></div>{% endif %}
-                {% if movie.cast %}<div class="tm-detail"><div class="tm-detail-label">Cast</div><div class="tm-detail-value">{{ movie.cast }}</div></div>{% endif %}
-                {% if movie.director %}<div class="tm-detail"><div class="tm-detail-label">Director</div><div class="tm-detail-value">{{ movie.director }}</div></div>{% endif %}
+
+
+                {% if movie.language %}
+
+                <div class="tm-detail">
+
+                    <div class="tm-detail-label">
+                        Language
+                    </div>
+
+                    <div class="tm-detail-value">
+                        {{ movie.language }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if movie.genre %}
+
+                <div class="tm-detail">
+
+                    <div class="tm-detail-label">
+                        Genre
+                    </div>
+
+                    <div class="tm-detail-value">
+                        {{ movie.genre }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if movie.cast %}
+
+                <div class="tm-detail">
+
+                    <div class="tm-detail-label">
+                        Cast
+                    </div>
+
+                    <div class="tm-detail-value">
+                        {{ movie.cast }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if movie.director %}
+
+                <div class="tm-detail">
+
+                    <div class="tm-detail-label">
+                        Director
+                    </div>
+
+                    <div class="tm-detail-value">
+                        {{ movie.director }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
             </div>
+
         </div>
 
+
         {% if movie.poster_url or movie.poster %}
+
         <div class="tm-poster-card">
-            <img class="tm-poster" src="{{ movie.poster_url or movie.poster }}" alt="{{ movie.title }}" loading="lazy">
-            <div class="tm-poster-shade">{{ movie.title }}</div>
+
+            <img
+                class="tm-poster"
+                src="{{ movie.poster_url or movie.poster }}"
+                alt="{{ movie.title }}"
+                loading="lazy"
+            >
+
+            <div class="tm-poster-shade">
+                {{ movie.title }}
+            </div>
+
         </div>
+
         {% endif %}
+
+
     </div>
+
 </div>
+
 </div>
+
 
 <script>
 (function(){
-const player=document.getElementById("tmPlayer"),video=document.getElementById("tmVideo");
-if(!player||!video)return;
-const $=id=>document.getElementById(id);
-const centerPlay=$("tmCenterPlay"),playBtn=$("tmPlay"),back10=$("tmBack10"),forward10=$("tmForward10"),muteBtn=$("tmMute"),mobileMuteBtn=$("tmMobileMute"),volume=$("tmVolume"),fullscreenBtn=$("tmFullscreen"),pipBtn=$("tmPip"),time=$("tmTime"),progressWrap=$("tmProgressWrap"),progressValue=$("tmProgressValue"),progressDot=$("tmProgressDot"),buffered=$("tmBuffered"),settings=$("tmSettings"),settingsBtn=$("tmSettingsBtn"),errorText=$("tmPlayerErrorText"),retryBtn=$("tmRetry"),status=$("tmVideoStatus");
-let hideTimer=null,loadTimer=null;
-function formatTime(sec){if(!Number.isFinite(sec)||sec<0)return"0:00";sec=Math.floor(sec);const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h>0?h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"):m+":"+String(s).padStart(2,"0")}
-function setStatus(msg,err=false){if(!status)return;status.textContent=msg||"";status.style.display=msg?"block":"none";status.classList.toggle("tm-error",!!err)}
-function setBuffering(on){player.classList.toggle("buffering",on);if(on)player.classList.remove("ready");else player.classList.add("ready")}
-function updateTime(){if(time)time.textContent=formatTime(video.currentTime)+" / "+formatTime(video.duration)}
-function updateProgress(){if(!Number.isFinite(video.duration)||video.duration<=0)return;const pct=Math.max(0,Math.min(100,(video.currentTime/video.duration)*100));progressValue.style.width=pct+"%";progressDot.style.left=pct+"%"}
-function updateBuffered(){if(!buffered)return;try{if(video.buffered.length&&Number.isFinite(video.duration)&&video.duration>0){const end=video.buffered.end(video.buffered.length-1);buffered.style.width=Math.min(100,(end/video.duration)*100)+"%"}else buffered.style.width="0%"}catch(e){buffered.style.width="0%"}}
-function updatePlayIcon(){const icon=video.paused?"▶":"❚❚";if(playBtn)playBtn.textContent=icon;if(centerPlay){centerPlay.textContent="▶";centerPlay.style.opacity=video.paused?"1":"0"}}
-function showControls(){player.classList.add("active");clearTimeout(hideTimer);if(!video.paused){hideTimer=setTimeout(()=>{if(!settings.classList.contains("open"))player.classList.remove("active")},3000)}}
-function setError(msg){setBuffering(false);player.classList.add("error-state");if(errorText)errorText.textContent=msg||"Video load nahi ho paya.";setStatus("Video error — Retry दबाएँ",true)}
-function clearError(){player.classList.remove("error-state");setStatus("")}
-function togglePlay(){if(video.paused){video.play().catch(()=>setError("Browser ne video play ko block kar diya."))}else video.pause();showControls()}
-function toggleMute(){video.muted=!video.muted;updateVolumeIcon();showControls()}
-function updateVolumeIcon(){const icon=video.muted||video.volume===0?"🔇":(video.volume<.5?"🔉":"🔊");if(muteBtn)muteBtn.textContent=icon;if(mobileMuteBtn)mobileMuteBtn.textContent=icon}
-function setVolume(v){video.volume=Number(v);video.muted=video.volume===0;updateVolumeIcon();showControls()}
-function seek(delta){video.currentTime=Math.max(0,Math.min(video.duration||Infinity,video.currentTime+delta));showControls()}
-function seekAt(clientX){if(!Number.isFinite(video.duration)||video.duration<=0)return;const r=progressWrap.getBoundingClientRect();video.currentTime=Math.max(0,Math.min(1,(clientX-r.left)/r.width))*video.duration}
-function toggleFullscreen(){if(document.fullscreenElement){document.exitFullscreen().catch(()=>{});return}if(player.requestFullscreen)player.requestFullscreen().catch(()=>{});else if(player.webkitRequestFullscreen)player.webkitRequestFullscreen()}
-function retry(){clearError();setBuffering(true);video.load()}
-centerPlay.addEventListener("click",togglePlay);playBtn.addEventListener("click",togglePlay);video.addEventListener("click",togglePlay);back10.addEventListener("click",()=>seek(-10));forward10.addEventListener("click",()=>seek(10));muteBtn.addEventListener("click",toggleMute);mobileMuteBtn.addEventListener("click",toggleMute);volume.addEventListener("input",()=>setVolume(volume.value));fullscreenBtn.addEventListener("click",()=>{toggleFullscreen();showControls()});retryBtn.addEventListener("click",retry);progressWrap.addEventListener("click",e=>{seekAt(e.clientX);showControls()});progressWrap.addEventListener("pointerdown",e=>{seekAt(e.clientX);showControls()});
-if(pipBtn)pipBtn.addEventListener("click",async()=>{try{if(document.pictureInPictureElement)await document.exitPictureInPicture();else if(document.pictureInPictureEnabled)await video.requestPictureInPicture()}catch(e){}showControls()});
-settingsBtn.addEventListener("click",e=>{e.stopPropagation();settings.classList.toggle("open");showControls()});document.addEventListener("click",e=>{if(!settings.contains(e.target))settings.classList.remove("open")});document.querySelectorAll(".tm-speed-btn").forEach(btn=>btn.addEventListener("click",()=>{video.playbackRate=Number(btn.dataset.speed);document.querySelectorAll(".tm-speed-btn").forEach(x=>x.classList.remove("active"));btn.classList.add("active");settings.classList.remove("open");showControls()}));
-["mousemove","touchstart","pointerdown"].forEach(ev=>player.addEventListener(ev,showControls,{passive:true}));player.addEventListener("mouseleave",()=>{if(!video.paused){clearTimeout(hideTimer);hideTimer=setTimeout(()=>{if(!settings.classList.contains("open"))player.classList.remove("active")},1200)}});
-video.addEventListener("loadstart",()=>{clearTimeout(loadTimer);clearError();setBuffering(true);setStatus("Video loading...");loadTimer=setTimeout(()=>{if(video.readyState<3)setStatus("Video load hone me thoda time lag raha hai...")},5000)});
-video.addEventListener("loadedmetadata",()=>{clearTimeout(loadTimer);setBuffering(false);updateTime();setStatus("")});video.addEventListener("loadeddata",()=>{setBuffering(false);setStatus("")});video.addEventListener("canplay",()=>{setBuffering(false);setStatus("")});video.addEventListener("playing",()=>{setBuffering(false);clearError();updatePlayIcon();showControls()});video.addEventListener("pause",()=>{updatePlayIcon();showControls()});video.addEventListener("timeupdate",()=>{updateTime();updateProgress()});video.addEventListener("progress",updateBuffered);video.addEventListener("waiting",()=>{setBuffering(true);setStatus("Buffering...")});video.addEventListener("stalled",()=>setStatus("Network slow hai — video continue karne ki koshish ho rahi hai..."));video.addEventListener("ended",()=>{player.classList.add("active");updatePlayIcon()});video.addEventListener("error",()=>{const code=video.error&&video.error.code;const msg=code===2?"Network connection problem. Retry karke dekho.":code===3?"Video decoding problem. Browser format ko decode nahi kar pa raha.":code===4?"Video format/source browser me supported nahi hai.":"Video source load nahi ho paya.";setError(msg)});
-document.addEventListener("keydown",e=>{const tag=document.activeElement?.tagName||"";if(["INPUT","TEXTAREA","BUTTON"].includes(tag))return;if(e.code==="Space"){e.preventDefault();togglePlay()}else if(e.key==="ArrowLeft")seek(-5);else if(e.key==="ArrowRight")seek(5);else if(e.key.toLowerCase()==="f")toggleFullscreen();else if(e.key.toLowerCase()==="m")toggleMute()});
-video.volume=1;volume.value=1;updateVolumeIcon();updateTime();updatePlayIcon();
+
+    const player =
+        document.getElementById("tmPlayer");
+
+    const video =
+        document.getElementById("tmVideo");
+
+
+    if(!player || !video){
+        return;
+    }
+
+
+    const $ =
+        id => document.getElementById(id);
+
+
+    const centerPlay =
+        $("tmCenterPlay");
+
+    const playBtn =
+        $("tmPlay");
+
+    const back10 =
+        $("tmBack10");
+
+    const forward10 =
+        $("tmForward10");
+
+    const muteBtn =
+        $("tmMute");
+
+    const mobileMuteBtn =
+        $("tmMobileMute");
+
+    const volume =
+        $("tmVolume");
+
+    const fullscreenBtn =
+        $("tmFullscreen");
+
+    const pipBtn =
+        $("tmPip");
+
+    const time =
+        $("tmTime");
+
+    const progressWrap =
+        $("tmProgressWrap");
+
+    const progressValue =
+        $("tmProgressValue");
+
+    const progressDot =
+        $("tmProgressDot");
+
+    const buffered =
+        $("tmBuffered");
+
+    const settings =
+        $("tmSettings");
+
+    const settingsBtn =
+        $("tmSettingsBtn");
+
+    const errorText =
+        $("tmPlayerErrorText");
+
+    const retryBtn =
+        $("tmRetry");
+
+    const status =
+        $("tmVideoStatus");
+
+
+    let hideTimer = null;
+    let loadTimer = null;
+
+
+    function formatTime(sec){
+
+        if(
+            !Number.isFinite(sec) ||
+            sec < 0
+        ){
+            return "0:00";
+        }
+
+
+        sec =
+            Math.floor(sec);
+
+
+        const h =
+            Math.floor(sec / 3600);
+
+        const m =
+            Math.floor(
+                (sec % 3600) / 60
+            );
+
+        const s =
+            sec % 60;
+
+
+        if(h > 0){
+
+            return (
+                h +
+                ":" +
+                String(m).padStart(2,"0") +
+                ":" +
+                String(s).padStart(2,"0")
+            );
+
+        }
+
+
+        return (
+            m +
+            ":" +
+            String(s).padStart(2,"0")
+        );
+    }
+
+
+    function setStatus(
+        msg,
+        err=false
+    ){
+
+        if(!status){
+            return;
+        }
+
+
+        status.textContent =
+            msg || "";
+
+
+        status.style.display =
+            msg ? "block" : "none";
+
+
+        status.classList.toggle(
+            "tm-error",
+            !!err
+        );
+    }
+
+
+    function setBuffering(on){
+
+        player.classList.toggle(
+            "buffering",
+            on
+        );
+    }
+
+
+    function updateTime(){
+
+        if(time){
+
+            time.textContent =
+                formatTime(video.currentTime) +
+                " / " +
+                formatTime(video.duration);
+
+        }
+    }
+
+
+    function updateProgress(){
+
+        if(
+            !Number.isFinite(video.duration) ||
+            video.duration <= 0
+        ){
+            return;
+        }
+
+
+        const pct =
+            Math.max(
+                0,
+                Math.min(
+                    100,
+                    (video.currentTime /
+                        video.duration) * 100
+                )
+            );
+
+
+        if(progressValue){
+
+            progressValue.style.width =
+                pct + "%";
+
+        }
+
+
+        if(progressDot){
+
+            progressDot.style.left =
+                pct + "%";
+
+        }
+    }
+
+
+    function updateBuffered(){
+
+        if(!buffered){
+            return;
+        }
+
+
+        try{
+
+            if(
+                video.buffered.length &&
+                Number.isFinite(video.duration) &&
+                video.duration > 0
+            ){
+
+                const end =
+                    video.buffered.end(
+                        video.buffered.length - 1
+                    );
+
+
+                buffered.style.width =
+                    Math.min(
+                        100,
+                        (end /
+                            video.duration) * 100
+                    ) + "%";
+
+            }else{
+
+                buffered.style.width =
+                    "0%";
+
+            }
+
+        }catch(e){
+
+            buffered.style.width =
+                "0%";
+
+        }
+    }
+
+
+    function updatePlayIcon(){
+
+        const icon =
+            video.paused
+                ? "▶"
+                : "❚❚";
+
+
+        if(playBtn){
+
+            playBtn.textContent =
+                icon;
+
+        }
+
+
+        if(centerPlay){
+
+            centerPlay.textContent =
+                "▶";
+
+            centerPlay.style.opacity =
+                video.paused
+                    ? "1"
+                    : "0";
+
+        }
+    }
+
+
+    function showControls(){
+
+        player.classList.add(
+            "active"
+        );
+
+
+        clearTimeout(
+            hideTimer
+        );
+
+
+        if(!video.paused){
+
+            hideTimer =
+                setTimeout(
+                    function(){
+
+                        if(
+                            !settings ||
+                            !settings.classList.contains(
+                                "open"
+                            )
+                        ){
+
+                            player.classList.remove(
+                                "active"
+                            );
+
+                        }
+
+                    },
+                    3000
+                );
+
+        }
+    }
+
+
+    function setError(msg){
+
+        setBuffering(false);
+
+        player.classList.add(
+            "error-state"
+        );
+
+
+        if(errorText){
+
+            errorText.textContent =
+                msg ||
+                "Video load nahi ho paya.";
+
+        }
+
+
+        setStatus(
+            "Video error — Retry दबाएँ",
+            true
+        );
+    }
+
+
+    function clearError(){
+
+        player.classList.remove(
+            "error-state"
+        );
+
+        setStatus("");
+    }
+
+
+    function togglePlay(){
+
+        if(video.paused){
+
+            video.play().catch(
+                function(){
+
+                    setError(
+                        "Browser ne video play ko block kar diya."
+                    );
+
+                }
+            );
+
+        }else{
+
+            video.pause();
+
+        }
+
+
+        showControls();
+    }
+
+
+    function toggleMute(){
+
+        video.muted =
+            !video.muted;
+
+        updateVolumeIcon();
+
+        showControls();
+    }
+
+
+    function updateVolumeIcon(){
+
+        const icon =
+            video.muted ||
+            video.volume === 0
+                ? "🔇"
+                : video.volume < .5
+                    ? "🔉"
+                    : "🔊";
+
+
+        if(muteBtn){
+
+            muteBtn.textContent =
+                icon;
+
+        }
+
+
+        if(mobileMuteBtn){
+
+            mobileMuteBtn.textContent =
+                icon;
+
+        }
+    }
+
+
+    function setVolume(v){
+
+        video.volume =
+            Number(v);
+
+        video.muted =
+            video.volume === 0;
+
+        updateVolumeIcon();
+
+        showControls();
+    }
+
+
+    function seek(delta){
+
+        video.currentTime =
+            Math.max(
+                0,
+                Math.min(
+                    video.duration || Infinity,
+                    video.currentTime + delta
+                )
+            );
+
+        showControls();
+    }
+
+
+    function seekAt(clientX){
+
+        if(
+            !Number.isFinite(video.duration) ||
+            video.duration <= 0 ||
+            !progressWrap
+        ){
+            return;
+        }
+
+
+        const r =
+            progressWrap.getBoundingClientRect();
+
+
+        const ratio =
+            Math.max(
+                0,
+                Math.min(
+                    1,
+                    (clientX - r.left) /
+                    r.width
+                )
+            );
+
+
+        video.currentTime =
+            ratio * video.duration;
+    }
+
+
+    function toggleFullscreen(){
+
+        if(document.fullscreenElement){
+
+            document
+                .exitFullscreen()
+                .catch(
+                    function(){}
+                );
+
+            return;
+        }
+
+
+        if(player.requestFullscreen){
+
+            player
+                .requestFullscreen()
+                .catch(
+                    function(){}
+                );
+
+        }else if(
+            player.webkitRequestFullscreen
+        ){
+
+            player.webkitRequestFullscreen();
+
+        }
+    }
+
+
+    function retry(){
+
+        clearError();
+
+        setBuffering(true);
+
+        video.load();
+    }
+
+
+    /* PLAY */
+
+    if(centerPlay){
+
+        centerPlay.addEventListener(
+            "click",
+            togglePlay
+        );
+
+    }
+
+
+    if(playBtn){
+
+        playBtn.addEventListener(
+            "click",
+            togglePlay
+        );
+
+    }
+
+
+    video.addEventListener(
+        "click",
+        togglePlay
+    );
+
+
+    if(back10){
+
+        back10.addEventListener(
+            "click",
+            function(){
+                seek(-10);
+            }
+        );
+
+    }
+
+
+    if(forward10){
+
+        forward10.addEventListener(
+            "click",
+            function(){
+                seek(10);
+            }
+        );
+
+    }
+
+
+    if(muteBtn){
+
+        muteBtn.addEventListener(
+            "click",
+            toggleMute
+        );
+
+    }
+
+
+    if(mobileMuteBtn){
+
+        mobileMuteBtn.addEventListener(
+            "click",
+            toggleMute
+        );
+
+    }
+
+
+    if(volume){
+
+        volume.addEventListener(
+            "input",
+            function(){
+
+                setVolume(
+                    volume.value
+                );
+
+            }
+        );
+
+    }
+
+
+    if(fullscreenBtn){
+
+        fullscreenBtn.addEventListener(
+            "click",
+            function(){
+
+                toggleFullscreen();
+
+                showControls();
+
+            }
+        );
+
+    }
+
+
+    if(retryBtn){
+
+        retryBtn.addEventListener(
+            "click",
+            retry
+        );
+
+    }
+
+
+    if(progressWrap){
+
+        progressWrap.addEventListener(
+            "click",
+            function(e){
+
+                seekAt(
+                    e.clientX
+                );
+
+                showControls();
+
+            }
+        );
+
+
+        progressWrap.addEventListener(
+            "pointerdown",
+            function(e){
+
+                seekAt(
+                    e.clientX
+                );
+
+                showControls();
+
+            }
+        );
+
+    }
+
+
+    /* PIP */
+
+    if(pipBtn){
+
+        pipBtn.addEventListener(
+            "click",
+            async function(){
+
+                try{
+
+                    if(
+                        document.pictureInPictureElement
+                    ){
+
+                        await document
+                            .exitPictureInPicture();
+
+                    }else if(
+                        document.pictureInPictureEnabled
+                    ){
+
+                        await video
+                            .requestPictureInPicture();
+
+                    }
+
+                }catch(e){}
+
+                showControls();
+
+            }
+        );
+
+    }
+
+
+    /* SETTINGS */
+
+    if(settingsBtn && settings){
+
+        settingsBtn.addEventListener(
+            "click",
+            function(e){
+
+                e.stopPropagation();
+
+                settings.classList.toggle(
+                    "open"
+                );
+
+                showControls();
+
+            }
+        );
+
+    }
+
+
+    document.addEventListener(
+        "click",
+        function(e){
+
+            if(
+                settings &&
+                !settings.contains(e.target)
+            ){
+
+                settings.classList.remove(
+                    "open"
+                );
+
+            }
+
+        }
+    );
+
+
+    document
+        .querySelectorAll(
+            ".tm-speed-btn"
+        )
+        .forEach(
+            function(btn){
+
+                btn.addEventListener(
+                    "click",
+                    function(){
+
+                        video.playbackRate =
+                            Number(
+                                btn.dataset.speed
+                            );
+
+
+                        document
+                            .querySelectorAll(
+                                ".tm-speed-btn"
+                            )
+                            .forEach(
+                                function(x){
+
+                                    x.classList.remove(
+                                        "active"
+                                    );
+
+                                }
+                            );
+
+
+                        btn.classList.add(
+                            "active"
+                        );
+
+
+                        settings.classList.remove(
+                            "open"
+                        );
+
+                        showControls();
+
+                    }
+                );
+
+            }
+        );
+
+
+    /* MOUSE / TOUCH */
+
+    [
+        "mousemove",
+        "touchstart",
+        "pointerdown"
+    ].forEach(
+        function(ev){
+
+            player.addEventListener(
+                ev,
+                showControls,
+                {passive:true}
+            );
+
+        }
+    );
+
+
+    player.addEventListener(
+        "mouseleave",
+        function(){
+
+            if(!video.paused){
+
+                clearTimeout(
+                    hideTimer
+                );
+
+
+                hideTimer =
+                    setTimeout(
+                        function(){
+
+                            if(
+                                !settings ||
+                                !settings.classList.contains(
+                                    "open"
+                                )
+                            ){
+
+                                player.classList.remove(
+                                    "active"
+                                );
+
+                            }
+
+                        },
+                        1200
+                    );
+
+            }
+
+        }
+    );
+
+
+    /* VIDEO EVENTS */
+
+    video.addEventListener(
+        "loadstart",
+        function(){
+
+            clearTimeout(
+                loadTimer
+            );
+
+            clearError();
+
+            setBuffering(true);
+
+            setStatus(
+                "Video loading..."
+            );
+
+
+            loadTimer =
+                setTimeout(
+                    function(){
+
+                        if(
+                            video.readyState < 3
+                        ){
+
+                            setStatus(
+                                "Video load hone me thoda time lag raha hai..."
+                            );
+
+                        }
+
+                    },
+                    5000
+                );
+
+        }
+    );
+
+
+    video.addEventListener(
+        "loadedmetadata",
+        function(){
+
+            clearTimeout(
+                loadTimer
+            );
+
+            setBuffering(false);
+
+            updateTime();
+
+            setStatus("");
+
+        }
+    );
+
+
+    video.addEventListener(
+        "loadeddata",
+        function(){
+
+            setBuffering(false);
+
+            setStatus("");
+
+        }
+    );
+
+
+    video.addEventListener(
+        "canplay",
+        function(){
+
+            setBuffering(false);
+
+            setStatus("");
+
+        }
+    );
+
+
+    video.addEventListener(
+        "playing",
+        function(){
+
+            setBuffering(false);
+
+            clearError();
+
+            updatePlayIcon();
+
+            showControls();
+
+        }
+    );
+
+
+    video.addEventListener(
+        "pause",
+        function(){
+
+            updatePlayIcon();
+
+            showControls();
+
+        }
+    );
+
+
+    video.addEventListener(
+        "timeupdate",
+        function(){
+
+            updateTime();
+
+            updateProgress();
+
+        }
+    );
+
+
+    video.addEventListener(
+        "progress",
+        updateBuffered
+    );
+
+
+    video.addEventListener(
+        "waiting",
+        function(){
+
+            setBuffering(true);
+
+            setStatus(
+                "Buffering..."
+            );
+
+        }
+    );
+
+
+    video.addEventListener(
+        "stalled",
+        function(){
+
+            setStatus(
+                "Network slow hai — video continue karne ki koshish ho rahi hai..."
+            );
+
+        }
+    );
+
+
+    video.addEventListener(
+        "ended",
+        function(){
+
+            player.classList.add(
+                "active"
+            );
+
+            updatePlayIcon();
+
+        }
+    );
+
+
+    video.addEventListener(
+        "error",
+        function(){
+
+            const code =
+                video.error &&
+                video.error.code;
+
+
+            const msg =
+                code === 2
+                    ? "Network connection problem. Retry karke dekho."
+                    : code === 3
+                        ? "Video decoding problem. Browser format ko decode nahi kar pa raha."
+                        : code === 4
+                            ? "Video format/source browser me supported nahi hai."
+                            : "Video source load nahi ho paya.";
+
+
+            setError(msg);
+
+        }
+    );
+
+
+    /* KEYBOARD */
+
+    document.addEventListener(
+        "keydown",
+        function(e){
+
+            const tag =
+                document.activeElement?.tagName ||
+                "";
+
+
+            if(
+                [
+                    "INPUT",
+                    "TEXTAREA",
+                    "BUTTON"
+                ].includes(tag)
+            ){
+                return;
+            }
+
+
+            if(e.code === "Space"){
+
+                e.preventDefault();
+
+                togglePlay();
+
+            }else if(
+                e.key === "ArrowLeft"
+            ){
+
+                seek(-5);
+
+            }else if(
+                e.key === "ArrowRight"
+            ){
+
+                seek(5);
+
+            }else if(
+                e.key.toLowerCase() === "f"
+            ){
+
+                toggleFullscreen();
+
+            }else if(
+                e.key.toLowerCase() === "m"
+            ){
+
+                toggleMute();
+
+            }
+
+        }
+    );
+
+
+    /* SHARE */
+
+    const shareBtn =
+        document.getElementById(
+            "tmShareBtn"
+        );
+
+
+    if(shareBtn){
+
+        shareBtn.addEventListener(
+            "click",
+            async function(){
+
+                const shareData = {
+                    title: "{{ movie.title|e }}",
+                    text: "Watch this movie on Tomesh Movies",
+                    url: window.location.href
+                };
+
+
+                try{
+
+                    if(
+                        navigator.share
+                    ){
+
+                        await navigator.share(
+                            shareData
+                        );
+
+                    }else{
+
+                        await navigator.clipboard.writeText(
+                            window.location.href
+                        );
+
+                        shareBtn.textContent =
+                            "✓ Link Copied";
+
+                        setTimeout(
+                            function(){
+
+                                shareBtn.textContent =
+                                    "🔗 Share";
+
+                            },
+                            1800
+                        );
+
+                    }
+
+                }catch(e){}
+
+            }
+        );
+
+    }
+
+
+    /* INITIAL */
+
+    video.volume = 1;
+
+    if(volume){
+        volume.value = 1;
+    }
+
+    updateVolumeIcon();
+
+    updateTime();
+
+    updatePlayIcon();
+
 })();
 </script>
+
 {% endblock %}
