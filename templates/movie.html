@@ -7,49 +7,83 @@
 <style>
 /* =========================================================
    TOMESH MOVIES
-   PREMIUM CINEMATIC MOVIE PAGE
+   PREMIUM OTT MOVIE EXPERIENCE
    ========================================================= */
 
-.tm-watch-page{
-    min-height:100vh;
-    color:#fff;
-    background:
-        radial-gradient(circle at 8% 0%,rgba(120,30,180,.22),transparent 30%),
-        radial-gradient(circle at 92% 5%,rgba(255,20,65,.17),transparent 30%),
-        linear-gradient(180deg,#030303 0%,#080808 48%,#020202 100%);
-    padding:18px 12px 80px;
+:root{
+    --tm-red:#e50914;
+    --tm-red2:#ff3150;
+    --tm-purple:#8e24aa;
+    --tm-gold:#e8b84a;
+    --tm-bg:#050505;
+    --tm-card:#111111;
+    --tm-muted:#999;
+    --tm-border:rgba(255,255,255,.09);
 }
 
-.tm-watch-wrap{
-    width:100%;
-    max-width:1380px;
+*{
+    box-sizing:border-box;
+}
+
+.tm-movie-page{
+    min-height:100vh;
+    background:
+        radial-gradient(
+            circle at 15% 0%,
+            rgba(142,36,170,.18),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 90% 8%,
+            rgba(229,9,20,.14),
+            transparent 25%
+        ),
+        linear-gradient(
+            180deg,
+            #030303 0%,
+            #070707 45%,
+            #030303 100%
+        );
+    color:#fff;
+    padding-bottom:80px;
+}
+
+.tm-container{
+    width:min(1380px,calc(100% - 28px));
     margin:auto;
 }
 
-/* TOP */
+/* =========================================================
+   TOP NAV
+   ========================================================= */
 
-.tm-topbar{
+.tm-movie-nav{
+    height:70px;
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:15px;
-    margin-bottom:18px;
+    gap:18px;
+}
+
+.tm-nav-left{
+    display:flex;
+    align-items:center;
+    gap:14px;
 }
 
 .tm-back{
     display:inline-flex;
     align-items:center;
     gap:8px;
-    min-height:42px;
-    padding:9px 15px;
-    border-radius:12px;
+    min-height:40px;
+    padding:9px 14px;
+    border-radius:10px;
     color:#fff;
     text-decoration:none;
     background:rgba(255,255,255,.055);
-    border:1px solid rgba(255,255,255,.10);
-    backdrop-filter:blur(14px);
+    border:1px solid var(--tm-border);
     font-size:13px;
-    font-weight:850;
+    font-weight:800;
     transition:.2s;
 }
 
@@ -58,25 +92,26 @@
     transform:translateY(-1px);
 }
 
-.tm-brand-mini{
-    color:#aaa;
-    font-size:11px;
+.tm-brand{
+    font-size:12px;
     font-weight:950;
     letter-spacing:2.5px;
+    color:#eee;
 }
 
-/* PLAYER */
+/* =========================================================
+   PLAYER
+   ========================================================= */
 
-.tm-player-box{
+.tm-player-shell{
     position:relative;
-    width:100%;
     overflow:hidden;
+    border-radius:18px;
     background:#000;
-    border-radius:20px;
-    border:1px solid rgba(255,255,255,.09);
+    border:1px solid rgba(255,255,255,.10);
     box-shadow:
-        0 30px 90px rgba(0,0,0,.72),
-        0 0 70px rgba(100,25,150,.09);
+        0 30px 100px rgba(0,0,0,.70),
+        0 0 70px rgba(120,30,150,.08);
 }
 
 .tm-player{
@@ -89,9 +124,9 @@
 }
 
 .tm-video{
-    display:block;
     width:100%;
     height:100%;
+    display:block;
     object-fit:contain;
     background:#000;
     cursor:pointer;
@@ -107,298 +142,107 @@
             180deg,
             rgba(0,0,0,.65),
             transparent 20%,
-            transparent 60%,
+            transparent 65%,
             rgba(0,0,0,.94)
         );
     opacity:0;
-    transition:.22s;
+    transition:.25s;
     z-index:2;
 }
 
-.tm-player.active::after,
-.tm-player:hover::after{
+.tm-player.controls-visible::after{
     opacity:1;
 }
 
-/* PLAYER TITLE */
+/* =========================================================
+   PLAYER HEADER
+   ========================================================= */
 
-.tm-video-top{
+.tm-player-header{
     position:absolute;
     left:0;
     right:0;
     top:0;
-    height:105px;
-    z-index:4;
-    pointer-events:none;
+    z-index:8;
+    padding:18px 20px 45px;
     background:linear-gradient(
         180deg,
-        rgba(0,0,0,.82),
+        rgba(0,0,0,.80),
         transparent
     );
     opacity:0;
     transition:.25s;
 }
 
-.tm-player.active .tm-video-top{
+.tm-player.controls-visible .tm-player-header{
     opacity:1;
 }
 
-.tm-player-title{
-    position:absolute;
-    left:20px;
-    top:18px;
-    z-index:5;
-    max-width:72%;
-    color:#fff;
-    font-size:13px;
-    font-weight:900;
+.tm-player-name{
+    max-width:70%;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    opacity:0;
-    transition:.2s;
+    font-size:14px;
+    font-weight:900;
 }
 
-.tm-player.active .tm-player-title{
-    opacity:1;
-}
-
-/* CENTER PLAY */
+/* =========================================================
+   CENTER PLAY
+   ========================================================= */
 
 .tm-center-play{
     position:absolute;
     left:50%;
     top:50%;
-    z-index:8;
-    width:86px;
-    height:86px;
+    z-index:9;
+    width:82px;
+    height:82px;
     transform:translate(-50%,-50%);
-    display:flex;
-    align-items:center;
-    justify-content:center;
+    border:1px solid rgba(255,255,255,.25);
     border-radius:50%;
     color:#fff;
-    background:linear-gradient(
-        135deg,
-        #ff1744,
-        #a9133c
-    );
-    border:2px solid rgba(255,255,255,.28);
-    box-shadow:
-        0 20px 60px rgba(0,0,0,.65),
-        0 0 50px rgba(255,20,65,.26);
+    background:rgba(0,0,0,.58);
+    backdrop-filter:blur(15px);
     cursor:pointer;
     font-size:29px;
-    transition:.22s;
+    box-shadow:
+        0 15px 60px rgba(0,0,0,.65),
+        0 0 35px rgba(229,9,20,.15);
+    transition:.2s;
 }
 
 .tm-center-play:hover{
-    transform:translate(-50%,-50%) scale(1.09);
+    transform:translate(-50%,-50%) scale(1.08);
+    background:rgba(229,9,20,.88);
 }
 
-/* CONTROLS */
-
-.tm-controls{
-    position:absolute;
-    left:0;
-    right:0;
-    bottom:0;
-    z-index:10;
-    padding:45px 16px 12px;
+.tm-player.playing .tm-center-play{
     opacity:0;
-    background:linear-gradient(
-        180deg,
-        transparent,
-        rgba(0,0,0,.97)
-    );
-    transition:opacity .22s;
-}
-
-.tm-player.active .tm-controls,
-.tm-player:hover .tm-controls{
-    opacity:1;
-}
-
-.tm-progress-wrap{
-    width:100%;
-    padding:9px 0 8px;
-    cursor:pointer;
-    touch-action:none;
-}
-
-.tm-progress{
-    position:relative;
-    width:100%;
-    height:5px;
-    border-radius:99px;
-    background:rgba(255,255,255,.27);
-}
-
-.tm-progress-wrap:hover .tm-progress{
-    height:7px;
-}
-
-.tm-progress-buffer,
-.tm-progress-value{
-    position:absolute;
-    left:0;
-    top:0;
-    height:100%;
-    border-radius:99px;
     pointer-events:none;
 }
 
-.tm-progress-buffer{
-    width:0;
-    background:rgba(255,255,255,.35);
-}
-
-.tm-progress-value{
-    width:0;
-    background:#ff1744;
-}
-
-.tm-progress-dot{
-    position:absolute;
-    left:0;
-    top:50%;
-    width:13px;
-    height:13px;
-    transform:translate(-50%,-50%);
-    border-radius:50%;
-    background:#ff1744;
-    opacity:0;
-}
-
-.tm-progress-wrap:hover .tm-progress-dot{
-    opacity:1;
-}
-
-.tm-control-row{
-    display:flex;
-    align-items:center;
-    min-height:40px;
-}
-
-.tm-left-controls,
-.tm-right-controls{
-    display:flex;
-    align-items:center;
-    gap:2px;
-}
-
-.tm-right-controls{
-    margin-left:auto;
-}
-
-.tm-control-btn{
-    width:39px;
-    height:37px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    border:0;
-    border-radius:9px;
-    background:transparent;
-    color:#fff;
-    cursor:pointer;
-    font-size:16px;
-}
-
-.tm-control-btn:hover{
-    background:rgba(255,255,255,.14);
-}
-
-.tm-skip{
-    font-size:12px;
-    font-weight:950;
-}
-
-.tm-time{
-    margin-left:8px;
-    color:#eee;
-    font-size:12px;
-    white-space:nowrap;
-}
-
-.tm-volume-wrap{
-    display:flex;
-    align-items:center;
-    margin-left:2px;
-}
-
-.tm-volume-slider{
-    width:80px;
-    height:4px;
-    accent-color:#fff;
-    cursor:pointer;
-}
-
-.tm-settings{
-    position:relative;
-}
-
-.tm-settings-menu{
-    position:absolute;
-    right:0;
-    bottom:44px;
-    width:180px;
-    padding:8px;
-    border-radius:13px;
-    background:rgba(17,17,17,.98);
-    border:1px solid rgba(255,255,255,.12);
-    box-shadow:0 20px 55px rgba(0,0,0,.70);
-    display:none;
-}
-
-.tm-settings.open .tm-settings-menu{
-    display:block;
-}
-
-.tm-settings-title{
-    padding:7px 9px;
-    color:#777;
-    font-size:10px;
-    font-weight:900;
-    text-transform:uppercase;
-}
-
-.tm-speed-btn{
-    width:100%;
-    padding:9px 10px;
-    border:0;
-    border-radius:8px;
-    background:transparent;
-    color:#fff;
-    text-align:left;
-    cursor:pointer;
-    font-size:12px;
-}
-
-.tm-speed-btn:hover,
-.tm-speed-btn.active{
-    background:rgba(255,255,255,.10);
-}
-
-/* LOADING */
+/* =========================================================
+   LOADING
+   ========================================================= */
 
 .tm-loading{
     position:absolute;
     left:50%;
     top:50%;
-    z-index:9;
+    z-index:10;
     width:48px;
     height:48px;
     transform:translate(-50%,-50%);
     border:4px solid rgba(255,255,255,.18);
     border-top-color:#fff;
-    border-right-color:#ff1744;
+    border-right-color:var(--tm-red);
     border-radius:50%;
     display:none;
     animation:tmSpin .8s linear infinite;
 }
 
-.tm-player.buffering .tm-loading{
+.tm-player.loading .tm-loading{
     display:block;
 }
 
@@ -408,44 +252,240 @@
     }
 }
 
-/* ERROR */
+/* =========================================================
+   CONTROLS
+   ========================================================= */
 
-.tm-player-error{
+.tm-controls{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:12;
+    padding:
+        50px
+        15px
+        12px;
+    background:
+        linear-gradient(
+            180deg,
+            transparent,
+            rgba(0,0,0,.96)
+        );
+    opacity:0;
+    transition:.22s;
+}
+
+.tm-player.controls-visible .tm-controls{
+    opacity:1;
+}
+
+.tm-progress-area{
+    width:100%;
+    padding:10px 0;
+    cursor:pointer;
+    touch-action:none;
+}
+
+.tm-progress{
+    position:relative;
+    width:100%;
+    height:5px;
+    border-radius:99px;
+    background:rgba(255,255,255,.25);
+    transition:.15s;
+}
+
+.tm-progress-area:hover .tm-progress{
+    height:7px;
+}
+
+.tm-buffered,
+.tm-played{
+    position:absolute;
+    left:0;
+    top:0;
+    height:100%;
+    border-radius:99px;
+    pointer-events:none;
+}
+
+.tm-buffered{
+    width:0;
+    background:rgba(255,255,255,.35);
+}
+
+.tm-played{
+    width:0;
+    background:var(--tm-red);
+}
+
+.tm-dot{
+    position:absolute;
+    left:0;
+    top:50%;
+    width:13px;
+    height:13px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:var(--tm-red);
+    opacity:0;
+    box-shadow:0 0 0 4px rgba(229,9,20,.20);
+}
+
+.tm-progress-area:hover .tm-dot{
+    opacity:1;
+}
+
+.tm-control-row{
+    display:flex;
+    align-items:center;
+    min-height:40px;
+}
+
+.tm-control-left,
+.tm-control-right{
+    display:flex;
+    align-items:center;
+    gap:3px;
+}
+
+.tm-control-right{
+    margin-left:auto;
+}
+
+.tm-control{
+    width:38px;
+    height:36px;
+    border:0;
+    border-radius:8px;
+    background:transparent;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:16px;
+    transition:.15s;
+}
+
+.tm-control:hover{
+    background:rgba(255,255,255,.13);
+}
+
+.tm-skip{
+    font-size:11px;
+    font-weight:950;
+}
+
+.tm-time{
+    margin-left:7px;
+    color:#eee;
+    font-size:12px;
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+}
+
+.tm-volume{
+    display:flex;
+    align-items:center;
+}
+
+.tm-volume-slider{
+    width:78px;
+    height:4px;
+    cursor:pointer;
+    accent-color:#fff;
+}
+
+.tm-settings{
+    position:relative;
+}
+
+.tm-settings-menu{
+    position:absolute;
+    right:0;
+    bottom:43px;
+    width:180px;
+    padding:8px;
+    display:none;
+    border-radius:13px;
+    background:rgba(17,17,17,.98);
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 20px 60px rgba(0,0,0,.65);
+    backdrop-filter:blur(15px);
+}
+
+.tm-settings.open .tm-settings-menu{
+    display:block;
+}
+
+.tm-settings-label{
+    padding:8px;
+    color:#777;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:1px;
+    text-transform:uppercase;
+}
+
+.tm-speed{
+    width:100%;
+    border:0;
+    border-radius:8px;
+    background:transparent;
+    color:#fff;
+    padding:9px;
+    text-align:left;
+    cursor:pointer;
+    font-size:12px;
+}
+
+.tm-speed:hover,
+.tm-speed.active{
+    background:rgba(255,255,255,.10);
+}
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.tm-error{
     position:absolute;
     inset:0;
-    z-index:20;
+    z-index:30;
     display:none;
     align-items:center;
     justify-content:center;
-    text-align:center;
     padding:25px;
-    background:rgba(0,0,0,.80);
-    backdrop-filter:blur(7px);
+    text-align:center;
+    background:rgba(0,0,0,.82);
+    backdrop-filter:blur(6px);
 }
 
-.tm-player.error-state .tm-player-error{
+.tm-player.has-error .tm-error{
     display:flex;
 }
 
 .tm-error-box{
-    max-width:430px;
+    max-width:420px;
 }
 
 .tm-error-icon{
-    font-size:38px;
+    font-size:35px;
     margin-bottom:10px;
 }
 
 .tm-error-title{
-    font-size:19px;
+    font-size:20px;
     font-weight:950;
-    margin-bottom:7px;
+    margin-bottom:8px;
 }
 
 .tm-error-text{
-    color:#aaa;
-    font-size:12px;
-    line-height:1.65;
+    color:#999;
+    font-size:13px;
+    line-height:1.7;
     margin-bottom:15px;
 }
 
@@ -454,192 +494,104 @@
     border-radius:10px;
     padding:11px 18px;
     color:#fff;
-    background:linear-gradient(135deg,#e51f48,#8f1835);
+    background:linear-gradient(
+        135deg,
+        var(--tm-red),
+        var(--tm-purple)
+    );
     font-weight:900;
     cursor:pointer;
 }
 
-/* STATUS */
+/* =========================================================
+   MOVIE INFO
+   ========================================================= */
 
-.tm-status{
-    display:none;
-    margin-top:10px;
-    padding:11px 13px;
-    border-radius:10px;
-    background:rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.08);
-    color:#aaa;
-    font-size:13px;
-}
-
-.tm-status.tm-error{
-    color:#ffd3da;
-    background:rgba(130,20,38,.16);
-    border-color:rgba(255,55,90,.25);
-}
-
-/* MOVIE INFO */
-
-.tm-movie-head{
+.tm-info{
     display:grid;
-    grid-template-columns:minmax(0,1fr) 270px;
-    gap:34px;
-    align-items:start;
-    padding:32px 3px 0;
+    grid-template-columns:minmax(0,1fr) 250px;
+    gap:35px;
+    padding:32px 0 0;
 }
 
-.tm-info-main{
+.tm-main-info{
     min-width:0;
 }
 
-.tm-eyebrow{
+.tm-tags{
     display:flex;
     flex-wrap:wrap;
     gap:8px;
-    margin-bottom:12px;
+    margin-bottom:13px;
 }
 
-.tm-eyebrow-badge,
-.tm-badge{
+.tm-tag{
     display:inline-flex;
     align-items:center;
     min-height:28px;
-    padding:6px 10px;
+    padding:5px 10px;
     border-radius:999px;
     color:#ccc;
     background:rgba(255,255,255,.055);
     border:1px solid rgba(255,255,255,.08);
     font-size:10px;
     font-weight:900;
-    letter-spacing:.7px;
-    text-transform:uppercase;
 }
 
-.tm-eyebrow-badge.hot{
-    color:#ffb7c2;
-    background:rgba(220,35,65,.10);
-    border-color:rgba(220,35,65,.20);
+.tm-tag.red{
+    color:#ffbdc6;
+    background:rgba(229,9,20,.10);
+    border-color:rgba(229,9,20,.20);
+}
+
+.tm-tag.gold{
+    color:#ffd970;
+    background:rgba(232,184,74,.09);
+    border-color:rgba(232,184,74,.20);
 }
 
 .tm-title{
-    margin:0 0 14px;
+    margin:0;
     max-width:1050px;
-    font-size:clamp(30px,5vw,56px);
+    font-size:clamp(30px,5vw,55px);
     line-height:1.05;
+    letter-spacing:-1.7px;
     font-weight:950;
-    letter-spacing:-1.6px;
 }
 
-.tm-meta{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    margin-bottom:19px;
-}
-
-.tm-badge{
-    font-size:11px;
-    letter-spacing:0;
-    text-transform:none;
-}
-
-.tm-badge.hd{
-    color:#fff;
-    background:rgba(255,23,68,.13);
-    border-color:rgba(255,23,68,.22);
+.tm-subtitle{
+    margin-top:12px;
+    color:#aaa;
+    font-size:14px;
 }
 
 .tm-description{
-    max-width:950px;
+    max-width:900px;
+    margin-top:18px;
     color:#aaa;
     font-size:15px;
-    line-height:1.9;
+    line-height:1.85;
     white-space:pre-line;
 }
-
-.tm-details{
-    margin-top:26px;
-    display:grid;
-    grid-template-columns:repeat(3,minmax(0,1fr));
-    gap:10px;
-    max-width:950px;
-}
-
-.tm-detail{
-    padding:14px;
-    border-radius:13px;
-    background:rgba(255,255,255,.035);
-    border:1px solid rgba(255,255,255,.065);
-}
-
-.tm-detail-label{
-    font-size:9px;
-    color:#666;
-    text-transform:uppercase;
-    letter-spacing:1px;
-    font-weight:900;
-    margin-bottom:6px;
-}
-
-.tm-detail-value{
-    font-size:12px;
-    color:#ddd;
-    line-height:1.5;
-}
-
-/* POSTER */
-
-.tm-poster-card{
-    position:relative;
-    overflow:hidden;
-    border-radius:17px;
-    background:#0d0d0d;
-    border:1px solid rgba(255,255,255,.10);
-    box-shadow:0 25px 65px rgba(0,0,0,.50);
-}
-
-.tm-poster{
-    display:block;
-    width:100%;
-    aspect-ratio:2/3;
-    object-fit:cover;
-}
-
-.tm-poster-shade{
-    position:absolute;
-    left:0;
-    right:0;
-    bottom:0;
-    padding:42px 14px 15px;
-    color:#eee;
-    font-size:12px;
-    font-weight:850;
-    background:linear-gradient(
-        transparent,
-        rgba(0,0,0,.94)
-    );
-}
-
-/* ACTIONS */
 
 .tm-actions{
     display:flex;
     flex-wrap:wrap;
-    gap:11px;
-    margin-top:25px;
+    gap:10px;
+    margin-top:23px;
 }
 
 .tm-action{
-    min-height:46px;
-    padding:11px 18px;
+    min-height:45px;
+    padding:11px 17px;
+    border-radius:11px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.055);
+    color:#fff;
     display:inline-flex;
     align-items:center;
     justify-content:center;
     gap:8px;
-    border-radius:11px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.055);
-    color:#fff;
     text-decoration:none;
     font-size:13px;
     font-weight:900;
@@ -652,127 +604,254 @@
     transform:translateY(-1px);
 }
 
-.tm-action.download{
+.tm-action.primary{
     background:linear-gradient(
         135deg,
-        #ff1744,
-        #b5123b
+        var(--tm-red),
+        var(--tm-red2)
     );
-    border-color:rgba(255,23,68,.35);
-    box-shadow:0 12px 30px rgba(255,23,68,.18);
+    border-color:transparent;
+    box-shadow:0 12px 35px rgba(229,9,20,.18);
 }
 
-.tm-action.share{
-    background:linear-gradient(
-        135deg,
-        #7023aa,
-        #42186d
-    );
-    border-color:rgba(150,70,220,.30);
+.tm-action.active{
+    background:rgba(55,160,70,.12);
+    border-color:rgba(70,190,80,.25);
 }
 
 .tm-action.locked{
-    color:#888;
-    background:rgba(255,255,255,.025);
-    border-color:rgba(255,255,255,.06);
+    opacity:.48;
     cursor:not-allowed;
 }
 
-.tm-sub-note{
-    width:100%;
-    color:#777;
-    font-size:11px;
-    line-height:1.5;
+.tm-action.liked{
+    color:#ff5367;
 }
 
-/* UNAVAILABLE */
+/* =========================================================
+   DETAILS
+   ========================================================= */
 
-.tm-unavailable{
-    min-height:400px;
+.tm-details{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px 30px;
+    max-width:850px;
+    margin-top:28px;
+    padding-top:22px;
+    border-top:1px solid rgba(255,255,255,.08);
+}
+
+.tm-detail{
+    display:flex;
+    gap:10px;
+    padding:6px 0;
+    color:#aaa;
+    font-size:13px;
+    line-height:1.6;
+}
+
+.tm-detail strong{
+    color:#fff;
+    min-width:85px;
+}
+
+/* =========================================================
+   POSTER
+   ========================================================= */
+
+.tm-poster-box{
+    position:relative;
+    overflow:hidden;
+    border-radius:16px;
+    background:#0c0c0c;
+    border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 25px 60px rgba(0,0,0,.55);
+}
+
+.tm-poster{
+    width:100%;
+    display:block;
+    aspect-ratio:2/3;
+    object-fit:cover;
+}
+
+.tm-poster-overlay{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    padding:45px 14px 14px;
+    background:linear-gradient(
+        transparent,
+        rgba(0,0,0,.94)
+    );
+}
+
+.tm-poster-label{
+    font-size:11px;
+    color:#ddd;
+    font-weight:900;
+}
+
+/* =========================================================
+   CONTINUE WATCHING
+   ========================================================= */
+
+.tm-continue{
+    display:none;
+    margin-top:30px;
+    padding:18px;
+    border-radius:15px;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(229,9,20,.09),
+            rgba(142,36,170,.09)
+        );
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.tm-continue.show{
     display:flex;
     align-items:center;
-    justify-content:center;
-    text-align:center;
-    padding:30px;
-    color:#aaa;
-    background:#030303;
+    justify-content:space-between;
+    gap:15px;
 }
 
-.tm-unavailable-box{
-    max-width:500px;
+.tm-continue-title{
+    font-size:14px;
+    font-weight:900;
 }
 
-.tm-unavailable-icon{
-    font-size:44px;
-    margin-bottom:13px;
-}
-
-.tm-unavailable h2{
-    margin:0 0 9px;
-    color:#fff;
-    font-size:25px;
-}
-
-.tm-unavailable p{
-    margin:0;
+.tm-continue-sub{
     color:#888;
-    line-height:1.7;
+    font-size:11px;
+    margin-top:4px;
+}
+
+/* =========================================================
+   BELOW CONTENT
+   ========================================================= */
+
+.tm-section{
+    margin-top:55px;
+}
+
+.tm-section-title{
+    margin:0 0 16px;
+    font-size:22px;
+    font-weight:950;
+}
+
+.tm-section-title span{
+    color:#777;
+    font-size:11px;
+    font-weight:700;
+    margin-left:7px;
+}
+
+.tm-empty{
+    padding:28px;
+    border-radius:14px;
+    background:rgba(255,255,255,.025);
+    border:1px solid rgba(255,255,255,.06);
+    color:#777;
     font-size:13px;
 }
 
-/* RESPONSIVE */
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+.tm-toast{
+    position:fixed;
+    left:50%;
+    bottom:25px;
+    z-index:9999;
+    transform:translate(-50%,20px);
+    opacity:0;
+    pointer-events:none;
+    padding:12px 17px;
+    border-radius:11px;
+    color:#fff;
+    background:rgba(20,20,20,.96);
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 15px 50px rgba(0,0,0,.55);
+    font-size:12px;
+    font-weight:800;
+    transition:.25s;
+}
+
+.tm-toast.show{
+    opacity:1;
+    transform:translate(-50%,0);
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
 
 @media(max-width:950px){
 
-    .tm-movie-head{
+    .tm-info{
         grid-template-columns:1fr;
     }
 
-    .tm-poster-card{
+    .tm-poster-box{
         width:210px;
     }
 }
 
 @media(max-width:700px){
 
-    .tm-watch-page{
-        padding:11px 7px 60px;
+    .tm-container{
+        width:min(100% - 14px,1380px);
     }
 
-    .tm-player-box{
-        border-radius:13px;
+    .tm-movie-nav{
+        height:58px;
+    }
+
+    .tm-brand{
+        display:none;
+    }
+
+    .tm-player-shell{
+        border-radius:12px;
     }
 
     .tm-center-play{
-        width:63px;
-        height:63px;
+        width:62px;
+        height:62px;
         font-size:22px;
     }
 
     .tm-controls{
-        padding:34px 7px 7px;
+        padding:
+            40px
+            6px
+            6px;
     }
 
-    .tm-control-btn{
-        width:34px;
-        height:34px;
+    .tm-control{
+        width:33px;
+        height:33px;
         font-size:14px;
     }
 
-    .tm-volume-wrap{
+    .tm-volume{
         display:none;
     }
 
     .tm-time{
         font-size:10px;
-    }
-
-    .tm-pip-btn{
-        display:none;
+        margin-left:3px;
     }
 
     .tm-title{
         font-size:30px;
+        letter-spacing:-.8px;
     }
 
     .tm-description{
@@ -781,81 +860,86 @@
     }
 
     .tm-details{
-        grid-template-columns:1fr 1fr;
-    }
-
-    .tm-poster-card{
-        width:180px;
+        grid-template-columns:1fr;
     }
 
     .tm-actions{
-        flex-direction:column;
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
     }
 
     .tm-action{
         width:100%;
     }
+
+    .tm-poster-box{
+        width:180px;
+    }
+
+    .tm-continue.show{
+        display:block;
+    }
+
+    .tm-continue .tm-action{
+        margin-top:12px;
+    }
 }
 
 @media(max-width:420px){
 
-    .tm-brand-mini{
-        display:none;
+    .tm-actions{
+        grid-template-columns:1fr;
     }
 
     .tm-title{
         font-size:26px;
     }
 
-    .tm-details{
-        grid-template-columns:1fr;
+    .tm-back{
+        padding:8px 11px;
+        font-size:11px;
     }
 
-    .tm-center-play{
-        width:57px;
-        height:57px;
-    }
-
-    .tm-controls{
-        padding-left:4px;
-        padding-right:4px;
-    }
-
-    .tm-control-btn{
-        width:31px;
+    .tm-player-name{
+        font-size:11px;
     }
 }
 </style>
 
 
-<div class="tm-watch-page">
+<div class="tm-movie-page">
 
-<div class="tm-watch-wrap">
+<div class="tm-container">
 
+    <!-- =====================================================
+         NAV
+    ====================================================== -->
 
-    <!-- TOP -->
+    <div class="tm-movie-nav">
 
-    <div class="tm-topbar">
+        <div class="tm-nav-left">
 
-        <a
-            href="/member#movies"
-            class="tm-back"
-        >
-            ← Back to Movies
-        </a>
+            <a
+                href="/member#movies"
+                class="tm-back"
+            >
+                ← Movies
+            </a>
 
-        <div class="tm-brand-mini">
-            TOMESH MOVIES
+            <div class="tm-brand">
+                TOMESH MOVIES
+            </div>
+
         </div>
 
     </div>
 
 
-    <!-- PLAYER -->
+    <!-- =====================================================
+         PLAYER
+    ====================================================== -->
 
-    <div class="tm-player-box">
-
-        {% if movie.video_url %}
+    <div class="tm-player-shell">
 
         <div
             id="tmPlayer"
@@ -863,12 +947,14 @@
             tabindex="0"
         >
 
-            <div class="tm-video-top"></div>
-
-            <div class="tm-player-title">
-                {{ movie.title }}
+            <div class="tm-player-header">
+                <div class="tm-player-name">
+                    {{ movie.title }}
+                </div>
             </div>
 
+
+            {% if movie.video_url %}
 
             <video
                 id="tmVideo"
@@ -887,6 +973,32 @@
 
             </video>
 
+            {% else %}
+
+            <div class="tm-error" style="display:flex">
+
+                <div class="tm-error-box">
+
+                    <div class="tm-error-icon">
+                        ⚠️
+                    </div>
+
+                    <div class="tm-error-title">
+                        Video unavailable
+                    </div>
+
+                    <div class="tm-error-text">
+                        Is movie ka video source abhi available nahi hai.
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
+
+            {% if movie.video_url %}
 
             <div
                 id="tmLoading"
@@ -905,8 +1017,8 @@
 
 
             <div
-                id="tmPlayerError"
-                class="tm-player-error"
+                id="tmError"
+                class="tm-error"
             >
 
                 <div class="tm-error-box">
@@ -920,7 +1032,7 @@
                     </div>
 
                     <div
-                        id="tmPlayerErrorText"
+                        id="tmErrorText"
                         class="tm-error-text"
                     >
                         Network ya video source problem ho sakti hai.
@@ -947,8 +1059,8 @@
             >
 
                 <div
-                    id="tmProgressWrap"
-                    class="tm-progress-wrap"
+                    id="tmProgressArea"
+                    class="tm-progress-area"
                 >
 
                     <div
@@ -958,17 +1070,17 @@
 
                         <div
                             id="tmBuffered"
-                            class="tm-progress-buffer"
+                            class="tm-buffered"
                         ></div>
 
                         <div
-                            id="tmProgressValue"
-                            class="tm-progress-value"
+                            id="tmPlayed"
+                            class="tm-played"
                         ></div>
 
                         <div
-                            id="tmProgressDot"
-                            class="tm-progress-dot"
+                            id="tmDot"
+                            class="tm-dot"
                         ></div>
 
                     </div>
@@ -978,38 +1090,43 @@
 
                 <div class="tm-control-row">
 
-                    <div class="tm-left-controls">
+                    <div class="tm-control-left">
 
                         <button
                             id="tmPlay"
-                            class="tm-control-btn"
+                            class="tm-control"
                             type="button"
+                            aria-label="Play/Pause"
                         >
                             ▶
                         </button>
 
+
                         <button
                             id="tmBack10"
-                            class="tm-control-btn tm-skip"
+                            class="tm-control tm-skip"
                             type="button"
+                            aria-label="Back 10 seconds"
                         >
                             ↶10
                         </button>
 
+
                         <button
                             id="tmForward10"
-                            class="tm-control-btn tm-skip"
+                            class="tm-control tm-skip"
                             type="button"
+                            aria-label="Forward 10 seconds"
                         >
                             10↷
                         </button>
 
 
-                        <div class="tm-volume-wrap">
+                        <div class="tm-volume">
 
                             <button
                                 id="tmMute"
-                                class="tm-control-btn"
+                                class="tm-control"
                                 type="button"
                             >
                                 🔊
@@ -1021,20 +1138,11 @@
                                 type="range"
                                 min="0"
                                 max="1"
-                                step="0.05"
+                                step=".05"
                                 value="1"
                             >
 
                         </div>
-
-
-                        <button
-                            id="tmMobileMute"
-                            class="tm-control-btn"
-                            type="button"
-                        >
-                            🔊
-                        </button>
 
 
                         <div
@@ -1047,12 +1155,13 @@
                     </div>
 
 
-                    <div class="tm-right-controls">
+                    <div class="tm-control-right">
 
                         <button
                             id="tmPip"
-                            class="tm-control-btn tm-pip-btn"
+                            class="tm-control"
                             type="button"
+                            title="Picture in Picture"
                         >
                             ▣
                         </button>
@@ -1064,25 +1173,24 @@
                         >
 
                             <button
-                                id="tmSettingsBtn"
-                                class="tm-control-btn"
+                                id="tmSettingsButton"
+                                class="tm-control"
                                 type="button"
                             >
                                 ⚙
                             </button>
-
 
                             <div
                                 id="tmSettingsMenu"
                                 class="tm-settings-menu"
                             >
 
-                                <div class="tm-settings-title">
+                                <div class="tm-settings-label">
                                     Playback Speed
                                 </div>
 
                                 <button
-                                    class="tm-speed-btn active"
+                                    class="tm-speed active"
                                     data-speed="1"
                                     type="button"
                                 >
@@ -1090,15 +1198,15 @@
                                 </button>
 
                                 <button
-                                    class="tm-speed-btn"
-                                    data-speed="0.75"
+                                    class="tm-speed"
+                                    data-speed=".75"
                                     type="button"
                                 >
                                     0.75×
                                 </button>
 
                                 <button
-                                    class="tm-speed-btn"
+                                    class="tm-speed"
                                     data-speed="1.25"
                                     type="button"
                                 >
@@ -1106,7 +1214,7 @@
                                 </button>
 
                                 <button
-                                    class="tm-speed-btn"
+                                    class="tm-speed"
                                     data-speed="1.5"
                                     type="button"
                                 >
@@ -1114,7 +1222,7 @@
                                 </button>
 
                                 <button
-                                    class="tm-speed-btn"
+                                    class="tm-speed"
                                     data-speed="2"
                                     type="button"
                                 >
@@ -1128,7 +1236,7 @@
 
                         <button
                             id="tmFullscreen"
-                            class="tm-control-btn"
+                            class="tm-control"
                             type="button"
                         >
                             ⛶
@@ -1140,54 +1248,73 @@
 
             </div>
 
-        </div>
-
-        {% else %}
-
-        <div class="tm-unavailable">
-
-            <div class="tm-unavailable-box">
-
-                <div class="tm-unavailable-icon">
-                    🎬
-                </div>
-
-                <h2>
-                    Video is currently unavailable
-                </h2>
-
-                <p>
-                    Is movie ka video source abhi available nahi hai.
-                </p>
-
-            </div>
+            {% endif %}
 
         </div>
-
-        {% endif %}
 
     </div>
 
 
+    <!-- =====================================================
+         CONTINUE WATCHING
+    ====================================================== -->
+
     <div
-        id="tmVideoStatus"
-        class="tm-status"
-    ></div>
+        id="tmContinue"
+        class="tm-continue"
+    >
+
+        <div>
+
+            <div class="tm-continue-title">
+                ▶ Continue Watching
+            </div>
+
+            <div
+                id="tmContinueText"
+                class="tm-continue-sub"
+            >
+                Resume your movie from where you stopped.
+            </div>
+
+        </div>
+
+        <button
+            id="tmResume"
+            class="tm-action primary"
+            type="button"
+        >
+            ▶ Resume
+        </button>
+
+    </div>
 
 
-    <!-- MOVIE DETAILS -->
+    <!-- =====================================================
+         MOVIE INFO
+    ====================================================== -->
 
-    <div class="tm-movie-head">
+    <div class="tm-info">
 
+        <div class="tm-main-info">
 
-        <div class="tm-info-main">
+            <div class="tm-tags">
 
-
-            <div class="tm-eyebrow">
-
-                <span class="tm-eyebrow-badge hot">
-                    TOMESH MOVIES
+                {% if movie.category %}
+                <span class="tm-tag red">
+                    {{ movie.category }}
                 </span>
+                {% endif %}
+
+                <span class="tm-tag">
+                    HD
+                </span>
+
+                {% if movie.views is defined %}
+                <span class="tm-tag">
+                    👁 {{ movie.views }} views
+                </span>
+                {% endif %}
 
             </div>
 
@@ -1197,35 +1324,8 @@
             </h1>
 
 
-            <div class="tm-meta">
-
-                {% if movie.category %}
-
-                <span class="tm-badge">
-                    🎬 {{ movie.category }}
-                </span>
-
-                {% endif %}
-
-
-                <span class="tm-badge">
-                    👁 {{ movie.views or 0 }} Views
-                </span>
-
-
-                <span class="tm-badge hd">
-                    HD
-                </span>
-
-
-                {% if movie.year %}
-
-                <span class="tm-badge">
-                    {{ movie.year }}
-                </span>
-
-                {% endif %}
-
+            <div class="tm-subtitle">
+                TOMESH MOVIES • Premium Cinema
             </div>
 
 
@@ -1238,54 +1338,66 @@
             {% endif %}
 
 
-            <!-- ACTION BUTTONS -->
+            <!-- ACTIONS -->
 
             <div class="tm-actions">
 
-
-                {% if subscription_active %}
-
-                <a
-                    href="{{ movie.download_url or movie.video_url }}"
-                    class="tm-action download"
-                    download
+                <button
+                    id="tmMainPlay"
+                    class="tm-action primary"
+                    type="button"
                 >
-                    ⬇️ Download
-                </a>
+                    ▶ Play
+                </button>
 
 
                 <button
+                    id="tmLike"
+                    class="tm-action"
                     type="button"
-                    class="tm-action share"
-                    id="tmShareBtn"
+                >
+                    ♡ Like
+                </button>
+
+
+                <button
+                    id="tmMyList"
+                    class="tm-action"
+                    type="button"
+                >
+                    ＋ My List
+                </button>
+
+
+                <button
+                    id="tmShare"
+                    class="tm-action"
+                    type="button"
                 >
                     🔗 Share
                 </button>
 
 
+                {% if subscription_active|default(false) %}
+
+                <a
+                    class="tm-action primary"
+                    href="{{ movie.download_url or movie.video_url }}"
+                    download
+                >
+                    ⬇ Download
+                </a>
+
                 {% else %}
 
                 <button
-                    type="button"
                     class="tm-action locked"
-                    disabled
+                    type="button"
+                    title="Subscription required"
+                    onclick="tmShowToast('Download subscription ke saath available hoga.')"
                 >
                     🔒 Download
                 </button>
-
-
-                <button
-                    type="button"
-                    class="tm-action locked"
-                    disabled
-                >
-                    🔒 Share
-                </button>
-
-
-                <div class="tm-sub-note">
-                    👑 Download aur Share features subscription active hone par unlock honge.
-                </div>
 
                 {% endif %}
 
@@ -1296,103 +1408,123 @@
 
             <div class="tm-details">
 
-
                 {% if movie.language %}
-
                 <div class="tm-detail">
-
-                    <div class="tm-detail-label">
-                        Language
-                    </div>
-
-                    <div class="tm-detail-value">
-                        {{ movie.language }}
-                    </div>
-
+                    <strong>Language</strong>
+                    <span>{{ movie.language }}</span>
                 </div>
-
                 {% endif %}
 
 
                 {% if movie.genre %}
-
                 <div class="tm-detail">
-
-                    <div class="tm-detail-label">
-                        Genre
-                    </div>
-
-                    <div class="tm-detail-value">
-                        {{ movie.genre }}
-                    </div>
-
+                    <strong>Genre</strong>
+                    <span>{{ movie.genre }}</span>
                 </div>
-
                 {% endif %}
 
 
                 {% if movie.cast %}
-
                 <div class="tm-detail">
-
-                    <div class="tm-detail-label">
-                        Cast
-                    </div>
-
-                    <div class="tm-detail-value">
-                        {{ movie.cast }}
-                    </div>
-
+                    <strong>Cast</strong>
+                    <span>{{ movie.cast }}</span>
                 </div>
-
                 {% endif %}
 
 
                 {% if movie.director %}
-
                 <div class="tm-detail">
+                    <strong>Director</strong>
+                    <span>{{ movie.director }}</span>
+                </div>
+                {% endif %}
 
-                    <div class="tm-detail-label">
-                        Director
-                    </div>
 
-                    <div class="tm-detail-value">
-                        {{ movie.director }}
-                    </div>
+                {% if movie.year %}
+                <div class="tm-detail">
+                    <strong>Year</strong>
+                    <span>{{ movie.year }}</span>
+                </div>
+                {% endif %}
 
+            </div>
+
+        </div>
+
+
+        <!-- POSTER -->
+
+        <div>
+
+            <div class="tm-poster-box">
+
+                {% if movie.poster_url or movie.poster %}
+
+                <img
+                    class="tm-poster"
+                    src="{{ movie.poster_url or movie.poster }}"
+                    alt="{{ movie.title }}"
+                    loading="lazy"
+                >
+
+                {% else %}
+
+                <div
+                    class="tm-poster"
+                    style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        color:#777;
+                    "
+                >
+                    TOMESH MOVIES
                 </div>
 
                 {% endif %}
 
 
+                <div class="tm-poster-overlay">
+
+                    <div class="tm-poster-label">
+                        🎬 {{ movie.category or 'Movie' }}
+                    </div>
+
+                </div>
+
             </div>
 
         </div>
-
-
-        {% if movie.poster_url or movie.poster %}
-
-        <div class="tm-poster-card">
-
-            <img
-                class="tm-poster"
-                src="{{ movie.poster_url or movie.poster }}"
-                alt="{{ movie.title }}"
-                loading="lazy"
-            >
-
-            <div class="tm-poster-shade">
-                {{ movie.title }}
-            </div>
-
-        </div>
-
-        {% endif %}
-
 
     </div>
 
+
+    <!-- =====================================================
+         RELATED MOVIES
+    ====================================================== -->
+
+    <section class="tm-section">
+
+        <h2 class="tm-section-title">
+            More Movies
+            <span>Continue exploring</span>
+        </h2>
+
+        <div class="tm-empty">
+            More movie recommendations will appear here automatically
+            as the movie catalogue grows.
+        </div>
+
+    </section>
+
+
 </div>
+
+
+<div
+    id="tmToast"
+    class="tm-toast"
+></div>
 
 </div>
 
@@ -1400,377 +1532,206 @@
 <script>
 (function(){
 
-    const player =
-        document.getElementById("tmPlayer");
+"use strict";
 
-    const video =
-        document.getElementById("tmVideo");
+/* =========================================================
+   ELEMENTS
+   ========================================================= */
 
+const player = document.getElementById("tmPlayer");
+const video = document.getElementById("tmVideo");
 
-    if(!player || !video){
-        return;
-    }
+if(!player || !video){
+    return;
+}
 
+const centerPlay = document.getElementById("tmCenterPlay");
+const playBtn = document.getElementById("tmPlay");
+const mainPlay = document.getElementById("tmMainPlay");
 
-    const $ =
-        id => document.getElementById(id);
+const back10 = document.getElementById("tmBack10");
+const forward10 = document.getElementById("tmForward10");
 
+const muteBtn = document.getElementById("tmMute");
+const volume = document.getElementById("tmVolume");
 
-    const centerPlay =
-        $("tmCenterPlay");
+const timeBox = document.getElementById("tmTime");
 
-    const playBtn =
-        $("tmPlay");
+const progressArea =
+    document.getElementById("tmProgressArea");
 
-    const back10 =
-        $("tmBack10");
+const played =
+    document.getElementById("tmPlayed");
 
-    const forward10 =
-        $("tmForward10");
+const buffered =
+    document.getElementById("tmBuffered");
 
-    const muteBtn =
-        $("tmMute");
+const dot =
+    document.getElementById("tmDot");
 
-    const mobileMuteBtn =
-        $("tmMobileMute");
+const loading =
+    document.getElementById("tmLoading");
 
-    const volume =
-        $("tmVolume");
+const retry =
+    document.getElementById("tmRetry");
 
-    const fullscreenBtn =
-        $("tmFullscreen");
+const errorBox =
+    document.getElementById("tmError");
 
-    const pipBtn =
-        $("tmPip");
+const errorText =
+    document.getElementById("tmErrorText");
 
-    const time =
-        $("tmTime");
+const pip =
+    document.getElementById("tmPip");
 
-    const progressWrap =
-        $("tmProgressWrap");
+const fullscreen =
+    document.getElementById("tmFullscreen");
 
-    const progressValue =
-        $("tmProgressValue");
+const settings =
+    document.getElementById("tmSettings");
 
-    const progressDot =
-        $("tmProgressDot");
+const settingsButton =
+    document.getElementById("tmSettingsButton");
 
-    const buffered =
-        $("tmBuffered");
+const toast =
+    document.getElementById("tmToast");
 
-    const settings =
-        $("tmSettings");
+const likeBtn =
+    document.getElementById("tmLike");
 
-    const settingsBtn =
-        $("tmSettingsBtn");
+const listBtn =
+    document.getElementById("tmMyList");
 
-    const errorText =
-        $("tmPlayerErrorText");
+const shareBtn =
+    document.getElementById("tmShare");
 
-    const retryBtn =
-        $("tmRetry");
+const continueBox =
+    document.getElementById("tmContinue");
 
-    const status =
-        $("tmVideoStatus");
+const continueText =
+    document.getElementById("tmContinueText");
 
+const resumeBtn =
+    document.getElementById("tmResume");
 
-    let hideTimer = null;
-    let loadTimer = null;
 
+/* =========================================================
+   MOVIE ID
+   ========================================================= */
 
-    function formatTime(sec){
+const movieId =
+    {{ movie.id|default(0)|tojson }};
 
-        if(
-            !Number.isFinite(sec) ||
-            sec < 0
-        ){
-            return "0:00";
-        }
+const storageKey =
+    "tmesh_movie_progress_" + movieId;
 
+const likeKey =
+    "tmesh_movie_like_" + movieId;
 
-        sec =
-            Math.floor(sec);
+const listKey =
+    "tmesh_movie_list_" + movieId;
 
 
-        const h =
-            Math.floor(sec / 3600);
+/* =========================================================
+   TOAST
+   ========================================================= */
 
-        const m =
-            Math.floor(
-                (sec % 3600) / 60
-            );
+window.tmShowToast = function(message){
 
-        const s =
-            sec % 60;
+    if(!toast) return;
 
+    toast.textContent = message;
 
-        if(h > 0){
+    toast.classList.add("show");
 
-            return (
-                h +
-                ":" +
-                String(m).padStart(2,"0") +
-                ":" +
-                String(s).padStart(2,"0")
-            );
+    clearTimeout(window.tmToastTimer);
 
-        }
+    window.tmToastTimer =
+        setTimeout(function(){
 
+            toast.classList.remove("show");
 
-        return (
-            m +
-            ":" +
-            String(s).padStart(2,"0")
-        );
-    }
+        },2600);
+};
 
 
-    function setStatus(
-        msg,
-        err=false
-    ){
+/* =========================================================
+   CONTROLS VISIBILITY
+   ========================================================= */
 
-        if(!status){
-            return;
-        }
+let controlsTimer = null;
 
+function showControls(){
 
-        status.textContent =
-            msg || "";
+    player.classList.add("controls-visible");
 
+    clearTimeout(controlsTimer);
 
-        status.style.display =
-            msg ? "block" : "none";
+    controlsTimer =
+        setTimeout(function(){
 
-
-        status.classList.toggle(
-            "tm-error",
-            !!err
-        );
-    }
-
-
-    function setBuffering(on){
-
-        player.classList.toggle(
-            "buffering",
-            on
-        );
-    }
-
-
-    function updateTime(){
-
-        if(time){
-
-            time.textContent =
-                formatTime(video.currentTime) +
-                " / " +
-                formatTime(video.duration);
-
-        }
-    }
-
-
-    function updateProgress(){
-
-        if(
-            !Number.isFinite(video.duration) ||
-            video.duration <= 0
-        ){
-            return;
-        }
-
-
-        const pct =
-            Math.max(
-                0,
-                Math.min(
-                    100,
-                    (video.currentTime /
-                        video.duration) * 100
-                )
-            );
-
-
-        if(progressValue){
-
-            progressValue.style.width =
-                pct + "%";
-
-        }
-
-
-        if(progressDot){
-
-            progressDot.style.left =
-                pct + "%";
-
-        }
-    }
-
-
-    function updateBuffered(){
-
-        if(!buffered){
-            return;
-        }
-
-
-        try{
-
-            if(
-                video.buffered.length &&
-                Number.isFinite(video.duration) &&
-                video.duration > 0
-            ){
-
-                const end =
-                    video.buffered.end(
-                        video.buffered.length - 1
-                    );
-
-
-                buffered.style.width =
-                    Math.min(
-                        100,
-                        (end /
-                            video.duration) * 100
-                    ) + "%";
-
-            }else{
-
-                buffered.style.width =
-                    "0%";
-
+            if(!video.paused){
+                player.classList.remove(
+                    "controls-visible"
+                );
             }
 
-        }catch(e){
+        },3000);
+}
 
-            buffered.style.width =
-                "0%";
+player.addEventListener(
+    "mousemove",
+    showControls
+);
 
-        }
+player.addEventListener(
+    "touchstart",
+    showControls,
+    {passive:true}
+);
+
+
+/* =========================================================
+   PLAY / PAUSE
+   ========================================================= */
+
+function updatePlayButton(){
+
+    const icon =
+        video.paused ? "▶" : "❚❚";
+
+    if(playBtn){
+        playBtn.textContent = icon;
     }
 
-
-    function updatePlayIcon(){
-
-        const icon =
-            video.paused
-                ? "▶"
-                : "❚❚";
-
-
-        if(playBtn){
-
-            playBtn.textContent =
-                icon;
-
-        }
-
-
-        if(centerPlay){
-
-            centerPlay.textContent =
-                "▶";
-
-            centerPlay.style.opacity =
-                video.paused
-                    ? "1"
-                    : "0";
-
-        }
+    if(centerPlay){
+        centerPlay.textContent =
+            video.paused ? "▶" : "❚❚";
     }
 
+    if(video.paused){
 
-    function showControls(){
+        player.classList.remove("playing");
 
         player.classList.add(
-            "active"
+            "controls-visible"
         );
 
+    }else{
 
-        clearTimeout(
-            hideTimer
-        );
+        player.classList.add("playing");
 
-
-        if(!video.paused){
-
-            hideTimer =
-                setTimeout(
-                    function(){
-
-                        if(
-                            !settings ||
-                            !settings.classList.contains(
-                                "open"
-                            )
-                        ){
-
-                            player.classList.remove(
-                                "active"
-                            );
-
-                        }
-
-                    },
-                    3000
-                );
-
-        }
     }
+}
 
 
-    function setError(msg){
+async function togglePlay(){
 
-        setBuffering(false);
-
-        player.classList.add(
-            "error-state"
-        );
-
-
-        if(errorText){
-
-            errorText.textContent =
-                msg ||
-                "Video load nahi ho paya.";
-
-        }
-
-
-        setStatus(
-            "Video error — Retry दबाएँ",
-            true
-        );
-    }
-
-
-    function clearError(){
-
-        player.classList.remove(
-            "error-state"
-        );
-
-        setStatus("");
-    }
-
-
-    function togglePlay(){
+    try{
 
         if(video.paused){
 
-            video.play().catch(
-                function(){
-
-                    setError(
-                        "Browser ne video play ko block kar diya."
-                    );
-
-                }
-            );
+            await video.play();
 
         }else{
 
@@ -1778,807 +1739,1227 @@
 
         }
 
+    }catch(error){
 
-        showControls();
-    }
-
-
-    function toggleMute(){
-
-        video.muted =
-            !video.muted;
-
-        updateVolumeIcon();
-
-        showControls();
-    }
-
-
-    function updateVolumeIcon(){
-
-        const icon =
-            video.muted ||
-            video.volume === 0
-                ? "🔇"
-                : video.volume < .5
-                    ? "🔉"
-                    : "🔊";
-
-
-        if(muteBtn){
-
-            muteBtn.textContent =
-                icon;
-
-        }
-
-
-        if(mobileMuteBtn){
-
-            mobileMuteBtn.textContent =
-                icon;
-
-        }
-    }
-
-
-    function setVolume(v){
-
-        video.volume =
-            Number(v);
-
-        video.muted =
-            video.volume === 0;
-
-        updateVolumeIcon();
-
-        showControls();
-    }
-
-
-    function seek(delta){
-
-        video.currentTime =
-            Math.max(
-                0,
-                Math.min(
-                    video.duration || Infinity,
-                    video.currentTime + delta
-                )
-            );
-
-        showControls();
-    }
-
-
-    function seekAt(clientX){
-
-        if(
-            !Number.isFinite(video.duration) ||
-            video.duration <= 0 ||
-            !progressWrap
-        ){
-            return;
-        }
-
-
-        const r =
-            progressWrap.getBoundingClientRect();
-
-
-        const ratio =
-            Math.max(
-                0,
-                Math.min(
-                    1,
-                    (clientX - r.left) /
-                    r.width
-                )
-            );
-
-
-        video.currentTime =
-            ratio * video.duration;
-    }
-
-
-    function toggleFullscreen(){
-
-        if(document.fullscreenElement){
-
-            document
-                .exitFullscreen()
-                .catch(
-                    function(){}
-                );
-
-            return;
-        }
-
-
-        if(player.requestFullscreen){
-
-            player
-                .requestFullscreen()
-                .catch(
-                    function(){}
-                );
-
-        }else if(
-            player.webkitRequestFullscreen
-        ){
-
-            player.webkitRequestFullscreen();
-
-        }
-    }
-
-
-    function retry(){
-
-        clearError();
-
-        setBuffering(true);
-
-        video.load();
-    }
-
-
-    /* PLAY */
-
-    if(centerPlay){
-
-        centerPlay.addEventListener(
-            "click",
-            togglePlay
+        showError(
+            "Video play nahi ho paya. Network connection check karo."
         );
 
     }
 
-
-    if(playBtn){
-
-        playBtn.addEventListener(
-            "click",
-            togglePlay
-        );
-
-    }
+}
 
 
-    video.addEventListener(
+if(centerPlay){
+    centerPlay.addEventListener(
         "click",
         togglePlay
     );
+}
 
-
-    if(back10){
-
-        back10.addEventListener(
-            "click",
-            function(){
-                seek(-10);
-            }
-        );
-
-    }
-
-
-    if(forward10){
-
-        forward10.addEventListener(
-            "click",
-            function(){
-                seek(10);
-            }
-        );
-
-    }
-
-
-    if(muteBtn){
-
-        muteBtn.addEventListener(
-            "click",
-            toggleMute
-        );
-
-    }
-
-
-    if(mobileMuteBtn){
-
-        mobileMuteBtn.addEventListener(
-            "click",
-            toggleMute
-        );
-
-    }
-
-
-    if(volume){
-
-        volume.addEventListener(
-            "input",
-            function(){
-
-                setVolume(
-                    volume.value
-                );
-
-            }
-        );
-
-    }
-
-
-    if(fullscreenBtn){
-
-        fullscreenBtn.addEventListener(
-            "click",
-            function(){
-
-                toggleFullscreen();
-
-                showControls();
-
-            }
-        );
-
-    }
-
-
-    if(retryBtn){
-
-        retryBtn.addEventListener(
-            "click",
-            retry
-        );
-
-    }
-
-
-    if(progressWrap){
-
-        progressWrap.addEventListener(
-            "click",
-            function(e){
-
-                seekAt(
-                    e.clientX
-                );
-
-                showControls();
-
-            }
-        );
-
-
-        progressWrap.addEventListener(
-            "pointerdown",
-            function(e){
-
-                seekAt(
-                    e.clientX
-                );
-
-                showControls();
-
-            }
-        );
-
-    }
-
-
-    /* PIP */
-
-    if(pipBtn){
-
-        pipBtn.addEventListener(
-            "click",
-            async function(){
-
-                try{
-
-                    if(
-                        document.pictureInPictureElement
-                    ){
-
-                        await document
-                            .exitPictureInPicture();
-
-                    }else if(
-                        document.pictureInPictureEnabled
-                    ){
-
-                        await video
-                            .requestPictureInPicture();
-
-                    }
-
-                }catch(e){}
-
-                showControls();
-
-            }
-        );
-
-    }
-
-
-    /* SETTINGS */
-
-    if(settingsBtn && settings){
-
-        settingsBtn.addEventListener(
-            "click",
-            function(e){
-
-                e.stopPropagation();
-
-                settings.classList.toggle(
-                    "open"
-                );
-
-                showControls();
-
-            }
-        );
-
-    }
-
-
-    document.addEventListener(
+if(playBtn){
+    playBtn.addEventListener(
         "click",
-        function(e){
+        togglePlay
+    );
+}
 
-            if(
-                settings &&
-                !settings.contains(e.target)
-            ){
+if(mainPlay){
 
-                settings.classList.remove(
-                    "open"
-                );
+    mainPlay.addEventListener(
+        "click",
+        function(){
 
-            }
+            video.scrollIntoView({
+                behavior:"smooth",
+                block:"center"
+            });
+
+            setTimeout(
+                togglePlay,
+                250
+            );
 
         }
     );
 
-
-    document
-        .querySelectorAll(
-            ".tm-speed-btn"
-        )
-        .forEach(
-            function(btn){
-
-                btn.addEventListener(
-                    "click",
-                    function(){
-
-                        video.playbackRate =
-                            Number(
-                                btn.dataset.speed
-                            );
+}
 
 
-                        document
-                            .querySelectorAll(
-                                ".tm-speed-btn"
-                            )
-                            .forEach(
-                                function(x){
+/* =========================================================
+   VIDEO CLICK
+   ========================================================= */
 
-                                    x.classList.remove(
-                                        "active"
-                                    );
-
-                                }
-                            );
+video.addEventListener(
+    "click",
+    togglePlay
+);
 
 
-                        btn.classList.add(
-                            "active"
-                        );
+/* =========================================================
+   SKIP
+   ========================================================= */
 
+if(back10){
 
-                        settings.classList.remove(
-                            "open"
-                        );
+    back10.addEventListener(
+        "click",
+        function(){
 
-                        showControls();
-
-                    }
+            video.currentTime =
+                Math.max(
+                    0,
+                    video.currentTime - 10
                 );
 
-            }
+            showControls();
+
+        }
+    );
+
+}
+
+if(forward10){
+
+    forward10.addEventListener(
+        "click",
+        function(){
+
+            video.currentTime =
+                Math.min(
+                    video.duration || Infinity,
+                    video.currentTime + 10
+                );
+
+            showControls();
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   VOLUME
+   ========================================================= */
+
+if(volume){
+
+    video.volume =
+        parseFloat(volume.value);
+
+    volume.addEventListener(
+        "input",
+        function(){
+
+            video.volume =
+                parseFloat(volume.value);
+
+            video.muted =
+                video.volume === 0;
+
+            updateMuteIcon();
+
+        }
+    );
+
+}
+
+function updateMuteIcon(){
+
+    if(!muteBtn) return;
+
+    if(video.muted || video.volume === 0){
+
+        muteBtn.textContent = "🔇";
+
+    }else{
+
+        muteBtn.textContent = "🔊";
+
+    }
+
+}
+
+if(muteBtn){
+
+    muteBtn.addEventListener(
+        "click",
+        function(){
+
+            video.muted =
+                !video.muted;
+
+            updateMuteIcon();
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   TIME
+   ========================================================= */
+
+function formatTime(seconds){
+
+    if(!Number.isFinite(seconds)){
+        return "0:00";
+    }
+
+    seconds =
+        Math.max(
+            0,
+            Math.floor(seconds)
         );
 
+    const hours =
+        Math.floor(seconds / 3600);
 
-    /* MOUSE / TOUCH */
+    const minutes =
+        Math.floor(
+            (seconds % 3600) / 60
+        );
 
-    [
-        "mousemove",
-        "touchstart",
-        "pointerdown"
-    ].forEach(
-        function(ev){
+    const secs =
+        seconds % 60;
 
-            player.addEventListener(
-                ev,
-                showControls,
-                {passive:true}
+    if(hours > 0){
+
+        return (
+            hours +
+            ":" +
+            String(minutes).padStart(2,"0") +
+            ":" +
+            String(secs).padStart(2,"0")
+        );
+
+    }
+
+    return (
+        minutes +
+        ":" +
+        String(secs).padStart(2,"0")
+    );
+
+}
+
+
+function updateTime(){
+
+    if(!timeBox) return;
+
+    timeBox.textContent =
+        formatTime(video.currentTime) +
+        " / " +
+        formatTime(video.duration);
+
+}
+
+
+video.addEventListener(
+    "timeupdate",
+    updateTime
+);
+
+video.addEventListener(
+    "loadedmetadata",
+    updateTime
+);
+
+
+/* =========================================================
+   PROGRESS
+   ========================================================= */
+
+function updateProgress(){
+
+    if(!Number.isFinite(video.duration) ||
+       video.duration <= 0){
+
+        return;
+    }
+
+    const percent =
+        (
+            video.currentTime /
+            video.duration
+        ) * 100;
+
+    if(played){
+        played.style.width =
+            percent + "%";
+    }
+
+    if(dot){
+        dot.style.left =
+            percent + "%";
+    }
+
+}
+
+
+video.addEventListener(
+    "timeupdate",
+    updateProgress
+);
+
+
+function seekFromEvent(event){
+
+    if(!progressArea) return;
+
+    const rect =
+        progressArea.getBoundingClientRect();
+
+    const x =
+        event.clientX - rect.left;
+
+    const ratio =
+        Math.max(
+            0,
+            Math.min(
+                1,
+                x / rect.width
+            )
+        );
+
+    if(Number.isFinite(video.duration)){
+
+        video.currentTime =
+            ratio * video.duration;
+
+    }
+
+}
+
+
+progressArea.addEventListener(
+    "click",
+    seekFromEvent
+);
+
+
+/* =========================================================
+   BUFFER
+   ========================================================= */
+
+function updateBuffered(){
+
+    if(
+        !Number.isFinite(video.duration) ||
+        !video.buffered.length ||
+        !buffered
+    ){
+
+        return;
+    }
+
+    try{
+
+        const end =
+            video.buffered.end(
+                video.buffered.length - 1
             );
 
-        }
+        const percent =
+            (end / video.duration) * 100;
+
+        buffered.style.width =
+            Math.min(100,percent) + "%";
+
+    }catch(error){}
+
+}
+
+video.addEventListener(
+    "progress",
+    updateBuffered
+);
+
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+video.addEventListener(
+    "waiting",
+    function(){
+
+        player.classList.add(
+            "loading"
+        );
+
+    }
+);
+
+video.addEventListener(
+    "stalled",
+    function(){
+
+        player.classList.add(
+            "loading"
+        );
+
+    }
+);
+
+video.addEventListener(
+    "canplay",
+    function(){
+
+        player.classList.remove(
+            "loading"
+        );
+
+    }
+);
+
+video.addEventListener(
+    "playing",
+    function(){
+
+        player.classList.remove(
+            "loading"
+        );
+
+        hideError();
+
+    }
+);
+
+
+/* =========================================================
+   ERROR / RETRY
+   ========================================================= */
+
+function showError(message){
+
+    player.classList.add(
+        "has-error"
     );
 
+    player.classList.remove(
+        "loading"
+    );
 
-    player.addEventListener(
-        "mouseleave",
+    if(errorText){
+        errorText.textContent =
+            message;
+    }
+
+}
+
+function hideError(){
+
+    player.classList.remove(
+        "has-error"
+    );
+
+}
+
+video.addEventListener(
+    "error",
+    function(){
+
+        showError(
+            "Video source load nahi ho paya. Retry karke dobara try karo."
+        );
+
+    }
+);
+
+if(retry){
+
+    retry.addEventListener(
+        "click",
         function(){
 
-            if(!video.paused){
-
-                clearTimeout(
-                    hideTimer
-                );
-
-
-                hideTimer =
-                    setTimeout(
-                        function(){
-
-                            if(
-                                !settings ||
-                                !settings.classList.contains(
-                                    "open"
-                                )
-                            ){
-
-                                player.classList.remove(
-                                    "active"
-                                );
-
-                            }
-
-                        },
-                        1200
-                    );
-
-            }
-
-        }
-    );
-
-
-    /* VIDEO EVENTS */
-
-    video.addEventListener(
-        "loadstart",
-        function(){
-
-            clearTimeout(
-                loadTimer
-            );
-
-            clearError();
-
-            setBuffering(true);
-
-            setStatus(
-                "Video loading..."
-            );
-
-
-            loadTimer =
-                setTimeout(
-                    function(){
-
-                        if(
-                            video.readyState < 3
-                        ){
-
-                            setStatus(
-                                "Video load hone me thoda time lag raha hai..."
-                            );
-
-                        }
-
-                    },
-                    5000
-                );
-
-        }
-    );
-
-
-    video.addEventListener(
-        "loadedmetadata",
-        function(){
-
-            clearTimeout(
-                loadTimer
-            );
-
-            setBuffering(false);
-
-            updateTime();
-
-            setStatus("");
-
-        }
-    );
-
-
-    video.addEventListener(
-        "loadeddata",
-        function(){
-
-            setBuffering(false);
-
-            setStatus("");
-
-        }
-    );
-
-
-    video.addEventListener(
-        "canplay",
-        function(){
-
-            setBuffering(false);
-
-            setStatus("");
-
-        }
-    );
-
-
-    video.addEventListener(
-        "playing",
-        function(){
-
-            setBuffering(false);
-
-            clearError();
-
-            updatePlayIcon();
-
-            showControls();
-
-        }
-    );
-
-
-    video.addEventListener(
-        "pause",
-        function(){
-
-            updatePlayIcon();
-
-            showControls();
-
-        }
-    );
-
-
-    video.addEventListener(
-        "timeupdate",
-        function(){
-
-            updateTime();
-
-            updateProgress();
-
-        }
-    );
-
-
-    video.addEventListener(
-        "progress",
-        updateBuffered
-    );
-
-
-    video.addEventListener(
-        "waiting",
-        function(){
-
-            setBuffering(true);
-
-            setStatus(
-                "Buffering..."
-            );
-
-        }
-    );
-
-
-    video.addEventListener(
-        "stalled",
-        function(){
-
-            setStatus(
-                "Network slow hai — video continue karne ki koshish ho rahi hai..."
-            );
-
-        }
-    );
-
-
-    video.addEventListener(
-        "ended",
-        function(){
+            hideError();
 
             player.classList.add(
+                "loading"
+            );
+
+            const current =
+                video.currentTime || 0;
+
+            video.load();
+
+            video.addEventListener(
+                "loadedmetadata",
+                function restore(){
+
+                    video.removeEventListener(
+                        "loadedmetadata",
+                        restore
+                    );
+
+                    try{
+                        video.currentTime =
+                            current;
+                    }catch(error){}
+
+                }
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+if(settingsButton){
+
+    settingsButton.addEventListener(
+        "click",
+        function(event){
+
+            event.stopPropagation();
+
+            settings.classList.toggle(
+                "open"
+            );
+
+        }
+    );
+
+}
+
+document.addEventListener(
+    "click",
+    function(){
+
+        if(settings){
+            settings.classList.remove(
+                "open"
+            );
+        }
+
+    }
+);
+
+
+document
+.querySelectorAll(".tm-speed")
+.forEach(function(button){
+
+    button.addEventListener(
+        "click",
+        function(){
+
+            const speed =
+                parseFloat(
+                    button.dataset.speed
+                );
+
+            video.playbackRate =
+                speed;
+
+            document
+            .querySelectorAll(".tm-speed")
+            .forEach(function(item){
+
+                item.classList.remove(
+                    "active"
+                );
+
+            });
+
+            button.classList.add(
                 "active"
             );
 
-            updatePlayIcon();
+            settings.classList.remove(
+                "open"
+            );
+
+            tmShowToast(
+                "Playback speed: " +
+                speed +
+                "×"
+            );
 
         }
     );
 
-
-    video.addEventListener(
-        "error",
-        function(){
-
-            const code =
-                video.error &&
-                video.error.code;
+});
 
 
-            const msg =
-                code === 2
-                    ? "Network connection problem. Retry karke dekho."
-                    : code === 3
-                        ? "Video decoding problem. Browser format ko decode nahi kar pa raha."
-                        : code === 4
-                            ? "Video format/source browser me supported nahi hai."
-                            : "Video source load nahi ho paya.";
+/* =========================================================
+   FULLSCREEN
+   ========================================================= */
 
+if(fullscreen){
 
-            setError(msg);
+    fullscreen.addEventListener(
+        "click",
+        async function(){
+
+            try{
+
+                if(
+                    !document.fullscreenElement
+                ){
+
+                    await player.requestFullscreen();
+
+                }else{
+
+                    await document.exitFullscreen();
+
+                }
+
+            }catch(error){
+
+                tmShowToast(
+                    "Fullscreen browser ne support nahi kiya."
+                );
+
+            }
 
         }
     );
 
-
-    /* KEYBOARD */
-
-    document.addEventListener(
-        "keydown",
-        function(e){
-
-            const tag =
-                document.activeElement?.tagName ||
-                "";
+}
 
 
-            if(
-                [
-                    "INPUT",
-                    "TEXTAREA",
-                    "BUTTON"
-                ].includes(tag)
-            ){
+/* =========================================================
+   PICTURE IN PICTURE
+   ========================================================= */
+
+if(pip){
+
+    pip.addEventListener(
+        "click",
+        async function(){
+
+            try{
+
+                if(
+                    document.pictureInPictureElement
+                ){
+
+                    await document.exitPictureInPicture();
+
+                }else if(
+                    document.pictureInPictureEnabled
+                ){
+
+                    await video.requestPictureInPicture();
+
+                }
+
+            }catch(error){
+
+                tmShowToast(
+                    "Picture in Picture available nahi hai."
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   KEYBOARD
+   ========================================================= */
+
+document.addEventListener(
+    "keydown",
+    function(event){
+
+        const tag =
+            document.activeElement &&
+            document.activeElement.tagName;
+
+        if(
+            tag === "INPUT" ||
+            tag === "TEXTAREA"
+        ){
+
+            return;
+
+        }
+
+        switch(event.key){
+
+            case " ":
+                event.preventDefault();
+                togglePlay();
+                break;
+
+            case "ArrowLeft":
+                video.currentTime =
+                    Math.max(
+                        0,
+                        video.currentTime - 10
+                    );
+                break;
+
+            case "ArrowRight":
+                video.currentTime =
+                    Math.min(
+                        video.duration || Infinity,
+                        video.currentTime + 10
+                    );
+                break;
+
+            case "ArrowUp":
+                event.preventDefault();
+
+                video.volume =
+                    Math.min(
+                        1,
+                        video.volume + .1
+                    );
+
+                if(volume){
+                    volume.value =
+                        video.volume;
+                }
+
+                updateMuteIcon();
+                break;
+
+            case "ArrowDown":
+                event.preventDefault();
+
+                video.volume =
+                    Math.max(
+                        0,
+                        video.volume - .1
+                    );
+
+                if(volume){
+                    volume.value =
+                        video.volume;
+                }
+
+                updateMuteIcon();
+                break;
+
+            case "m":
+            case "M":
+                video.muted =
+                    !video.muted;
+                updateMuteIcon();
+                break;
+
+            case "f":
+            case "F":
+                if(fullscreen){
+                    fullscreen.click();
+                }
+                break;
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   CONTINUE WATCHING
+   ========================================================= */
+
+function saveProgress(){
+
+    if(
+        !movieId ||
+        !Number.isFinite(video.duration) ||
+        video.currentTime < 5
+    ){
+
+        return;
+    }
+
+    try{
+
+        localStorage.setItem(
+            storageKey,
+            JSON.stringify({
+                time:video.currentTime,
+                duration:video.duration,
+                updated:Date.now()
+            })
+        );
+
+    }catch(error){}
+
+}
+
+
+function loadProgress(){
+
+    try{
+
+        const raw =
+            localStorage.getItem(
+                storageKey
+            );
+
+        if(!raw) return;
+
+        const data =
+            JSON.parse(raw);
+
+        if(
+            !data ||
+            !Number.isFinite(data.time) ||
+            data.time < 10
+        ){
+
+            return;
+
+        }
+
+        if(
+            Number.isFinite(data.duration) &&
+            data.duration > 0
+        ){
+
+            const percent =
+                data.time /
+                data.duration;
+
+            if(percent > .95){
                 return;
             }
 
+        }
 
-            if(e.code === "Space"){
+        if(continueBox){
 
-                e.preventDefault();
+            continueBox.classList.add(
+                "show"
+            );
+
+        }
+
+        if(continueText){
+
+            continueText.textContent =
+                "Resume from " +
+                formatTime(data.time);
+
+        }
+
+        if(resumeBtn){
+
+            resumeBtn.dataset.time =
+                data.time;
+
+        }
+
+    }catch(error){}
+
+}
+
+
+if(resumeBtn){
+
+    resumeBtn.addEventListener(
+        "click",
+        function(){
+
+            const time =
+                parseFloat(
+                    resumeBtn.dataset.time
+                );
+
+            if(
+                Number.isFinite(time)
+            ){
+
+                video.currentTime =
+                    time;
 
                 togglePlay();
-
-            }else if(
-                e.key === "ArrowLeft"
-            ){
-
-                seek(-5);
-
-            }else if(
-                e.key === "ArrowRight"
-            ){
-
-                seek(5);
-
-            }else if(
-                e.key.toLowerCase() === "f"
-            ){
-
-                toggleFullscreen();
-
-            }else if(
-                e.key.toLowerCase() === "m"
-            ){
-
-                toggleMute();
 
             }
 
         }
     );
 
+}
 
-    /* SHARE */
+video.addEventListener(
+    "timeupdate",
+    saveProgress
+);
 
-    const shareBtn =
-        document.getElementById(
-            "tmShareBtn"
+window.addEventListener(
+    "beforeunload",
+    saveProgress
+);
+
+video.addEventListener(
+    "ended",
+    function(){
+
+        try{
+
+            localStorage.removeItem(
+                storageKey
+            );
+
+        }catch(error){}
+
+        if(continueBox){
+
+            continueBox.classList.remove(
+                "show"
+            );
+
+        }
+
+    }
+);
+
+video.addEventListener(
+    "loadedmetadata",
+    loadProgress
+);
+
+
+/* =========================================================
+   LIKE
+   ========================================================= */
+
+function updateLike(){
+
+    let liked = false;
+
+    try{
+
+        liked =
+            localStorage.getItem(
+                likeKey
+            ) === "1";
+
+    }catch(error){}
+
+    if(!likeBtn) return;
+
+    if(liked){
+
+        likeBtn.textContent =
+            "♥ Liked";
+
+        likeBtn.classList.add(
+            "liked"
         );
 
+    }else{
 
-    if(shareBtn){
+        likeBtn.textContent =
+            "♡ Like";
 
-        shareBtn.addEventListener(
-            "click",
-            async function(){
+        likeBtn.classList.remove(
+            "liked"
+        );
 
-                const shareData = {
-                    title: "{{ movie.title|e }}",
-                    text: "Watch this movie on Tomesh Movies",
-                    url: window.location.href
-                };
+    }
+
+}
 
 
-                try{
+if(likeBtn){
 
-                    if(
-                        navigator.share
-                    ){
+    likeBtn.addEventListener(
+        "click",
+        function(){
 
-                        await navigator.share(
-                            shareData
-                        );
+            let liked = false;
 
-                    }else{
+            try{
 
-                        await navigator.clipboard.writeText(
-                            window.location.href
-                        );
+                liked =
+                    localStorage.getItem(
+                        likeKey
+                    ) === "1";
 
-                        shareBtn.textContent =
-                            "✓ Link Copied";
+                if(liked){
 
-                        setTimeout(
-                            function(){
+                    localStorage.removeItem(
+                        likeKey
+                    );
 
-                                shareBtn.textContent =
-                                    "🔗 Share";
+                }else{
 
-                            },
-                            1800
-                        );
+                    localStorage.setItem(
+                        likeKey,
+                        "1"
+                    );
 
-                    }
+                }
 
-                }catch(e){}
+            }catch(error){}
+
+            updateLike();
+
+            tmShowToast(
+                liked
+                    ? "Like removed"
+                    : "Added to Likes ❤️"
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   MY LIST
+   ========================================================= */
+
+function updateList(){
+
+    let saved = false;
+
+    try{
+
+        saved =
+            localStorage.getItem(
+                listKey
+            ) === "1";
+
+    }catch(error){}
+
+    if(!listBtn) return;
+
+    if(saved){
+
+        listBtn.textContent =
+            "✓ My List";
+
+        listBtn.classList.add(
+            "active"
+        );
+
+    }else{
+
+        listBtn.textContent =
+            "＋ My List";
+
+        listBtn.classList.remove(
+            "active"
+        );
+
+    }
+
+}
+
+
+if(listBtn){
+
+    listBtn.addEventListener(
+        "click",
+        function(){
+
+            let saved = false;
+
+            try{
+
+                saved =
+                    localStorage.getItem(
+                        listKey
+                    ) === "1";
+
+                if(saved){
+
+                    localStorage.removeItem(
+                        listKey
+                    );
+
+                }else{
+
+                    localStorage.setItem(
+                        listKey,
+                        "1"
+                    );
+
+                }
+
+            }catch(error){}
+
+            updateList();
+
+            tmShowToast(
+                saved
+                    ? "My List se remove kiya"
+                    : "My List mein added ✓"
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   SHARE
+   ========================================================= */
+
+if(shareBtn){
+
+    shareBtn.addEventListener(
+        "click",
+        async function(){
+
+            const shareData = {
+                title:
+                    {{ movie.title|default("Tomesh Movies")|tojson }},
+                text:
+                    "Watch on Tomesh Movies",
+                url:
+                    window.location.href
+            };
+
+            try{
+
+                if(
+                    navigator.share
+                ){
+
+                    await navigator.share(
+                        shareData
+                    );
+
+                }else if(
+                    navigator.clipboard
+                ){
+
+                    await navigator.clipboard.writeText(
+                        window.location.href
+                    );
+
+                    tmShowToast(
+                        "Movie link copied ✓"
+                    );
+
+                }else{
+
+                    tmShowToast(
+                        "Movie link: " +
+                        window.location.href
+                    );
+
+                }
+
+            }catch(error){
+
+                if(
+                    error &&
+                    error.name === "AbortError"
+                ){
+
+                    return;
+
+                }
+
+                tmShowToast(
+                    "Share unavailable."
+                );
 
             }
-        );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   VIDEO EVENTS
+   ========================================================= */
+
+video.addEventListener(
+    "play",
+    updatePlayButton
+);
+
+video.addEventListener(
+    "pause",
+    updatePlayButton
+);
+
+video.addEventListener(
+    "ended",
+    updatePlayButton
+);
+
+
+/* =========================================================
+   INITIAL STATE
+   ========================================================= */
+
+video.volume = 1;
+
+updateMuteIcon();
+updatePlayButton();
+updateLike();
+updateList();
+
+showControls();
+
+
+/* =========================================================
+   DOUBLE CLICK
+   ========================================================= */
+
+let lastTap = 0;
+
+video.addEventListener(
+    "dblclick",
+    function(event){
+
+        const rect =
+            video.getBoundingClientRect();
+
+        const x =
+            event.clientX - rect.left;
+
+        if(
+            x < rect.width / 2
+        ){
+
+            video.currentTime =
+                Math.max(
+                    0,
+                    video.currentTime - 10
+                );
+
+            tmShowToast(
+                "↶ 10 seconds"
+            );
+
+        }else{
+
+            video.currentTime =
+                Math.min(
+                    video.duration || Infinity,
+                    video.currentTime + 10
+                );
+
+            tmShowToast(
+                "10 seconds ↷"
+            );
+
+        }
 
     }
-
-
-    /* INITIAL */
-
-    video.volume = 1;
-
-    if(volume){
-        volume.value = 1;
-    }
-
-    updateVolumeIcon();
-
-    updateTime();
-
-    updatePlayIcon();
+);
 
 })();
 </script>
