@@ -218,10 +218,8 @@ R2_PUBLIC_URL = clean_env_value(R2_PUBLIC_URL).rstrip("/")
 
 CASHFREE_APP_ID = clean_env_value(CASHFREE_APP_ID)
 CASHFREE_SECRET_KEY = clean_env_value(CASHFREE_SECRET_KEY)
-MESSAGE_CENTRAL_CUSTOMER_ID = os.environ.get("MESSAGE_CENTRAL_CUSTOMER_ID", "").strip()
-MESSAGE_CENTRAL_AUTH_TOKEN = os.environ.get("MESSAGE_CENTRAL_AUTH_TOKEN", "").strip()
-MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(MESSAGE_CENTRAL_CUSTOMER_ID)
-MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(MESSAGE_CENTRAL_AUTH_TOKEN)
+MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(os.environ.get("MESSAGE_CENTRAL_CUSTOMER_ID", ""))
+MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(os.environ.get("MESSAGE_CENTRAL_AUTH_TOKEN", ""))
 
 # ============================================================
 # EMAIL OTP SETTINGS
@@ -258,12 +256,6 @@ BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 # ============================================================
 # MOBILE OTP - MESSAGE CENTRAL
 # ============================================================
-MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(
-    os.environ.get("MESSAGE_CENTRAL_CUSTOMER_ID", "")
-)
-MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(
-    os.environ.get("MESSAGE_CENTRAL_AUTH_TOKEN", "")
-)
 MESSAGE_CENTRAL_BASE_URL = "https://cpaas.messagecentral.com"
 
 OTP_LENGTH = 6
@@ -3429,9 +3421,9 @@ def cashfree_subscription_return():
     try:
         result=cashfree_request("GET", "/subscriptions/"+quote(subscription_id,safe=""))
         status=str(result.get("subscription_status") or "").upper()
-        auth=(result.get("authorization_details") or {})
+        auth=(result.get("authorization_details") or result.get("authorisation_details") or {})
         auth_status=str(auth.get("authorization_status") or "").upper()
-        if status=="ACTIVE" and auth_status=="ACTIVE":
+        if status in {"ACTIVE", "BANK_APPROVAL_PENDING"} and auth_status in {"ACTIVE", "SUCCESS"}:
             activate_customer_subscription(customer_id, subscription_id, "ACTIVE")
             session["customer_id"]=customer_id; session["customer_logged_in"]=True
             flash("Membership activated successfully.","success")
@@ -3473,10 +3465,11 @@ def cashfree_subscription_webhook():
     if not row: return jsonify(ok=True)
     customer_id=row["customer_id"]
     if event_type in {"SUBSCRIPTION_AUTH_STATUS","SUBSCRIPTION_STATUS_CHANGE"}:
-        auth_status=str((data.get("authorization_details") or {}).get("authorization_status") or data.get("auth_status") or data.get("status") or "").upper()
+        auth_details = data.get("authorization_details") or data.get("authorisation_details") or {}
+        auth_status=str(auth_details.get("authorization_status") or data.get("auth_status") or "").upper()
         status=str(data.get("subscription_status") or data.get("status") or "").upper()
-        if auth_status=="ACTIVE" or status=="ACTIVE":
-            activate_customer_subscription(customer_id,subscription_id,"ACTIVE")
+        if auth_status in {"SUCCESS", "ACTIVE"} or status in {"ACTIVE", "BANK_APPROVAL_PENDING"}:
+            activate_customer_subscription(customer_id,subscription_id,"ACTIVE" if status != "BANK_APPROVAL_PENDING" else "BANK_APPROVAL_PENDING")
     elif event_type=="SUBSCRIPTION_PAYMENT_SUCCESS":
         extend_subscription_premium(customer_id,subscription_id)
     elif event_type in {"SUBSCRIPTION_PAYMENT_FAILED","SUBSCRIPTION_PAYMENT_CANCELLED"}:
