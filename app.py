@@ -208,6 +208,8 @@ R2_PUBLIC_URL = clean_env_value(R2_PUBLIC_URL).rstrip("/")
 
 CASHFREE_APP_ID = clean_env_value(CASHFREE_APP_ID)
 CASHFREE_SECRET_KEY = clean_env_value(CASHFREE_SECRET_KEY)
+MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(MESSAGE_CENTRAL_CUSTOMER_ID)
+MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(MESSAGE_CENTRAL_AUTH_TOKEN)
 
 # ============================================================
 # EMAIL OTP SETTINGS
@@ -242,16 +244,15 @@ BREVO_FROM_NAME = clean_env_value(
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 # ============================================================
-# MOBILE OTP - MSG91
+# MOBILE OTP - MESSAGE CENTRAL
 # ============================================================
-MSG91_AUTHKEY = clean_env_value(
-    os.environ.get("MSG91_AUTHKEY", "")
+MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(
+    os.environ.get("MESSAGE_CENTRAL_CUSTOMER_ID", "")
 )
-MSG91_TEMPLATE_ID = clean_env_value(
-    os.environ.get("MSG91_TEMPLATE_ID", "")
+MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(
+    os.environ.get("MESSAGE_CENTRAL_AUTH_TOKEN", "")
 )
-MSG91_OTP_URL = "https://control.msg91.com/api/v5/otp"
-MSG91_VERIFY_URL = "https://control.msg91.com/api/v5/otp/verify"
+MESSAGE_CENTRAL_BASE_URL = "https://cpaas.messagecentral.com"
 
 OTP_LENGTH = 6
 OTP_EXPIRY_MINUTES = 10
@@ -511,7 +512,7 @@ def init_db():
             ON email_otps(email)
         """)
 
-        # MSG91 handles the OTP value itself. This table stores only the
+        # Message Central handles the OTP value itself. This table stores only the
         # mobile number, request id, timing and attempt state for our login flow.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS mobile_otps (
@@ -969,28 +970,40 @@ def mask_mobile(mobile):
 
 
 def send_mobile_otp(mobile):
-    if not MSG91_AUTHKEY:
+    if not MESSAGE_CENTRAL_CUSTOMER_ID:
         raise RuntimeError(
-            "MSG91_AUTHKEY missing. Add MSG91_AUTHKEY in Render Environment."
-        )
-    if not MSG91_TEMPLATE_ID:
-        raise RuntimeError(
-            "MSG91_TEMPLATE_ID missing. Add MSG91_TEMPLATE_ID in Render Environment."
+            "MESSAGE_CENTRAL_CUSTOMER_ID missing. Add it in Render Environment."
         )
 
+    if not MESSAGE_CENTRAL_AUTH_TOKEN:
+        raise RuntimeError(
+            "MESSAGE_CENTRAL_AUTH_TOKEN missing. Add it in Render Environment."
+        )
+
+    mobile = normalize_mobile(mobile)
+
+    if not valid_mobile(mobile):
+        raise RuntimeError("Invalid mobile number.")
+
     url = (
-        MSG91_OTP_URL
-        + "?template_id=" + quote(MSG91_TEMPLATE_ID)
-        + "&mobile=91" + quote(mobile)
-        + "&authkey=" + quote(MSG91_AUTHKEY)
+        MESSAGE_CENTRAL_BASE_URL
+        + "/verification/v3/send"
+        + "?countryCode=91"
+        + "&customerId="
+        + quote(MESSAGE_CENTRAL_CUSTOMER_ID)
+        + "&flowType=SMS"
+        + "&mobileNumber="
+        + quote(mobile)
+        + "&otpLength="
+        + str(OTP_LENGTH)
     )
 
     req = Request(
         url,
-        data=b"{}",
+        data=b"",
         headers={
             "accept": "application/json",
-            "content-type": "application/json",
+            "authToken": MESSAGE_CENTRAL_AUTH_TOKEN,
             "user-agent": "Tomesh-Movies/1.0",
         },
         method="POST",
@@ -998,50 +1011,114 @@ def send_mobile_otp(mobile):
 
     try:
         with urlopen(req, timeout=20) as response:
-            raw = response.read().decode("utf-8", errors="replace")
+            raw = response.read().decode(
+                "utf-8",
+                errors="replace",
+            )
     except HTTPError as exc:
-        raw = exc.read().decode("utf-8", errors="replace")
-        print("MSG91 SEND HTTP ERROR:", exc.code, raw)
+        raw = exc.read().decode(
+            "utf-8",
+            errors="replace",
+        )
+        print(
+            "MESSAGE CENTRAL SEND HTTP ERROR:",
+            exc.code,
+            raw,
+        )
         raise RuntimeError(
-            "MSG91 OTP send failed: " + str(exc.code) + " " + raw
+            "Message Central OTP send failed: "
+            + str(exc.code)
+            + " "
+            + raw
         )
     except URLError as exc:
-        print("MSG91 SEND CONNECTION ERROR:", repr(exc))
-        raise RuntimeError("MSG91 connection failed: " + str(exc))
+        print(
+            "MESSAGE CENTRAL SEND CONNECTION ERROR:",
+            repr(exc),
+        )
+        raise RuntimeError(
+            "Message Central connection failed: "
+            + str(exc)
+        )
 
     try:
         result = json.loads(raw or "{}")
     except Exception:
         result = {}
 
-    if str(result.get("type", "")).lower() != "success":
+    print(
+        "MESSAGE CENTRAL SEND RESPONSE:",
+        result,
+    )
+
+    data = result.get("data") or {}
+    response_code = str(result.get("responseCode", ""))
+
+    verification_id = (
+        data.get("verificationId")
+        or data.get("verficationId")
+        or result.get("verificationId")
+        or result.get("verficationId")
+    )
+
+    if response_code != "200" or not verification_id:
         raise RuntimeError(
-            "MSG91 OTP send failed: " + str(result)
+            "Message Central OTP send failed: "
+            + str(result)
         )
 
-    return str(
-        result.get("request_id")
-        or result.get("requestId")
-        or result.get("message")
-        or ""
-    )
+    return str(verification_id)
 
 
 def verify_mobile_otp(mobile, otp):
-    if not MSG91_AUTHKEY:
-        raise RuntimeError("MSG91_AUTHKEY missing.")
+    if not MESSAGE_CENTRAL_AUTH_TOKEN:
+        raise RuntimeError(
+            "MESSAGE_CENTRAL_AUTH_TOKEN missing."
+        )
+
+    mobile = normalize_mobile(mobile)
+    otp = str(otp or "").strip()
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT request_id
+            FROM mobile_otps
+            WHERE mobile = %s
+              AND used_at IS NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (mobile,),
+        )
+        row = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not row or not row.get("request_id"):
+        return False, {
+            "message": "OTP verification session not found."
+        }
+
+    verification_id = str(row["request_id"])
 
     url = (
-        MSG91_VERIFY_URL
-        + "?otp=" + quote(str(otp))
-        + "&mobile=91" + quote(mobile)
+        MESSAGE_CENTRAL_BASE_URL
+        + "/verification/v3/validateOtp"
+        + "?verificationId="
+        + quote(verification_id)
+        + "&code="
+        + quote(otp)
     )
 
     req = Request(
         url,
         headers={
             "accept": "application/json",
-            "authkey": MSG91_AUTHKEY,
+            "authToken": MESSAGE_CENTRAL_AUTH_TOKEN,
             "user-agent": "Tomesh-Movies/1.0",
         },
         method="GET",
@@ -1049,26 +1126,51 @@ def verify_mobile_otp(mobile, otp):
 
     try:
         with urlopen(req, timeout=20) as response:
-            raw = response.read().decode("utf-8", errors="replace")
+            raw = response.read().decode(
+                "utf-8",
+                errors="replace",
+            )
     except HTTPError as exc:
-        raw = exc.read().decode("utf-8", errors="replace")
-        print("MSG91 VERIFY HTTP ERROR:", exc.code, raw)
+        raw = exc.read().decode(
+            "utf-8",
+            errors="replace",
+        )
+        print(
+            "MESSAGE CENTRAL VERIFY HTTP ERROR:",
+            exc.code,
+            raw,
+        )
         return False, raw
     except URLError as exc:
-        print("MSG91 VERIFY CONNECTION ERROR:", repr(exc))
-        raise RuntimeError("MSG91 connection failed: " + str(exc))
+        print(
+            "MESSAGE CENTRAL VERIFY CONNECTION ERROR:",
+            repr(exc),
+        )
+        raise RuntimeError(
+            "Message Central connection failed: "
+            + str(exc)
+        )
 
     try:
         result = json.loads(raw or "{}")
     except Exception:
         result = {}
 
-    message = str(result.get("message", "")).lower()
-    ok = (
-        result.get("type") == "success"
-        or "otp verified success" in message
-        or "number_verified_successfully" in message
+    print(
+        "MESSAGE CENTRAL VERIFY RESPONSE:",
+        result,
     )
+
+    data = result.get("data") or {}
+    verification_status = str(
+        data.get("verificationStatus", "")
+    ).upper()
+
+    ok = (
+        str(result.get("responseCode", "")) == "200"
+        and verification_status == "VERIFICATION_COMPLETED"
+    )
+
     return ok, result
 
 
@@ -1431,18 +1533,404 @@ def bind_customer_email(email):
     methods=["POST"],
 )
 def request_otp():
-    # Backward-compatible endpoint used by the current login.html.
-    # The actual login flow is mobile OTP via MSG91.
-    return request_mobile_otp()
+
+    email = normalize_email(
+        request.form.get("email", "")
+    )
+
+    if not valid_email(email):
+        flash(
+            "Please enter a valid email address.",
+            "error",
+        )
+        return redirect(
+            url_for("login")
+        )
+
+    conn = get_db(
+        dict_rows=True
+    )
+
+    otp_row_id = None
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT created_at
+            FROM email_otps
+            WHERE email = %s
+              AND used_at IS NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (email,),
+        )
+
+        previous = cur.fetchone()
+
+        if previous and previous["created_at"]:
+            elapsed = (
+                datetime.now()
+                - previous["created_at"]
+            ).total_seconds()
+
+            if elapsed < OTP_RESEND_SECONDS:
+                wait_seconds = max(
+                    1,
+                    int(
+                        OTP_RESEND_SECONDS
+                        - elapsed
+                    ),
+                )
+
+                cur.close()
+                return redirect(
+                    url_for(
+                        "login",
+                        step="otp",
+                    )
+                )
+
+        # Invalidate older active OTPs for this email.
+        cur.execute(
+            """
+            UPDATE email_otps
+            SET used_at = NOW()
+            WHERE email = %s
+              AND used_at IS NULL
+            """,
+            (email,),
+        )
+
+        otp = generate_otp()
+        expires_at = (
+            datetime.now()
+            + timedelta(
+                minutes=OTP_EXPIRY_MINUTES
+            )
+        )
+
+        cur.execute(
+            """
+            INSERT INTO email_otps
+            (
+                email,
+                otp_hash,
+                expires_at,
+                attempts
+            )
+            VALUES(%s, %s, %s, 0)
+            RETURNING id
+            """,
+            (
+                email,
+                otp_hash(email, otp),
+                expires_at,
+            ),
+        )
+
+        otp_row = cur.fetchone()
+        otp_row_id = otp_row["id"]
+
+        conn.commit()
+        cur.close()
+
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
+
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    try:
+        send_otp_email(
+            email,
+            otp,
+        )
+    except Exception as exc:
+        print(
+            "OTP EMAIL SEND ERROR:",
+            repr(exc),
+        )
+
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            if otp_row_id:
+                cur.execute(
+                    """
+                    UPDATE email_otps
+                    SET used_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (otp_row_id,),
+                )
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+
+        flash(
+            "OTP email send nahi hua. Render me BREVO_API_KEY aur BREVO_FROM check karo.",
+            "error",
+        )
+        return redirect(
+            url_for("login")
+        )
+
+    session["otp_email"] = email
+    session["otp_sent_at"] = datetime.now().isoformat()
+
+    flash(
+        "OTP sent to " + mask_email(email) + ".",
+        "success",
+    )
+
+    return redirect(
+        url_for(
+            "login",
+            step="otp",
+        )
+    )
+
 
 @app.route(
     "/login/verify-otp",
     methods=["POST"],
 )
 def verify_otp():
-    # Backward-compatible endpoint used by the current login.html.
-    # The actual login flow is mobile OTP via MSG91.
-    return verify_mobile_otp_route()
+
+    email = normalize_email(
+        session.get("otp_email", "")
+    )
+
+    otp = str(
+        request.form.get("otp", "")
+    ).strip()
+
+    if not email or not valid_email(email):
+        flash(
+            "OTP session expired. Please request a new OTP.",
+            "error",
+        )
+        return redirect(
+            url_for("login")
+        )
+
+    if not re.fullmatch(
+        r"\d{6}",
+        otp,
+    ):
+        flash(
+            "Enter the 6 digit OTP.",
+            "error",
+        )
+        return redirect(
+            url_for(
+                "login",
+                step="otp",
+            )
+        )
+
+    conn = get_db(
+        dict_rows=True
+    )
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT
+                id,
+                otp_hash,
+                expires_at,
+                attempts
+            FROM email_otps
+            WHERE email = %s
+              AND used_at IS NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (email,),
+        )
+
+        row = cur.fetchone()
+
+        if not row:
+            cur.close()
+            flash(
+                "OTP expired or not found. Please request a new OTP.",
+                "error",
+            )
+            return redirect(
+                url_for("login")
+            )
+
+        if int(row["attempts"] or 0) >= OTP_MAX_ATTEMPTS:
+            cur.execute(
+                """
+                UPDATE email_otps
+                SET used_at = NOW()
+                WHERE id = %s
+                """,
+                (row["id"],),
+            )
+            conn.commit()
+            cur.close()
+            flash(
+                "Too many wrong attempts. Request a new OTP.",
+                "error",
+            )
+            return redirect(
+                url_for("login")
+            )
+
+        if row["expires_at"] <= datetime.now():
+            cur.execute(
+                """
+                UPDATE email_otps
+                SET used_at = NOW()
+                WHERE id = %s
+                """,
+                (row["id"],),
+            )
+            conn.commit()
+            cur.close()
+            flash(
+                "OTP expired. Please request a new OTP.",
+                "error",
+            )
+            return redirect(
+                url_for("login")
+            )
+
+        expected_hash = otp_hash(
+            email,
+            otp,
+        )
+
+        if not hmac.compare_digest(
+            str(row["otp_hash"]),
+            expected_hash,
+        ):
+            new_attempts = int(
+                row["attempts"] or 0
+            ) + 1
+
+            if new_attempts >= OTP_MAX_ATTEMPTS:
+                cur.execute(
+                    """
+                    UPDATE email_otps
+                    SET
+                        attempts = %s,
+                        used_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (
+                        new_attempts,
+                        row["id"],
+                    ),
+                )
+            else:
+                cur.execute(
+                    """
+                    UPDATE email_otps
+                    SET attempts = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        new_attempts,
+                        row["id"],
+                    ),
+                )
+
+            conn.commit()
+            cur.close()
+
+            remaining = max(
+                0,
+                OTP_MAX_ATTEMPTS - new_attempts,
+            )
+
+            if remaining:
+                flash(
+                    "Wrong OTP. "
+                    + str(remaining)
+                    + " attempts left.",
+                    "error",
+                )
+            else:
+                flash(
+                    "Too many wrong attempts. Request a new OTP.",
+                    "error",
+                )
+
+            return redirect(
+                url_for(
+                    "login",
+                    step="otp" if remaining else "email",
+                )
+            )
+
+        cur.execute(
+            """
+            UPDATE email_otps
+            SET used_at = NOW()
+            WHERE id = %s
+            """,
+            (row["id"],),
+        )
+
+        conn.commit()
+        cur.close()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    try:
+        bind_customer_email(email)
+    except Exception as exc:
+        print(
+            "CUSTOMER EMAIL BIND ERROR:",
+            repr(exc),
+        )
+        flash(
+            "Email verified, but account setup failed. Please try again.",
+            "error",
+        )
+        return redirect(
+            url_for("login")
+        )
+
+    session.pop(
+        "otp_email",
+        None,
+    )
+    session.pop(
+        "otp_sent_at",
+        None,
+    )
+
+    flash(
+        "Email verified. Welcome to Tomesh Movies!",
+        "success",
+    )
+
+    return redirect(
+        url_for("user_details")
+    )
+
 
 # ============================================================
 # CUSTOMER ACCESS
