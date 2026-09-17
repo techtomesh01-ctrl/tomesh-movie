@@ -2993,21 +2993,28 @@ def download_movie(movie_id):
     methods=["GET"],
 )
 def login():
+    customer_id = session.get("customer_id")
+
+    if session.get("customer_logged_in") and customer_id:
+        if customer_has_completed_initial_payment(customer_id):
+            return redirect(url_for("member_home"))
+        return redirect(url_for("membership_checkout"))
+
     step = str(request.args.get("step", "")).strip().lower()
 
-    if step not in {"mobile", "otp"}:
-        step = "otp" if session.get("otp_mobile") else "mobile"
+    if step not in {"email", "otp"}:
+        step = "otp" if session.get("otp_email") else "email"
 
-    mobile = normalize_mobile(
-        request.args.get("mobile", "")
-        or session.get("otp_mobile", "")
+    email = normalize_email(
+        request.args.get("email", "")
+        or session.get("otp_email", "")
     )
 
     return render_template(
         "login.html",
         step=step,
-        mobile=mobile,
-        masked_mobile=mask_mobile(mobile),
+        email=email,
+        masked_email=mask_email(email),
     )
 
 
