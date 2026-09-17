@@ -1,978 +1,747 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000000">
 
     <title>Sign In | Tomesh Movies</title>
-
-    {% if google_client_id is defined and google_client_id %}
-    <meta name="google-signin-client_id" content="{{ google_client_id }}">
-    {% endif %}
 
     <style>
         *{
             box-sizing:border-box;
-            margin:0;
-            padding:0;
         }
 
-        html,
-        body{
+        html,body{
+            margin:0;
+            padding:0;
             min-height:100%;
+            font-family:Arial,Helvetica,sans-serif;
+            background:#000;
+            color:#fff;
         }
 
         body{
             min-height:100vh;
-            font-family:Arial,Helvetica,sans-serif;
-            color:#fff;
+            overflow-x:hidden;
             background:
-                radial-gradient(
-                    circle at 15% 0%,
-                    rgba(229,9,20,.16),
-                    transparent 34%
-                ),
-                radial-gradient(
-                    circle at 90% 10%,
-                    rgba(130,20,30,.14),
-                    transparent 30%
-                ),
-                #050505;
+                radial-gradient(circle at 50% -10%,rgba(229,9,20,.20),transparent 35%),
+                radial-gradient(circle at 10% 90%,rgba(120,20,40,.10),transparent 30%),
+                #000;
+        }
 
+        .tm-page{
+            min-height:100vh;
             display:flex;
             align-items:center;
             justify-content:center;
-
-            padding:28px 16px;
-            overflow-x:hidden;
+            padding:35px 18px;
         }
 
-        .page{
+        .tm-card{
             width:100%;
-            max-width:440px;
-            position:relative;
-            z-index:2;
-        }
-
-        .brand{
-            width:100%;
-            text-align:center;
-            margin-bottom:28px;
-        }
-
-        .brand-name{
-            display:block;
-            width:100%;
-
-            font-size:30px;
-            line-height:1;
-            font-weight:900;
-            letter-spacing:3px;
-
-            white-space:nowrap;
-
-            color:#fff;
-        }
-
-        .brand-name .movies{
-            color:#E50914;
-        }
-
-        .brand-tagline{
-            display:block;
-
-            margin-top:10px;
-
-            color:#cfcfcf;
-
-            font-size:12px;
-            line-height:1.2;
-
-            letter-spacing:2.2px;
-            font-weight:500;
-        }
-
-        .login-card{
-            position:relative;
-
-            padding:32px 30px 28px;
-
+            max-width:455px;
+            background:
+                linear-gradient(180deg,rgba(25,25,25,.98),rgba(9,9,9,.99));
+            border:1px solid #292929;
             border-radius:18px;
-
-            border:1px solid rgba(255,255,255,.09);
-
-            background:
-                linear-gradient(
-                    145deg,
-                    rgba(25,25,27,.98),
-                    rgba(8,8,9,.99)
-                );
-
+            padding:38px 34px 30px;
             box-shadow:
-                0 28px 75px rgba(0,0,0,.70),
-                0 0 35px rgba(229,9,20,.06);
-
-            overflow:hidden;
+                0 25px 80px rgba(0,0,0,.75),
+                0 0 45px rgba(229,9,20,.08);
         }
 
-        .login-card:before{
-            content:"";
-
-            position:absolute;
-
-            top:0;
-            left:12%;
-            right:12%;
-
-            height:1px;
-
-            background:
-                linear-gradient(
-                    90deg,
-                    transparent,
-                    rgba(229,9,20,.85),
-                    transparent
-                );
-        }
-
-        .card-title{
+        .tm-brand{
             text-align:center;
+            margin-bottom:30px;
+        }
 
-            font-size:26px;
-            line-height:1.2;
+        .tm-brand-title{
+            color:#e50914;
+            font-size:28px;
+            font-weight:900;
+            letter-spacing:2px;
+            line-height:1.1;
+        }
 
+        .tm-brand-subtitle{
+            margin-top:7px;
+            color:#a9a9a9;
+            font-size:13px;
+            letter-spacing:.8px;
+        }
+
+        .tm-heading{
+            text-align:center;
+            font-size:27px;
             font-weight:800;
+            margin:0;
+        }
 
+        .tm-description{
+            text-align:center;
+            color:#aaa;
+            font-size:14px;
+            line-height:1.65;
+            margin:12px 0 27px;
+        }
+
+        .tm-label{
+            display:block;
+            color:#ddd;
+            font-size:13px;
+            font-weight:700;
             margin-bottom:9px;
         }
 
-        .subtitle{
-            text-align:center;
-
-            color:#a8a8a8;
-
-            font-size:13px;
-            line-height:1.6;
-
-            margin-bottom:24px;
-        }
-
-        .flash{
-            padding:11px 13px;
-
-            margin-bottom:16px;
-
-            border-radius:10px;
-
-            background:rgba(100,10,15,.30);
-
-            border:1px solid rgba(229,9,20,.30);
-
-            color:#ffb1b1;
-
-            font-size:13px;
-            line-height:1.45;
-        }
-
-        label{
-            display:block;
-
-            margin-bottom:8px;
-
-            color:#ddd;
-
-            font-size:13px;
-            font-weight:700;
-        }
-
-        .input-wrap{
+        .tm-input-wrap{
             position:relative;
-        }
-
-        .country-code{
-            position:absolute;
-
-            left:14px;
-            top:50%;
-
-            transform:translateY(-50%);
-
             display:flex;
             align-items:center;
+            background:#171717;
+            border:1px solid #333;
+            border-radius:10px;
+            transition:.2s;
+            overflow:hidden;
+        }
 
-            gap:5px;
+        .tm-input-wrap:focus-within{
+            border-color:#e50914;
+            box-shadow:0 0 0 3px rgba(229,9,20,.10);
+        }
 
+        .tm-prefix{
+            height:52px;
+            min-width:68px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:7px;
+            border-right:1px solid #303030;
             color:#fff;
-
             font-size:14px;
             font-weight:700;
-
-            pointer-events:none;
-
-            z-index:2;
         }
 
-        input{
+        .tm-prefix .flag{
+            font-size:20px;
+        }
+
+        .tm-input{
             width:100%;
-
             height:52px;
-
-            padding:0 15px 0 68px;
-
-            border-radius:11px;
-
-            border:1px solid #303033;
-
-            outline:none;
-
-            background:#111113;
-
-            color:#fff;
-
-            font-size:15px;
-
-            transition:.2s ease;
-        }
-
-        input::placeholder{
-            color:#666;
-        }
-
-        input:focus{
-            border-color:#E50914;
-
-            background:#151516;
-
-            box-shadow:
-                0 0 0 3px rgba(229,9,20,.09);
-        }
-
-        .otp-input{
-            padding-left:15px;
-
-            text-align:center;
-
-            letter-spacing:7px;
-
-            font-size:22px;
-
-            font-weight:800;
-        }
-
-        .otp-button{
-            width:100%;
-
-            height:52px;
-
-            margin-top:17px;
-
             border:0;
-
-            border-radius:11px;
-
+            outline:0;
+            background:transparent;
             color:#fff;
+            padding:0 15px;
+            font-size:16px;
+        }
 
-            font-size:14px;
+        .tm-input::placeholder{
+            color:#686868;
+        }
+
+        .tm-button{
+            width:100%;
+            height:52px;
+            margin-top:15px;
+            border:0;
+            border-radius:9px;
+            background:#e50914;
+            color:#fff;
+            font-size:15px;
             font-weight:800;
-
-            letter-spacing:.2px;
-
+            letter-spacing:.3px;
             cursor:pointer;
-
-            background:
-                linear-gradient(
-                    100deg,
-                    #b20710,
-                    #E50914 55%,
-                    #b20710
-                );
-
-            box-shadow:
-                0 12px 25px rgba(229,9,20,.18);
-
-            transition:.2s ease;
+            transition:.18s;
         }
 
-        .otp-button:hover{
+        .tm-button:hover{
+            background:#f40612;
             transform:translateY(-1px);
-
-            box-shadow:
-                0 15px 30px rgba(229,9,20,.25);
         }
 
-        .otp-button:disabled{
-            opacity:.65;
+        .tm-button:active{
+            transform:translateY(0);
+        }
 
+        .tm-button:disabled{
+            opacity:.55;
             cursor:not-allowed;
-
             transform:none;
         }
 
-        .secure{
-            display:flex;
-
-            align-items:center;
-            justify-content:center;
-
-            gap:6px;
-
-            margin-top:17px;
-
-            color:#777;
-
-            font-size:11px;
+        .tm-secondary{
+            background:#1c1c1c;
+            border:1px solid #363636;
         }
 
-        .divider{
+        .tm-secondary:hover{
+            background:#252525;
+        }
+
+        .tm-divider{
             display:flex;
-
             align-items:center;
-
             gap:12px;
-
-            margin:22px 0 18px;
-
+            margin:25px 0 20px;
             color:#666;
-
-            font-size:10px;
-
-            letter-spacing:1.5px;
-        }
-
-        .divider:before,
-        .divider:after{
-            content:"";
-
-            flex:1;
-
-            height:1px;
-
-            background:rgba(255,255,255,.08);
-        }
-
-        .social-row{
-            display:grid;
-
-            grid-template-columns:1fr 1fr;
-
-            gap:10px;
-
-            width:100%;
-        }
-
-        .social-button{
-            min-height:48px;
-
-            border:1px solid #303033;
-
-            border-radius:10px;
-
-            background:#111113;
-
-            color:#fff;
-
-            display:flex;
-
-            align-items:center;
-            justify-content:center;
-
-            gap:8px;
-
             font-size:12px;
             font-weight:700;
-
-            cursor:pointer;
-
-            transition:.2s ease;
         }
 
-        .social-button:hover{
-            background:#181819;
-
-            border-color:#555;
-
-            transform:translateY(-1px);
+        .tm-divider::before,
+        .tm-divider::after{
+            content:"";
+            flex:1;
+            height:1px;
+            background:#303030;
         }
 
-        .social-icon{
-            width:20px;
-            height:20px;
-
-            flex:0 0 20px;
-
+        .tm-email-link{
+            width:100%;
+            height:50px;
             display:flex;
-
             align-items:center;
             justify-content:center;
+            gap:10px;
+            border:1px solid #383838;
+            border-radius:9px;
+            background:#151515;
+            color:#fff;
+            font-weight:700;
+            cursor:pointer;
+            transition:.18s;
         }
 
-        .google-icon{
-            font-size:19px;
+        .tm-email-link:hover{
+            background:#202020;
+            border-color:#555;
+        }
+
+        .tm-email-icon{
+            width:25px;
+            height:25px;
+            border-radius:6px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#fff;
+            color:#111;
+            font-size:14px;
             font-weight:900;
-
-            font-family:Arial,sans-serif;
-
-            background:
-                conic-gradient(
-                    from -45deg,
-                    #4285F4 0deg 90deg,
-                    #34A853 90deg 180deg,
-                    #FBBC05 180deg 270deg,
-                    #EA4335 270deg 360deg
-                );
-
-            -webkit-background-clip:text;
-            background-clip:text;
-
-            color:transparent;
         }
 
-        .gmail-icon{
-            position:relative;
-
-            width:20px;
-            height:15px;
-
-            border-radius:2px;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #4285F4 0%,
-                    #4285F4 23%,
-                    #EA4335 23%,
-                    #EA4335 48%,
-                    #FBBC05 48%,
-                    #FBBC05 72%,
-                    #34A853 72%,
-                    #34A853 100%
-                );
+        .tm-email-section{
+            display:none;
+            margin-top:2px;
         }
 
-        .gmail-icon:after{
-            content:"";
-
-            position:absolute;
-
-            left:3px;
-            right:3px;
-            top:2px;
-
-            height:10px;
-
-            background:#111113;
-
-            clip-path:polygon(
-                0 0,
-                50% 45%,
-                100% 0,
-                100% 18%,
-                50% 63%,
-                0 18%
-            );
+        .tm-email-section.active{
+            display:block;
         }
 
-        .info{
-            text-align:center;
+        .tm-mobile-section.hidden{
+            display:none;
+        }
 
+        .tm-back{
+            width:100%;
+            border:0;
+            background:transparent;
+            color:#999;
+            padding:12px 0 0;
+            font-size:13px;
+            cursor:pointer;
+        }
+
+        .tm-back:hover{
+            color:#fff;
+        }
+
+        .tm-secure{
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            gap:7px;
+            margin-top:25px;
             color:#777;
+            font-size:12px;
+        }
 
+        .tm-secure strong{
+            color:#aaa;
+        }
+
+        .tm-info{
+            text-align:center;
+            color:#666;
             font-size:11px;
-
-            line-height:1.55;
-
+            line-height:1.6;
             margin-top:18px;
         }
 
-        .change-link{
-            display:block;
-
-            text-align:center;
-
-            margin-top:14px;
-
-            color:#888;
-
-            text-decoration:none;
-
-            font-size:12px;
+        .tm-alerts{
+            margin-bottom:18px;
         }
 
-        .change-link:hover{
+        .tm-alert{
+            border-radius:9px;
+            padding:11px 13px;
+            margin-bottom:8px;
+            font-size:13px;
+            line-height:1.4;
+        }
+
+        .tm-alert.error{
+            background:rgba(229,9,20,.12);
+            border:1px solid rgba(229,9,20,.35);
+            color:#ffb3b7;
+        }
+
+        .tm-alert.success{
+            background:rgba(45,180,90,.10);
+            border:1px solid rgba(45,180,90,.30);
+            color:#a9efbf;
+        }
+
+        .tm-otp-info{
+            text-align:center;
+            background:#111;
+            border:1px solid #292929;
+            border-radius:10px;
+            padding:13px;
+            color:#aaa;
+            font-size:13px;
+            margin-bottom:18px;
+        }
+
+        .tm-otp-info strong{
             color:#fff;
         }
 
-        .back{
-            display:block;
+        .tm-otp{
+            text-align:center;
+            letter-spacing:8px;
+            font-size:25px;
+            font-weight:800;
+        }
 
-            width:max-content;
+        .tm-change{
+            text-align:center;
+            margin-top:15px;
+        }
 
-            max-width:100%;
-
-            margin:20px auto 0;
-
+        .tm-change button{
+            border:0;
+            background:transparent;
             color:#aaa;
-
-            text-decoration:none;
-
+            cursor:pointer;
             font-size:13px;
-
-            transition:.2s ease;
         }
 
-        .back:hover{
-            color:#E50914;
+        .tm-change button:hover{
+            color:#fff;
         }
 
-        .footer{
-            text-align:center;
-
-            margin-top:20px;
-
-            color:#555;
-
-            font-size:10px;
-
-            letter-spacing:.4px;
-        }
-
-        .otp-note{
-            text-align:center;
-
-            color:#999;
-
-            font-size:12px;
-
-            margin:0 0 17px;
-
-            line-height:1.6;
+        .tm-hidden{
+            display:none!important;
         }
 
         @media(max-width:520px){
-
-            body{
-                padding:20px 13px;
+            .tm-page{
+                padding:18px 12px;
             }
 
-            .brand{
-                margin-bottom:20px;
+            .tm-card{
+                padding:30px 21px 25px;
+                border-radius:15px;
             }
 
-            .brand-name{
-                font-size:25px;
-                letter-spacing:2.4px;
+            .tm-brand-title{
+                font-size:24px;
             }
 
-            .brand-tagline{
-                font-size:10px;
-                letter-spacing:1.7px;
-
-                margin-top:9px;
-            }
-
-            .login-card{
-                padding:27px 19px 24px;
-
-                border-radius:17px;
-            }
-
-            .card-title{
-                font-size:23px;
-            }
-
-            .subtitle{
-                font-size:12.5px;
-
-                margin-bottom:21px;
-            }
-
-            .social-button{
-                font-size:11px;
+            .tm-heading{
+                font-size:24px;
             }
         }
     </style>
-
-    {% if google_client_id is defined and google_client_id %}
-    <script
-        src="https://accounts.google.com/gsi/client"
-        async
-        defer
-    ></script>
-    {% endif %}
-
 </head>
 
 <body>
 
-<div class="page">
+<div class="tm-page">
+    <main class="tm-card">
 
-    <div class="brand">
-
-        <div class="brand-name">
-            TOMESH <span class="movies">MOVIES</span>
+        <div class="tm-brand">
+            <div class="tm-brand-title">TOMESH MOVIES</div>
+            <div class="tm-brand-subtitle">Your Cinematic World</div>
         </div>
 
-        <div class="brand-tagline">
-            Your Cinematic World
-        </div>
-
-    </div>
-
-    <div class="login-card">
-
-        <h1 class="card-title">
-
-            {% if step == 'otp' %}
-
-                Enter OTP
-
-            {% else %}
-
-                Welcome Back 👋
-
-            {% endif %}
-
-        </h1>
-
-        <div class="subtitle">
-
-            {% if step == 'otp' %}
-
-                Enter the OTP sent to your mobile number and continue watching.
-
-            {% else %}
-
-                Sign in with your mobile number and continue watching.
-
-            {% endif %}
-
-        </div>
-
+        <!-- FLASH MESSAGES -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-
             {% if messages %}
-
-                {% for category, message in messages %}
-
-                    <div class="flash">
-                        {{ message }}
-                    </div>
-
-                {% endfor %}
-
+                <div class="tm-alerts">
+                    {% for category, message in messages %}
+                        <div class="tm-alert {{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
-
         {% endwith %}
 
 
-        {% if step == 'otp' %}
+        <!-- =====================================================
+             OTP SCREEN
+             ===================================================== -->
 
-            <div class="otp-note">
+        {% if step == "otp" %}
 
-                OTP sent to
-                <strong>{{ masked_mobile }}</strong>
+            <h1 class="tm-heading">Welcome back</h1>
 
-                <br>
+            <p class="tm-description">
+                अपना verification code डालें और Tomesh Movies में securely sign in करें।
+            </p>
 
-                Enter your 6-digit verification code.
+            {% if session.get("otp_mobile") %}
 
-            </div>
-
-            <form
-                method="POST"
-                action="{{ url_for('verify_mobile_otp_route') }}"
-                onsubmit="lockButton(this)"
-            >
-
-                <label for="otp">
-                    Enter OTP
-                </label>
-
-                <div class="input-wrap">
-
-                    <input
-                        id="otp"
-                        class="otp-input"
-                        type="text"
-                        name="otp"
-                        inputmode="numeric"
-                        autocomplete="one-time-code"
-                        maxlength="6"
-                        pattern="[0-9]{4,6}"
-                        placeholder="Enter 6-digit OTP"
-                        required
-                        autofocus
-                    >
-
+                <div class="tm-otp-info">
+                    OTP भेजा गया है
+                    <strong>{{ masked_mobile }}</strong>
+                    पर।
                 </div>
 
-                <button
-                    class="otp-button"
-                    type="submit"
-                >
-                    VERIFY OTP ✓
+                <form method="POST"
+                      action="{{ url_for('verify_mobile_otp_route') }}"
+                      onsubmit="lockButton(this)">
+
+                    <label class="tm-label" for="mobileOtp">
+                        Enter OTP
+                    </label>
+
+                    <div class="tm-input-wrap">
+                        <input
+                            id="mobileOtp"
+                            name="otp"
+                            class="tm-input tm-otp"
+                            type="text"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            maxlength="9"
+                            pattern="[0-9]{4,9}"
+                            placeholder="••••••"
+                            required
+                        >
+                    </div>
+
+                    <button type="submit" class="tm-button">
+                        VERIFY OTP ✓
+                    </button>
+                </form>
+
+            {% elif session.get("otp_email") %}
+
+                <div class="tm-otp-info">
+                    OTP भेजा गया है
+                    <strong>{{ session.get("otp_email") }}</strong>
+                    पर।
+                </div>
+
+                <form method="POST"
+                      action="{{ url_for('verify_otp') }}"
+                      onsubmit="lockButton(this)">
+
+                    <label class="tm-label" for="emailOtp">
+                        Enter Email OTP
+                    </label>
+
+                    <div class="tm-input-wrap">
+                        <input
+                            id="emailOtp"
+                            name="otp"
+                            class="tm-input tm-otp"
+                            type="text"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            placeholder="••••••"
+                            required
+                        >
+                    </div>
+
+                    <button type="submit" class="tm-button">
+                        VERIFY OTP ✓
+                    </button>
+                </form>
+
+            {% endif %}
+
+            <div class="tm-change">
+                <button type="button" onclick="goBackToLogin()">
+                    ← Change login method
                 </button>
+            </div>
 
-            </form>
+            <div class="tm-secure">
+                🔒 <strong>Secure login</strong>
+                • Your information is protected
+            </div>
 
-            <a
-                class="change-link"
-                href="{{ url_for('login') }}"
-            >
-                ← Change mobile number
-            </a>
 
+        <!-- =====================================================
+             LOGIN SCREEN
+             ===================================================== -->
 
         {% else %}
 
-            <form
-                method="POST"
-                action="{{ url_for('request_mobile_otp') }}"
-                onsubmit="lockButton(this)"
+            <h1 class="tm-heading">Welcome back</h1>
+
+            <p class="tm-description">
+                अपना mobile number या Gmail / Email verify करें
+                और Tomesh Movies में securely sign in करें।
+            </p>
+
+
+            <!-- MOBILE LOGIN -->
+
+            <section id="mobileSection" class="tm-mobile-section">
+
+                <form method="POST"
+                      action="{{ url_for('request_mobile_otp') }}"
+                      onsubmit="lockButton(this)">
+
+                    <label class="tm-label" for="mobile">
+                        Mobile Number
+                    </label>
+
+                    <div class="tm-input-wrap">
+
+                        <div class="tm-prefix">
+                            <span class="flag">🇮🇳</span>
+                            <span>+91</span>
+                        </div>
+
+                        <input
+                            id="mobile"
+                            name="mobile"
+                            class="tm-input"
+                            type="tel"
+                            inputmode="numeric"
+                            autocomplete="tel"
+                            maxlength="10"
+                            pattern="[6-9][0-9]{9}"
+                            value="{{ mobile or '' }}"
+                            placeholder="Enter 10-digit mobile number"
+                            required
+                        >
+
+                    </div>
+
+                    <button type="submit" class="tm-button">
+                        GET OTP →
+                    </button>
+
+                </form>
+
+            </section>
+
+
+            <!-- EMAIL / GMAIL LOGIN -->
+
+            <div class="tm-divider">
+                <span>OR</span>
+            </div>
+
+            <button
+                id="emailOpenButton"
+                type="button"
+                class="tm-email-link"
+                onclick="showEmailLogin()"
             >
+                <span class="tm-email-icon">✉</span>
+                Continue with Gmail / Email
+            </button>
 
-                <label for="mobile">
-                    Mobile Number
-                </label>
+            <section id="emailSection" class="tm-email-section">
 
-                <div class="input-wrap">
+                <form method="POST"
+                      action="{{ url_for('request_otp') }}"
+                      onsubmit="lockButton(this)">
 
-                    <span class="country-code">
-                        🇮🇳 +91
-                    </span>
+                    <label class="tm-label" for="email">
+                        Gmail / Email
+                    </label>
 
-                    <input
-                        id="mobile"
-                        type="tel"
-                        name="mobile"
-                        inputmode="numeric"
-                        autocomplete="tel"
-                        maxlength="10"
-                        pattern="[6-9][0-9]{9}"
-                        placeholder="Enter 10-digit mobile number"
-                        value="{{ mobile }}"
-                        required
-                        autofocus
-                    >
+                    <div class="tm-input-wrap">
 
-                </div>
+                        <div class="tm-prefix">
+                            <span>✉</span>
+                        </div>
+
+                        <input
+                            id="email"
+                            name="email"
+                            class="tm-input"
+                            type="email"
+                            autocomplete="email"
+                            placeholder="Enter your Gmail / Email"
+                            required
+                        >
+
+                    </div>
+
+                    <button type="submit" class="tm-button">
+                        GET EMAIL OTP →
+                    </button>
+
+                </form>
 
                 <button
-                    id="otpButton"
-                    class="otp-button"
-                    type="submit"
+                    type="button"
+                    class="tm-back"
+                    onclick="showMobileLogin()"
                 >
-                    GET OTP →
+                    ← Use mobile number instead
                 </button>
 
-            </form>
+            </section>
+
+
+            <div class="tm-secure">
+                🔒 <strong>Secure login</strong>
+                • Your information is protected
+            </div>
+
+            <div class="tm-info">
+                Verification के बाद आपका account securely तैयार होगा
+                और आप User Details page पर जाएंगे।
+            </div>
 
         {% endif %}
 
-
-        <div class="secure">
-
-            <span>🔒</span>
-
-            Secure login • Your information is protected
-
-        </div>
-
-
-        <div class="divider">
-            OR CONTINUE WITH
-        </div>
-
-
-        <div class="social-row">
-
-            <button
-                type="button"
-                class="social-button"
-                onclick="startGoogleLogin()"
-            >
-
-                <span class="social-icon google-icon">
-                    G
-                </span>
-
-                <span>
-                    Continue with Google
-                </span>
-
-            </button>
-
-
-            <button
-                type="button"
-                class="social-button"
-                onclick="startGoogleLogin()"
-            >
-
-                <span class="social-icon gmail-icon"></span>
-
-                <span>
-                    Continue with Gmail
-                </span>
-
-            </button>
-
-        </div>
-
-
-        <div class="info">
-
-            Mobile verification or Google sign-in ke baad
-            aap Tomesh Movies mein securely continue kar sakte hain.
-
-        </div>
-
-    </div>
-
-
-    <a
-        class="back"
-        href="{{ url_for('home') }}"
-    >
-        ← Back to Tomesh Movies
-    </a>
-
-
-    <div class="footer">
-        © 2026 Tomesh Movies • Your Cinematic World
-    </div>
-
+    </main>
 </div>
 
 
 <script>
 
-function lockButton(form){
+    function lockButton(form){
+        const button = form.querySelector("button[type='submit']");
 
-    const button =
-        form.querySelector(
-            "button[type='submit']"
-        );
-
-    if(!button){
-        return;
+        if(button){
+            button.disabled = true;
+            button.dataset.originalText = button.innerHTML;
+            button.innerHTML = "Please wait...";
+        }
     }
 
-    button.disabled = true;
 
-    button.textContent = "Please wait...";
+    function showEmailLogin(){
 
-}
+        const mobileSection =
+            document.getElementById("mobileSection");
+
+        const emailSection =
+            document.getElementById("emailSection");
+
+        const emailOpenButton =
+            document.getElementById("emailOpenButton");
+
+        if(mobileSection){
+            mobileSection.classList.add("hidden");
+        }
+
+        if(emailSection){
+            emailSection.classList.add("active");
+        }
+
+        if(emailOpenButton){
+            emailOpenButton.classList.add("tm-hidden");
+        }
+
+        const emailInput =
+            document.getElementById("email");
+
+        if(emailInput){
+            setTimeout(function(){
+                emailInput.focus();
+            },100);
+        }
+    }
 
 
-function startGoogleLogin(){
+    function showMobileLogin(){
 
-    {% if google_client_id is defined and google_client_id %}
+        const mobileSection =
+            document.getElementById("mobileSection");
 
-        if(
-            !window.google ||
-            !google.accounts ||
-            !google.accounts.id
-        ){
+        const emailSection =
+            document.getElementById("emailSection");
 
-            alert(
-                "Google Sign-In is loading. Please try again."
-            );
+        const emailOpenButton =
+            document.getElementById("emailOpenButton");
 
-            return;
+        if(emailSection){
+            emailSection.classList.remove("active");
+        }
+
+        if(mobileSection){
+            mobileSection.classList.remove("hidden");
+        }
+
+        if(emailOpenButton){
+            emailOpenButton.classList.remove("tm-hidden");
+        }
+    }
+
+
+    function goBackToLogin(){
+        window.location.href = "{{ url_for('login') }}";
+    }
+
+
+    document.addEventListener("DOMContentLoaded", function(){
+
+        const mobileInput =
+            document.getElementById("mobile");
+
+        if(mobileInput){
+
+            mobileInput.addEventListener("input", function(){
+
+                this.value =
+                    this.value.replace(/\D/g,"").slice(0,10);
+
+            });
+
         }
 
 
-        google.accounts.id.initialize({
+        const otpInputs =
+            document.querySelectorAll(
+                "input[name='otp']"
+            );
 
-            client_id:
-                "{{ google_client_id }}",
+        otpInputs.forEach(function(input){
 
-            callback:
-                handleGoogleCredential,
+            input.addEventListener("input", function(){
 
-            auto_select:false,
+                this.value =
+                    this.value.replace(/\D/g,"");
 
-            cancel_on_tap_outside:true
+            });
 
         });
 
-
-        google.accounts.id.prompt();
-
-    {% else %}
-
-        alert(
-            "Google Sign-In is not configured yet."
-        );
-
-    {% endif %}
-
-}
-
-
-function handleGoogleCredential(response){
-
-    if(
-        !response ||
-        !response.credential
-    ){
-
-        alert(
-            "Google Sign-In failed. Please try again."
-        );
-
-        return;
-    }
-
-
-    fetch("{{ url_for('google_login') }}", {
-
-        method:"POST",
-
-        headers:{
-            "Content-Type":"application/json"
-        },
-
-        body:JSON.stringify({
-            credential:response.credential
-        })
-
-    })
-
-    .then(async function(res){
-
-        const data = await res.json();
-
-        if(!res.ok || !data.ok){
-
-            alert(
-                data.message ||
-                "Google Sign-In failed. Please try again."
-            );
-
-            return;
-        }
-
-        window.location.href =
-            data.redirect ||
-            "{{ url_for('user_details') }}";
-
-    })
-
-    .catch(function(error){
-
-        console.error(error);
-
-        alert(
-            "Google Sign-In failed. Please try again."
-        );
-
     });
-
-}
 
 </script>
 
 </body>
 </html>
+```
