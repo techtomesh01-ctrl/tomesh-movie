@@ -86,7 +86,7 @@ CASHFREE_ENV = os.environ.get(
     "CASHFREE_ENV", "sandbox"
 ).strip().lower()
 
-CASHFREE_API_VERSION = "2025-01-01"
+CASHFREE_API_VERSION = "2026-01-01"
 
 if CASHFREE_ENV == "production":
     CASHFREE_API_URL = "https://api.cashfree.com/pg"
@@ -103,6 +103,16 @@ else:
 WATCH_PRICE = 1.00
 PREMIUM_PRICE = 99.00
 PREMIUM_DAYS = 30
+
+# Cashfree Subscriptions / UPI AutoPay
+SUBSCRIPTION_PRICE = 99.00
+SUBSCRIPTION_AUTH_AMOUNT = 1.00
+SUBSCRIPTION_PLAN_NAME = os.environ.get(
+    "CASHFREE_SUBSCRIPTION_PLAN_NAME",
+    "Tomesh Movies Premium Monthly",
+).strip() or "Tomesh Movies Premium Monthly"
+SUBSCRIPTION_MAX_CYCLES = 120
+
 
 
 # ============================================================
@@ -208,15 +218,6 @@ R2_PUBLIC_URL = clean_env_value(R2_PUBLIC_URL).rstrip("/")
 
 CASHFREE_APP_ID = clean_env_value(CASHFREE_APP_ID)
 CASHFREE_SECRET_KEY = clean_env_value(CASHFREE_SECRET_KEY)
-MESSAGE_CENTRAL_CUSTOMER_ID = clean_env_value(
-    os.environ.get("MESSAGE_CENTRAL_CUSTOMER_ID", "")
-)
-
-MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(
-    os.environ.get("MESSAGE_CENTRAL_AUTH_TOKEN", "")
-)
-MESSAGE_CENTRAL_AUTH_TOKEN = clean_env_value(MESSAGE_CENTRAL_AUTH_TOKEN)
-
 # ============================================================
 # EMAIL OTP SETTINGS
 # ============================================================
@@ -424,6 +425,16 @@ def init_db():
             )
         """)
 
+        cur.execute("""
+            ALTER TABLE payment_orders
+            ADD COLUMN IF NOT EXISTS subscription_id TEXT
+        """)
+
+        cur.execute("""
+            ALTER TABLE payment_orders
+            ADD COLUMN IF NOT EXISTS gateway_status TEXT
+        """)
+
         # ----------------------------------------------------
         # CUSTOMER ACCESS
         # ----------------------------------------------------
@@ -447,7 +458,7 @@ def init_db():
         cur.execute("""
             CREATE TABLE IF NOT EXISTS customer_users (
                 id SERIAL PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE,
                 customer_id TEXT UNIQUE NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login_at TIMESTAMP
@@ -464,17 +475,44 @@ def init_db():
             ADD COLUMN IF NOT EXISTS mobile TEXT
         """)
 
-        # Mobile OTP login uses the verified mobile as the primary login identity.
-        # Existing email accounts remain compatible.
         cur.execute("""
             ALTER TABLE customer_users
             ALTER COLUMN email DROP NOT NULL
         """)
 
+        # IMPORTANT: the same mobile number may belong to multiple separate
+        # Tomesh Movies accounts. The account is identified by customer_id.
+        cur.execute("DROP INDEX IF EXISTS idx_customer_users_mobile")
+
         cur.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_users_mobile
+            CREATE INDEX IF NOT EXISTS idx_customer_users_mobile_lookup
             ON customer_users(mobile)
-            WHERE mobile IS NOT NULL
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS initial_payment_completed BOOLEAN DEFAULT FALSE
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS subscription_id TEXT
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS subscription_status TEXT
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS premium_until TIMESTAMP
+        """)
+
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_users_subscription
+            ON customer_users(subscription_id)
+            WHERE subscription_id IS NOT NULL
         """)
 
         cur.execute("""
@@ -1181,65 +1219,60 @@ def verify_mobile_otp(mobile, otp):
 
 
 def bind_customer_mobile(mobile):
-    mobile = normalize_mobile(mobile)
-    old_customer_id = session.get("customer_id")
+    """
+    Bind a verified mobile to the current account.
 
-    if not old_customer_id:
-        old_customer_id = "tm_" + secrets.token_hex(16)
+    Mobile numbers are NOT unique account identifiers. Multiple accounts
+    can use the same mobile number. customer_id is the real account key.
+    If the current browser already has a customer_id, that account is reused;
+    otherwise a new independent customer account is created.
+    """
+    mobile = normalize_mobile(mobile)
+    customer_id = session.get("customer_id")
 
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT id, customer_id, email
-            FROM customer_users
-            WHERE mobile = %s
-            FOR UPDATE
-            """,
-            (mobile,),
-        )
-        user = cur.fetchone()
 
-        if user:
-            target_customer_id = user["customer_id"]
-
-            if old_customer_id != target_customer_id:
-                cur.execute(
-                    """
-                    UPDATE customer_access
-                    SET customer_id = %s
-                    WHERE customer_id = %s
-                    """,
-                    (target_customer_id, old_customer_id),
-                )
-                cur.execute(
-                    """
-                    UPDATE payment_orders
-                    SET customer_id = %s
-                    WHERE customer_id = %s
-                    """,
-                    (target_customer_id, old_customer_id),
-                )
-
+        user = None
+        if customer_id:
             cur.execute(
                 """
-                UPDATE customer_users
-                SET last_login_at = NOW()
-                WHERE id = %s
+                SELECT id, customer_id, email, full_name, initial_payment_completed,
+                       subscription_id, subscription_status, premium_until
+                FROM customer_users
+                WHERE customer_id = %s
+                FOR UPDATE
                 """,
-                (user["id"],),
+                (customer_id,),
             )
-        else:
-            target_customer_id = old_customer_id
+            user = cur.fetchone()
+
+        if not user:
+            customer_id = "tm_" + secrets.token_hex(16)
             cur.execute(
                 """
                 INSERT INTO customer_users
-                (email, customer_id, mobile, last_login_at)
-                VALUES(NULL, %s, %s, NOW())
+                    (email, customer_id, mobile, last_login_at, initial_payment_completed)
+                VALUES(NULL, %s, %s, NOW(), FALSE)
+                RETURNING id, customer_id, email, full_name, initial_payment_completed,
+                          subscription_id, subscription_status, premium_until
                 """,
-                (target_customer_id, mobile),
+                (customer_id, mobile),
             )
+            user = cur.fetchone()
+        else:
+            cur.execute(
+                """
+                UPDATE customer_users
+                SET mobile = %s, last_login_at = NOW()
+                WHERE customer_id = %s
+                RETURNING id, customer_id, email, full_name, initial_payment_completed,
+                          subscription_id, subscription_status, premium_until
+                """,
+                (mobile, customer_id),
+            )
+            user = cur.fetchone()
 
         conn.commit()
         cur.close()
@@ -1249,14 +1282,12 @@ def bind_customer_mobile(mobile):
     finally:
         conn.close()
 
-    session["customer_id"] = target_customer_id
+    session["customer_id"] = customer_id
     session["customer_logged_in"] = True
     session["customer_mobile"] = mobile
-    session["customer_email"] = (
-        user.get("email") if user else ""
-    ) or ""
+    session["customer_email"] = user.get("email") or ""
 
-    return target_customer_id
+    return customer_id
 
 
 @app.route("/login/request-mobile-otp", methods=["POST"])
@@ -1419,6 +1450,39 @@ def verify_mobile_otp_route():
 
     session.pop("otp_mobile", None)
     session.pop("otp_mobile_sent_at", None)
+
+    # Existing account with completed initial authorization + active premium
+    # goes directly to the OTT member area. First-time accounts complete
+    # User Details and then the payment/subscription authorization flow.
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT initial_payment_completed, subscription_status, premium_until
+            FROM customer_users
+            WHERE customer_id = %s
+            LIMIT 1
+            """,
+            (session.get("customer_id"),),
+        )
+        account = cur.fetchone() or {}
+        cur.close()
+    finally:
+        conn.close()
+
+    premium_active = bool(
+        account.get("premium_until")
+        and account["premium_until"] > datetime.now()
+        and str(account.get("subscription_status") or "").upper() in {
+            "ACTIVE", "BANK_APPROVAL_PENDING", "INITIALIZED"
+        }
+    )
+
+    if account.get("initial_payment_completed") and premium_active:
+        flash("Welcome back.", "success")
+        return redirect(url_for("member_home"))
+
     flash("Mobile number verified. Welcome to Tomesh Movies!", "success")
     return redirect(url_for("user_details"))
 
@@ -1995,9 +2059,51 @@ def verify_stream_token(token, movie_id):
         return False
 
 
+def get_account_record(customer_id=None):
+    customer_id = customer_id or session.get("customer_id")
+    if not customer_id:
+        return None
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, customer_id, email, mobile, full_name,
+                   initial_payment_completed, subscription_id,
+                   subscription_status, premium_until
+            FROM customer_users
+            WHERE customer_id = %s
+            LIMIT 1
+            """,
+            (customer_id,),
+        )
+        row = cur.fetchone()
+        cur.close()
+        return row
+    finally:
+        conn.close()
+
+
+def account_ready(customer_id=None):
+    account = get_account_record(customer_id)
+    if not account:
+        return False
+    status = str(account.get("subscription_status") or "").upper()
+    premium_until = account.get("premium_until")
+    return bool(
+        account.get("initial_payment_completed")
+        and premium_until
+        and premium_until > datetime.now()
+        and status == "ACTIVE"
+    )
+
+
 def access_for_movie(movie_id):
     customer_id = get_customer_id()
+    premium = account_ready(customer_id)
 
+    # Keep the legacy customer_access table compatible with existing accounts.
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
@@ -2019,7 +2125,6 @@ def access_for_movie(movie_id):
     now = datetime.now()
     permanent_watch = False
     temporary_watch = False
-    premium = False
 
     for row in rows:
         if (
@@ -2040,14 +2145,77 @@ def access_for_movie(movie_id):
     }
 
 
-def grant_access(customer_id, movie_id, payment_type):
+def grant_initial_access(customer_id):
+    """Mark the account's one-time ₹1 authorization as completed."""
     conn = get_db()
     try:
         cur = conn.cursor()
-        now = datetime.now()
+        cur.execute(
+            """
+            UPDATE customer_users
+            SET initial_payment_completed = TRUE
+            WHERE customer_id = %s
+            """,
+            (customer_id,),
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
 
-        if payment_type == "watch":
-            # ₹1 gives permanent account-wide watch access.
+
+def grant_subscription_access(customer_id, subscription_id, status, premium_until=None):
+    """Persist the Cashfree subscription as the account's premium entitlement."""
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE customer_users
+            SET initial_payment_completed = TRUE,
+                subscription_id = %s,
+                subscription_status = %s,
+                premium_until = %s,
+                last_login_at = NOW()
+            WHERE customer_id = %s
+            """,
+            (subscription_id, status, premium_until, customer_id),
+        )
+
+        # Keep legacy access table in sync so existing movie/player code and
+        # older accounts continue to work.
+        cur.execute(
+            """
+            DELETE FROM customer_access
+            WHERE customer_id = %s
+              AND movie_id IS NULL
+              AND premium_until IS NOT NULL
+            """,
+            (customer_id,),
+        )
+        if premium_until:
+            cur.execute(
+                """
+                INSERT INTO customer_access
+                    (customer_id, movie_id, watch_until, download_until, premium_until)
+                VALUES(%s, NULL, NULL, NULL, %s)
+                """,
+                (customer_id, premium_until),
+            )
+
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+
+def grant_access(customer_id, movie_id, payment_type):
+    # Legacy compatibility for any old payment callback. New premium access
+    # is controlled by the Cashfree subscription flow.
+    if payment_type == "watch":
+        conn = get_db()
+        try:
+            cur = conn.cursor()
             cur.execute(
                 """
                 SELECT id FROM customer_access
@@ -2064,132 +2232,62 @@ def grant_access(customer_id, movie_id, payment_type):
                 cur.execute(
                     """
                     INSERT INTO customer_access
-                    (customer_id, movie_id, watch_until, download_until, premium_until)
+                        (customer_id, movie_id, watch_until, download_until, premium_until)
                     VALUES(%s, NULL, NULL, NULL, NULL)
                     """,
                     (customer_id,),
                 )
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+        grant_initial_access(customer_id)
+        return
 
-        elif payment_type == "premium":
-            cur.execute(
-                """
-                SELECT premium_until
-                FROM customer_access
-                WHERE customer_id = %s
-                  AND movie_id IS NULL
-                  AND premium_until IS NOT NULL
-                ORDER BY premium_until DESC
-                LIMIT 1
-                """,
-                (customer_id,),
-            )
-            row = cur.fetchone()
-            current_until = row[0] if row else None
-            base = current_until if current_until and current_until > now else now
-            until = base + timedelta(days=PREMIUM_DAYS)
+    if payment_type == "premium":
+        # Old one-time premium callback: preserve compatibility but never use it
+        # for the new member checkout.
+        until = datetime.now() + timedelta(days=PREMIUM_DAYS)
+        grant_subscription_access(
+            customer_id,
+            "legacy-premium",
+            "ACTIVE",
+            until,
+        )
+        return
 
-            cur.execute(
-                """
-                DELETE FROM customer_access
-                WHERE customer_id = %s
-                  AND movie_id IS NULL
-                  AND premium_until IS NOT NULL
-                """,
-                (customer_id,),
-            )
-            cur.execute(
-                """
-                INSERT INTO customer_access
-                (customer_id, movie_id, watch_until, download_until, premium_until)
-                VALUES(%s, NULL, NULL, NULL, %s)
-                """,
-                (customer_id, until),
-            )
+    raise ValueError("Unsupported payment type.")
 
-        else:
-            raise ValueError("Unsupported payment type.")
-
-        conn.commit()
-        cur.close()
-    finally:
-        conn.close()
-
-
-# ============================================================
-# PREMIUM ACCESS CHECK
-# ============================================================
 
 def has_active_premium():
-
-    customer_id = get_customer_id()
-
-    conn = get_db()
-
-    try:
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT 1
-            FROM customer_access
-            WHERE customer_id = %s
-              AND premium_until IS NOT NULL
-              AND premium_until > NOW()
-            LIMIT 1
-            """,
-            (customer_id,),
-        )
-
-        row = cur.fetchone()
-
-        cur.close()
-
-        return bool(row)
-
-    finally:
-        conn.close()
+    return account_ready(get_customer_id())
 
 
 # ============================================================
 # CASHFREE HTTP
 # ============================================================
 
-def cashfree_request(
-    method,
-    path,
-    payload=None,
-):
-
+def cashfree_request(method, path, payload=None, extra_headers=None):
     if not CASHFREE_APP_ID:
-        raise RuntimeError(
-            "CASHFREE_APP_ID is missing."
-        )
-
+        raise RuntimeError("CASHFREE_APP_ID is missing.")
     if not CASHFREE_SECRET_KEY:
-        raise RuntimeError(
-            "CASHFREE_SECRET_KEY is missing."
-        )
+        raise RuntimeError("CASHFREE_SECRET_KEY is missing.")
 
-    url = (
-        CASHFREE_API_URL.rstrip("/")
-        + "/"
-        + path.lstrip("/")
-    )
-
+    url = CASHFREE_API_URL.rstrip("/") + "/" + path.lstrip("/")
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
         "x-api-version": CASHFREE_API_VERSION,
         "x-client-id": CASHFREE_APP_ID,
         "x-client-secret": CASHFREE_SECRET_KEY,
+        "x-request-id": secrets.token_hex(16),
     }
+    if extra_headers:
+        headers.update(extra_headers)
 
     body = None
-
     if payload is not None:
-        body = json.dumps(
-            payload
-        ).encode("utf-8")
+        body = json.dumps(payload).encode("utf-8")
 
     req = Request(
         url,
@@ -2199,355 +2297,286 @@ def cashfree_request(
     )
 
     try:
-
-        with urlopen(
-            req,
-            timeout=30,
-        ) as response:
-
-            raw = response.read().decode(
-                "utf-8"
-            )
-
+        with urlopen(req, timeout=30) as response:
+            raw = response.read().decode("utf-8", errors="replace")
             if not raw:
                 return {}
-
             return json.loads(raw)
-
     except HTTPError as exc:
-
-        raw = exc.read().decode(
-            "utf-8",
-            errors="replace",
-        )
-
-        print(
-            "CASHFREE HTTP ERROR:",
-            exc.code,
-            raw,
-        )
-
+        raw = exc.read().decode("utf-8", errors="replace")
+        print("CASHFREE HTTP ERROR:", exc.code, raw)
         try:
             detail = json.loads(raw)
         except Exception:
-            detail = {
-                "message": raw
-            }
-
+            detail = {"message": raw}
         raise RuntimeError(
-            "Cashfree API "
-            + str(exc.code)
-            + ": "
-            + str(detail)
+            "Cashfree API " + str(exc.code) + ": " + str(detail)
         )
-
     except URLError as exc:
-
-        raise RuntimeError(
-            "Cashfree connection failed: "
-            + str(exc)
-        )
+        raise RuntimeError("Cashfree connection failed: " + str(exc))
 
 
-# ============================================================
-# CREATE CASHFREE ORDER
-# ============================================================
+def cashfree_webhook_valid(raw_body, signature, timestamp):
+    if not CASHFREE_SECRET_KEY or not signature or not timestamp:
+        return False
+    message = str(timestamp) + raw_body.decode("utf-8", errors="replace")
+    expected = base64.b64encode(
+        hmac.new(
+            CASHFREE_SECRET_KEY.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256,
+        ).digest()
+    ).decode("utf-8")
+    return hmac.compare_digest(expected, str(signature))
 
-@app.route(
-    "/api/payment/create",
-    methods=["POST"],
-)
-def create_payment():
-    data = request.get_json(silent=True) or {}
-    payment_type = str(data.get("payment_type", "")).strip().lower()
-    movie_id = data.get("movie_id")
-    phone = re.sub(r"\D", "", str(data.get("phone", "")))
 
-    if payment_type not in {"watch", "premium"}:
-        return json_error("Invalid payment type. Use watch or premium.")
+def create_cashfree_subscription(customer_id, phone, email="", full_name=""):
+    if not valid_mobile(phone):
+        raise RuntimeError("A valid mobile number is required for subscription.")
 
-    if not re.fullmatch(r"[6-9]\d{9}", phone):
-        return json_error("Enter a valid 10 digit Indian mobile number.")
+    subscription_id = "tm_sub_" + secrets.token_hex(12)
+    return_url = url_for("cashfree_subscription_return", _external=True)
+    now = datetime.now(timezone.utc)
+    first_charge = now + timedelta(days=30)
+    expiry = now + timedelta(days=3650)
 
-    try:
-        movie_id = int(movie_id)
-    except Exception:
-        return json_error("Invalid movie.")
+    payload = {
+        "subscription_id": subscription_id,
+        "customer_details": {
+            "customer_name": full_name or "Tomesh Movies Member",
+            "customer_email": email or "noreply@tomeshmovies.com",
+            "customer_phone": phone,
+        },
+        "plan_details": {
+            "plan_name": SUBSCRIPTION_PLAN_NAME,
+            "plan_type": "PERIODIC",
+            "plan_amount": SUBSCRIPTION_PRICE,
+            "plan_max_amount": SUBSCRIPTION_PRICE,
+            "plan_max_cycles": SUBSCRIPTION_MAX_CYCLES,
+            "plan_intervals": 1,
+            "plan_currency": "INR",
+            "plan_interval_type": "MONTH",
+            "plan_note": "Tomesh Movies Premium membership",
+        },
+        "authorization_details": {
+            "authorization_amount": SUBSCRIPTION_AUTH_AMOUNT,
+            "authorization_amount_refund": False,
+            "payment_methods": ["upi"],
+        },
+        "subscription_meta": {
+            "return_url": return_url,
+            "notification_channel": ["EMAIL", "SMS"],
+        },
+        "subscription_expiry_time": expiry.isoformat(),
+        "subscription_first_charge_time": first_charge.isoformat(),
+        "subscription_tags": {
+            "customer_id": customer_id,
+            "product": "tomesh_movies_premium",
+        },
+    }
 
-    conn = get_db(dict_rows=True)
+    result = cashfree_request(
+        "POST",
+        "/subscriptions",
+        payload,
+        extra_headers={"x-idempotency-key": secrets.token_hex(16)},
+    )
+
+    session_id = result.get("subscription_session_id")
+    if not session_id:
+        raise RuntimeError("Cashfree did not return subscription session.")
+
+    conn = get_db()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT id, title FROM movies WHERE id = %s", (movie_id,))
-        movie = cur.fetchone()
+        cur.execute(
+            """
+            UPDATE customer_users
+            SET subscription_id = %s,
+                subscription_status = %s
+            WHERE customer_id = %s
+            """,
+            (subscription_id, str(result.get("subscription_status") or "INITIALIZED"), customer_id),
+        )
+        conn.commit()
         cur.close()
     finally:
         conn.close()
 
-    if not movie:
-        return json_error("Movie not found.", 404)
-
-    if payment_type == "watch":
-        amount = WATCH_PRICE
-        description = "Tomesh Movies Watch Access"
-    else:
-        amount = PREMIUM_PRICE
-        description = "Tomesh Movies 30 Day Premium"
-
-    customer_id = get_customer_id()
-    order_id = "tm_" + payment_type + "_" + str(movie_id) + "_" + secrets.token_hex(8)
-    return_url = url_for("cashfree_return", movie_id=movie_id, _external=True)
-
-    payload = {
-        "order_id": order_id,
-        "order_amount": amount,
-        "order_currency": "INR",
-        "customer_details": {
-            "customer_id": customer_id,
-            "customer_phone": phone,
-        },
-        "order_meta": {"return_url": return_url},
-        "order_note": description,
-        "order_tags": {
-            "movie_id": str(movie_id),
-            "payment_type": payment_type,
-        },
+    return {
+        "subscription_id": subscription_id,
+        "subscription_session_id": session_id,
+        "payment_session_id": session_id,
+        "mode": CASHFREE_JS_MODE,
     }
 
-    try:
-        result = cashfree_request("POST", "/orders", payload)
-        payment_session_id = result.get("payment_session_id")
-        if not payment_session_id:
-            return json_error("Cashfree did not return payment session.", 502, cashfree=result)
 
-        conn = get_db()
+def sync_subscription(customer_id, subscription_id):
+    result = cashfree_request(
+        "GET",
+        "/subscriptions/" + quote(subscription_id, safe=""),
+    )
+
+    status = str(result.get("subscription_status") or "").upper()
+    auth = result.get("authorisation_details") or result.get("authorization_details") or {}
+    auth_status = str(auth.get("authorization_status") or "").upper()
+
+    # Cashfree returns subscription_first_charge_time for periodic plans.
+    # Give the member access through the current billing period after a
+    # successful authorization. The webhook/next subscription check will
+    # keep the entitlement synchronized.
+    if status == "ACTIVE" or auth_status in {
+        "SUCCESS", "COMPLETED", "AUTH_SUCCESS", "AUTHORIZED",
+    }:
+        next_charge_raw = result.get("next_schedule_date")
+        premium_until = None
+        if next_charge_raw:
+            try:
+                parsed = datetime.fromisoformat(str(next_charge_raw).replace("Z", "+00:00"))
+                if parsed.tzinfo:
+                    parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+                if parsed > datetime.now():
+                    premium_until = parsed
+            except Exception:
+                premium_until = None
+        if premium_until is None:
+            premium_until = datetime.now() + timedelta(days=30)
+
+        grant_subscription_access(
+            customer_id,
+            subscription_id,
+            status or "ACTIVE",
+            premium_until,
+        )
+        return True, result
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE customer_users
+            SET subscription_id = %s,
+                subscription_status = %s
+            WHERE customer_id = %s
+            """,
+            (subscription_id, status or "PENDING", customer_id),
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    return False, result
+
+
+@app.route("/api/payment/create", methods=["POST"])
+def create_payment():
+    """Create the one-time ₹1 authorization + ₹99/month subscription."""
+    data = request.get_json(silent=True) or {}
+    phone = normalize_mobile(data.get("phone") or session.get("customer_mobile", ""))
+    if not valid_mobile(phone):
+        return json_error("Enter a valid 10 digit Indian mobile number.")
+
+    customer_id = get_customer_id()
+    account = get_account_record(customer_id)
+    if not account:
+        return json_error("Account not found. Please login again.", 401)
+
+    if account.get("initial_payment_completed") and account_ready(customer_id):
+        return json_ok(already_member=True, redirect_url=url_for("member_home"))
+
+    try:
+        result = create_cashfree_subscription(
+            customer_id=customer_id,
+            phone=phone,
+            email=account.get("email") or session.get("customer_email", ""),
+            full_name=account.get("full_name") or "Tomesh Movies Member",
+        )
+        session["customer_mobile"] = phone
+        return json_ok(**result)
+    except Exception as exc:
+        print("CREATE SUBSCRIPTION ERROR:", repr(exc))
+        return json_error(str(exc), 500)
+
+
+@app.route("/payment/return", methods=["GET", "POST"])
+def cashfree_subscription_return():
+    """Cashfree redirects here after subscription authorization."""
+    subscription_id = (
+        request.form.get("subscriptionId")
+        or request.form.get("subscription_id")
+        or request.args.get("subscriptionId")
+        or request.args.get("subscription_id")
+        or ""
+    ).strip()
+
+    if not subscription_id:
+        flash("Subscription verification information is missing.", "error")
+        return redirect(url_for("login"))
+
+    customer_id = session.get("customer_id")
+    if not customer_id:
+        flash("Login session expired. Please login again.", "error")
+        return redirect(url_for("login"))
+
+    try:
+        active, result = sync_subscription(customer_id, subscription_id)
+        if active:
+            session["customer_logged_in"] = True
+            session["payment_success"] = True
+            flash("Premium access activated.", "success")
+            return redirect(url_for("member_home"))
+
+        flash("Payment authorization is still pending or was not completed.", "error")
+    except Exception as exc:
+        print("SUBSCRIPTION RETURN ERROR:", repr(exc))
+        flash("Subscription verification failed. Please try again.", "error")
+
+    return redirect(url_for("user_details"))
+
+
+@app.route("/api/cashfree/webhook", methods=["POST"])
+def cashfree_subscription_webhook():
+    raw = request.get_data(cache=True)
+    signature = request.headers.get("x-webhook-signature", "")
+    timestamp = request.headers.get("x-webhook-timestamp", "")
+
+    if not cashfree_webhook_valid(raw, signature, timestamp):
+        return jsonify({"ok": False, "error": "Invalid webhook signature"}), 401
+
+    try:
+        payload = request.get_json(silent=True) or {}
+        subscription_id = (
+            payload.get("subscriptionId")
+            or payload.get("subscription_id")
+            or (payload.get("data") or {}).get("subscriptionId")
+            or (payload.get("data") or {}).get("subscription_id")
+            or ""
+        )
+        if not subscription_id:
+            return jsonify({"ok": True, "ignored": True})
+
+        conn = get_db(dict_rows=True)
         try:
             cur = conn.cursor()
             cur.execute(
-                """
-                INSERT INTO payment_orders
-                (order_id, customer_id, movie_id, payment_type, amount, status)
-                VALUES(%s,%s,%s,%s,%s,%s)
-                """,
-                (order_id, customer_id, movie_id, payment_type, amount, "ACTIVE"),
+                "SELECT customer_id FROM customer_users WHERE subscription_id = %s LIMIT 1",
+                (subscription_id,),
             )
-            conn.commit()
+            row = cur.fetchone()
             cur.close()
         finally:
             conn.close()
 
-        return json_ok(
-            order_id=order_id,
-            payment_session_id=payment_session_id,
-            amount=amount,
-            mode=CASHFREE_JS_MODE,
-        )
+        if not row:
+            return jsonify({"ok": True, "ignored": True})
+
+        sync_subscription(row["customer_id"], subscription_id)
+        return jsonify({"ok": True})
     except Exception as exc:
-        print("CREATE PAYMENT ERROR:", repr(exc))
-        return json_error(str(exc), 500)
-
-# ============================================================
-# CASHFREE RETURN / VERIFY
-# ============================================================
-
-@app.route(
-    "/payment/return"
-)
-def cashfree_return():
-
-    order_id = (
-        request.args.get(
-            "order_id",
-            "",
-        ).strip()
-    )
-
-    movie_id = request.args.get(
-        "movie_id",
-        "",
-    )
-
-    if not order_id:
-        flash(
-            "Payment order ID missing.",
-            "error",
-        )
-
-        return redirect(
-            url_for(
-                "home"
-            )
-        )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
-    try:
-
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT *
-            FROM payment_orders
-            WHERE order_id = %s
-            """,
-            (order_id,),
-        )
-
-        local_order = cur.fetchone()
-
-        cur.close()
-
-    finally:
-        conn.close()
-
-    if not local_order:
-
-        flash(
-            "Payment order not found.",
-            "error",
-        )
-
-        return redirect(
-            url_for(
-                "home"
-            )
-        )
-
-    try:
-
-        result = cashfree_request(
-            "GET",
-            "/orders/"
-            + quote(
-                order_id,
-                safe="",
-            ),
-        )
-
-        order_status = str(
-            result.get(
-                "order_status",
-                "",
-            )
-        ).upper()
-
-        cashfree_amount = float(
-            result.get(
-                "order_amount",
-                0,
-            )
-        )
-
-        local_amount = float(
-            local_order["amount"]
-        )
-
-        if abs(
-            cashfree_amount
-            - local_amount
-        ) > 0.001:
-
-            raise RuntimeError(
-                "Payment amount mismatch."
-            )
-
-        if order_status == "PAID":
-
-            # ----------------------------------------------
-            # Prevent duplicate granting
-            # ----------------------------------------------
-
-            if local_order["status"] != "PAID":
-
-                conn = get_db()
-
-                try:
-
-                    cur = conn.cursor()
-
-                    cur.execute(
-                        """
-                        UPDATE payment_orders
-                        SET
-                            status = 'PAID',
-                            paid_at = NOW()
-                        WHERE order_id = %s
-                        """,
-                        (order_id,),
-                    )
-
-                    conn.commit()
-                    cur.close()
-
-                finally:
-                    conn.close()
-
-                grant_access(
-                    local_order[
-                        "customer_id"
-                    ],
-                    local_order[
-                        "movie_id"
-                    ],
-                    local_order[
-                        "payment_type"
-                    ],
-                )
-
-            # Restore the paid customer identity in the current browser session.
-            # This is critical when the user returns from Cashfree or opens the
-            # existing successful order manually: access_for_movie() checks this
-            # session customer_id.
-            session[
-                "customer_id"
-            ] = local_order[
-                "customer_id"
-            ]
-
-            session["customer_id"] = local_order["customer_id"]
-            session["customer_logged_in"] = True
-            session["payment_success"] = True
-
-            flash(
-                "Payment successful. Access activated.",
-                "success",
-            )
-
-            return redirect(url_for("member_home"))
-
-        flash(
-            "Payment was not completed. Status: "
-            + order_status,
-            "error",
-        )
-
-    except Exception as exc:
-
-        print(
-            "PAYMENT VERIFY ERROR:",
-            repr(exc),
-        )
-
-        flash(
-            "Payment verification failed.",
-            "error",
-        )
-
-    try:
-        target_movie = int(movie_id)
-    except Exception:
-        target_movie = local_order[
-            "movie_id"
-        ]
-
-    return redirect(
-        url_for(
-            "movie_page",
-            movie_id=target_movie,
-        )
-    )
+        print("CASHFREE WEBHOOK ERROR:", repr(exc))
+        return jsonify({"ok": False, "error": "Webhook processing failed"}), 500
 
 
 # ============================================================
@@ -2745,6 +2774,7 @@ def movie_page(movie_id):
         ads=get_ads(),
         access=access,
         cashfree_mode=CASHFREE_JS_MODE,
+        payment_required=False,
     )
 
 
@@ -3009,19 +3039,17 @@ def download_movie(movie_id):
 # LOGIN
 # ============================================================
 
-@app.route(
-    "/login",
-    methods=["GET"],
-)
+@app.route("/login", methods=["GET"])
 def login():
-    step = str(request.args.get("step", "")).strip().lower()
+    if session.get("customer_logged_in") and account_ready(session.get("customer_id")):
+        return redirect(url_for("member_home"))
 
+    step = str(request.args.get("step", "")).strip().lower()
     if step not in {"mobile", "otp"}:
         step = "otp" if session.get("otp_mobile") else "mobile"
 
     mobile = normalize_mobile(
-        request.args.get("mobile", "")
-        or session.get("otp_mobile", "")
+        request.args.get("mobile", "") or session.get("otp_mobile", "")
     )
 
     return render_template(
@@ -3052,12 +3080,11 @@ def admin_login():
 
 @app.route("/logout")
 def logout():
-
+    customer_id = session.get("customer_id")
     session.clear()
-
-    return redirect(
-        url_for("login")
-    )
+    if customer_id:
+        session["customer_id"] = customer_id
+    return redirect(url_for("login"))
 
 
 # ============================================================
@@ -3080,128 +3107,45 @@ def user_details():
     if not customer_id:
         return redirect(url_for("login"))
 
+    if account_ready(customer_id):
+        return redirect(url_for("member_home"))
+
     if request.method == "POST":
         full_name = (request.form.get("full_name") or "").strip()
-
         mobile = normalize_mobile(
-            request.form.get("mobile")
-            or session.get("customer_mobile", "")
+            request.form.get("mobile") or session.get("customer_mobile", "")
         )
-
-        customer_email = (
-            request.form.get("email")
-            or request.form.get("customer_email")
-            or ""
-        ).strip().lower()
-
         if not full_name:
             flash("Please enter your full name.", "error")
             return redirect(url_for("user_details"))
-
-        if not re.fullmatch(r"[6-9]\d{9}", mobile):
+        if not valid_mobile(mobile):
             flash("Please enter a valid 10-digit mobile number.", "error")
             return redirect(url_for("user_details"))
 
-        conn = get_db(dict_rows=True)
-
+        conn = get_db()
         try:
             cur = conn.cursor()
-
-            cur.execute(
-                """
-                SELECT email
-                FROM customer_users
-                WHERE customer_id = %s
-                LIMIT 1
-                """,
-                (customer_id,),
-            )
-
-            existing_user = cur.fetchone() or {}
-            existing_email = (existing_user.get("email") or "").strip().lower()
-
-            if existing_email:
-                customer_email = existing_email
-
-            if not existing_email and customer_email:
-                if not valid_email(customer_email):
-                    flash(
-                        "Please enter a valid Gmail / Email address.",
-                        "error",
-                    )
-                    return redirect(url_for("user_details"))
-
-                cur.execute(
-                    """
-                    SELECT customer_id
-                    FROM customer_users
-                    WHERE LOWER(email) = LOWER(%s)
-                      AND customer_id <> %s
-                    LIMIT 1
-                    """,
-                    (customer_email, customer_id),
-                )
-
-                email_owner = cur.fetchone()
-
-                if email_owner:
-                    flash(
-                        "This Gmail / Email is already linked to another account.",
-                        "error",
-                    )
-                    return redirect(url_for("user_details"))
-
             cur.execute(
                 """
                 UPDATE customer_users
-                SET
-                    full_name = %s,
-                    mobile = %s,
-                    email = %s
+                SET full_name = %s, mobile = %s
                 WHERE customer_id = %s
                 """,
-                (
-                    full_name,
-                    mobile,
-                    customer_email or None,
-                    customer_id,
-                ),
+                (full_name, mobile, customer_id),
             )
-
             conn.commit()
             cur.close()
-
-        except Exception as exc:
-            conn.rollback()
-            print("USER DETAILS SAVE ERROR:", repr(exc))
-            flash(
-                "Unable to save your details. Please try again.",
-                "error",
-            )
-            return redirect(url_for("user_details"))
-
         finally:
             conn.close()
 
         session["customer_mobile"] = mobile
-
-        if customer_email:
-            session["customer_email"] = customer_email
-        else:
-            session.pop("customer_email", None)
-
-        return redirect(url_for("member_home"))
+        return redirect(url_for("member_home" if account_ready(customer_id) else "member_home"))
 
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
         cur.execute(
-            """
-            SELECT full_name, mobile, email
-            FROM customer_users
-            WHERE customer_id = %s
-            LIMIT 1
-            """,
+            "SELECT full_name, mobile, email, initial_payment_completed FROM customer_users WHERE customer_id = %s LIMIT 1",
             (customer_id,),
         )
         user = cur.fetchone() or {}
@@ -3212,11 +3156,9 @@ def user_details():
     return render_template(
         "user_details.html",
         full_name=user.get("full_name", ""),
-        mobile=user.get("mobile", ""),
-        customer_email=(
-            user.get("email")
-            or session.get("customer_email", "")
-        ),
+        mobile=user.get("mobile") or session.get("customer_mobile", ""),
+        customer_email=user.get("email") or session.get("customer_email", ""),
+        initial_payment_completed=bool(user.get("initial_payment_completed")),
     )
 
 
