@@ -1,700 +1,398 @@
-<!doctype html>
+{% extends "base.html" %}
 
-<html lang="hi">
+{% block title %}Complete Your Details | Tomesh Movies{% endblock %}
 
-<head>
-    <meta charset="utf-8">
-
-```
-<meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,viewport-fit=cover"
->
-
-<title>User Details | Tomesh Movies</title>
-
-<meta
-    name="description"
-    content="Complete your Tomesh Movies account details."
->
-
-<meta name="theme-color" content="#050505">
-
-<link
-    rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}"
->
+{% block content %}
 
 <style>
-
-    *{
-        box-sizing:border-box;
-    }
-
-    html{
-        background:#000;
-        scroll-behavior:smooth;
-    }
-
-    body{
-        margin:0;
-        min-height:100vh;
-        overflow-x:hidden;
-
-        color:#fff;
-
-        font-family:
-            Inter,
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
-
+    .tm-details-page {
+        min-height: calc(100vh - 80px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 18px 60px;
+        color: #fff;
         background:
-            radial-gradient(
-                circle at 15% 8%,
-                rgba(229,9,20,.16),
-                transparent 32%
-            ),
-            radial-gradient(
-                circle at 88% 85%,
-                rgba(120,20,35,.12),
-                transparent 34%
-            ),
-            #000;
+            radial-gradient(circle at 10% 10%, rgba(229, 9, 20, .16), transparent 30%),
+            radial-gradient(circle at 90% 20%, rgba(128, 0, 255, .16), transparent 32%),
+            #050505;
     }
 
-    .tm-details-page{
-        min-height:100vh;
-
-        display:flex;
-        align-items:center;
-        justify-content:center;
-
-        padding:
-            30px
-            18px
-            40px;
-    }
-
-    .tm-details-box{
-        width:min(470px,100%);
-
-        padding:34px 30px 30px;
-
-        border:1px solid rgba(255,255,255,.10);
-        border-radius:22px;
-
-        background:
-            linear-gradient(
-                145deg,
-                rgba(24,24,24,.96),
-                rgba(7,7,7,.99)
-            );
-
+    .tm-details-card {
+        width: 100%;
+        max-width: 520px;
+        background: rgba(18, 18, 18, .96);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 22px;
+        padding: 34px 30px 30px;
         box-shadow:
-            0 30px 90px rgba(0,0,0,.72),
+            0 25px 80px rgba(0,0,0,.65),
             0 0 50px rgba(229,9,20,.08);
-
-        backdrop-filter:blur(18px);
     }
 
-    /* =====================================================
-       LOGO
-    ===================================================== */
-
-    .tm-logo{
-        text-align:center;
-        margin-bottom:30px;
+    .tm-brand {
+        text-align: center;
+        margin-bottom: 28px;
     }
 
-    .tm-logo-main{
-        display:block;
-
-        font-size:28px;
-        line-height:1;
-
-        font-weight:950;
-        letter-spacing:3px;
-
-        color:#fff;
+    .tm-brand-name {
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        color: #fff;
     }
 
-    .tm-logo-sub{
-        display:block;
-
-        margin-top:7px;
-
-        font-size:13px;
-        line-height:1;
-
-        font-weight:900;
-        letter-spacing:6px;
-
-        color:#e50914;
+    .tm-brand-name span {
+        color: #e50914;
     }
 
-    /* =====================================================
-       HEADING
-    ===================================================== */
-
-    .tm-heading{
-        text-align:center;
-        margin-bottom:25px;
+    .tm-title {
+        margin: 0;
+        text-align: center;
+        font-size: 30px;
+        font-weight: 800;
+        line-height: 1.2;
     }
 
-    .tm-heading h1{
-        margin:0;
-
-        font-size:27px;
-        font-weight:900;
-
-        letter-spacing:-.5px;
-
-        color:#fff;
+    .tm-subtitle {
+        margin: 12px auto 26px;
+        max-width: 430px;
+        text-align: center;
+        color: #a9a9a9;
+        font-size: 15px;
+        line-height: 1.6;
     }
 
-    .tm-heading p{
-        margin:9px 0 0;
-
-        color:#a8a8a8;
-
-        font-size:13px;
-        line-height:1.6;
+    .tm-success {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 22px;
+        padding: 13px 15px;
+        border: 1px solid rgba(34,197,94,.25);
+        background: rgba(34,197,94,.08);
+        border-radius: 12px;
+        color: #b7f7c9;
+        font-size: 14px;
+        line-height: 1.45;
     }
 
-    /* =====================================================
-       FORM
-    ===================================================== */
-
-    .tm-form{
-        display:flex;
-        flex-direction:column;
-        gap:17px;
+    .tm-success-icon {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #22c55e;
+        color: #06150b;
+        font-weight: 900;
     }
 
-    .tm-field{
-        display:flex;
-        flex-direction:column;
-        gap:8px;
+    .tm-field {
+        margin-bottom: 18px;
     }
 
-    .tm-field label{
-        color:#ddd;
-
-        font-size:13px;
-        font-weight:800;
+    .tm-label {
+        display: block;
+        margin-bottom: 8px;
+        color: #e8e8e8;
+        font-size: 14px;
+        font-weight: 700;
     }
 
-    .tm-input-wrap{
-        position:relative;
+    .tm-input-wrap {
+        position: relative;
     }
 
-    .tm-input-icon{
-        position:absolute;
-
-        left:15px;
-        top:50%;
-
-        transform:translateY(-50%);
-
-        font-size:16px;
-
-        opacity:.8;
-
-        pointer-events:none;
+    .tm-input-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 18px;
+        z-index: 2;
+        pointer-events: none;
     }
 
-    .tm-input{
-        width:100%;
-
-        min-height:52px;
-
-        padding:
-            0
-            15px
-            0
-            45px;
-
-        border:1px solid rgba(255,255,255,.13);
-        border-radius:13px;
-
-        outline:none;
-
-        background:#151515;
-
-        color:#fff;
-
-        font-size:14px;
-        font-weight:600;
-
-        transition:
-            border-color .2s ease,
-            background .2s ease,
-            box-shadow .2s ease;
+    .tm-input {
+        width: 100%;
+        height: 54px;
+        box-sizing: border-box;
+        border: 1px solid #303030;
+        border-radius: 12px;
+        outline: none;
+        background: #101010;
+        color: #fff;
+        padding: 0 16px 0 47px;
+        font-size: 15px;
+        transition: .2s ease;
     }
 
-    .tm-input::placeholder{
-        color:#777;
+    .tm-input:focus {
+        border-color: #e50914;
+        box-shadow: 0 0 0 3px rgba(229,9,20,.12);
+        background: #141414;
     }
 
-    .tm-input:focus{
-        border-color:#e50914;
-
-        background:#191919;
-
-        box-shadow:
-            0 0 0 3px rgba(229,9,20,.13);
+    .tm-input::placeholder {
+        color: #777;
     }
 
-    /* Verified Email */
-
-    .tm-input.email-locked{
-        color:#f1f1f1;
-
-        background:
-            linear-gradient(
-                135deg,
-                rgba(229,9,20,.08),
-                rgba(255,255,255,.045)
-            );
-
-        border-color:
-            rgba(229,9,20,.35);
-
-        cursor:not-allowed;
+    .tm-input[readonly] {
+        color: #aaa;
+        background: #181818;
+        cursor: not-allowed;
+        border-color: #292929;
     }
 
-    .tm-input.email-locked:focus{
-        border-color:
-            rgba(229,9,20,.35);
-
-        box-shadow:none;
+    .tm-readonly-note {
+        margin-top: 7px;
+        color: #777;
+        font-size: 12px;
     }
 
-    /* =====================================================
-       CONTINUE BUTTON
-    ===================================================== */
-
-    .tm-continue{
-        width:100%;
-
-        min-height:54px;
-
-        margin-top:5px;
-
-        border:0;
-        border-radius:14px;
-
-        cursor:pointer;
-
-        color:#fff;
-
-        background:
-            linear-gradient(
-                135deg,
-                #e50914,
-                #b20710
-            );
-
-        font-size:15px;
-        font-weight:950;
-
-        letter-spacing:.2px;
-
-        box-shadow:
-            0 12px 30px rgba(229,9,20,.22);
-
-        transition:
-            transform .18s ease,
-            box-shadow .18s ease,
-            filter .18s ease;
+    .tm-button {
+        width: 100%;
+        height: 55px;
+        margin-top: 7px;
+        border: 0;
+        border-radius: 12px;
+        cursor: pointer;
+        background: linear-gradient(135deg, #e50914, #b20710);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 800;
+        box-shadow: 0 12px 28px rgba(229,9,20,.22);
+        transition: transform .18s ease, box-shadow .18s ease;
     }
 
-    .tm-continue:hover{
-        transform:translateY(-2px);
-
-        box-shadow:
-            0 16px 38px rgba(229,9,20,.32);
-
-        filter:brightness(1.08);
+    .tm-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 15px 32px rgba(229,9,20,.32);
     }
 
-    .tm-continue:active{
-        transform:translateY(0);
+    .tm-button:active {
+        transform: translateY(0);
     }
 
-    /* =====================================================
-       SECURITY
-    ===================================================== */
-
-    .tm-secure{
-        display:flex;
-        align-items:flex-start;
-        gap:10px;
-
-        margin-top:21px;
-        padding:14px;
-
-        border:1px solid rgba(255,255,255,.07);
-        border-radius:12px;
-
-        background:rgba(255,255,255,.025);
+    .tm-secure {
+        display: flex;
+        gap: 12px;
+        margin-top: 22px;
+        padding: 15px;
+        border-radius: 12px;
+        background: rgba(255,255,255,.035);
+        border: 1px solid rgba(255,255,255,.06);
     }
 
-    .tm-secure-icon{
-        flex:0 0 auto;
-
-        font-size:17px;
+    .tm-secure-icon {
+        font-size: 20px;
+        line-height: 1;
     }
 
-    .tm-secure-text{
-        color:#8f8f8f;
-
-        font-size:11px;
-        line-height:1.6;
+    .tm-secure-title {
+        margin-bottom: 4px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #ddd;
     }
 
-    .tm-secure-text strong{
-        color:#cfcfcf;
+    .tm-secure-text {
+        color: #888;
+        font-size: 12px;
+        line-height: 1.5;
     }
 
-    /* =====================================================
-       PAYMENT NOTE
-    ===================================================== */
-
-    .tm-access-note{
-        margin-top:18px;
-
-        text-align:center;
-
-        color:#777;
-
-        font-size:11px;
-        line-height:1.6;
+    .tm-bottom-note {
+        margin-top: 18px;
+        text-align: center;
+        color: #666;
+        font-size: 12px;
+        line-height: 1.5;
     }
 
-    /* =====================================================
-       FLASH
-    ===================================================== */
-
-    .tm-error{
-        margin-bottom:17px;
-
-        padding:12px 14px;
-
-        border:1px solid rgba(255,70,70,.28);
-        border-radius:11px;
-
-        background:rgba(130,20,20,.16);
-
-        color:#ff9b9b;
-
-        text-align:center;
-
-        font-size:12px;
-        font-weight:700;
+    .tm-flash {
+        margin-bottom: 18px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        background: rgba(229,9,20,.10);
+        border: 1px solid rgba(229,9,20,.25);
+        color: #ffb3b7;
+        font-size: 13px;
     }
 
-    /* =====================================================
-       MOBILE
-    ===================================================== */
-
-    @media(max-width:520px){
-
-        .tm-details-page{
-            align-items:flex-start;
-
-            padding:
-                25px
-                14px
-                30px;
+    @media (max-width: 600px) {
+        .tm-details-page {
+            padding: 25px 13px 45px;
+            align-items: flex-start;
         }
 
-        .tm-details-box{
-            margin-top:10px;
-
-            padding:
-                28px
-                18px
-                22px;
-
-            border-radius:19px;
+        .tm-details-card {
+            margin-top: 10px;
+            padding: 28px 19px 23px;
+            border-radius: 18px;
         }
 
-        .tm-logo{
-            margin-bottom:27px;
+        .tm-title {
+            font-size: 25px;
         }
 
-        .tm-logo-main{
-            font-size:24px;
+        .tm-subtitle {
+            font-size: 14px;
+            margin-bottom: 23px;
         }
 
-        .tm-heading h1{
-            font-size:24px;
+        .tm-brand-name {
+            font-size: 22px;
         }
-
-        .tm-heading p{
-            font-size:12px;
-        }
-
     }
-
-    @media(prefers-reduced-motion:reduce){
-
-        html{
-            scroll-behavior:auto;
-        }
-
-        .tm-continue{
-            transition:none;
-        }
-
-    }
-
 </style>
-```
-
-</head>
-
-<body>
 
 <div class="tm-details-page">
 
-```
-<section class="tm-details-box">
+    <div class="tm-details-card">
 
-    <!-- =================================================
-         LOGO
-    ================================================== -->
+        <div class="tm-brand">
+            <div class="tm-brand-name">
+                TOMESH<span>MOVIES</span>
+            </div>
+        </div>
 
-    <div class="tm-logo">
-
-        <span class="tm-logo-main">
-            TOMESH
-        </span>
-
-        <span class="tm-logo-sub">
-            MOVIES
-        </span>
-
-    </div>
-
-
-    <!-- =================================================
-         HEADING
-    ================================================== -->
-
-    <div class="tm-heading">
-
-        <h1>
+        <h1 class="tm-title">
             Complete Your Details
         </h1>
 
-        <p>
-            अपनी details भरें ताकि आपका Tomesh Movies
-            account तैयार किया जा सके।
+        <p class="tm-subtitle">
+            अपनी details भरें ताकि आपका Tomesh Movies account तैयार किया जा सके।
         </p>
 
-    </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="tm-flash">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
+        <div class="tm-success">
+            <div class="tm-success-icon">✓</div>
+            <div>
+                Mobile number verified. Welcome to Tomesh Movies!
+            </div>
+        </div>
 
-    <!-- =================================================
-         ERROR / FLASH
-    ================================================== -->
+        <form method="POST" action="{{ url_for('user_details') }}">
 
-    {% with messages = get_flashed_messages() %}
+            <div class="tm-field">
+                <label class="tm-label" for="full_name">
+                    Full Name
+                </label>
 
-        {% if messages %}
+                <div class="tm-input-wrap">
+                    <span class="tm-input-icon">👤</span>
 
-            {% for message in messages %}
+                    <input
+                        class="tm-input"
+                        type="text"
+                        id="full_name"
+                        name="full_name"
+                        value="{{ full_name or '' }}"
+                        placeholder="Enter your full name"
+                        autocomplete="name"
+                        required
+                    >
+                </div>
+            </div>
 
-                <div class="tm-error">
-                    {{ message }}
+            <div class="tm-field">
+                <label class="tm-label" for="mobile">
+                    Mobile Number
+                </label>
+
+                <div class="tm-input-wrap">
+                    <span class="tm-input-icon">📱</span>
+
+                    <input
+                        class="tm-input"
+                        type="tel"
+                        id="mobile"
+                        name="mobile"
+                        value="{{ mobile or '' }}"
+                        placeholder="10-digit mobile number"
+                        maxlength="10"
+                        inputmode="numeric"
+                        autocomplete="tel"
+                        required
+                    >
+                </div>
+            </div>
+
+            <div class="tm-field">
+                <label class="tm-label" for="email">
+                    Gmail / Email
+                </label>
+
+                <div class="tm-input-wrap">
+                    <span class="tm-input-icon">✉</span>
+
+                    <input
+                        class="tm-input"
+                        type="email"
+                        id="email"
+                        name="email"
+                        value="{{ customer_email or '' }}"
+                        placeholder="Enter your Gmail / Email"
+                        autocomplete="email"
+                        {% if customer_email %}
+                            readonly
+                        {% else %}
+                            required
+                        {% endif %}
+                    >
                 </div>
 
-            {% endfor %}
-
-        {% endif %}
-
-    {% endwith %}
-
-
-    <!-- =================================================
-         FORM
-    ================================================== -->
-
-    <form
-        class="tm-form"
-        method="POST"
-        action="{{ url_for('user_details') }}"
-    >
-
-        <!-- FULL NAME -->
-
-        <div class="tm-field">
-
-            <label for="full_name">
-                Full Name
-            </label>
-
-            <div class="tm-input-wrap">
-
-                <span class="tm-input-icon">
-                    👤
-                </span>
-
-                <input
-                    class="tm-input"
-                    id="full_name"
-                    name="full_name"
-                    type="text"
-                    value="{{ full_name or (customer.full_name if customer else '') }}"
-                    placeholder="अपना पूरा नाम डालें"
-                    autocomplete="name"
-                    maxlength="100"
-                    required
-                >
-
+                {% if customer_email %}
+                    <div class="tm-readonly-note">
+                        ✓ Your verified email is already connected to this account.
+                    </div>
+                {% else %}
+                    <div class="tm-readonly-note">
+                        Payment receipt और account updates के लिए आपका email इस्तेमाल किया जाएगा।
+                    </div>
+                {% endif %}
             </div>
 
-        </div>
+            <button type="submit" class="tm-button">
+                Continue →
+            </button>
 
+        </form>
 
-        <!-- MOBILE -->
+        <div class="tm-secure">
+            <div class="tm-secure-icon">🔒</div>
 
-        <div class="tm-field">
+            <div>
+                <div class="tm-secure-title">
+                    Your details are secure
+                </div>
 
-            <label for="mobile">
-                Mobile Number
-            </label>
-
-            <div class="tm-input-wrap">
-
-                <span class="tm-input-icon">
-                    📱
-                </span>
-
-                <input
-                    class="tm-input"
-                    id="mobile"
-                    name="mobile"
-                    type="tel"
-                    value="{{ mobile or (customer.mobile if customer else '') }}"
-                    placeholder="10 digit mobile number"
-                    autocomplete="tel"
-                    inputmode="numeric"
-                    maxlength="10"
-                    pattern="[0-9]{10}"
-                    required
-                >
-
+                <div class="tm-secure-text">
+                    आपकी account information सुरक्षित तरीके से save की जाती है
+                    और payment के लिए secure checkout इस्तेमाल किया जाएगा।
+                </div>
             </div>
-
         </div>
 
-
-        <!-- EMAIL -->
-
-        <div class="tm-field">
-
-            <label for="email">
-                Gmail / Email
-            </label>
-
-            <div class="tm-input-wrap">
-
-                <span class="tm-input-icon">
-                    ✉
-                </span>
-
-                <input
-                    class="tm-input email-locked"
-                    id="email"
-                    name="email"
-                    type="email"
-                    value="{{ customer_email or email or (customer.email if customer else '') }}"
-                    placeholder="yourname@gmail.com"
-                    autocomplete="email"
-                    maxlength="160"
-                    readonly
-                >
-
-            </div>
-
-        </div>
-
-
-        <!-- CONTINUE -->
-
-        <button
-            class="tm-continue"
-            type="submit"
-        >
-            Continue →
-        </button>
-
-    </form>
-
-
-    <!-- =================================================
-         SECURITY
-    ================================================== -->
-
-    <div class="tm-secure">
-
-        <div class="tm-secure-icon">
-            🔒
-        </div>
-
-        <div class="tm-secure-text">
-
-            <strong>
-                Your details are secure
-            </strong>
-
-            <br>
-
-            आपकी account information सुरक्षित तरीके से
-            save की जाती है और payment के लिए secure
-            checkout इस्तेमाल किया जाएगा।
-
+        <div class="tm-bottom-note">
+            Details complete करने के बाद आप secure payment screen पर जाएंगे।
         </div>
 
     </div>
-
-
-    <div class="tm-access-note">
-
-        Details complete करने के बाद आप secure
-        payment screen पर जाएंगे।
-
-    </div>
-
-</section>
-```
 
 </div>
 
-<script>
-
-    const mobileInput =
-        document.getElementById("mobile");
-
-    if(mobileInput){
-
-        mobileInput.addEventListener("input", function(){
-
-            this.value =
-                this.value.replace(/\D/g, "").slice(0, 10);
-
-        });
-
-    }
-
-</script>
-
-</body>
-
-</html>
+{% endblock %}
