@@ -86,8 +86,7 @@ CASHFREE_ENV = os.environ.get(
     "CASHFREE_ENV", "sandbox"
 ).strip().lower()
 
-CASHFREE_API_VERSION = os.environ.get("CASHFREE_API_VERSION", "2026-01-01").strip() or "2026-01-01"
-CASHFREE_WEBHOOK_SECRET = os.environ.get("CASHFREE_WEBHOOK_SECRET", "").strip()
+CASHFREE_API_VERSION = "2025-01-01"
 
 if CASHFREE_ENV == "production":
     CASHFREE_API_URL = "https://api.cashfree.com/pg"
@@ -104,13 +103,16 @@ else:
 WATCH_PRICE = 1.00
 PREMIUM_PRICE = 99.00
 PREMIUM_DAYS = 30
-SUBSCRIPTION_PRICE = 99.00
 SUBSCRIPTION_AUTH_AMOUNT = 1.00
 SUBSCRIPTION_PLAN_NAME = os.environ.get(
     "CASHFREE_SUBSCRIPTION_PLAN_NAME",
     "Tomesh Movies Premium Monthly",
 ).strip() or "Tomesh Movies Premium Monthly"
 SUBSCRIPTION_MAX_CYCLES = 120
+CASHFREE_WEBHOOK_SECRET = os.environ.get(
+    "CASHFREE_WEBHOOK_SECRET",
+    "",
+).strip()
 
 
 # ============================================================
@@ -473,13 +475,34 @@ def init_db():
             ALTER COLUMN email DROP NOT NULL
         """)
 
-        # Same mobile number is allowed on multiple independent accounts.
-        # The customer_id remains the real account identity.
-        cur.execute("DROP INDEX IF EXISTS idx_customer_users_mobile")
         cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_customer_users_mobile
-            ON customer_users(mobile)
-            WHERE mobile IS NOT NULL
+            DROP INDEX IF EXISTS idx_customer_users_mobile
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customer_subscriptions (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                subscription_id TEXT UNIQUE NOT NULL,
+                cf_subscription_id TEXT,
+                subscription_session_id TEXT,
+                status TEXT DEFAULT 'INITIALIZED',
+                auth_status TEXT DEFAULT 'PENDING',
+                premium_until TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
+            ON customer_subscriptions(customer_id)
+        """)
+
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_subscriptions_customer_active
+            ON customer_subscriptions(customer_id)
+            WHERE status IN ('INITIALIZED','ACTIVE','BANK_APPROVAL_PENDING')
         """)
 
         cur.execute("""
@@ -542,53 +565,6 @@ def init_db():
             ON mobile_otps(mobile)
         """)
 
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS customer_subscriptions (
-                id SERIAL PRIMARY KEY,
-                customer_id TEXT UNIQUE NOT NULL,
-                subscription_id TEXT UNIQUE NOT NULL,
-                cf_subscription_id TEXT,
-                subscription_status TEXT DEFAULT 'INITIALIZED',
-                initial_auth_paid BOOLEAN DEFAULT FALSE,
-                premium_until TIMESTAMP,
-                last_payment_at TIMESTAMP,
-                next_schedule_date TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
-            ON customer_subscriptions(customer_id)
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_subscription
-            ON customer_subscriptions(subscription_id)
-        """)
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS subscription_payments (
-                id SERIAL PRIMARY KEY,
-                customer_id TEXT NOT NULL,
-                subscription_id TEXT NOT NULL,
-                payment_id TEXT,
-                cf_payment_id TEXT,
-                payment_type TEXT,
-                payment_amount NUMERIC(10,2),
-                payment_status TEXT,
-                event_type TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(subscription_id, payment_id, event_type)
-            )
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_subscription_payments_customer
-            ON subscription_payments(customer_id)
-        """)
 
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_payment_orders_order
@@ -1233,76 +1209,39 @@ def verify_mobile_otp(mobile, otp):
 
 
 def bind_customer_mobile(mobile):
-    """Bind verified mobile to the current browser account.
+    """Create/restore a customer identity after mobile OTP verification.
 
-    Normal login reuses the current browser customer_id. Use /login?new=1
-    to intentionally start a separate account with the same mobile number.
+    A mobile number is not a unique account key. Every new verified login can
+    have its own customer_id; payment and subscription records remain linked
+    to that customer_id.
     """
     mobile = normalize_mobile(mobile)
-    current_customer_id = session.get("customer_id")
-    force_new = bool(session.pop("force_new_account", False))
+    customer_id = "tm_" + secrets.token_hex(16)
 
-    if current_customer_id and not force_new:
-        target_customer_id = current_customer_id
-        conn = get_db()
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                UPDATE customer_users
-                SET mobile = %s, last_login_at = NOW()
-                WHERE customer_id = %s
-                """,
-                (mobile, target_customer_id),
-            )
-            if cur.rowcount == 0:
-                cur.execute(
-                    """
-                    INSERT INTO customer_users
-                    (email, customer_id, mobile, last_login_at)
-                    VALUES(NULL, %s, %s, NOW())
-                    """,
-                    (target_customer_id, mobile),
-                )
-            conn.commit()
-            cur.close()
-        finally:
-            conn.close()
-    else:
-        target_customer_id = "tm_" + secrets.token_hex(16)
-        conn = get_db()
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                INSERT INTO customer_users
-                (email, customer_id, mobile, last_login_at)
-                VALUES(NULL, %s, %s, NOW())
-                """,
-                (target_customer_id, mobile),
-            )
-            conn.commit()
-            cur.close()
-        finally:
-            conn.close()
-
-    session["customer_id"] = target_customer_id
-    session["customer_logged_in"] = True
-    session["customer_mobile"] = mobile
-
-    conn = get_db(dict_rows=True)
+    conn = get_db()
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT email FROM customer_users WHERE customer_id = %s LIMIT 1",
-            (target_customer_id,),
+            """
+            INSERT INTO customer_users
+            (email, customer_id, mobile, last_login_at)
+            VALUES(NULL, %s, %s, NOW())
+            """,
+            (customer_id, mobile),
         )
-        row = cur.fetchone() or {}
+        conn.commit()
         cur.close()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
-    session["customer_email"] = row.get("email") or ""
-    return target_customer_id
+
+    session["customer_id"] = customer_id
+    session["customer_logged_in"] = True
+    session["customer_mobile"] = mobile
+    session["customer_email"] = ""
+    return customer_id
 
 
 @app.route("/login/request-mobile-otp", methods=["POST"])
@@ -3060,12 +2999,6 @@ def download_movie(movie_id):
     methods=["GET"],
 )
 def login():
-    if str(request.args.get("new", "")).strip() == "1":
-        session["force_new_account"] = True
-        session.pop("customer_id", None)
-        session.pop("customer_logged_in", None)
-        session.pop("customer_email", None)
-        session.pop("customer_mobile", None)
     step = str(request.args.get("step", "")).strip().lower()
 
     if step not in {"mobile", "otp"}:
@@ -3104,15 +3037,12 @@ def admin_login():
 
 @app.route("/logout")
 def logout():
-    customer_id = session.get("customer_id")
-    customer_email = session.get("customer_email", "")
-    customer_mobile = session.get("customer_mobile", "")
+
     session.clear()
-    if customer_id:
-        session["customer_id"] = customer_id
-        session["customer_email"] = customer_email
-        session["customer_mobile"] = customer_mobile
-    return redirect(url_for("login"))
+
+    return redirect(
+        url_for("login")
+    )
 
 
 # ============================================================
@@ -3165,9 +3095,9 @@ def user_details():
             conn.close()
 
         session["customer_mobile"] = mobile
-        if has_initial_payment():
+        if customer_has_completed_initial_payment(customer_id):
             return redirect(url_for("member_home"))
-        return redirect(url_for("membership"))
+        return redirect(url_for("membership_checkout"))
 
     conn = get_db(dict_rows=True)
     try:
@@ -3188,403 +3118,6 @@ def user_details():
         customer_email=user.get("email") or session.get("customer_email", ""),
     )
 
-
-def get_customer_profile(customer_id=None):
-    customer_id = customer_id or session.get("customer_id")
-    if not customer_id:
-        return {}
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT full_name, mobile, email
-            FROM customer_users
-            WHERE customer_id = %s
-            LIMIT 1
-            """,
-            (customer_id,),
-        )
-        row = cur.fetchone() or {}
-        cur.close()
-        return row
-    finally:
-        conn.close()
-
-
-def has_initial_payment(customer_id=None):
-    customer_id = customer_id or session.get("customer_id")
-    if not customer_id:
-        return False
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT initial_auth_paid FROM customer_subscriptions WHERE customer_id = %s LIMIT 1",
-            (customer_id,),
-        )
-        row = cur.fetchone()
-        if row and row.get("initial_auth_paid"):
-            cur.close()
-            return True
-        cur.execute(
-            """
-            SELECT 1 FROM customer_access
-            WHERE customer_id = %s AND movie_id IS NULL
-              AND watch_until IS NULL AND premium_until IS NULL AND download_until IS NULL
-            LIMIT 1
-            """,
-            (customer_id,),
-        )
-        legacy = bool(cur.fetchone())
-        cur.close()
-        return legacy
-    finally:
-        conn.close()
-
-
-def _cashfree_subscription_create(payload):
-    return cashfree_request("POST", "/subscriptions", payload)
-
-
-def _cashfree_subscription_fetch(subscription_id):
-    return cashfree_request("GET", "/subscriptions/" + quote(str(subscription_id), safe=""))
-
-
-def _store_subscription(customer_id, result):
-    subscription_id = str(result.get("subscription_id") or "").strip()
-    if not subscription_id:
-        raise RuntimeError("Cashfree did not return subscription_id.")
-    cf_subscription_id = str(result.get("cf_subscription_id") or "").strip() or None
-    status = str(result.get("subscription_status") or "INITIALIZED").upper()
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO customer_subscriptions
-            (customer_id, subscription_id, cf_subscription_id, subscription_status, updated_at)
-            VALUES(%s,%s,%s,%s,NOW())
-            ON CONFLICT(customer_id) DO UPDATE SET
-                subscription_id = EXCLUDED.subscription_id,
-                cf_subscription_id = COALESCE(EXCLUDED.cf_subscription_id, customer_subscriptions.cf_subscription_id),
-                subscription_status = EXCLUDED.subscription_status,
-                updated_at = NOW()
-            """,
-            (customer_id, subscription_id, cf_subscription_id, status),
-        )
-        conn.commit()
-        cur.close()
-    finally:
-        conn.close()
-    return subscription_id
-
-
-def _activate_subscription(customer_id, subscription_id, status="ACTIVE"):
-    now = datetime.now()
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT premium_until FROM customer_subscriptions WHERE customer_id = %s LIMIT 1",
-            (customer_id,),
-        )
-        row = cur.fetchone()
-        current_until = row[0] if row else None
-        base = current_until if current_until and current_until > now else now
-        until = base + timedelta(days=PREMIUM_DAYS)
-        cur.execute(
-            """
-            UPDATE customer_subscriptions
-            SET initial_auth_paid = TRUE, subscription_status = %s,
-                premium_until = %s, last_payment_at = NOW(), updated_at = NOW()
-            WHERE customer_id = %s
-            """,
-            (status, until, customer_id),
-        )
-        cur.execute(
-            """
-            INSERT INTO customer_access
-            (customer_id, movie_id, watch_until, download_until, premium_until)
-            VALUES(%s, NULL, NULL, NULL, %s)
-            """,
-            (customer_id, until),
-        )
-        cur.execute(
-            """
-            DELETE FROM customer_access a
-            USING customer_access b
-            WHERE a.customer_id = %s AND a.movie_id IS NULL AND a.premium_until IS NOT NULL
-              AND b.customer_id = a.customer_id AND b.movie_id IS NULL AND b.premium_until IS NOT NULL
-              AND a.id < b.id
-            """,
-            (customer_id,),
-        )
-        conn.commit()
-        cur.close()
-    finally:
-        conn.close()
-
-
-def _extend_subscription_premium(customer_id):
-    now = datetime.now()
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT premium_until FROM customer_subscriptions WHERE customer_id = %s LIMIT 1",
-            (customer_id,),
-        )
-        row = cur.fetchone()
-        current_until = row[0] if row else None
-        base = current_until if current_until and current_until > now else now
-        until = base + timedelta(days=PREMIUM_DAYS)
-        cur.execute(
-            """
-            UPDATE customer_subscriptions
-            SET premium_until=%s, subscription_status='ACTIVE', last_payment_at=NOW(), updated_at=NOW()
-            WHERE customer_id=%s
-            """,
-            (until, customer_id),
-        )
-        cur.execute(
-            """
-            INSERT INTO customer_access
-            (customer_id, movie_id, watch_until, download_until, premium_until)
-            VALUES(%s,NULL,NULL,NULL,%s)
-            """,
-            (customer_id, until),
-        )
-        conn.commit()
-        cur.close()
-    finally:
-        conn.close()
-
-
-def _record_subscription_payment(customer_id, subscription_id, data, event_type):
-    payment_id = str(data.get("payment_id") or "").strip() or None
-    cf_payment_id = str(data.get("cf_payment_id") or "").strip() or None
-    payment_type = str(data.get("payment_type") or "").upper() or None
-    amount = data.get("payment_amount")
-    status = str(data.get("payment_status") or "").upper() or None
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO subscription_payments
-            (customer_id, subscription_id, payment_id, cf_payment_id, payment_type,
-             payment_amount, payment_status, event_type)
-            VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
-            ON CONFLICT(subscription_id, payment_id, event_type) DO UPDATE SET
-                payment_status=EXCLUDED.payment_status,
-                cf_payment_id=COALESCE(EXCLUDED.cf_payment_id, subscription_payments.cf_payment_id)
-            """,
-            (customer_id, subscription_id, payment_id, cf_payment_id, payment_type, amount, status, event_type),
-        )
-        conn.commit()
-        cur.close()
-    finally:
-        conn.close()
-
-
-@app.route("/membership")
-@customer_login_required
-def membership():
-    if has_initial_payment():
-        return redirect(url_for("member_home"))
-    profile = get_customer_profile()
-    mobile = normalize_mobile(profile.get("mobile") or session.get("customer_mobile", ""))
-    name = profile.get("full_name") or "Tomesh Member"
-    email = profile.get("email") or session.get("customer_email", "")
-    html = f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Premium Membership | Tomesh Movies</title>
-<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
-<style>
-*{{box-sizing:border-box}}body{{margin:0;background:#050507;color:#fff;font-family:Inter,Arial,sans-serif;min-height:100vh;display:grid;place-items:center}}
-.card{{width:min(560px,92vw);padding:34px;border:1px solid rgba(255,255,255,.10);border-radius:24px;background:linear-gradient(145deg,#15101d,#08080b);box-shadow:0 30px 90px rgba(0,0,0,.55)}}
-.logo{{font-weight:900;letter-spacing:.08em;font-size:20px}}h1{{font-size:38px;margin:22px 0 10px}}p{{color:#aaa;line-height:1.6}}.price{{font-size:42px;font-weight:900;margin:22px 0 4px}}.small{{font-size:13px;color:#888}}button{{width:100%;border:0;border-radius:14px;padding:16px;margin-top:22px;background:linear-gradient(90deg,#e11d48,#7c3aed);color:#fff;font-size:17px;font-weight:800;cursor:pointer}}button:disabled{{opacity:.6}}.back{{display:inline-block;margin-top:18px;color:#aaa;text-decoration:none;font-size:14px}}
-</style></head><body><main class="card"><div class="logo">TOMESH MOVIES</div><h1>Unlock Premium Cinema</h1><p>Complete the initial ₹1 authorization. Your Premium membership is then activated with recurring ₹99 monthly billing through Cashfree.</p><div class="price">₹1</div><div class="small">Initial authorization</div><button id="pay">Continue Securely</button><a class="back" href="/logout">Logout</a></main>
-<script>
-const cashfree = Cashfree({{mode: "{CASHFREE_JS_MODE}"}});
-const btn=document.getElementById("pay");
-btn.addEventListener("click", async()=>{{
- btn.disabled=true; btn.textContent="Opening secure checkout…";
- try{{
-   const r=await fetch("/api/subscription/create",{{method:"POST",headers:{{"Content-Type":"application/json"}},body:JSON.stringify({{name:{json.dumps(name)},email:{json.dumps(email)},phone:{json.dumps(mobile)}}})}});
-   const data=await r.json();
-   if(!r.ok || !data.subscription_session_id) throw new Error(data.error || "Unable to create secure checkout.");
-   let result;
-   try{{ result=await cashfree.checkout({{subscriptionSessionId:data.subscription_session_id,redirectTarget:"_self"}}); }}catch(e){{
-      result=await cashfree.checkout({{paymentSessionId:data.subscription_session_id,redirectTarget:"_self"}});
-   }}
-   console.log(result);
- }}catch(e){{alert(e.message || "Payment could not be started.");btn.disabled=false;btn.textContent="Continue Securely";}}
-}});
-</script></body></html>"""
-    return Response(html, mimetype="text/html")
-
-
-@app.route("/api/subscription/create", methods=["POST"])
-@customer_login_required
-def create_subscription():
-    customer_id = session.get("customer_id")
-    if not customer_id:
-        return json_error("Login required.", 401)
-    if has_initial_payment(customer_id):
-        return json_ok(already_active=True)
-    data = request.get_json(silent=True) or {}
-    profile = get_customer_profile(customer_id)
-    name = str(data.get("name") or profile.get("full_name") or "Tomesh Member").strip()[:100]
-    email = normalize_email(data.get("email") or profile.get("email") or "")
-    phone = normalize_mobile(data.get("phone") or profile.get("mobile") or session.get("customer_mobile", ""))
-    if not valid_mobile(phone):
-        return json_error("Valid mobile number is required.", 400)
-    if email and not valid_email(email):
-        return json_error("Invalid email address.", 400)
-    now_local = datetime.now(timezone(timedelta(hours=5, minutes=30)))
-    first_charge = now_local + timedelta(days=30)
-    expiry = now_local + timedelta(days=3650)
-    session_expiry = now_local + timedelta(hours=1)
-    subscription_id = "tm_sub_" + secrets.token_hex(12)
-    return_url = url_for("subscription_return", _external=True)
-    payload = {
-        "subscription_id": subscription_id,
-        "customer_details": {"customer_name": name, "customer_email": email or "", "customer_phone": phone},
-        "plan_details": {
-            "plan_name": SUBSCRIPTION_PLAN_NAME, "plan_type": "PERIODIC", "plan_amount": SUBSCRIPTION_PRICE,
-            "plan_max_amount": SUBSCRIPTION_PRICE, "plan_max_cycles": SUBSCRIPTION_MAX_CYCLES,
-            "plan_intervals": 1, "plan_currency": "INR", "plan_interval_type": "MONTH",
-            "plan_note": "Tomesh Movies Premium monthly membership",
-        },
-        "authorization_details": {
-            "authorization_amount": SUBSCRIPTION_AUTH_AMOUNT,
-            "authorization_amount_refund": True,
-            "payment_methods": ["upi"],
-        },
-        "subscription_meta": {
-            "return_url": return_url,
-            "notification_channel": ["EMAIL", "SMS"],
-            "session_id_expiry": session_expiry.isoformat(),
-        },
-        "subscription_expiry_time": expiry.isoformat(),
-        "subscription_first_charge_time": first_charge.isoformat(),
-        "subscription_note": "Tomesh Movies Premium",
-        "subscription_tags": {"customer_id": customer_id, "source": "tomesh_movies"},
-    }
-    try:
-        result = _cashfree_subscription_create(payload)
-        session_id = result.get("subscription_session_id")
-        if not session_id:
-            return json_error("Cashfree did not return subscription session.", 502, cashfree=result)
-        _store_subscription(customer_id, result)
-        session["pending_subscription_id"] = subscription_id
-        return json_ok(subscription_id=subscription_id, subscription_session_id=session_id, mode=CASHFREE_JS_MODE)
-    except Exception as exc:
-        print("CREATE SUBSCRIPTION ERROR:", repr(exc))
-        return json_error(str(exc), 500)
-
-
-def _process_subscription_status(customer_id, subscription_id):
-    result = _cashfree_subscription_fetch(subscription_id)
-    status = str(result.get("subscription_status") or "INITIALIZED").upper()
-    auth = result.get("authorisation_details") or result.get("authorization_details") or {}
-    auth_status = str(auth.get("authorization_status") or "").upper()
-    if status in {"ACTIVE", "BANK_APPROVAL_PENDING"} or auth_status in {"ACTIVE", "SUCCESS"}:
-        _activate_subscription(customer_id, subscription_id, status)
-        return True, result
-    return False, result
-
-
-@app.route("/subscription/return", methods=["GET", "POST"])
-def subscription_return():
-    subscription_id = str(
-        request.form.get("cf_subscriptionId") or request.args.get("cf_subscriptionId")
-        or request.form.get("subscription_id") or request.args.get("subscription_id")
-        or session.get("pending_subscription_id") or ""
-    ).strip()
-    customer_id = session.get("customer_id")
-    if not subscription_id or not customer_id:
-        flash("Subscription response could not be matched to your account.", "error")
-        return redirect(url_for("login"))
-    try:
-        ok, result = _process_subscription_status(customer_id, subscription_id)
-        if ok:
-            session.pop("pending_subscription_id", None)
-            flash("Premium access activated successfully.", "success")
-            return redirect(url_for("member_home"))
-        status = str(result.get("subscription_status") or request.form.get("cf_status") or "PENDING")
-        flash("Payment was not completed. Status: " + status, "error")
-    except Exception as exc:
-        print("SUBSCRIPTION RETURN ERROR:", repr(exc))
-        flash("Payment verification is still pending. Please try again shortly.", "error")
-    return redirect(url_for("membership"))
-
-
-@app.route("/api/cashfree/subscription/webhook", methods=["POST"])
-def cashfree_subscription_webhook():
-    if not CASHFREE_WEBHOOK_SECRET:
-        return "Webhook secret not configured", 503
-    signature = request.headers.get("x-webhook-signature", "")
-    timestamp = request.headers.get("x-webhook-timestamp", "")
-    raw_body = request.get_data(as_text=True)
-    if not signature or not timestamp:
-        return "Missing signature headers", 400
-    digest = hmac.new(
-        CASHFREE_WEBHOOK_SECRET.encode("utf-8"),
-        (timestamp + raw_body).encode("utf-8"),
-        hashlib.sha256,
-    ).digest()
-    expected = base64.b64encode(digest).decode("utf-8")
-    if not hmac.compare_digest(expected, signature):
-        return "Invalid signature", 400
-    try:
-        payload = json.loads(raw_body or "{}")
-        event_type = str(payload.get("type") or "").upper()
-        data = payload.get("data") or {}
-        details = data.get("subscription_details") or {}
-        payment = data.get("payment") or data
-        subscription_id = str(data.get("subscription_id") or details.get("subscription_id") or "").strip()
-        if not subscription_id:
-            return jsonify({"ok": True})
-        conn = get_db(dict_rows=True)
-        try:
-            cur = conn.cursor()
-            cur.execute("SELECT customer_id FROM customer_subscriptions WHERE subscription_id = %s LIMIT 1", (subscription_id,))
-            row = cur.fetchone()
-            cur.close()
-        finally:
-            conn.close()
-        if not row:
-            return jsonify({"ok": True})
-        customer_id = row["customer_id"]
-        if event_type == "SUBSCRIPTION_AUTH_STATUS":
-            auth = data.get("authorization_details") or {}
-            payment_status = str(data.get("payment_status") or "").upper()
-            auth_status = str(auth.get("authorization_status") or "").upper()
-            if payment_status == "SUCCESS" or auth_status in {"SUCCESS", "ACTIVE"}:
-                _activate_subscription(customer_id, subscription_id, "ACTIVE")
-            _record_subscription_payment(customer_id, subscription_id, data, event_type)
-        elif event_type == "SUBSCRIPTION_PAYMENT_SUCCESS":
-            _extend_subscription_premium(customer_id)
-            _record_subscription_payment(customer_id, subscription_id, payment, event_type)
-        elif event_type == "SUBSCRIPTION_PAYMENT_FAILED":
-            _record_subscription_payment(customer_id, subscription_id, payment, event_type)
-        elif event_type == "SUBSCRIPTION_STATUS_CHANGED":
-            status = str(details.get("subscription_status") or "").upper()
-            conn = get_db()
-            try:
-                cur = conn.cursor()
-                cur.execute("UPDATE customer_subscriptions SET subscription_status=%s, updated_at=NOW() WHERE customer_id=%s", (status, customer_id))
-                conn.commit()
-                cur.close()
-            finally:
-                conn.close()
-        return jsonify({"ok": True})
-    except Exception as exc:
-        print("CASHFREE SUBSCRIPTION WEBHOOK ERROR:", repr(exc))
-        return "Webhook processing failed", 500
 
 def get_member_movies_data():
     customer_id = session.get("customer_id")
@@ -3616,11 +3149,348 @@ def get_member_movies_data():
     return movies
 
 
+def customer_has_completed_initial_payment(customer_id=None):
+    customer_id = customer_id or session.get("customer_id")
+    if not customer_id:
+        return False
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT 1
+            FROM customer_subscriptions
+            WHERE customer_id = %s
+              AND auth_status = 'SUCCESS'
+              AND status IN ('ACTIVE', 'BANK_APPROVAL_PENDING')
+            LIMIT 1
+            """,
+            (customer_id,),
+        )
+        return bool(cur.fetchone())
+    finally:
+        conn.close()
+
+
+def subscription_customer_name(customer_id):
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT full_name, email, mobile FROM customer_users WHERE customer_id = %s LIMIT 1",
+            (customer_id,),
+        )
+        row = cur.fetchone() or {}
+        return (
+            row.get("full_name") or "Tomesh Movies Member",
+            row.get("email") or session.get("customer_email") or "",
+            row.get("mobile") or session.get("customer_mobile") or "",
+        )
+    finally:
+        conn.close()
+
+
+def create_cashfree_subscription(customer_id):
+    name, email, phone = subscription_customer_name(customer_id)
+    if not re.fullmatch(r"[6-9]\d{9}", re.sub(r"\D", "", phone or "")):
+        raise RuntimeError("A valid mobile number is required before payment.")
+    phone = re.sub(r"\D", "", phone)
+    if not valid_email(email):
+        email = "member@tomeshmovies.com"
+
+    subscription_id = "tm_sub_" + secrets.token_hex(12)
+    now = datetime.now(timezone.utc)
+    first_charge = now + timedelta(days=30)
+    expiry = now + timedelta(days=30 * SUBSCRIPTION_MAX_CYCLES)
+    return_url = url_for("cashfree_subscription_return", _external=True)
+
+    payload = {
+        "subscription_id": subscription_id,
+        "customer_details": {
+            "customer_name": name[:100],
+            "customer_email": email,
+            "customer_phone": phone,
+        },
+        "plan_details": {
+            "plan_name": SUBSCRIPTION_PLAN_NAME,
+            "plan_type": "PERIODIC",
+            "plan_amount": PREMIUM_PRICE,
+            "plan_max_amount": PREMIUM_PRICE,
+            "plan_max_cycles": SUBSCRIPTION_MAX_CYCLES,
+            "plan_intervals": 1,
+            "plan_currency": "INR",
+            "plan_interval_type": "MONTH",
+            "plan_note": "Tomesh Movies Premium Monthly",
+        },
+        "authorization_details": {
+            "authorization_amount": SUBSCRIPTION_AUTH_AMOUNT,
+            "authorization_amount_refund": True,
+            "payment_methods": ["upi", "card", "enach"],
+        },
+        "subscription_meta": {
+            "return_url": return_url,
+            "notification_channel": ["EMAIL", "SMS"],
+        },
+        "subscription_first_charge_time": first_charge.isoformat().replace("+00:00", "Z"),
+        "subscription_expiry_time": expiry.isoformat().replace("+00:00", "Z"),
+        "subscription_tags": {
+            "customer_id": customer_id,
+            "product": "tomesh_movies_premium",
+        },
+    }
+
+    result = cashfree_request("POST", "/subscriptions", payload)
+    subscription_session_id = result.get("subscription_session_id")
+    if not subscription_session_id:
+        raise RuntimeError("Cashfree did not return subscription session.")
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO customer_subscriptions
+            (customer_id, subscription_id, cf_subscription_id, subscription_session_id, status, auth_status)
+            VALUES(%s,%s,%s,%s,%s,%s)
+            ON CONFLICT(subscription_id) DO UPDATE SET
+                subscription_session_id = EXCLUDED.subscription_session_id,
+                cf_subscription_id = EXCLUDED.cf_subscription_id,
+                updated_at = NOW()
+            """,
+            (
+                customer_id,
+                subscription_id,
+                str(result.get("cf_subscription_id") or ""),
+                subscription_session_id,
+                str(result.get("subscription_status") or "INITIALIZED"),
+                "PENDING",
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return subscription_id, subscription_session_id
+
+
+def activate_customer_subscription(customer_id, subscription_id, status="ACTIVE"):
+    now = datetime.now()
+    premium_until = now + timedelta(days=PREMIUM_DAYS)
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE customer_subscriptions
+            SET status=%s, auth_status='SUCCESS', premium_until=%s, updated_at=NOW()
+            WHERE subscription_id=%s AND customer_id=%s
+            """,
+            (status, premium_until, subscription_id, customer_id),
+        )
+        cur.execute(
+            """
+            INSERT INTO customer_access
+            (customer_id, movie_id, watch_until, download_until, premium_until)
+            VALUES(%s, NULL, NULL, NULL, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            (customer_id, premium_until),
+        )
+        # Keep permanent watch access separately so the one-time authorization
+        # remains sufficient for account watch access even after a subscription ends.
+        cur.execute(
+            """
+            SELECT id FROM customer_access
+            WHERE customer_id=%s AND movie_id IS NULL
+              AND watch_until IS NULL AND download_until IS NULL AND premium_until IS NULL
+            LIMIT 1
+            """,
+            (customer_id,),
+        )
+        if not cur.fetchone():
+            cur.execute(
+                """
+                INSERT INTO customer_access(customer_id, movie_id, watch_until, download_until, premium_until)
+                VALUES(%s,NULL,NULL,NULL,NULL)
+                """,
+                (customer_id,),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def extend_subscription_premium(customer_id, subscription_id):
+    now = datetime.now()
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT premium_until FROM customer_subscriptions WHERE subscription_id=%s AND customer_id=%s LIMIT 1",
+            (subscription_id, customer_id),
+        )
+        row = cur.fetchone() or {}
+        current = row.get("premium_until")
+        base = current if current and current > now else now
+        until = base + timedelta(days=PREMIUM_DAYS)
+        cur.execute(
+            "UPDATE customer_subscriptions SET status='ACTIVE', premium_until=%s, updated_at=NOW() WHERE subscription_id=%s AND customer_id=%s",
+            (until, subscription_id, customer_id),
+        )
+        cur.execute(
+            """
+            UPDATE customer_access
+            SET premium_until=%s
+            WHERE customer_id=%s AND movie_id IS NULL AND premium_until IS NOT NULL
+            """,
+            (until, customer_id),
+        )
+        if cur.rowcount == 0:
+            cur.execute(
+                """
+                INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until)
+                VALUES(%s,NULL,NULL,NULL,%s)
+                """,
+                (customer_id, until),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+@app.route("/membership")
+@customer_login_required
+def membership_checkout():
+    if customer_has_completed_initial_payment(session.get("customer_id")):
+        return redirect(url_for("member_home"))
+    return redirect(url_for("membership_start"))
+
+
+@app.route("/api/subscription/create", methods=["POST"])
+@customer_login_required
+def create_subscription_route():
+    customer_id = session.get("customer_id")
+    if customer_has_completed_initial_payment(customer_id):
+        return json_ok(already_active=True, redirect_url=url_for("member_home"))
+    try:
+        subscription_id, session_id = create_cashfree_subscription(customer_id)
+        return json_ok(subscription_id=subscription_id, subscription_session_id=session_id, mode=CASHFREE_JS_MODE)
+    except Exception as exc:
+        print("CREATE SUBSCRIPTION ERROR:", repr(exc))
+        return json_error(str(exc), 500)
+
+
+@app.route("/membership/start")
+@customer_login_required
+def membership_start():
+    customer_id=session.get("customer_id")
+    if customer_has_completed_initial_payment(customer_id):
+        return redirect(url_for("member_home"))
+    try:
+        subscription_id, session_id = create_cashfree_subscription(customer_id)
+    except Exception as exc:
+        print("MEMBERSHIP START ERROR:",repr(exc))
+        return Response("<h2>Payment setup failed</h2><p>"+str(exc).replace("<","&lt;")+"</p><p>Please check Cashfree keys and try again.</p>",status=500)
+    return Response("""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Tomesh Movies Membership</title><script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script><style>body{margin:0;background:#08080d;color:#fff;font-family:Arial,sans-serif;min-height:100vh;display:grid;place-items:center}.card{width:min(560px,92vw);padding:34px;border:1px solid #292936;border-radius:24px;background:linear-gradient(145deg,#15151e,#0b0b10);box-shadow:0 25px 80px #000}.gold{color:#f5c451}.price{font-size:44px;font-weight:800;margin-top:25px}.muted{color:#aaa;line-height:1.6}.btn{width:100%;border:0;border-radius:14px;padding:16px;background:linear-gradient(90deg,#f5c451,#ffdf80);font-size:17px;font-weight:800;cursor:pointer;margin-top:24px}.status{margin-top:16px;color:#aaa}</style></head><body><main class='card'><div class='gold'>🎬 TOMESH MOVIES</div><h1>Premium Membership</h1><p class='muted'>Complete the initial authorization to activate your Premium membership.</p><div class='price'>₹1</div><div class='muted'>Initial authorization • ₹99/month recurring membership</div><button id='pay' class='btn'>Continue with Cashfree</button><div id='status' class='status'></div></main><script>const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');s.textContent='Opening secure checkout…';try{const r=await cashfree.subscriptionsCheckout({subsSessionId:"""+json.dumps(session_id)+""",redirectTarget:'_self'});if(r&&r.error)s.textContent=r.error.message||'Checkout could not be opened.'}catch(e){s.textContent=e.message||'Checkout could not be opened.'}};</script></body></html>""")
+
+
+@app.route("/membership/pay/<subscription_id>")
+@customer_login_required
+def membership_page_with_session(subscription_id):
+    customer_id=session.get("customer_id")
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor(); cur.execute("SELECT subscription_session_id FROM customer_subscriptions WHERE subscription_id=%s AND customer_id=%s",(subscription_id,customer_id)); row=cur.fetchone()
+    finally:
+        conn.close()
+    if not row or not row.get("subscription_session_id"):
+        flash("Payment session expired. Please try again.","error"); return redirect(url_for("membership_checkout"))
+    session_id=row["subscription_session_id"]
+    page=membership_checkout.__wrapped__() if hasattr(membership_checkout,"__wrapped__") else ""
+    page=page.replace("sessionId = null", "sessionId = "+json.dumps(session_id))
+    return page
+
+
+@app.route("/subscription/return", methods=["GET","POST"])
+def cashfree_subscription_return():
+    subscription_id = (request.values.get("cf_subscriptionId") or request.values.get("subscription_id") or "").strip()
+    if not subscription_id:
+        flash("Subscription response was not received.","error")
+        return redirect(url_for("membership_checkout"))
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor(); cur.execute("SELECT customer_id FROM customer_subscriptions WHERE subscription_id=%s LIMIT 1",(subscription_id,)); row=cur.fetchone()
+    finally: conn.close()
+    if not row:
+        flash("Subscription record not found.","error"); return redirect(url_for("login"))
+    customer_id=row["customer_id"]
+    try:
+        result=cashfree_request("GET", "/subscriptions/"+quote(subscription_id,safe=""))
+        status=str(result.get("subscription_status") or "").upper()
+        auth=(result.get("authorization_details") or {})
+        auth_status=str(auth.get("authorization_status") or "").upper()
+        if status=="ACTIVE" and auth_status=="ACTIVE":
+            activate_customer_subscription(customer_id, subscription_id, "ACTIVE")
+            session["customer_id"]=customer_id; session["customer_logged_in"]=True
+            flash("Membership activated successfully.","success")
+            return redirect(url_for("member_home"))
+        flash("Authorization is still pending. Please complete the Cashfree checkout.","error")
+    except Exception as exc:
+        print("SUBSCRIPTION RETURN VERIFY ERROR:",repr(exc)); flash("Payment verification failed.","error")
+    session["customer_id"]=customer_id; session["customer_logged_in"]=True
+    return redirect(url_for("membership_pay_status", subscription_id=subscription_id))
+
+
+@app.route("/membership/status/<subscription_id>")
+@customer_login_required
+def membership_pay_status(subscription_id):
+    return """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Tomesh Movies</title><style>body{background:#08080d;color:#fff;font-family:Arial;display:grid;place-items:center;min-height:100vh}.box{padding:32px;text-align:center}</style></head><body><div class='box'><h1>Payment verification pending</h1><p>Cashfree is still processing the authorization.</p><a href='/membership/start'>Try again</a></div></body></html>"""
+
+
+@app.route("/webhooks/cashfree/subscription", methods=["POST"])
+def cashfree_subscription_webhook():
+    if not CASHFREE_WEBHOOK_SECRET:
+        return Response("Webhook secret not configured.", status=503)
+    raw=request.get_data(as_text=True)
+    signature=request.headers.get("x-webhook-signature","")
+    timestamp=request.headers.get("x-webhook-timestamp","")
+    expected=base64.b64encode(hmac.new(CASHFREE_WEBHOOK_SECRET.encode(), (timestamp+raw).encode(), hashlib.sha256).digest()).decode()
+    if not signature or not timestamp or not hmac.compare_digest(expected,signature):
+        return Response("Invalid signature",status=400)
+    try: payload=json.loads(raw or "{}")
+    except Exception: return Response("Invalid JSON",status=400)
+    event_type=str(payload.get("type") or payload.get("event_type") or "").upper()
+    data=payload.get("data") or {}
+    subscription_id=str(data.get("subscription_id") or data.get("subscriptionId") or "")
+    if not subscription_id:
+        return jsonify(ok=True)
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor(); cur.execute("SELECT customer_id FROM customer_subscriptions WHERE subscription_id=%s LIMIT 1",(subscription_id,)); row=cur.fetchone()
+    finally: conn.close()
+    if not row: return jsonify(ok=True)
+    customer_id=row["customer_id"]
+    if event_type in {"SUBSCRIPTION_AUTH_STATUS","SUBSCRIPTION_STATUS_CHANGE"}:
+        auth_status=str((data.get("authorization_details") or {}).get("authorization_status") or data.get("auth_status") or data.get("status") or "").upper()
+        status=str(data.get("subscription_status") or data.get("status") or "").upper()
+        if auth_status=="ACTIVE" or status=="ACTIVE":
+            activate_customer_subscription(customer_id,subscription_id,"ACTIVE")
+    elif event_type=="SUBSCRIPTION_PAYMENT_SUCCESS":
+        extend_subscription_premium(customer_id,subscription_id)
+    elif event_type in {"SUBSCRIPTION_PAYMENT_FAILED","SUBSCRIPTION_PAYMENT_CANCELLED"}:
+        conn=get_db();
+        try:
+            cur=conn.cursor(); cur.execute("UPDATE customer_subscriptions SET status=%s, updated_at=NOW() WHERE subscription_id=%s",("PAST_DUE" if event_type.endswith("FAILED") else "CANCELLED",subscription_id)); conn.commit()
+        finally: conn.close()
+    return jsonify(ok=True)
+
+
 @app.route("/member")
 @customer_login_required
 def member_home():
-    if not has_initial_payment():
-        return redirect(url_for("membership"))
+    customer_id = session.get("customer_id")
+    if not customer_has_completed_initial_payment(customer_id):
+        return redirect(url_for("membership_start"))
     movies = get_member_movies_data()
     saved_movies = [m for m in movies if m.get("in_my_list")]
     categories = []
@@ -3641,7 +3511,6 @@ def member_home():
         customer_email=session.get("customer_email", ""),
         premium=has_active_premium(),
     )
-
 
 @app.route("/api/my-list/<int:movie_id>", methods=["POST", "DELETE"])
 @customer_login_required
