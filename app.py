@@ -106,8 +106,8 @@ PREMIUM_DAYS = 30
 SUBSCRIPTION_AUTH_AMOUNT = 1.00
 SUBSCRIPTION_PLAN_NAME = os.environ.get(
     "CASHFREE_SUBSCRIPTION_PLAN_NAME",
-    "Tomesh Movies Premium Monthly",
-).strip() or "Tomesh Movies Premium Monthly"
+    "CINEMA WORLD Premium Monthly",
+).strip() or "CINEMA WORLD Premium Monthly"
 SUBSCRIPTION_MAX_CYCLES = 120
 CASHFREE_WEBHOOK_SECRET = os.environ.get(
     "CASHFREE_WEBHOOK_SECRET",
@@ -249,8 +249,8 @@ BREVO_FROM = clean_env_value(
     os.environ.get("BREVO_FROM", "")
 ) or SMTP_FROM
 BREVO_FROM_NAME = clean_env_value(
-    os.environ.get("BREVO_FROM_NAME", "Tomesh Movies")
-) or "Tomesh Movies"
+    os.environ.get("BREVO_FROM_NAME", "CINEMA WORLD")
+) or "CINEMA WORLD"
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 # ============================================================
@@ -862,7 +862,7 @@ def send_otp_email(email, otp):
 
     otp_text = str(otp)
     text_content = (
-        "Tomesh Movies login verification\n\n"
+        "CINEMA WORLD login verification\n\n"
         "Your one-time verification code is: "
         + otp_text
         + "\n\n"
@@ -871,7 +871,7 @@ def send_otp_email(email, otp):
         + " minutes.\n"
         + "Do not share this code with anyone.\n\n"
         + "If you did not request this code, you can ignore this email.\n\n"
-        + "Tomesh Movies"
+        + "CINEMA WORLD"
     )
 
     html_content = (
@@ -880,7 +880,7 @@ def send_otp_email(email, otp):
         "font-family:Arial,sans-serif;color:#ffffff;\">"
         "<div style=\"max-width:520px;margin:auto;background:#121212;"
         "border:1px solid #2b2b2b;border-radius:16px;padding:28px;\">"
-        "<h2 style=\"margin:0 0 12px;color:#ffc400;\">Tomesh Movies</h2>"
+        "<h2 style=\"margin:0 0 12px;color:#ffc400;\">CINEMA WORLD</h2>"
         "<p style=\"color:#dddddd;\">Your login verification code is:</p>"
         "<div style=\"font-size:34px;font-weight:700;letter-spacing:8px;"
         "color:#ffffff;background:#1d1d1d;border-radius:12px;padding:18px;"
@@ -904,7 +904,7 @@ def send_otp_email(email, otp):
                 "email": email,
             }
         ],
-        "subject": "Tomesh Movies - Your Login OTP",
+        "subject": "CINEMA WORLD - Your Login OTP",
         "textContent": text_content,
         "htmlContent": html_content,
     }
@@ -1398,7 +1398,7 @@ def verify_mobile_otp_route():
 
     session.pop("otp_mobile", None)
     session.pop("otp_mobile_sent_at", None)
-    flash("Mobile number verified. Welcome to Tomesh Movies!", "success")
+    flash("Mobile number verified. Welcome to CINEMA WORLD!", "success")
     return redirect(url_for("user_details"))
 
 
@@ -1908,7 +1908,7 @@ def verify_otp():
     )
 
     flash(
-        "Email verified. Welcome to Tomesh Movies!",
+        "Email verified. Welcome to CINEMA WORLD!",
         "success",
     )
 
@@ -2267,10 +2267,10 @@ def create_payment():
 
     if payment_type == "watch":
         amount = WATCH_PRICE
-        description = "Tomesh Movies Watch Access"
+        description = "CINEMA WORLD Watch Access"
     else:
         amount = PREMIUM_PRICE
-        description = "Tomesh Movies 30 Day Premium"
+        description = "CINEMA WORLD 30 Day Premium"
 
     customer_id = get_customer_id()
     order_id = "tm_" + payment_type + "_" + str(movie_id) + "_" + secrets.token_hex(8)
@@ -2993,28 +2993,21 @@ def download_movie(movie_id):
     methods=["GET"],
 )
 def login():
-    customer_id = session.get("customer_id")
-
-    if session.get("customer_logged_in") and customer_id:
-        if customer_has_completed_initial_payment(customer_id):
-            return redirect(url_for("member_home"))
-        return redirect(url_for("membership_checkout"))
-
     step = str(request.args.get("step", "")).strip().lower()
 
-    if step not in {"email", "otp"}:
-        step = "otp" if session.get("otp_email") else "email"
+    if step not in {"mobile", "otp"}:
+        step = "otp" if session.get("otp_mobile") else "mobile"
 
-    email = normalize_email(
-        request.args.get("email", "")
-        or session.get("otp_email", "")
+    mobile = normalize_mobile(
+        request.args.get("mobile", "")
+        or session.get("otp_mobile", "")
     )
 
     return render_template(
         "login.html",
         step=step,
-        email=email,
-        masked_email=mask_email(email),
+        mobile=mobile,
+        masked_mobile=mask_mobile(mobile),
     )
 
 
@@ -3183,7 +3176,7 @@ def subscription_customer_name(customer_id):
         )
         row = cur.fetchone() or {}
         return (
-            row.get("full_name") or "Tomesh Movies Member",
+            row.get("full_name") or "CINEMA WORLD Member",
             row.get("email") or session.get("customer_email") or "",
             row.get("mobile") or session.get("customer_mobile") or "",
         )
@@ -3221,7 +3214,7 @@ def create_cashfree_subscription(customer_id):
             "plan_intervals": 1,
             "plan_currency": "INR",
             "plan_interval_type": "MONTH",
-            "plan_note": "Tomesh Movies Premium Monthly",
+            "plan_note": "CINEMA WORLD Premium Monthly",
         },
         "authorization_details": {
             "authorization_amount": SUBSCRIPTION_AUTH_AMOUNT,
@@ -3392,7 +3385,7 @@ def membership_start():
     except Exception as exc:
         print("MEMBERSHIP START ERROR:",repr(exc))
         return Response("<h2>Payment setup failed</h2><p>"+str(exc).replace("<","&lt;")+"</p><p>Please check Cashfree keys and try again.</p>",status=500)
-    return Response("""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Tomesh Movies Membership</title><script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script><style>body{margin:0;background:#08080d;color:#fff;font-family:Arial,sans-serif;min-height:100vh;display:grid;place-items:center}.card{width:min(560px,92vw);padding:34px;border:1px solid #292936;border-radius:24px;background:linear-gradient(145deg,#15151e,#0b0b10);box-shadow:0 25px 80px #000}.gold{color:#f5c451}.price{font-size:44px;font-weight:800;margin-top:25px}.muted{color:#aaa;line-height:1.6}.btn{width:100%;border:0;border-radius:14px;padding:16px;background:linear-gradient(90deg,#f5c451,#ffdf80);font-size:17px;font-weight:800;cursor:pointer;margin-top:24px}.status{margin-top:16px;color:#aaa}</style></head><body><main class='card'><div class='gold'>🎬 TOMESH MOVIES</div><h1>Premium Membership</h1><p class='muted'>Complete the initial authorization to activate your Premium membership.</p><div class='price'>₹1</div><div class='muted'>Initial authorization • ₹99/month recurring membership</div><button id='pay' class='btn'>Continue with Cashfree</button><div id='status' class='status'></div></main><script>const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');s.textContent='Opening secure checkout…';try{const r=await cashfree.subscriptionsCheckout({subsSessionId:"""+json.dumps(session_id)+""",redirectTarget:'_self'});if(r&&r.error)s.textContent=r.error.message||'Checkout could not be opened.'}catch(e){s.textContent=e.message||'Checkout could not be opened.'}};</script></body></html>""")
+    return Response("""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CINEMA WORLD Membership</title><script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script><style>body{margin:0;background:#08080d;color:#fff;font-family:Arial,sans-serif;min-height:100vh;display:grid;place-items:center}.card{width:min(560px,92vw);padding:34px;border:1px solid #292936;border-radius:24px;background:linear-gradient(145deg,#15151e,#0b0b10);box-shadow:0 25px 80px #000}.gold{color:#f5c451}.price{font-size:44px;font-weight:800;margin-top:25px}.muted{color:#aaa;line-height:1.6}.btn{width:100%;border:0;border-radius:14px;padding:16px;background:linear-gradient(90deg,#f5c451,#ffdf80);font-size:17px;font-weight:800;cursor:pointer;margin-top:24px}.status{margin-top:16px;color:#aaa}</style></head><body><main class='card'><div class='gold'>🎬 CINEMA WORLD</div><h1>Premium Membership</h1><p class='muted'>Complete the initial authorization to activate your Premium membership.</p><div class='price'>₹1</div><div class='muted'>Initial authorization • ₹99/month recurring membership</div><button id='pay' class='btn'>Continue with Cashfree</button><div id='status' class='status'></div></main><script>const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');s.textContent='Opening secure checkout…';try{const r=await cashfree.subscriptionsCheckout({subsSessionId:"""+json.dumps(session_id)+""",redirectTarget:'_self'});if(r&&r.error)s.textContent=r.error.message||'Checkout could not be opened.'}catch(e){s.textContent=e.message||'Checkout could not be opened.'}};</script></body></html>""")
 
 
 @app.route("/membership/pay/<subscription_id>")
@@ -3445,7 +3438,7 @@ def cashfree_subscription_return():
 @app.route("/membership/status/<subscription_id>")
 @customer_login_required
 def membership_pay_status(subscription_id):
-    return """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Tomesh Movies</title><style>body{background:#08080d;color:#fff;font-family:Arial;display:grid;place-items:center;min-height:100vh}.box{padding:32px;text-align:center}</style></head><body><div class='box'><h1>Payment verification pending</h1><p>Cashfree is still processing the authorization.</p><a href='/membership/start'>Try again</a></div></body></html>"""
+    return """<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CINEMA WORLD</title><style>body{background:#08080d;color:#fff;font-family:Arial;display:grid;place-items:center;min-height:100vh}.box{padding:32px;text-align:center}</style></head><body><div class='box'><h1>Payment verification pending</h1><p>Cashfree is still processing the authorization.</p><a href='/membership/start'>Try again</a></div></body></html>"""
 
 
 @app.route("/webhooks/cashfree/subscription", methods=["POST"])
@@ -4557,7 +4550,7 @@ def health():
     return jsonify({
         "ok": True,
         "status": "ok",
-        "app": "Tomesh Movies",
+        "app": "CINEMA WORLD",
     })
 
 
@@ -4646,7 +4639,7 @@ def not_found(error):
         <!doctype html>
         <html>
         <head>
-            <title>404 | Tomesh Movies</title>
+            <title>404 | CINEMA WORLD</title>
             <meta name="viewport"
                   content="width=device-width,initial-scale=1">
         </head>
@@ -4694,7 +4687,7 @@ def internal_error(error):
         <!doctype html>
         <html>
         <head>
-            <title>500 | Tomesh Movies</title>
+            <title>500 | CINEMA WORLD</title>
             <meta name="viewport"
                   content="width=device-width,initial-scale=1">
         </head>
