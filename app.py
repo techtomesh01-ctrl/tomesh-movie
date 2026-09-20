@@ -918,7 +918,7 @@ def send_otp_email(email, otp):
             "accept": "application/json",
             "api-key": BREVO_API_KEY,
             "content-type": "application/json",
-            "user-agent": "Tomesh-Movies/1.0",
+            "user-agent": "Cinema-World/1.0",
         },
         method="POST",
     )
@@ -1032,7 +1032,7 @@ def send_mobile_otp(mobile):
         headers={
             "accept": "application/json",
             "authToken": MESSAGE_CENTRAL_AUTH_TOKEN,
-            "user-agent": "Tomesh-Movies/1.0",
+            "user-agent": "Cinema-World/1.0",
         },
         method="POST",
     )
@@ -1147,7 +1147,7 @@ def verify_mobile_otp(mobile, otp):
         headers={
             "accept": "application/json",
             "authToken": MESSAGE_CENTRAL_AUTH_TOKEN,
-            "user-agent": "Tomesh-Movies/1.0",
+            "user-agent": "Cinema-World/1.0",
         },
         method="GET",
     )
@@ -3190,7 +3190,7 @@ def create_cashfree_subscription(customer_id):
         raise RuntimeError("A valid mobile number is required before payment.")
     phone = re.sub(r"\D", "", phone)
     if not valid_email(email):
-        email = "member@tomeshmovies.com"
+        email = "member@cinemaworld.com"
 
     subscription_id = "tm_sub_" + secrets.token_hex(12)
     now = datetime.now(timezone.utc)
@@ -3229,7 +3229,7 @@ def create_cashfree_subscription(customer_id):
         "subscription_expiry_time": expiry.isoformat().replace("+00:00", "Z"),
         "subscription_tags": {
             "customer_id": customer_id,
-            "product": "tomesh_movies_premium",
+            "product": "cinema_world_premium",
         },
     }
 
@@ -4766,3 +4766,4 @@ if __name__ == "__main__":
         port=port,
         debug=False,
     )
+    
