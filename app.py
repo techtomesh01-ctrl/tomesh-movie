@@ -1690,46 +1690,39 @@ def request_otp():
     methods=["POST"],
 )
 def verify_otp():
+    """
+    Verify the latest email OTP and complete the customer login.
 
-    email = normalize_email(
-        session.get("otp_email", "")
+    This version deliberately keeps the OTP active until the customer
+    account binding succeeds. It also lets PostgreSQL perform the expiry
+    check, avoiding any Render/Python clock mismatch.
+    """
+    email = normalize_email(session.get("otp_email", ""))
+    otp = str(request.form.get("otp", "")).strip()
+
+    print(
+        "OTP VERIFY START:",
+        "email=", email,
+        "otp_length=", len(otp),
     )
-
-    otp = str(
-        request.form.get("otp", "")
-    ).strip()
 
     if not email or not valid_email(email):
-        flash(
-            "OTP session expired. Please request a new OTP.",
-            "error",
-        )
-        return redirect(
-            url_for("login")
-        )
+        print("OTP VERIFY FAILED: missing/invalid session email")
+        flash("OTP session expired. Please request a new OTP.", "error")
+        return redirect(url_for("login"))
 
-    if not re.fullmatch(
-        r"\d{6}",
-        otp,
-    ):
-        flash(
-            "Enter the 6 digit OTP.",
-            "error",
-        )
-        return redirect(
-            url_for(
-                "login",
-                step="otp",
-            )
-        )
+    if not re.fullmatch(r"\d{6}", otp):
+        print("OTP VERIFY FAILED: invalid OTP format")
+        flash("Enter the 6 digit OTP.", "error")
+        return redirect(url_for("login", step="otp"))
 
-    conn = get_db(
-        dict_rows=True
-    )
+    conn = get_db(dict_rows=True)
 
     try:
         cur = conn.cursor()
 
+        # Lock the latest active OTP so two simultaneous submissions cannot
+        # consume the same code.
         cur.execute(
             """
             SELECT
@@ -1742,6 +1735,7 @@ def verify_otp():
               AND used_at IS NULL
             ORDER BY id DESC
             LIMIT 1
+            FOR UPDATE
             """,
             (email,),
         )
@@ -1750,78 +1744,69 @@ def verify_otp():
 
         if not row:
             cur.close()
-            flash(
-                "OTP expired or not found. Please request a new OTP.",
-                "error",
-            )
-            return redirect(
-                url_for("login")
-            )
+            print("OTP VERIFY FAILED: no active OTP row")
+            flash("OTP expired or not found. Please request a new OTP.", "error")
+            return redirect(url_for("login"))
 
-        if int(row["attempts"] or 0) >= OTP_MAX_ATTEMPTS:
-            cur.execute(
-                """
-                UPDATE email_otps
-                SET used_at = NOW()
-                WHERE id = %s
-                """,
-                (row["id"],),
-            )
-            conn.commit()
-            cur.close()
-            flash(
-                "Too many wrong attempts. Request a new OTP.",
-                "error",
-            )
-            return redirect(
-                url_for("login")
-            )
-
-        if row["expires_at"] <= datetime.now():
-            cur.execute(
-                """
-                UPDATE email_otps
-                SET used_at = NOW()
-                WHERE id = %s
-                """,
-                (row["id"],),
-            )
-            conn.commit()
-            cur.close()
-            flash(
-                "OTP expired. Please request a new OTP.",
-                "error",
-            )
-            return redirect(
-                url_for("login")
-            )
-
-        expected_hash = otp_hash(
-            email,
-            otp,
+        attempts = int(row.get("attempts") or 0)
+        print(
+            "OTP VERIFY ROW:",
+            "id=", row["id"],
+            "attempts=", attempts,
+            "expires_at=", row["expires_at"],
         )
 
-        if not hmac.compare_digest(
-            str(row["otp_hash"]),
-            expected_hash,
-        ):
-            new_attempts = int(
-                row["attempts"] or 0
-            ) + 1
+        if attempts >= OTP_MAX_ATTEMPTS:
+            cur.execute(
+                """
+                UPDATE email_otps
+                SET used_at = NOW()
+                WHERE id = %s
+                """,
+                (row["id"],),
+            )
+            conn.commit()
+            cur.close()
+            print("OTP VERIFY FAILED: max attempts")
+            flash("Too many wrong attempts. Request a new OTP.", "error")
+            return redirect(url_for("login"))
+
+        # Let PostgreSQL compare its own current time with the stored expiry.
+        cur.execute(
+            "SELECT (expires_at <= NOW()) AS expired FROM email_otps WHERE id = %s",
+            (row["id"],),
+        )
+        expiry_row = cur.fetchone()
+
+        if expiry_row and expiry_row["expired"]:
+            cur.execute(
+                """
+                UPDATE email_otps
+                SET used_at = NOW()
+                WHERE id = %s
+                """,
+                (row["id"],),
+            )
+            conn.commit()
+            cur.close()
+            print("OTP VERIFY FAILED: expired")
+            flash("OTP expired. Please request a new OTP.", "error")
+            return redirect(url_for("login"))
+
+        expected_hash = otp_hash(email, otp)
+
+        if not hmac.compare_digest(str(row["otp_hash"]), expected_hash):
+            new_attempts = attempts + 1
 
             if new_attempts >= OTP_MAX_ATTEMPTS:
                 cur.execute(
                     """
                     UPDATE email_otps
-                    SET
-                        attempts = %s,
+                    SET attempts = %s,
                         used_at = NOW()
                     WHERE id = %s
                     """,
-                    (
-                        new_attempts,
-                        row["id"],
-                    ),
+                    (new_attempts, row["id"]),
                 )
             else:
                 cur.execute(
@@ -1830,91 +1815,85 @@ def verify_otp():
                     SET attempts = %s
                     WHERE id = %s
                     """,
-                    (
-                        new_attempts,
-                        row["id"],
-                    ),
+                    (new_attempts, row["id"]),
                 )
 
             conn.commit()
             cur.close()
 
-            remaining = max(
-                0,
-                OTP_MAX_ATTEMPTS - new_attempts,
+            remaining = max(0, OTP_MAX_ATTEMPTS - new_attempts)
+            print(
+                "OTP VERIFY FAILED: wrong OTP; remaining=",
+                remaining,
             )
 
             if remaining:
                 flash(
-                    "Wrong OTP. "
-                    + str(remaining)
-                    + " attempts left.",
+                    "Wrong OTP. " + str(remaining) + " attempts left.",
                     "error",
                 )
-            else:
-                flash(
-                    "Too many wrong attempts. Request a new OTP.",
-                    "error",
-                )
+                return redirect(url_for("login", step="otp"))
 
-            return redirect(
-                url_for(
-                    "login",
-                    step="otp" if remaining else "email",
-                )
-            )
+            flash("Too many wrong attempts. Request a new OTP.", "error")
+            return redirect(url_for("login"))
 
-        cur.execute(
-            """
-            UPDATE email_otps
-            SET used_at = NOW()
-            WHERE id = %s
-            """,
-            (row["id"],),
-        )
+        # OTP is correct. First bind/create the customer account while the
+        # database transaction is still available. If account setup fails,
+        # the OTP remains usable instead of trapping the user outside login.
+        print("OTP VERIFY SUCCESS: hash matched; binding customer")
 
-        conn.commit()
         cur.close()
+        conn.commit()
 
     except Exception:
         conn.rollback()
         raise
-
     finally:
         conn.close()
 
     try:
-        bind_customer_email(email)
-    except Exception as exc:
+        customer_id = bind_customer_email(email)
         print(
-            "CUSTOMER EMAIL BIND ERROR:",
-            repr(exc),
+            "OTP LOGIN SUCCESS:",
+            "email=", email,
+            "customer_id=", customer_id,
         )
+    except Exception as exc:
+        print("CUSTOMER EMAIL BIND ERROR:", repr(exc))
         flash(
             "Email verified, but account setup failed. Please try again.",
             "error",
         )
-        return redirect(
-            url_for("login")
+        return redirect(url_for("login", step="otp"))
+
+    # Only consume the OTP after account binding has succeeded.
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE email_otps
+            SET used_at = NOW()
+            WHERE email = %s
+              AND used_at IS NULL
+            """,
+            (email,),
         )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
 
-    session.pop(
-        "otp_email",
-        None,
-    )
-    session.pop(
-        "otp_sent_at",
-        None,
-    )
+    session.pop("otp_email", None)
+    session.pop("otp_sent_at", None)
+    session["customer_logged_in"] = True
+    session["customer_id"] = customer_id
+    session["customer_email"] = email
+    session.modified = True
 
-    flash(
-        "Email verified. Welcome to CINEMA WORLD!",
-        "success",
-    )
+    flash("Email verified. Welcome to CINEMA WORLD!", "success")
 
-    return redirect(
-        url_for("user_details")
-    )
+    return redirect(url_for("user_details"))
 
 
 # ============================================================
