@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -570,7 +571,7 @@
 
                 <form method="POST"
                       action="{{ url_for('request_otp') }}"
-                      onsubmit="lockButton(this)">
+                      onsubmit="saveEmailBeforeSubmit(this); lockButton(this)">
 
                     <label class="tm-label" for="email">
                         Gmail / Email
@@ -640,6 +641,59 @@
     }
 
 
+    /*
+     * ==========================================================
+     * HOME PAGE EMAIL → LOGIN PAGE AUTO FILL
+     * ==========================================================
+     *
+     * Home page agar localStorage me cinema_world_email save
+     * karta hai, to login page automatically us email ko lekar
+     * aayega.
+     */
+
+    function getSavedCinemaWorldEmail(){
+
+        try{
+            const email =
+                localStorage.getItem("cinema_world_email");
+
+            if(email && email.trim()){
+                return email.trim();
+            }
+        }catch(error){
+            console.log("Email storage unavailable");
+        }
+
+        return "";
+    }
+
+
+    function saveCinemaWorldEmail(email){
+
+        try{
+            if(email && email.trim()){
+                localStorage.setItem(
+                    "cinema_world_email",
+                    email.trim()
+                );
+            }
+        }catch(error){
+            console.log("Email could not be saved");
+        }
+    }
+
+
+    function saveEmailBeforeSubmit(form){
+
+        const input =
+            form.querySelector("#email");
+
+        if(input && input.value){
+            saveCinemaWorldEmail(input.value);
+        }
+    }
+
+
     function showEmailLogin(){
 
         const mobileSection =
@@ -667,6 +721,17 @@
             document.getElementById("email");
 
         if(emailInput){
+
+            const savedEmail =
+                getSavedCinemaWorldEmail();
+
+            if(
+                !emailInput.value &&
+                savedEmail
+            ){
+                emailInput.value = savedEmail;
+            }
+
             setTimeout(function(){
                 emailInput.focus();
             },100);
@@ -737,9 +802,39 @@
 
         });
 
+
+        /*
+         * ------------------------------------------------------
+         * AUTO EMAIL
+         * ------------------------------------------------------
+         *
+         * Agar Home page se email save hai:
+         * 1. Email section automatically open hoga
+         * 2. Email box automatically fill hoga
+         * 3. User ko dobara email type/select nahi karna padega
+         */
+
+        const emailInput =
+            document.getElementById("email");
+
+        if(emailInput){
+
+            const savedEmail =
+                getSavedCinemaWorldEmail();
+
+            if(savedEmail){
+
+                emailInput.value =
+                    savedEmail;
+
+                showEmailLogin();
+            }
+        }
+
     });
 
 </script>
 
 </body>
 </html>
+```
