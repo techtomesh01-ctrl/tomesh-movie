@@ -589,6 +589,7 @@
                             type="email"
                             autocomplete="email"
                             placeholder="Enter your Gmail / Email"
+                            value="{{ request.args.get('email', '') }}"
                             required
                         >
 
@@ -645,9 +646,13 @@
      * HOME PAGE EMAIL → LOGIN PAGE AUTO FILL
      * ==========================================================
      *
-     * Home page agar localStorage me cinema_world_email save
-     * karta hai, to login page automatically us email ko lekar
-     * aayega.
+     * Home page se email:
+     * login?email=example@gmail.com
+     *
+     * ke through aata hai.
+     *
+     * Saath me purana localStorage system bhi rakha gaya hai
+     * taaki existing functionality disturb na ho.
      */
 
     function getSavedCinemaWorldEmail(){
@@ -721,14 +726,33 @@
 
         if(emailInput){
 
+            /*
+             * Pehle Home URL ka email use hoga.
+             * Agar URL me email nahi hai to saved email use hoga.
+             */
+
+            const urlEmail =
+                new URLSearchParams(window.location.search)
+                    .get("email");
+
             const savedEmail =
                 getSavedCinemaWorldEmail();
 
             if(
                 !emailInput.value &&
+                urlEmail &&
+                urlEmail.trim()
+            ){
+                emailInput.value =
+                    urlEmail.trim();
+            }
+
+            if(
+                !emailInput.value &&
                 savedEmail
             ){
-                emailInput.value = savedEmail;
+                emailInput.value =
+                    savedEmail;
             }
 
             setTimeout(function(){
@@ -804,29 +828,72 @@
 
         /*
          * ------------------------------------------------------
-         * AUTO EMAIL
+         * HOME → LOGIN AUTO EMAIL
          * ------------------------------------------------------
          *
-         * Agar Home page se email save hai:
-         * 1. Email section automatically open hoga
-         * 2. Email box automatically fill hoga
-         * 3. User ko dobara email type/select nahi karna padega
+         * Home page se email aaya hai to:
+         *
+         * 1. Email box automatically fill hoga
+         * 2. Email login automatically open hoga
+         * 3. Mobile section temporarily hide hoga
+         * 4. User ko dobara email type nahi karna padega
+         *
+         * Agar Home se email nahi aaya to existing login
+         * behaviour bilkul same rahega.
          */
 
         const emailInput =
             document.getElementById("email");
 
+        const urlEmail =
+            new URLSearchParams(window.location.search)
+                .get("email");
+
         if(emailInput){
 
-            const savedEmail =
-                getSavedCinemaWorldEmail();
+            /*
+             * URL se aaya email sabse pehle use karo.
+             */
 
-            if(savedEmail){
+            if(
+                urlEmail &&
+                urlEmail.trim()
+            ){
 
                 emailInput.value =
-                    savedEmail;
+                    urlEmail.trim();
+
+                /*
+                 * Future visits ke liye save bhi kar do.
+                 */
+
+                saveCinemaWorldEmail(
+                    urlEmail.trim()
+                );
+
+                /*
+                 * Email option automatically open.
+                 */
 
                 showEmailLogin();
+
+            }else{
+
+                /*
+                 * Agar URL me email nahi hai,
+                 * to existing saved email behaviour rakho.
+                 */
+
+                const savedEmail =
+                    getSavedCinemaWorldEmail();
+
+                if(savedEmail){
+
+                    emailInput.value =
+                        savedEmail;
+
+                    showEmailLogin();
+                }
             }
         }
 
