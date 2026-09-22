@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}Tomesh Movies{% endblock %}</title>
+<title>{% block title %}CINEMA WORLD{% endblock %}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <header>
-  <a class="logo" href="{{ url_for('home') }}">🎬 Tomesh Movies</a>
+  <a class="logo" href="{{ url_for('home') }}">🎬 CINEMA WORLD</a>
   <form class="search" action="{{ url_for('home') }}"><input name="q" value="{{ q|default('') }}" placeholder="Movie खोजें..."><button>Search</button></form>
   {% if session.get('admin') %}<a class="adminlink" href="{{ url_for('admin') }}">Admin</a>{% endif %}
 </header>
@@ -16,6 +16,6 @@
 {% with messages=get_flashed_messages() %}{% if messages %}<div class="flash">{% for x in messages %}{{x}}{% endfor %}</div>{% endif %}{% endwith %}
 {% block content %}{% endblock %}
 </div>
-<footer>© Tomesh Movies</footer>
+<footer>© CINEMA WORLD</footer>
 </body>
 </html>
