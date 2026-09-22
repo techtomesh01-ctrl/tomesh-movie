@@ -1,4 +1,4 @@
-TOMESH MOVIES - READY TO RUN
+CINEMA WORLD - READY TO RUN
 
 1) PC में Python 3.11+ install करें.
 2) इस folder को खोलकर address bar में cmd लिखें और Enter करें.
