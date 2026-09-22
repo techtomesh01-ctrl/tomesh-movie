@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}{{ movie.title }} | Tomesh Movies{% endblock %}
+{% block title %}{{ movie.title }} | CINEMA WORLD{% endblock %}
 
 {% block content %}
 
 <style>
 /* =========================================================
-   TOMESH MOVIES
+   CINEMA WORLD
    PREMIUM OTT MOVIE EXPERIENCE
    ========================================================= */
 
@@ -927,7 +927,7 @@
             </a>
 
             <div class="tm-brand">
-                TOMESH MOVIES
+                CINEMA WORLD
             </div>
 
         </div>
@@ -1325,7 +1325,7 @@
 
 
             <div class="tm-subtitle">
-                TOMESH MOVIES • Premium Cinema
+                CINEMA WORLD • Premium Cinema
             </div>
 
 
@@ -1478,7 +1478,7 @@
                         color:#777;
                     "
                 >
-                    TOMESH MOVIES
+                    CINEMA WORLD
                 </div>
 
                 {% endif %}
@@ -2819,9 +2819,9 @@ if(shareBtn){
 
             const shareData = {
                 title:
-                    {{ movie.title|default("Tomesh Movies")|tojson }},
+                    {{ movie.title|default("CINEMA WORLD")|tojson }},
                 text:
-                    "Watch on Tomesh Movies",
+                    "Watch on CINEMA WORLD",
                 url:
                     window.location.href
             };
