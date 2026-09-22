@@ -3545,87 +3545,6 @@ def api_my_list(movie_id):
 
 
 # ============================================================
-# ADMIN DASHBOARD MISSING ENDPOINTS
-# Only added to prevent admin.html BuildError
-# ============================================================
-
-@app.route("/admin/users")
-@admin_required
-def admin_users():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/payments")
-@admin_required
-def admin_payments():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/subscriptions")
-@admin_required
-def admin_subscriptions():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/watch-activity")
-@admin_required
-def admin_watch_activity():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/analytics")
-@admin_required
-def admin_analytics():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/live-activity")
-@admin_required
-def admin_live_activity():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/notifications")
-@admin_required
-def admin_notifications():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/reports")
-@admin_required
-def admin_reports():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/r2")
-@admin_required
-def admin_r2():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/system-health")
-@admin_required
-def admin_system_health():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/security")
-@admin_required
-def admin_security():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/settings")
-@admin_required
-def admin_settings():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/search")
-@admin_required
-def admin_search():
-    return redirect(url_for("admin"))
-# ============================================================
 # ADMIN
 # ============================================================
 
@@ -3697,88 +3616,6 @@ def admin():
         ),
         ads=get_ads(),
     )
-
-
-# ============================================================
-# ADMIN DASHBOARD MISSING ENDPOINTS
-# ============================================================
-
-@app.route("/admin/users")
-@admin_required
-def admin_users():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/payments")
-@admin_required
-def admin_payments():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/subscriptions")
-@admin_required
-def admin_subscriptions():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/watch-activity")
-@admin_required
-def admin_watch_activity():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/analytics")
-@admin_required
-def admin_analytics():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/live-activity")
-@admin_required
-def admin_live_activity():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/notifications")
-@admin_required
-def admin_notifications():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/reports")
-@admin_required
-def admin_reports():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/r2")
-@admin_required
-def admin_r2():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/system-health")
-@admin_required
-def admin_system_health():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/security")
-@admin_required
-def admin_security():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/settings")
-@admin_required
-def admin_settings():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/search")
-@admin_required
-def admin_search():
-    return redirect(url_for("admin"))
 
 
 # ============================================================
@@ -3989,7 +3826,7 @@ def admin_add():
 
 
 # ============================================================
-# ADMIN CONTROL CENTER - MISSING ROUTES
+# ADMIN DASHBOARD ENDPOINTS
 # ============================================================
 
 @app.route("/admin/users")
