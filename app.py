@@ -2089,6 +2089,16 @@ def verify_stream_token(token, movie_id):
 def access_for_movie(movie_id):
     customer_id = get_customer_id()
 
+    # CINEMA WORLD membership is account-wide. If the monthly subscription
+    # is no longer active, block watch/download access until the subscription
+    # is active again. The account itself is not deleted.
+    if customer_id and not customer_has_active_subscription(customer_id):
+        return {
+            "watch": False,
+            "download": False,
+            "premium": False,
+        }
+
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
@@ -3546,7 +3556,33 @@ def customer_has_completed_initial_payment(customer_id=None):
             FROM customer_subscriptions
             WHERE customer_id = %s
               AND auth_status = 'SUCCESS'
-              AND status IN ('ACTIVE', 'BANK_APPROVAL_PENDING')
+              AND status = 'ACTIVE'
+            LIMIT 1
+            """,
+            (customer_id,),
+        )
+        return bool(cur.fetchone())
+    finally:
+        conn.close()
+
+
+def customer_has_active_subscription(customer_id=None):
+    customer_id = customer_id or session.get("customer_id")
+    if not customer_id:
+        return False
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT 1
+            FROM customer_subscriptions
+            WHERE customer_id = %s
+              AND auth_status = 'SUCCESS'
+              AND status = 'ACTIVE'
+              AND premium_until IS NOT NULL
+              AND premium_until > NOW()
+            ORDER BY id DESC
             LIMIT 1
             """,
             (customer_id,),
@@ -3813,10 +3849,12 @@ def cashfree_subscription_return():
         status=str(result.get("subscription_status") or "").upper()
         auth=(result.get("authorization_details") or result.get("authorisation_details") or {})
         auth_status=str(auth.get("authorization_status") or "").upper()
-        if status in {"ACTIVE", "BANK_APPROVAL_PENDING"} and auth_status in {"ACTIVE", "SUCCESS"}:
+        if status == "ACTIVE" and auth_status in {"ACTIVE", "SUCCESS"}:
             activate_customer_subscription(customer_id, subscription_id, "ACTIVE")
             session["customer_id"]=customer_id; session["customer_logged_in"]=True
             flash("Membership activated successfully.","success")
+            # Never send the customer to public Home after the first payment.
+            # Successful ₹1 authorization leads directly to the full movie dashboard.
             return redirect(url_for("member_home"))
         flash("Authorization is still pending. Please complete the Cashfree checkout.","error")
     except Exception as exc:
@@ -3874,7 +3912,7 @@ def cashfree_subscription_webhook():
 @customer_login_required
 def member_home():
     customer_id = session.get("customer_id")
-    if not customer_has_completed_initial_payment(customer_id):
+    if not customer_has_active_subscription(customer_id):
         return redirect(url_for("membership_start"))
     movies = get_member_movies_data()
     saved_movies = [m for m in movies if m.get("in_my_list")]
