@@ -1,5 +1,4 @@
 import os
-import threading
 import json
 import secrets
 import mimetypes
@@ -8,6 +7,8 @@ import time
 import base64
 import hashlib
 import hmac
+import csv
+import io
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
@@ -16,7 +17,6 @@ from urllib.error import HTTPError, URLError
 
 import boto3
 import psycopg2
-from psycopg2 import pool as psycopg2_pool
 from psycopg2.extras import RealDictCursor
 from botocore.client import Config
 
@@ -34,7 +34,6 @@ from flask import (
 )
 
 from werkzeug.utils import secure_filename
-from werkzeug.security import generate_password_hash, check_password_hash
 
 
 # ============================================================
@@ -367,105 +366,17 @@ def validate_r2_key(key):
 # DATABASE
 # ============================================================
 
-# Reuse PostgreSQL connections inside each Gunicorn worker instead of
-# opening a brand-new TLS/database connection for every query.  The public
-# get_db() API stays the same, so the rest of the application is unchanged.
-_DB_POOL = None
-_DB_POOL_LOCK = threading.Lock()
-
-
-class _PooledConnection:
-    def __init__(self, db_pool, conn, dict_rows=False):
-        self._db_pool = db_pool
-        self._conn = conn
-        self._dict_rows = dict_rows
-        self._returned = False
-
-    def cursor(self, *args, **kwargs):
-        if self._dict_rows and "cursor_factory" not in kwargs:
-            kwargs["cursor_factory"] = RealDictCursor
-        return self._conn.cursor(*args, **kwargs)
-
-    def close(self):
-        if self._returned:
-            return
-
-        conn = self._conn
-        self._returned = True
-        self._conn = None
-
-        try:
-            if conn is not None and not conn.closed:
-                # A request that did not commit may have left an open or
-                # failed transaction. Reset it before another request uses
-                # this pooled connection.
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
-
-            if conn is not None:
-                self._db_pool.putconn(
-                    conn,
-                    close=bool(conn.closed),
-                )
-        except Exception:
-            try:
-                if conn is not None and not conn.closed:
-                    conn.close()
-            except Exception:
-                pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-        return False
-
-    def __getattr__(self, name):
-        conn = object.__getattribute__(self, "_conn")
-        if conn is None:
-            raise RuntimeError("Database connection is already closed.")
-        return getattr(conn, name)
-
-
-def _get_db_pool():
-    global _DB_POOL
-
-    if _DB_POOL is not None:
-        return _DB_POOL
-
+def get_db(dict_rows=False):
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL is not configured."
         )
 
-    with _DB_POOL_LOCK:
-        if _DB_POOL is None:
-            _DB_POOL = psycopg2_pool.ThreadedConnectionPool(
-                1,
-                5,
-                DATABASE_URL,
-            )
-
-    return _DB_POOL
-
-
-def get_db(dict_rows=False):
-    db_pool = _get_db_pool()
-
-    try:
-        conn = db_pool.getconn()
-    except Exception as exc:
-        raise RuntimeError(
-            "Unable to obtain a database connection: " + str(exc)
-        ) from exc
-
-    return _PooledConnection(
-        db_pool,
-        conn,
-        dict_rows=dict_rows,
+    return psycopg2.connect(
+        DATABASE_URL,
+        cursor_factory=(
+            RealDictCursor if dict_rows else None
+        ),
     )
 
 
@@ -551,11 +462,6 @@ def init_db():
         cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS mobile TEXT
-        """)
-
-        cur.execute("""
-            ALTER TABLE customer_users
-            ADD COLUMN IF NOT EXISTS password_hash TEXT
         """)
 
         # Mobile OTP login uses the verified mobile as the primary login identity.
@@ -976,7 +882,7 @@ def send_otp_email(email, otp):
         "font-family:Arial,sans-serif;color:#ffffff;\">"
         "<div style=\"max-width:520px;margin:auto;background:#121212;"
         "border:1px solid #2b2b2b;border-radius:16px;padding:28px;\">"
-        "<h2 style=\"margin:0 0 12px;color:#E50914;\">CINEMA WORLD</h2>"
+        "<h2 style=\"margin:0 0 12px;color:#ffc400;\">CINEMA WORLD</h2>"
         "<p style=\"color:#dddddd;\">Your login verification code is:</p>"
         "<div style=\"font-size:34px;font-weight:700;letter-spacing:8px;"
         "color:#ffffff;background:#1d1d1d;border-radius:12px;padding:18px;"
@@ -1299,57 +1205,39 @@ def verify_mobile_otp(mobile, otp):
 
 
 def bind_customer_mobile(mobile):
-    """Connect a verified mobile to exactly one customer account."""
+    """Create/restore a customer identity after mobile OTP verification.
+
+    A mobile number is not a unique account key. Every new verified login can
+    have its own customer_id; payment and subscription records remain linked
+    to that customer_id.
+    """
     mobile = normalize_mobile(mobile)
-    old_customer_id = session.get("customer_id")
+    customer_id = "tm_" + secrets.token_hex(16)
 
-    if not old_customer_id:
-        old_customer_id = "tm_" + secrets.token_hex(16)
-
-    conn = get_db(dict_rows=True)
+    conn = get_db()
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT id, customer_id
-            FROM customer_users
-            WHERE mobile = %s
-            ORDER BY id ASC
-            LIMIT 1
-            FOR UPDATE
+            INSERT INTO customer_users
+            (email, customer_id, mobile, last_login_at)
+            VALUES(NULL, %s, %s, NOW())
             """,
-            (mobile,),
+            (customer_id, mobile),
         )
-        user = cur.fetchone()
-
-        if user:
-            target_customer_id = user["customer_id"]
-            if old_customer_id != target_customer_id:
-                cur.execute("UPDATE customer_access SET customer_id = %s WHERE customer_id = %s", (target_customer_id, old_customer_id))
-                cur.execute("UPDATE payment_orders SET customer_id = %s WHERE customer_id = %s", (target_customer_id, old_customer_id))
-            cur.execute("UPDATE customer_users SET last_login_at = NOW() WHERE id = %s", (user["id"],))
-        else:
-            target_customer_id = old_customer_id
-            cur.execute(
-                """
-                INSERT INTO customer_users
-                (email, customer_id, mobile, last_login_at)
-                VALUES(NULL, %s, %s, NOW())
-                """,
-                (target_customer_id, mobile),
-            )
-
         conn.commit()
+        cur.close()
     except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
 
-    session["customer_id"] = target_customer_id
+    session["customer_id"] = customer_id
     session["customer_logged_in"] = True
     session["customer_mobile"] = mobile
-    return target_customer_id
+    session["customer_email"] = ""
+    return customer_id
 
 
 @app.route("/login/request-mobile-otp", methods=["POST"])
@@ -1512,10 +1400,8 @@ def verify_mobile_otp_route():
 
     session.pop("otp_mobile", None)
     session.pop("otp_mobile_sent_at", None)
-    session["password_setup_customer_id"] = session.get("customer_id")
-    session["login_identifier"] = mobile
-    flash("Mobile verified. Ab password set karo.", "success")
-    return redirect(url_for("customer_set_password"))
+    flash("Mobile number verified. Welcome to CINEMA WORLD!", "success")
+    return redirect(url_for("user_details"))
 
 
 def bind_customer_email(email):
@@ -2023,10 +1909,14 @@ def verify_otp():
         None,
     )
 
-    session["password_setup_customer_id"] = session.get("customer_id")
-    session["login_identifier"] = email
-    flash("Email verified. Ab password set karo.", "success")
-    return redirect(url_for("customer_set_password"))
+    flash(
+        "Email verified. Welcome to CINEMA WORLD!",
+        "success",
+    )
+
+    return redirect(
+        url_for("user_details")
+    )
 
 
 # ============================================================
@@ -2088,16 +1978,6 @@ def verify_stream_token(token, movie_id):
 
 def access_for_movie(movie_id):
     customer_id = get_customer_id()
-
-    # CINEMA WORLD membership is account-wide. If the monthly subscription
-    # is no longer active, block watch/download access until the subscription
-    # is active again. The account itself is not deleted.
-    if customer_id and not customer_has_active_subscription(customer_id):
-        return {
-            "watch": False,
-            "download": False,
-            "premium": False,
-        }
 
     conn = get_db(dict_rows=True)
     try:
@@ -3107,311 +2987,29 @@ def download_movie(movie_id):
 
 
 # ============================================================
-# CUSTOMER PASSWORD LOGIN
-# ============================================================
-
-def find_customer_by_identifier(identifier):
-    identifier = str(identifier or "").strip()
-    if "@" in identifier:
-        identifier = normalize_email(identifier)
-        if not valid_email(identifier):
-            return None
-        where = "LOWER(email) = LOWER(%s)"
-    else:
-        identifier = normalize_mobile(identifier)
-        if not valid_mobile(identifier):
-            return None
-        where = "mobile = %s"
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            f"""
-            SELECT id, customer_id, email, mobile, password_hash
-            FROM customer_users
-            WHERE {where}
-            ORDER BY id ASC
-            LIMIT 1
-            """,
-            (identifier,),
-        )
-        row = cur.fetchone()
-        cur.close()
-        return row
-    finally:
-        conn.close()
-
-
-def complete_customer_login(row):
-    customer_id = row["customer_id"]
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE customer_users SET last_login_at = NOW() WHERE id = %s",
-            (row["id"],),
-        )
-        conn.commit()
-        cur.close()
-    finally:
-        conn.close()
-
-    session["customer_id"] = customer_id
-    session["customer_logged_in"] = True
-    session["customer_email"] = row.get("email") or ""
-    session["customer_mobile"] = row.get("mobile") or ""
-    return customer_id
-
-
-def start_password_or_otp(identifier):
-    identifier = str(identifier or "").strip()
-    row = find_customer_by_identifier(identifier)
-
-    if row and row.get("password_hash"):
-        session["login_identifier"] = identifier
-        return "password"
-
-    # Existing legacy OTP account without a password, or a brand-new account:
-    # verify identity once, then force Set Password.
-    if "@" in identifier:
-        email = normalize_email(identifier)
-        if valid_email(email):
-            return request_email_otp_for_login(email)
-    else:
-        mobile = normalize_mobile(identifier)
-        if valid_mobile(mobile):
-            return request_mobile_otp_for_login(mobile)
-
-    return "error"
-
-
-def request_email_otp_for_login(email):
-    conn = get_db(dict_rows=True)
-    otp_row_id = None
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT created_at FROM email_otps
-            WHERE email = %s AND used_at IS NULL
-            ORDER BY id DESC LIMIT 1
-            """,
-            (email,),
-        )
-        previous = cur.fetchone()
-        if previous and previous.get("created_at"):
-            elapsed = (datetime.now() - previous["created_at"]).total_seconds()
-            if elapsed < OTP_RESEND_SECONDS:
-                cur.close()
-                return "otp"
-
-        cur.execute("UPDATE email_otps SET used_at = NOW() WHERE email = %s AND used_at IS NULL", (email,))
-        otp = generate_otp()
-        expires_at = datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
-        cur.execute(
-            """
-            INSERT INTO email_otps (email, otp_hash, expires_at, attempts)
-            VALUES(%s, %s, %s, 0) RETURNING id
-            """,
-            (email, otp_hash(email, otp), expires_at),
-        )
-        otp_row_id = cur.fetchone()["id"]
-        conn.commit()
-        cur.close()
-    except Exception:
-        conn.rollback()
-        conn.close()
-        raise
-    finally:
-        try: conn.close()
-        except Exception: pass
-
-    try:
-        send_otp_email(email, otp)
-    except Exception:
-        conn2 = get_db()
-        try:
-            cur2 = conn2.cursor()
-            cur2.execute("UPDATE email_otps SET used_at = NOW() WHERE id = %s", (otp_row_id,))
-            conn2.commit()
-            cur2.close()
-        finally:
-            conn2.close()
-        raise
-
-    session["otp_email"] = email
-    session["otp_sent_at"] = datetime.now().isoformat()
-    session["login_identifier"] = email
-    return "otp"
-
-
-def request_mobile_otp_for_login(mobile):
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT created_at FROM mobile_otps
-            WHERE mobile = %s AND used_at IS NULL
-            ORDER BY id DESC LIMIT 1
-            """,
-            (mobile,),
-        )
-        previous = cur.fetchone()
-        cur.close()
-    finally:
-        conn.close()
-
-    if previous and previous.get("created_at"):
-        elapsed = (datetime.now() - previous["created_at"]).total_seconds()
-        if elapsed < OTP_RESEND_SECONDS:
-            return "otp"
-
-    request_id = send_mobile_otp(mobile)
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute("UPDATE mobile_otps SET used_at = NOW() WHERE mobile = %s AND used_at IS NULL", (mobile,))
-        cur.execute(
-            "INSERT INTO mobile_otps (mobile, request_id, expires_at, attempts) VALUES(%s, %s, %s, 0)",
-            (mobile, request_id, datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)),
-        )
-        conn.commit()
-        cur.close()
-    finally:
-        conn.close()
-
-    session["otp_mobile"] = mobile
-    session["otp_mobile_sent_at"] = datetime.now().isoformat()
-    session["login_identifier"] = mobile
-    return "otp"
-
-
-@app.route("/login/start", methods=["POST"])
-def login_start():
-    identifier = (request.form.get("identifier") or "").strip()
-    if not identifier:
-        flash("Email ya mobile number enter karo.", "error")
-        return redirect(url_for("login"))
-
-    try:
-        result = start_password_or_otp(identifier)
-    except Exception as exc:
-        print("LOGIN START ERROR:", repr(exc))
-        flash("Login start nahi ho paya. Please try again.", "error")
-        return redirect(url_for("login"))
-
-    if result == "password":
-        return redirect(url_for("login", step="password"))
-    if result == "otp":
-        return redirect(url_for("login", step="otp"))
-
-    flash("Valid email ya 10-digit mobile number enter karo.", "error")
-    return redirect(url_for("login"))
-
-
-@app.route("/login/password", methods=["POST"])
-def customer_password_login():
-    identifier = (request.form.get("identifier") or session.get("login_identifier") or "").strip()
-    password = request.form.get("password") or ""
-    row = find_customer_by_identifier(identifier)
-
-    if not row or not row.get("password_hash"):
-        flash("Password set nahi hai. OTP verification required hai.", "error")
-        return redirect(url_for("login"))
-
-    try:
-        ok = check_password_hash(str(row["password_hash"]), password)
-    except Exception:
-        ok = False
-
-    if not ok:
-        flash("Wrong password.", "error")
-        return redirect(url_for("login", step="password"))
-
-    complete_customer_login(row)
-    session.pop("login_identifier", None)
-    if customer_has_completed_initial_payment(row["customer_id"]):
-        return redirect(url_for("member_home"))
-    return redirect(url_for("user_details"))
-
-
-@app.route("/login/set-password", methods=["GET", "POST"])
-def customer_set_password():
-    customer_id = session.get("password_setup_customer_id")
-    if not customer_id:
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        password = request.form.get("password") or ""
-        confirm = request.form.get("confirm_password") or ""
-        if len(password) < 6:
-            flash("Password kam se kam 6 characters ka hona chahiye.", "error")
-            return redirect(url_for("customer_set_password"))
-        if password != confirm:
-            flash("Passwords match nahi karte.", "error")
-            return redirect(url_for("customer_set_password"))
-
-        conn = get_db(dict_rows=True)
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT id, customer_id, email, mobile FROM customer_users WHERE customer_id = %s LIMIT 1",
-                (customer_id,),
-            )
-            row = cur.fetchone()
-            if not row:
-                conn.rollback()
-                cur.close()
-                flash("Account nahi mila. Please login again.", "error")
-                return redirect(url_for("login"))
-
-            cur.execute(
-                "UPDATE customer_users SET password_hash = %s, last_login_at = NOW() WHERE customer_id = %s",
-                (generate_password_hash(password), customer_id),
-            )
-            conn.commit()
-            cur.close()
-        finally:
-            conn.close()
-
-        session["customer_id"] = customer_id
-        session["customer_logged_in"] = True
-        session["customer_email"] = row.get("email") or ""
-        session["customer_mobile"] = row.get("mobile") or ""
-        session.pop("password_setup_customer_id", None)
-        session.pop("login_identifier", None)
-        flash("Password set ho gaya. Welcome to CINEMA WORLD!", "success")
-        if customer_has_completed_initial_payment(customer_id):
-            return redirect(url_for("member_home"))
-        return redirect(url_for("user_details"))
-
-    return render_template("login.html", step="set_password", mobile="", masked_mobile="", email=session.get("login_identifier", ""), masked_email="")
-
-
-# ============================================================
 # LOGIN
 # ============================================================
 
-@app.route("/login", methods=["GET"])
+@app.route(
+    "/login",
+    methods=["GET"],
+)
 def login():
     step = str(request.args.get("step", "")).strip().lower()
-    if step not in {"mobile", "otp", "password", "set_password"}:
-        step = "mobile"
 
-    identifier = request.args.get("identifier", "") or session.get("login_identifier", "")
-    email = identifier if "@" in identifier else session.get("otp_email", "")
-    mobile = normalize_mobile(identifier if "@" not in identifier else session.get("otp_mobile", ""))
+    if step not in {"mobile", "otp"}:
+        step = "otp" if session.get("otp_mobile") else "mobile"
+
+    mobile = normalize_mobile(
+        request.args.get("mobile", "")
+        or session.get("otp_mobile", "")
+    )
 
     return render_template(
         "login.html",
         step=step,
-        identifier=identifier,
-        email=email,
         mobile=mobile,
-        masked_email=mask_email(email) if email else "",
-        masked_mobile=mask_mobile(mobile) if mobile else "",
+        masked_mobile=mask_mobile(mobile),
     )
 
 
@@ -3476,26 +3074,9 @@ def user_details():
             flash("Please enter a valid 10-digit mobile number.", "error")
             return redirect(url_for("user_details"))
 
-        conn = get_db(dict_rows=True)
+        conn = get_db()
         try:
             cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT customer_id
-                FROM customer_users
-                WHERE mobile = %s
-                  AND customer_id <> %s
-                LIMIT 1
-                """,
-                (mobile, customer_id),
-            )
-            conflict = cur.fetchone()
-            if conflict:
-                conn.rollback()
-                cur.close()
-                flash("Ye mobile number kisi aur CINEMA WORLD account se linked hai.", "error")
-                return redirect(url_for("user_details"))
-
             cur.execute(
                 """
                 UPDATE customer_users
@@ -3577,33 +3158,7 @@ def customer_has_completed_initial_payment(customer_id=None):
             FROM customer_subscriptions
             WHERE customer_id = %s
               AND auth_status = 'SUCCESS'
-              AND status = 'ACTIVE'
-            LIMIT 1
-            """,
-            (customer_id,),
-        )
-        return bool(cur.fetchone())
-    finally:
-        conn.close()
-
-
-def customer_has_active_subscription(customer_id=None):
-    customer_id = customer_id or session.get("customer_id")
-    if not customer_id:
-        return False
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT 1
-            FROM customer_subscriptions
-            WHERE customer_id = %s
-              AND auth_status = 'SUCCESS'
-              AND status = 'ACTIVE'
-              AND premium_until IS NOT NULL
-              AND premium_until > NOW()
-            ORDER BY id DESC
+              AND status IN ('ACTIVE', 'BANK_APPROVAL_PENDING')
             LIMIT 1
             """,
             (customer_id,),
@@ -3870,12 +3425,10 @@ def cashfree_subscription_return():
         status=str(result.get("subscription_status") or "").upper()
         auth=(result.get("authorization_details") or result.get("authorisation_details") or {})
         auth_status=str(auth.get("authorization_status") or "").upper()
-        if status == "ACTIVE" and auth_status in {"ACTIVE", "SUCCESS"}:
+        if status in {"ACTIVE", "BANK_APPROVAL_PENDING"} and auth_status in {"ACTIVE", "SUCCESS"}:
             activate_customer_subscription(customer_id, subscription_id, "ACTIVE")
             session["customer_id"]=customer_id; session["customer_logged_in"]=True
             flash("Membership activated successfully.","success")
-            # Never send the customer to public Home after the first payment.
-            # Successful ₹1 authorization leads directly to the full movie dashboard.
             return redirect(url_for("member_home"))
         flash("Authorization is still pending. Please complete the Cashfree checkout.","error")
     except Exception as exc:
@@ -3933,7 +3486,7 @@ def cashfree_subscription_webhook():
 @customer_login_required
 def member_home():
     customer_id = session.get("customer_id")
-    if not customer_has_active_subscription(customer_id):
+    if not customer_has_completed_initial_payment(customer_id):
         return redirect(url_for("membership_start"))
     movies = get_member_movies_data()
     saved_movies = [m for m in movies if m.get("in_my_list")]
@@ -3994,158 +3547,298 @@ def api_my_list(movie_id):
 
 
 # ============================================================
-# ADMIN DASHBOARD MISSING ENDPOINTS
-# Only added to prevent admin.html BuildError
-# ============================================================
-
-@app.route("/admin/users")
-@admin_required
-def admin_users():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/payments")
-@admin_required
-def admin_payments():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/subscriptions")
-@admin_required
-def admin_subscriptions():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/watch-activity")
-@admin_required
-def admin_watch_activity():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/analytics")
-@admin_required
-def admin_analytics():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/live-activity")
-@admin_required
-def admin_live_activity():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/notifications")
-@admin_required
-def admin_notifications():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/reports")
-@admin_required
-def admin_reports():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/r2")
-@admin_required
-def admin_r2():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/system-health")
-@admin_required
-def admin_system_health():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/security")
-@admin_required
-def admin_security():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/settings")
-@admin_required
-def admin_settings():
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/search")
-@admin_required
-def admin_search():
-    return redirect(url_for("admin"))
-# ============================================================
 # ADMIN
 # ============================================================
 
 @app.route("/admin")
 @admin_required
 def admin():
+    """CINEMA WORLD owner control center.
 
-    conn = get_db(
-        dict_rows=True
-    )
+    All admin modules use this single verified dashboard so the existing
+    application does not need a large collection of fragile template routes.
+    Each module is backed by the current PostgreSQL tables where available.
+    """
+    section = (request.args.get("section") or "dashboard").strip().lower()
+    allowed_sections = {
+        "dashboard", "movies", "users", "payments", "subscriptions",
+        "watch", "analytics", "live", "ads", "notifications", "reports",
+        "r2", "health", "security", "settings", "search",
+    }
+    if section not in allowed_sections:
+        section = "dashboard"
+
+    q = (request.args.get("q") or "").strip()
+    conn = get_db(dict_rows=True)
+    data = {
+        "users": [], "payments": [], "subscriptions": [], "access": [],
+        "live_events": [], "search_movies": [], "search_users": [],
+        "search_payments": [], "top_movies": [], "daily_views": [],
+        "r2_objects": [], "r2_error": "",
+    }
+
+    def safe_fetch(sql, params=()):
+        try:
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            cur.close()
+            return rows
+        except Exception as exc:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            print("ADMIN QUERY ERROR:", repr(exc))
+            return []
 
     try:
-
-        cur = conn.cursor()
-
-        cur.execute(
-            """
+        movies = safe_fetch("SELECT * FROM movies ORDER BY id DESC")
+        stats_rows = safe_fetch("""
             SELECT
                 COUNT(*) AS total_movies,
-                COALESCE(SUM(views),0)
-                AS total_views
+                COALESCE(SUM(views),0) AS total_views
             FROM movies
-            """
-        )
+        """)
+        stats = stats_rows[0] if stats_rows else {"total_movies": 0, "total_views": 0}
 
-        stats = cur.fetchone()
+        user_stats = safe_fetch("SELECT COUNT(*) AS total_users FROM customer_users")
+        total_users = int((user_stats[0] or {}).get("total_users") or 0) if user_stats else 0
 
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            ORDER BY id DESC
-            """
-        )
+        revenue_stats = safe_fetch("""
+            SELECT COALESCE(SUM(amount),0) AS total_revenue
+            FROM payment_orders
+            WHERE UPPER(COALESCE(status,'')) IN ('PAID','SUCCESS','COMPLETED')
+        """)
+        total_revenue = float((revenue_stats[0] or {}).get("total_revenue") or 0) if revenue_stats else 0
 
-        movies = cur.fetchall()
+        active_sub_stats = safe_fetch("""
+            SELECT COUNT(*) AS active_subscriptions
+            FROM customer_subscriptions
+            WHERE UPPER(COALESCE(status,'')) IN ('ACTIVE','BANK_APPROVAL_PENDING')
+        """)
+        active_subscriptions = int((active_sub_stats[0] or {}).get("active_subscriptions") or 0) if active_sub_stats else 0
 
-        cur.close()
-
+        data["users"] = safe_fetch("""
+            SELECT id,email,customer_id,full_name,mobile,created_at,last_login_at
+            FROM customer_users ORDER BY id DESC LIMIT 100
+        """)
+        data["payments"] = safe_fetch("""
+            SELECT order_id,customer_id,movie_id,payment_type,amount,status,created_at,paid_at
+            FROM payment_orders ORDER BY created_at DESC LIMIT 100
+        """)
+        data["subscriptions"] = safe_fetch("""
+            SELECT id,customer_id,subscription_id,cf_subscription_id,
+                   status,auth_status,premium_until,created_at,updated_at
+            FROM customer_subscriptions ORDER BY created_at DESC LIMIT 100
+        """)
+        data["access"] = safe_fetch("""
+            SELECT ca.customer_id, ca.movie_id, m.title,
+                   ca.watch_until, ca.download_until, ca.premium_until, ca.created_at
+            FROM customer_access ca
+            LEFT JOIN movies m ON m.id = ca.movie_id
+            ORDER BY ca.created_at DESC LIMIT 100
+        """)
+        data["top_movies"] = safe_fetch("""
+            SELECT id,title,category,COALESCE(views,0) AS views
+            FROM movies ORDER BY COALESCE(views,0) DESC, id DESC LIMIT 10
+        """)
+        data["live_events"] = safe_fetch("""
+            SELECT 'payment' AS event_type, order_id AS ref,
+                   customer_id, status, amount, created_at AS event_at
+            FROM payment_orders
+            ORDER BY created_at DESC LIMIT 20
+        """)
+        if q:
+            like = "%" + q + "%"
+            data["search_movies"] = safe_fetch("""
+                SELECT id,title,category,views FROM movies
+                WHERE CAST(id AS TEXT) ILIKE %s OR title ILIKE %s OR category ILIKE %s
+                ORDER BY id DESC LIMIT 50
+            """, (like, like, like))
+            data["search_users"] = safe_fetch("""
+                SELECT id,email,customer_id,full_name,mobile,created_at,last_login_at
+                FROM customer_users
+                WHERE COALESCE(email,'') ILIKE %s
+                   OR COALESCE(mobile,'') ILIKE %s
+                   OR COALESCE(full_name,'') ILIKE %s
+                   OR customer_id ILIKE %s
+                ORDER BY id DESC LIMIT 50
+            """, (like, like, like, like))
+            data["search_payments"] = safe_fetch("""
+                SELECT order_id,customer_id,movie_id,payment_type,amount,status,created_at,paid_at
+                FROM payment_orders
+                WHERE order_id ILIKE %s OR customer_id ILIKE %s
+                ORDER BY created_at DESC LIMIT 50
+            """, (like, like))
     finally:
         conn.close()
 
     for movie in movies:
-
         try:
-
-            movie["poster_url"] = (
-                media_url(
-                    movie.get("poster")
-                )
-                if movie.get("poster")
-                else None
-            )
-
+            movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
         except Exception:
-
             movie["poster_url"] = None
+
+    if section == "r2":
+        try:
+            result = get_r2_client().list_objects_v2(Bucket=R2_BUCKET, MaxKeys=100)
+            for obj in result.get("Contents", []):
+                data["r2_objects"].append({
+                    "key": obj.get("Key"),
+                    "size": obj.get("Size") or 0,
+                    "modified": obj.get("LastModified"),
+                })
+        except Exception as exc:
+            data["r2_error"] = str(exc)
 
     return render_template(
         "admin.html",
+        section=section,
+        q=q,
         movies=movies,
-        total_movies=(
-            stats["total_movies"]
-            if stats else 0
-        ),
-        total_views=(
-            stats["total_views"]
-            if stats else 0
-        ),
+        total_movies=int(stats.get("total_movies") or 0),
+        total_views=int(stats.get("total_views") or 0),
+        total_users=total_users,
+        total_revenue=total_revenue,
+        active_subscriptions=active_subscriptions,
         ads=get_ads(),
+        config={
+            "SECRET_KEY": bool(os.environ.get("SECRET_KEY", "").strip()),
+            "CASHFREE_APP_ID": bool(CASHFREE_APP_ID),
+            "CASHFREE_SECRET_KEY": bool(CASHFREE_SECRET_KEY),
+            "R2_ACCOUNT_ID": bool(R2_ACCOUNT_ID),
+            "R2_ACCESS_KEY_ID": bool(R2_ACCESS_KEY_ID),
+            "R2_SECRET_ACCESS_KEY": bool(R2_SECRET_ACCESS_KEY),
+            "R2_ENDPOINT": bool(R2_ENDPOINT),
+            "BREVO_API_KEY": bool(BREVO_API_KEY),
+            "BREVO_FROM": bool(BREVO_FROM),
+            "MESSAGE_CENTRAL_AUTH_TOKEN": bool(MESSAGE_CENTRAL_AUTH_TOKEN),
+            "R2_BUCKET": R2_BUCKET,
+        },
+        **data,
     )
+
+
+def _admin_section(name):
+    return redirect(url_for("admin", section=name))
+
+
+@app.route("/admin/users")
+@admin_required
+def admin_users():
+    return _admin_section("users")
+
+
+@app.route("/admin/payments")
+@admin_required
+def admin_payments():
+    return _admin_section("payments")
+
+
+@app.route("/admin/subscriptions")
+@admin_required
+def admin_subscriptions():
+    return _admin_section("subscriptions")
+
+
+@app.route("/admin/watch-activity")
+@admin_required
+def admin_watch_activity():
+    return _admin_section("watch")
+
+
+@app.route("/admin/analytics")
+@admin_required
+def admin_analytics():
+    return _admin_section("analytics")
+
+
+@app.route("/admin/live-activity")
+@admin_required
+def admin_live_activity():
+    return _admin_section("live")
+
+
+@app.route("/admin/notifications")
+@admin_required
+def admin_notifications():
+    return _admin_section("notifications")
+
+
+@app.route("/admin/reports")
+@admin_required
+def admin_reports():
+    return _admin_section("reports")
+
+
+@app.route("/admin/r2")
+@admin_required
+def admin_r2():
+    return _admin_section("r2")
+
+
+@app.route("/admin/system-health")
+@admin_required
+def admin_system_health():
+    return _admin_section("health")
+
+
+@app.route("/admin/security")
+@admin_required
+def admin_security():
+    return _admin_section("security")
+
+
+@app.route("/admin/settings")
+@admin_required
+def admin_settings():
+    return _admin_section("settings")
+
+
+@app.route("/admin/search")
+@admin_required
+def admin_search():
+    return redirect(url_for("admin", section="search", q=request.args.get("q", "")))
+
+
+@app.route("/admin/report/<report_name>.csv")
+@admin_required
+def admin_report_csv(report_name):
+    report_name = str(report_name or "").lower()
+    allowed = {"movies", "users", "payments", "subscriptions", "access"}
+    if report_name not in allowed:
+        abort(404)
+
+    queries = {
+        "movies": "SELECT id,title,category,views,created_at FROM movies ORDER BY id DESC",
+        "users": "SELECT id,email,customer_id,full_name,mobile,created_at,last_login_at FROM customer_users ORDER BY id DESC",
+        "payments": "SELECT order_id,customer_id,movie_id,payment_type,amount,status,created_at,paid_at FROM payment_orders ORDER BY created_at DESC",
+        "subscriptions": "SELECT id,customer_id,subscription_id,cf_subscription_id,status,auth_status,premium_until,created_at,updated_at FROM customer_subscriptions ORDER BY created_at DESC",
+        "access": "SELECT customer_id,movie_id,watch_until,download_until,premium_until,created_at FROM customer_access ORDER BY created_at DESC",
+    }
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(queries[report_name])
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    if rows:
+        headers = list(rows[0].keys())
+        writer.writerow(headers)
+        for row in rows:
+            writer.writerow([row.get(h) for h in headers])
+    else:
+        writer.writerow(["No data"])
+
+    response = Response(output.getvalue(), mimetype="text/csv; charset=utf-8")
+    response.headers["Content-Disposition"] = f'attachment; filename="cinema-world-{report_name}.csv"'
+    return response
 
 
 # ============================================================
