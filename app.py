@@ -976,7 +976,7 @@ def send_otp_email(email, otp):
         "font-family:Arial,sans-serif;color:#ffffff;\">"
         "<div style=\"max-width:520px;margin:auto;background:#121212;"
         "border:1px solid #2b2b2b;border-radius:16px;padding:28px;\">"
-        "<h2 style=\"margin:0 0 12px;color:#ffc400;\">CINEMA WORLD</h2>"
+        "<h2 style=\"margin:0 0 12px;color:#E50914;\">CINEMA WORLD</h2>"
         "<p style=\"color:#dddddd;\">Your login verification code is:</p>"
         "<div style=\"font-size:34px;font-weight:700;letter-spacing:8px;"
         "color:#ffffff;background:#1d1d1d;border-radius:12px;padding:18px;"
@@ -3332,7 +3332,9 @@ def customer_password_login():
 
     complete_customer_login(row)
     session.pop("login_identifier", None)
-    return redirect(url_for("home"))
+    if customer_has_completed_initial_payment(row["customer_id"]):
+        return redirect(url_for("member_home"))
+    return redirect(url_for("user_details"))
 
 
 @app.route("/login/set-password", methods=["GET", "POST"])
@@ -3381,7 +3383,9 @@ def customer_set_password():
         session.pop("password_setup_customer_id", None)
         session.pop("login_identifier", None)
         flash("Password set ho gaya. Welcome to CINEMA WORLD!", "success")
-        return redirect(url_for("home"))
+        if customer_has_completed_initial_payment(customer_id):
+            return redirect(url_for("member_home"))
+        return redirect(url_for("user_details"))
 
     return render_template("login.html", step="set_password", mobile="", masked_mobile="", email=session.get("login_identifier", ""), masked_email="")
 
@@ -3472,9 +3476,26 @@ def user_details():
             flash("Please enter a valid 10-digit mobile number.", "error")
             return redirect(url_for("user_details"))
 
-        conn = get_db()
+        conn = get_db(dict_rows=True)
         try:
             cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT customer_id
+                FROM customer_users
+                WHERE mobile = %s
+                  AND customer_id <> %s
+                LIMIT 1
+                """,
+                (mobile, customer_id),
+            )
+            conflict = cur.fetchone()
+            if conflict:
+                conn.rollback()
+                cur.close()
+                flash("Ye mobile number kisi aur CINEMA WORLD account se linked hai.", "error")
+                return redirect(url_for("user_details"))
+
             cur.execute(
                 """
                 UPDATE customer_users
