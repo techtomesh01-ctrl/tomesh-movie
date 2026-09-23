@@ -1,4 +1,5 @@
 import os
+import threading
 import json
 import secrets
 import mimetypes
@@ -7,8 +8,6 @@ import time
 import base64
 import hashlib
 import hmac
-import csv
-import io
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
@@ -17,6 +16,7 @@ from urllib.error import HTTPError, URLError
 
 import boto3
 import psycopg2
+from psycopg2 import pool as psycopg2_pool
 from psycopg2.extras import RealDictCursor
 from botocore.client import Config
 
@@ -70,6 +70,10 @@ ADMIN_PASSWORD = os.environ.get(
 DATABASE_URL = os.environ.get(
     "DATABASE_URL", ""
 ).strip()
+
+# Keep the existing PostgreSQL settings, but cap a temporary connection wait.
+if DATABASE_URL and "connect_timeout=" not in DATABASE_URL.lower():
+    DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + "connect_timeout=8"
 
 
 # ============================================================
@@ -366,17 +370,105 @@ def validate_r2_key(key):
 # DATABASE
 # ============================================================
 
-def get_db(dict_rows=False):
+# Reuse PostgreSQL connections inside each Gunicorn worker instead of
+# opening a brand-new TLS/database connection for every query.  The public
+# get_db() API stays the same, so the rest of the application is unchanged.
+_DB_POOL = None
+_DB_POOL_LOCK = threading.Lock()
+
+
+class _PooledConnection:
+    def __init__(self, db_pool, conn, dict_rows=False):
+        self._db_pool = db_pool
+        self._conn = conn
+        self._dict_rows = dict_rows
+        self._returned = False
+
+    def cursor(self, *args, **kwargs):
+        if self._dict_rows and "cursor_factory" not in kwargs:
+            kwargs["cursor_factory"] = RealDictCursor
+        return self._conn.cursor(*args, **kwargs)
+
+    def close(self):
+        if self._returned:
+            return
+
+        conn = self._conn
+        self._returned = True
+        self._conn = None
+
+        try:
+            if conn is not None and not conn.closed:
+                # A request that did not commit may have left an open or
+                # failed transaction. Reset it before another request uses
+                # this pooled connection.
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+
+            if conn is not None:
+                self._db_pool.putconn(
+                    conn,
+                    close=bool(conn.closed),
+                )
+        except Exception:
+            try:
+                if conn is not None and not conn.closed:
+                    conn.close()
+            except Exception:
+                pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        return False
+
+    def __getattr__(self, name):
+        conn = object.__getattribute__(self, "_conn")
+        if conn is None:
+            raise RuntimeError("Database connection is already closed.")
+        return getattr(conn, name)
+
+
+def _get_db_pool():
+    global _DB_POOL
+
+    if _DB_POOL is not None:
+        return _DB_POOL
+
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL is not configured."
         )
 
-    return psycopg2.connect(
-        DATABASE_URL,
-        cursor_factory=(
-            RealDictCursor if dict_rows else None
-        ),
+    with _DB_POOL_LOCK:
+        if _DB_POOL is None:
+            _DB_POOL = psycopg2_pool.ThreadedConnectionPool(
+                1,
+                5,
+                DATABASE_URL,
+            )
+
+    return _DB_POOL
+
+
+def get_db(dict_rows=False):
+    db_pool = _get_db_pool()
+
+    try:
+        conn = db_pool.getconn()
+    except Exception as exc:
+        raise RuntimeError(
+            "Unable to obtain a database connection: " + str(exc)
+        ) from exc
+
+    return _PooledConnection(
+        db_pool,
+        conn,
+        dict_rows=dict_rows,
     )
 
 
@@ -3547,298 +3639,158 @@ def api_my_list(movie_id):
 
 
 # ============================================================
+# ADMIN DASHBOARD MISSING ENDPOINTS
+# Only added to prevent admin.html BuildError
+# ============================================================
+
+@app.route("/admin/users")
+@admin_required
+def admin_users():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/payments")
+@admin_required
+def admin_payments():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/subscriptions")
+@admin_required
+def admin_subscriptions():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/watch-activity")
+@admin_required
+def admin_watch_activity():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/analytics")
+@admin_required
+def admin_analytics():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/live-activity")
+@admin_required
+def admin_live_activity():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/notifications")
+@admin_required
+def admin_notifications():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/reports")
+@admin_required
+def admin_reports():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/r2")
+@admin_required
+def admin_r2():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/system-health")
+@admin_required
+def admin_system_health():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/security")
+@admin_required
+def admin_security():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/settings")
+@admin_required
+def admin_settings():
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/search")
+@admin_required
+def admin_search():
+    return redirect(url_for("admin"))
+# ============================================================
 # ADMIN
 # ============================================================
 
 @app.route("/admin")
 @admin_required
 def admin():
-    """CINEMA WORLD owner control center.
 
-    All admin modules use this single verified dashboard so the existing
-    application does not need a large collection of fragile template routes.
-    Each module is backed by the current PostgreSQL tables where available.
-    """
-    section = (request.args.get("section") or "dashboard").strip().lower()
-    allowed_sections = {
-        "dashboard", "movies", "users", "payments", "subscriptions",
-        "watch", "analytics", "live", "ads", "notifications", "reports",
-        "r2", "health", "security", "settings", "search",
-    }
-    if section not in allowed_sections:
-        section = "dashboard"
-
-    q = (request.args.get("q") or "").strip()
-    conn = get_db(dict_rows=True)
-    data = {
-        "users": [], "payments": [], "subscriptions": [], "access": [],
-        "live_events": [], "search_movies": [], "search_users": [],
-        "search_payments": [], "top_movies": [], "daily_views": [],
-        "r2_objects": [], "r2_error": "",
-    }
-
-    def safe_fetch(sql, params=()):
-        try:
-            cur = conn.cursor()
-            cur.execute(sql, params)
-            rows = cur.fetchall()
-            cur.close()
-            return rows
-        except Exception as exc:
-            try:
-                conn.rollback()
-            except Exception:
-                pass
-            print("ADMIN QUERY ERROR:", repr(exc))
-            return []
+    conn = get_db(
+        dict_rows=True
+    )
 
     try:
-        movies = safe_fetch("SELECT * FROM movies ORDER BY id DESC")
-        stats_rows = safe_fetch("""
+
+        cur = conn.cursor()
+
+        cur.execute(
+            """
             SELECT
                 COUNT(*) AS total_movies,
-                COALESCE(SUM(views),0) AS total_views
+                COALESCE(SUM(views),0)
+                AS total_views
             FROM movies
-        """)
-        stats = stats_rows[0] if stats_rows else {"total_movies": 0, "total_views": 0}
+            """
+        )
 
-        user_stats = safe_fetch("SELECT COUNT(*) AS total_users FROM customer_users")
-        total_users = int((user_stats[0] or {}).get("total_users") or 0) if user_stats else 0
+        stats = cur.fetchone()
 
-        revenue_stats = safe_fetch("""
-            SELECT COALESCE(SUM(amount),0) AS total_revenue
-            FROM payment_orders
-            WHERE UPPER(COALESCE(status,'')) IN ('PAID','SUCCESS','COMPLETED')
-        """)
-        total_revenue = float((revenue_stats[0] or {}).get("total_revenue") or 0) if revenue_stats else 0
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            ORDER BY id DESC
+            """
+        )
 
-        active_sub_stats = safe_fetch("""
-            SELECT COUNT(*) AS active_subscriptions
-            FROM customer_subscriptions
-            WHERE UPPER(COALESCE(status,'')) IN ('ACTIVE','BANK_APPROVAL_PENDING')
-        """)
-        active_subscriptions = int((active_sub_stats[0] or {}).get("active_subscriptions") or 0) if active_sub_stats else 0
+        movies = cur.fetchall()
 
-        data["users"] = safe_fetch("""
-            SELECT id,email,customer_id,full_name,mobile,created_at,last_login_at
-            FROM customer_users ORDER BY id DESC LIMIT 100
-        """)
-        data["payments"] = safe_fetch("""
-            SELECT order_id,customer_id,movie_id,payment_type,amount,status,created_at,paid_at
-            FROM payment_orders ORDER BY created_at DESC LIMIT 100
-        """)
-        data["subscriptions"] = safe_fetch("""
-            SELECT id,customer_id,subscription_id,cf_subscription_id,
-                   status,auth_status,premium_until,created_at,updated_at
-            FROM customer_subscriptions ORDER BY created_at DESC LIMIT 100
-        """)
-        data["access"] = safe_fetch("""
-            SELECT ca.customer_id, ca.movie_id, m.title,
-                   ca.watch_until, ca.download_until, ca.premium_until, ca.created_at
-            FROM customer_access ca
-            LEFT JOIN movies m ON m.id = ca.movie_id
-            ORDER BY ca.created_at DESC LIMIT 100
-        """)
-        data["top_movies"] = safe_fetch("""
-            SELECT id,title,category,COALESCE(views,0) AS views
-            FROM movies ORDER BY COALESCE(views,0) DESC, id DESC LIMIT 10
-        """)
-        data["live_events"] = safe_fetch("""
-            SELECT 'payment' AS event_type, order_id AS ref,
-                   customer_id, status, amount, created_at AS event_at
-            FROM payment_orders
-            ORDER BY created_at DESC LIMIT 20
-        """)
-        if q:
-            like = "%" + q + "%"
-            data["search_movies"] = safe_fetch("""
-                SELECT id,title,category,views FROM movies
-                WHERE CAST(id AS TEXT) ILIKE %s OR title ILIKE %s OR category ILIKE %s
-                ORDER BY id DESC LIMIT 50
-            """, (like, like, like))
-            data["search_users"] = safe_fetch("""
-                SELECT id,email,customer_id,full_name,mobile,created_at,last_login_at
-                FROM customer_users
-                WHERE COALESCE(email,'') ILIKE %s
-                   OR COALESCE(mobile,'') ILIKE %s
-                   OR COALESCE(full_name,'') ILIKE %s
-                   OR customer_id ILIKE %s
-                ORDER BY id DESC LIMIT 50
-            """, (like, like, like, like))
-            data["search_payments"] = safe_fetch("""
-                SELECT order_id,customer_id,movie_id,payment_type,amount,status,created_at,paid_at
-                FROM payment_orders
-                WHERE order_id ILIKE %s OR customer_id ILIKE %s
-                ORDER BY created_at DESC LIMIT 50
-            """, (like, like))
+        cur.close()
+
     finally:
         conn.close()
 
     for movie in movies:
-        try:
-            movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
-        except Exception:
-            movie["poster_url"] = None
 
-    if section == "r2":
         try:
-            result = get_r2_client().list_objects_v2(Bucket=R2_BUCKET, MaxKeys=100)
-            for obj in result.get("Contents", []):
-                data["r2_objects"].append({
-                    "key": obj.get("Key"),
-                    "size": obj.get("Size") or 0,
-                    "modified": obj.get("LastModified"),
-                })
-        except Exception as exc:
-            data["r2_error"] = str(exc)
+
+            movie["poster_url"] = (
+                media_url(
+                    movie.get("poster")
+                )
+                if movie.get("poster")
+                else None
+            )
+
+        except Exception:
+
+            movie["poster_url"] = None
 
     return render_template(
         "admin.html",
-        section=section,
-        q=q,
         movies=movies,
-        total_movies=int(stats.get("total_movies") or 0),
-        total_views=int(stats.get("total_views") or 0),
-        total_users=total_users,
-        total_revenue=total_revenue,
-        active_subscriptions=active_subscriptions,
+        total_movies=(
+            stats["total_movies"]
+            if stats else 0
+        ),
+        total_views=(
+            stats["total_views"]
+            if stats else 0
+        ),
         ads=get_ads(),
-        config={
-            "SECRET_KEY": bool(os.environ.get("SECRET_KEY", "").strip()),
-            "CASHFREE_APP_ID": bool(CASHFREE_APP_ID),
-            "CASHFREE_SECRET_KEY": bool(CASHFREE_SECRET_KEY),
-            "R2_ACCOUNT_ID": bool(R2_ACCOUNT_ID),
-            "R2_ACCESS_KEY_ID": bool(R2_ACCESS_KEY_ID),
-            "R2_SECRET_ACCESS_KEY": bool(R2_SECRET_ACCESS_KEY),
-            "R2_ENDPOINT": bool(R2_ENDPOINT),
-            "BREVO_API_KEY": bool(BREVO_API_KEY),
-            "BREVO_FROM": bool(BREVO_FROM),
-            "MESSAGE_CENTRAL_AUTH_TOKEN": bool(MESSAGE_CENTRAL_AUTH_TOKEN),
-            "R2_BUCKET": R2_BUCKET,
-        },
-        **data,
     )
-
-
-def _admin_section(name):
-    return redirect(url_for("admin", section=name))
-
-
-@app.route("/admin/users")
-@admin_required
-def admin_users():
-    return _admin_section("users")
-
-
-@app.route("/admin/payments")
-@admin_required
-def admin_payments():
-    return _admin_section("payments")
-
-
-@app.route("/admin/subscriptions")
-@admin_required
-def admin_subscriptions():
-    return _admin_section("subscriptions")
-
-
-@app.route("/admin/watch-activity")
-@admin_required
-def admin_watch_activity():
-    return _admin_section("watch")
-
-
-@app.route("/admin/analytics")
-@admin_required
-def admin_analytics():
-    return _admin_section("analytics")
-
-
-@app.route("/admin/live-activity")
-@admin_required
-def admin_live_activity():
-    return _admin_section("live")
-
-
-@app.route("/admin/notifications")
-@admin_required
-def admin_notifications():
-    return _admin_section("notifications")
-
-
-@app.route("/admin/reports")
-@admin_required
-def admin_reports():
-    return _admin_section("reports")
-
-
-@app.route("/admin/r2")
-@admin_required
-def admin_r2():
-    return _admin_section("r2")
-
-
-@app.route("/admin/system-health")
-@admin_required
-def admin_system_health():
-    return _admin_section("health")
-
-
-@app.route("/admin/security")
-@admin_required
-def admin_security():
-    return _admin_section("security")
-
-
-@app.route("/admin/settings")
-@admin_required
-def admin_settings():
-    return _admin_section("settings")
-
-
-@app.route("/admin/search")
-@admin_required
-def admin_search():
-    return redirect(url_for("admin", section="search", q=request.args.get("q", "")))
-
-
-@app.route("/admin/report/<report_name>.csv")
-@admin_required
-def admin_report_csv(report_name):
-    report_name = str(report_name or "").lower()
-    allowed = {"movies", "users", "payments", "subscriptions", "access"}
-    if report_name not in allowed:
-        abort(404)
-
-    queries = {
-        "movies": "SELECT id,title,category,views,created_at FROM movies ORDER BY id DESC",
-        "users": "SELECT id,email,customer_id,full_name,mobile,created_at,last_login_at FROM customer_users ORDER BY id DESC",
-        "payments": "SELECT order_id,customer_id,movie_id,payment_type,amount,status,created_at,paid_at FROM payment_orders ORDER BY created_at DESC",
-        "subscriptions": "SELECT id,customer_id,subscription_id,cf_subscription_id,status,auth_status,premium_until,created_at,updated_at FROM customer_subscriptions ORDER BY created_at DESC",
-        "access": "SELECT customer_id,movie_id,watch_until,download_until,premium_until,created_at FROM customer_access ORDER BY created_at DESC",
-    }
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(queries[report_name])
-        rows = cur.fetchall()
-        cur.close()
-    finally:
-        conn.close()
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    if rows:
-        headers = list(rows[0].keys())
-        writer.writerow(headers)
-        for row in rows:
-            writer.writerow([row.get(h) for h in headers])
-    else:
-        writer.writerow(["No data"])
-
-    response = Response(output.getvalue(), mimetype="text/csv; charset=utf-8")
-    response.headers["Content-Disposition"] = f'attachment; filename="cinema-world-{report_name}.csv"'
-    return response
 
 
 # ============================================================
@@ -4950,25 +4902,29 @@ def internal_error(error):
 # ============================================================
 # DATABASE INIT
 # ============================================================
+# Initialize lazily so PostgreSQL cannot block Gunicorn during app import.
+_DB_INIT_LOCK = threading.Lock()
+_DB_INITIALIZED = False
 
-try:
 
-    if DATABASE_URL:
+def _ensure_db_initialized():
+    global _DB_INITIALIZED
+    if _DB_INITIALIZED:
+        return
+    with _DB_INIT_LOCK:
+        if _DB_INITIALIZED:
+            return
+        if not DATABASE_URL:
+            raise RuntimeError("DATABASE_URL is not configured.")
         init_db()
-        print(
-            "Database initialized successfully."
-        )
-    else:
-        print(
-            "WARNING: DATABASE_URL missing."
-        )
+        _DB_INITIALIZED = True
+        print("Database initialized successfully.")
 
-except Exception as exc:
 
-    print(
-        "Database initialization error:",
-        repr(exc),
-    )
+@app.before_request
+def _lazy_database_init():
+    _ensure_db_initialized()
+    return None
 
 
 # ============================================================
