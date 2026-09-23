@@ -8,6 +8,8 @@ import time
 import base64
 import hashlib
 import hmac
+import csv
+import io
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
@@ -550,6 +552,29 @@ def init_db():
         cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS mobile TEXT
+        """)
+
+        # ----------------------------------------------------
+        # ADMIN USER RESTRICTION / MODERATION
+        # ----------------------------------------------------
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT FALSE
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS block_reason TEXT
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_users_blocked
+            ON customer_users(is_blocked)
         """)
 
         # Mobile OTP login uses the verified mobile as the primary login identity.
@@ -1293,39 +1318,52 @@ def verify_mobile_otp(mobile, otp):
 
 
 def bind_customer_mobile(mobile):
-    """Create/restore a customer identity after mobile OTP verification.
-
-    A mobile number is not a unique account key. Every new verified login can
-    have its own customer_id; payment and subscription records remain linked
-    to that customer_id.
-    """
+    """Create or restore the single account belonging to a verified mobile."""
     mobile = normalize_mobile(mobile)
-    customer_id = "tm_" + secrets.token_hex(16)
+    old_customer_id = session.get("customer_id")
+    if not old_customer_id:
+        old_customer_id = "tm_" + secrets.token_hex(16)
 
-    conn = get_db()
+    conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
         cur.execute(
-            """
-            INSERT INTO customer_users
-            (email, customer_id, mobile, last_login_at)
-            VALUES(NULL, %s, %s, NOW())
-            """,
-            (customer_id, mobile),
+            "SELECT id, customer_id, is_blocked, block_reason FROM customer_users WHERE mobile = %s LIMIT 1 FOR UPDATE",
+            (mobile,),
         )
+        user = cur.fetchone()
+        if user:
+            if user.get("is_blocked"):
+                conn.rollback()
+                raise PermissionError(
+                    "This account is restricted by CINEMA WORLD Admin."
+                    + ((" Reason: " + str(user.get("block_reason"))) if user.get("block_reason") else "")
+                )
+            target_customer_id = user["customer_id"]
+            if old_customer_id != target_customer_id:
+                cur.execute("UPDATE customer_access SET customer_id=%s WHERE customer_id=%s", (target_customer_id, old_customer_id))
+                cur.execute("UPDATE payment_orders SET customer_id=%s WHERE customer_id=%s", (target_customer_id, old_customer_id))
+                cur.execute("UPDATE customer_subscriptions SET customer_id=%s WHERE customer_id=%s", (target_customer_id, old_customer_id))
+                cur.execute("UPDATE customer_movie_list SET customer_id=%s WHERE customer_id=%s", (target_customer_id, old_customer_id))
+            cur.execute("UPDATE customer_users SET last_login_at=NOW() WHERE id=%s", (user["id"],))
+        else:
+            target_customer_id = old_customer_id
+            cur.execute(
+                "INSERT INTO customer_users(email, customer_id, mobile, last_login_at) VALUES(NULL,%s,%s,NOW())",
+                (target_customer_id, mobile),
+            )
         conn.commit()
-        cur.close()
     except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
 
-    session["customer_id"] = customer_id
+    session["customer_id"] = target_customer_id
     session["customer_logged_in"] = True
     session["customer_mobile"] = mobile
-    session["customer_email"] = ""
-    return customer_id
+    session["customer_email"] = session.get("customer_email", "")
+    return target_customer_id
 
 
 @app.route("/login/request-mobile-otp", methods=["POST"])
@@ -1481,6 +1519,9 @@ def verify_mobile_otp_route():
 
     try:
         bind_customer_mobile(mobile)
+    except PermissionError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("login"))
     except Exception as exc:
         print("CUSTOMER MOBILE BIND ERROR:", repr(exc))
         flash("Mobile verified, but account setup failed. Please try again.", "error")
@@ -1531,6 +1572,17 @@ def bind_customer_email(email):
         user = cur.fetchone()
 
         if user:
+            # Admin-blocked accounts must not be able to regain access through OTP.
+            cur.execute(
+                "SELECT is_blocked, block_reason FROM customer_users WHERE id=%s FOR UPDATE",
+                (user["id"],),
+            )
+            status_row = cur.fetchone() or {}
+            if status_row.get("is_blocked"):
+                raise PermissionError(
+                    "This account is restricted by CINEMA WORLD Admin."
+                    + ((" Reason: " + str(status_row.get("block_reason"))) if status_row.get("block_reason") else "")
+                )
             target_customer_id = user["customer_id"]
 
             if old_customer_id != target_customer_id:
@@ -1975,6 +2027,9 @@ def verify_otp():
 
     try:
         bind_customer_email(email)
+    except PermissionError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("login"))
     except Exception as exc:
         print(
             "CUSTOMER EMAIL BIND ERROR:",
@@ -2713,10 +2768,30 @@ except AssertionError:
 # MOVIE PAGE
 # ============================================================
 
+def blocked_customer_guard():
+    """Return a response when the currently logged-in customer is blocked."""
+    if not session.get("customer_logged_in"):
+        return None
+    try:
+        blocked, reason = customer_is_blocked()
+    except Exception:
+        blocked, reason = False, ""
+    if not blocked:
+        return None
+    session.clear()
+    message = "Account restricted by CINEMA WORLD Admin."
+    if reason:
+        message += " Reason: " + reason
+    return Response(message, status=403)
+
 @app.route(
     "/movie/<int:movie_id>"
 )
 def movie_page(movie_id):
+
+    blocked_response = blocked_customer_guard()
+    if blocked_response:
+        return blocked_response
 
     conn = get_db(
         dict_rows=True
@@ -2826,6 +2901,10 @@ def movie_page(movie_id):
     methods=["GET"],
 )
 def stream_movie(movie_id):
+
+    blocked_response = blocked_customer_guard()
+    if blocked_response:
+        return blocked_response
 
     access_token = request.args.get(
         "access_token",
@@ -3002,6 +3081,10 @@ def stream_movie(movie_id):
 )
 def download_movie(movie_id):
 
+    blocked_response = blocked_customer_guard()
+    if blocked_response:
+        return blocked_response
+
     access = access_for_movie(
         movie_id
     )
@@ -3159,10 +3242,38 @@ def logout():
 # CUSTOMER MEMBER / USER DETAILS / MY LIST
 # ============================================================
 
+def customer_is_blocked(customer_id=None):
+    customer_id = customer_id or session.get("customer_id")
+    if not customer_id:
+        return False, ""
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT is_blocked, block_reason FROM customer_users WHERE customer_id=%s LIMIT 1",
+            (customer_id,),
+        )
+        row = cur.fetchone() or {}
+        return bool(row.get("is_blocked")), str(row.get("block_reason") or "")
+    finally:
+        conn.close()
+
+
 def customer_login_required(view_func):
     @wraps(view_func)
     def wrapper(*args, **kwargs):
         if not session.get("customer_logged_in"):
+            return redirect(url_for("login"))
+        try:
+            blocked, reason = customer_is_blocked()
+        except Exception:
+            blocked, reason = False, ""
+        if blocked:
+            session.clear()
+            msg = "Your CINEMA WORLD account is restricted by Admin."
+            if reason:
+                msg += " Reason: " + reason
+            flash(msg, "error")
             return redirect(url_for("login"))
         return view_func(*args, **kwargs)
     return wrapper
@@ -3661,159 +3772,182 @@ def api_my_list(movie_id):
 
 
 # ============================================================
-# ADMIN DASHBOARD MISSING ENDPOINTS
-# Only added to prevent admin.html BuildError
+# ADMIN CONTROL CENTER
 # ============================================================
+
+def _admin_config_status():
+    return {
+        "SECRET_KEY": bool(app.secret_key),
+        "CASHFREE": bool(CASHFREE_APP_ID and CASHFREE_SECRET_KEY),
+        "R2": bool(R2_ACCOUNT_ID and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT),
+        "BREVO": bool(BREVO_API_KEY and BREVO_FROM),
+        "MESSAGE_CENTRAL": bool(MESSAGE_CENTRAL_AUTH_TOKEN),
+        "R2_BUCKET": R2_BUCKET,
+    }
+
+
+def _admin_collect_data(q=""):
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS total_movies, COALESCE(SUM(views),0) AS total_views FROM movies")
+        movie_stats = cur.fetchone() or {}
+        cur.execute("SELECT COUNT(*) AS total_users FROM customer_users")
+        total_users = int((cur.fetchone() or {}).get("total_users") or 0)
+        cur.execute("SELECT COUNT(*) AS active_subscriptions FROM customer_subscriptions WHERE status IN ('ACTIVE','BANK_APPROVAL_PENDING') AND (premium_until IS NULL OR premium_until > NOW())")
+        active_subscriptions = int((cur.fetchone() or {}).get("active_subscriptions") or 0)
+        cur.execute("SELECT COALESCE(SUM(amount),0) AS total_revenue FROM payment_orders WHERE UPPER(status) IN ('PAID','SUCCESS','COMPLETED')")
+        total_revenue = (cur.fetchone() or {}).get("total_revenue") or 0
+        cur.execute("SELECT * FROM movies ORDER BY id DESC")
+        movies = cur.fetchall()
+        cur.execute("SELECT * FROM customer_users ORDER BY id DESC LIMIT 100")
+        users = cur.fetchall()
+        cur.execute("SELECT * FROM payment_orders ORDER BY id DESC LIMIT 100")
+        payments = cur.fetchall()
+        cur.execute("""SELECT cs.*, cu.email, cu.mobile, cu.full_name FROM customer_subscriptions cs LEFT JOIN customer_users cu ON cu.customer_id=cs.customer_id ORDER BY cs.id DESC LIMIT 100""")
+        subscriptions = cur.fetchall()
+        cur.execute("""SELECT ca.*, m.title FROM customer_access ca LEFT JOIN movies m ON m.id=ca.movie_id ORDER BY ca.id DESC LIMIT 100""")
+        access = cur.fetchall()
+        cur.execute("SELECT * FROM movies ORDER BY views DESC, id DESC LIMIT 20")
+        top_movies = cur.fetchall()
+        cur.execute("""SELECT 'PAYMENT' AS event_type, order_id AS ref, customer_id, status, amount, COALESCE(paid_at,created_at) AS event_at FROM payment_orders ORDER BY COALESCE(paid_at,created_at) DESC LIMIT 50""")
+        live_events = cur.fetchall()
+        search_movies=[]; search_users=[]; search_payments=[]
+        q=str(q or '').strip()
+        if q:
+            like='%'+q+'%'
+            cur.execute("SELECT id,title,category,views FROM movies WHERE title ILIKE %s OR category ILIKE %s ORDER BY id DESC LIMIT 50", (like,like)); search_movies=cur.fetchall()
+            cur.execute("SELECT id,full_name,email,mobile,customer_id,is_blocked,block_reason FROM customer_users WHERE COALESCE(full_name,'') ILIKE %s OR COALESCE(email,'') ILIKE %s OR COALESCE(mobile,'') ILIKE %s OR customer_id ILIKE %s ORDER BY id DESC LIMIT 50", (like,like,like,like)); search_users=cur.fetchall()
+            cur.execute("SELECT order_id,customer_id,payment_type,amount,status FROM payment_orders WHERE order_id ILIKE %s OR customer_id ILIKE %s ORDER BY id DESC LIMIT 50", (like,like)); search_payments=cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+    for movie in movies:
+        try: movie['poster_url']=media_url(movie.get('poster')) if movie.get('poster') else None
+        except Exception: movie['poster_url']=None
+    return {
+        'movies':movies,'users':users,'payments':payments,'subscriptions':subscriptions,'access':access,'top_movies':top_movies,'live_events':live_events,
+        'total_movies':int(movie_stats.get('total_movies') or 0),'total_views':int(movie_stats.get('total_views') or 0),'total_users':total_users,'active_subscriptions':active_subscriptions,'total_revenue':total_revenue,
+        'search_movies':search_movies,'search_users':search_users,'search_payments':search_payments,
+    }
+
 
 @app.route("/admin/users")
 @admin_required
 def admin_users():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="users"))
 
+@app.route("/admin/users/<int:user_id>/restriction", methods=["POST"])
+@admin_required
+def admin_user_restriction(user_id):
+    action=str(request.form.get('action','block')).strip().lower()
+    reason=str(request.form.get('reason','')).strip()[:500]
+    conn=get_db()
+    try:
+        cur=conn.cursor()
+        cur.execute("SELECT customer_id FROM customer_users WHERE id=%s FOR UPDATE", (user_id,))
+        user=cur.fetchone()
+        if not user:
+            conn.rollback(); flash('User not found.','error'); return redirect(url_for('admin',section='users'))
+        customer_id=user[0]
+        if action in {'block','restrict'}:
+            cur.execute("UPDATE customer_users SET is_blocked=TRUE, block_reason=%s, blocked_at=NOW() WHERE id=%s", (reason or 'Restricted by Admin.',user_id))
+            conn.commit(); flash('User blocked/restricted successfully.','success')
+        elif action=='unblock':
+            cur.execute("UPDATE customer_users SET is_blocked=FALSE, block_reason=NULL, blocked_at=NULL WHERE id=%s", (user_id,))
+            conn.commit(); flash('User unblocked successfully.','success')
+        elif action=='revoke_premium':
+            cur.execute("UPDATE customer_subscriptions SET status='CANCELLED', premium_until=NOW(), updated_at=NOW() WHERE customer_id=%s AND status IN ('ACTIVE','BANK_APPROVAL_PENDING')", (customer_id,))
+            cur.execute("UPDATE customer_access SET premium_until=NOW() WHERE customer_id=%s", (customer_id,))
+            conn.commit(); flash('Premium access revoked for this user.','success')
+        else:
+            conn.rollback(); flash('Unknown user action.','error')
+    except Exception as exc:
+        conn.rollback(); print('ADMIN USER ACTION ERROR:',repr(exc)); flash('User action failed: '+str(exc),'error')
+    finally:
+        conn.close()
+    return redirect(url_for('admin',section='users'))
 
 @app.route("/admin/payments")
 @admin_required
-def admin_payments():
-    return redirect(url_for("admin"))
-
-
+def admin_payments(): return redirect(url_for("admin", section="payments"))
 @app.route("/admin/subscriptions")
 @admin_required
-def admin_subscriptions():
-    return redirect(url_for("admin"))
-
-
+def admin_subscriptions(): return redirect(url_for("admin", section="subscriptions"))
 @app.route("/admin/watch-activity")
 @admin_required
-def admin_watch_activity():
-    return redirect(url_for("admin"))
-
-
+def admin_watch_activity(): return redirect(url_for("admin", section="watch"))
 @app.route("/admin/analytics")
 @admin_required
-def admin_analytics():
-    return redirect(url_for("admin"))
-
-
+def admin_analytics(): return redirect(url_for("admin", section="analytics"))
 @app.route("/admin/live-activity")
 @admin_required
-def admin_live_activity():
-    return redirect(url_for("admin"))
-
-
+def admin_live_activity(): return redirect(url_for("admin", section="live"))
 @app.route("/admin/notifications")
 @admin_required
-def admin_notifications():
-    return redirect(url_for("admin"))
-
-
+def admin_notifications(): return redirect(url_for("admin", section="notifications"))
 @app.route("/admin/reports")
 @admin_required
-def admin_reports():
-    return redirect(url_for("admin"))
-
-
+def admin_reports(): return redirect(url_for("admin", section="reports"))
 @app.route("/admin/r2")
 @admin_required
-def admin_r2():
-    return redirect(url_for("admin"))
-
-
+def admin_r2(): return redirect(url_for("admin", section="r2"))
 @app.route("/admin/system-health")
 @admin_required
-def admin_system_health():
-    return redirect(url_for("admin"))
-
-
+def admin_system_health(): return redirect(url_for("admin", section="health"))
 @app.route("/admin/security")
 @admin_required
-def admin_security():
-    return redirect(url_for("admin"))
-
-
+def admin_security(): return redirect(url_for("admin", section="security"))
 @app.route("/admin/settings")
 @admin_required
-def admin_settings():
-    return redirect(url_for("admin"))
-
-
+def admin_settings(): return redirect(url_for("admin", section="settings"))
 @app.route("/admin/search")
 @admin_required
-def admin_search():
-    return redirect(url_for("admin"))
-# ============================================================
-# ADMIN
-# ============================================================
+def admin_search(): return redirect(url_for("admin", section="search", q=request.args.get('q','')))
+
+@app.route("/admin/report/<report_name>.csv")
+@admin_required
+def admin_report_csv(report_name):
+    allowed={'movies','users','payments','subscriptions','access'}
+    if report_name not in allowed: abort(404)
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        queries={
+          'movies':"SELECT id,title,category,description,poster,video,views,created_at FROM movies ORDER BY id DESC",
+          'users':"SELECT id,full_name,email,mobile,customer_id,is_blocked,block_reason,blocked_at,created_at,last_login_at FROM customer_users ORDER BY id DESC",
+          'payments':"SELECT order_id,customer_id,movie_id,payment_type,amount,status,created_at,paid_at FROM payment_orders ORDER BY id DESC",
+          'subscriptions':"SELECT customer_id,subscription_id,cf_subscription_id,status,auth_status,premium_until,created_at,updated_at FROM customer_subscriptions ORDER BY id DESC",
+          'access':"SELECT customer_id,movie_id,watch_until,download_until,premium_until,created_at FROM customer_access ORDER BY id DESC",
+        }
+        cur.execute(queries[report_name]); rows=cur.fetchall(); cur.close()
+    finally: conn.close()
+    output=io.StringIO(); writer=csv.writer(output)
+    if rows:
+        writer.writerow(list(rows[0].keys()))
+        for row in rows: writer.writerow([row[k] for k in row.keys()])
+    return Response(output.getvalue(),mimetype='text/csv',headers={'Content-Disposition':f'attachment; filename=cinema_world_{report_name}.csv'})
 
 @app.route("/admin")
 @admin_required
 def admin():
-
-    conn = get_db(
-        dict_rows=True
-    )
-
+    q=str(request.args.get('q','')).strip()
+    section=str(request.args.get('section','dashboard')).strip().lower()
+    valid={'dashboard','movies','users','payments','subscriptions','watch','analytics','live','ads','notifications','reports','r2','health','security','settings','search'}
+    if section not in valid: section='dashboard'
     try:
-
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT
-                COUNT(*) AS total_movies,
-                COALESCE(SUM(views),0)
-                AS total_views
-            FROM movies
-            """
-        )
-
-        stats = cur.fetchone()
-
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            ORDER BY id DESC
-            """
-        )
-
-        movies = cur.fetchall()
-
-        cur.close()
-
-    finally:
-        conn.close()
-
-    for movie in movies:
-
+        data=_admin_collect_data(q)
+    except Exception as exc:
+        print('ADMIN DATA ERROR:',repr(exc))
+        flash('Admin data load failed: '+str(exc),'error')
+        data={'movies':[],'users':[],'payments':[],'subscriptions':[],'access':[],'top_movies':[],'live_events':[],'total_movies':0,'total_views':0,'total_users':0,'active_subscriptions':0,'total_revenue':0,'search_movies':[],'search_users':[],'search_payments':[]}
+    r2_objects=[]; r2_error=''
+    if section=='r2':
         try:
-
-            movie["poster_url"] = (
-                media_url(
-                    movie.get("poster")
-                )
-                if movie.get("poster")
-                else None
-            )
-
-        except Exception:
-
-            movie["poster_url"] = None
-
-    return render_template(
-        "admin.html",
-        movies=movies,
-        total_movies=(
-            stats["total_movies"]
-            if stats else 0
-        ),
-        total_views=(
-            stats["total_views"]
-            if stats else 0
-        ),
-        ads=get_ads(),
-    )
-
+            page=get_r2_client().list_objects_v2(Bucket=R2_BUCKET,MaxKeys=1000)
+            for obj in page.get('Contents',[]): r2_objects.append({'key':obj.get('Key'),'size':int(obj.get('Size') or 0),'modified':obj.get('LastModified')})
+        except Exception as exc: r2_error=str(exc)
+    return render_template('admin.html', section=section, q=q, ads=get_ads(), config=_admin_config_status(), r2_objects=r2_objects, r2_error=r2_error, db_health=None, r2_health=None, health=None, **data)
 
 # ============================================================
 # LEGACY ADMIN ADD
