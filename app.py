@@ -7,7 +7,6 @@ import time
 import base64
 import hashlib
 import hmac
-import threading
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
@@ -17,7 +16,6 @@ from urllib.error import HTTPError, URLError
 import boto3
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from psycopg2.pool import ThreadedConnectionPool
 from botocore.client import Config
 
 from flask import (
@@ -366,85 +364,18 @@ def validate_r2_key(key):
 # DATABASE
 # ============================================================
 
-# ------------------------------------------------------------
-# PostgreSQL connection pools
-#
-# The old code opened a brand-new PostgreSQL TCP connection for
-# every page/request. On Render that can add noticeable latency.
-# These small per-worker pools reuse warm connections instead.
-# Existing route code can continue to call conn.close(); the
-# wrapper returns the connection to the pool instead of closing it.
-# ------------------------------------------------------------
-_db_pool_plain = None
-_db_pool_dict = None
-_db_pool_lock = threading.Lock()
-
-
-class _PooledConnection:
-    def __init__(self, pool, conn):
-        self._pool = pool
-        self._conn = conn
-        self._returned = False
-
-    def __getattr__(self, name):
-        return getattr(self._conn, name)
-
-    def close(self):
-        if self._returned:
-            return
-        self._returned = True
-        try:
-            if not self._conn.closed:
-                self._pool.putconn(self._conn)
-            else:
-                self._pool.putconn(self._conn, close=True)
-        except Exception:
-            try:
-                self._pool.putconn(self._conn, close=True)
-            except Exception:
-                pass
-
-
-def _make_pool(dict_rows):
+def get_db(dict_rows=False):
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL is not configured."
         )
 
-    return ThreadedConnectionPool(
-        1,
-        6,
+    return psycopg2.connect(
         DATABASE_URL,
-        connect_timeout=10,
-        cursor_factory=(RealDictCursor if dict_rows else None),
-        keepalives=1,
-        keepalives_idle=30,
-        keepalives_interval=10,
-        keepalives_count=3,
+        cursor_factory=(
+            RealDictCursor if dict_rows else None
+        ),
     )
-
-
-def get_db(dict_rows=False):
-    global _db_pool_plain, _db_pool_dict
-
-    with _db_pool_lock:
-        if dict_rows:
-            if _db_pool_dict is None:
-                _db_pool_dict = _make_pool(True)
-            pool = _db_pool_dict
-        else:
-            if _db_pool_plain is None:
-                _db_pool_plain = _make_pool(False)
-            pool = _db_pool_plain
-
-    try:
-        conn = pool.getconn()
-        if conn.closed:
-            pool.putconn(conn, close=True)
-            conn = pool.getconn()
-        return _PooledConnection(pool, conn)
-    except Exception:
-        raise
 
 
 def init_db():
@@ -531,8 +462,13 @@ def init_db():
             ADD COLUMN IF NOT EXISTS mobile TEXT
         """)
 
-        # Mobile OTP login uses the verified mobile as the primary login identity.
-        # Existing email accounts remain compatible.
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS password_hash TEXT
+        """)
+
+        # Email/mobile are the two unique login identities of one account.
+        # Email may remain NULL for legacy mobile-only accounts.
         cur.execute("""
             ALTER TABLE customer_users
             ALTER COLUMN email DROP NOT NULL
@@ -540,6 +476,26 @@ def init_db():
 
         cur.execute("""
             DROP INDEX IF EXISTS idx_customer_users_mobile
+        """)
+
+        # Clean legacy duplicate mobiles before enforcing the one-mobile/one-account rule.
+        cur.execute("""
+            WITH ranked AS (
+                SELECT id, mobile,
+                       ROW_NUMBER() OVER (PARTITION BY mobile ORDER BY id ASC) AS rn
+                FROM customer_users
+                WHERE mobile IS NOT NULL AND mobile <> ''
+            )
+            UPDATE customer_users cu
+            SET mobile = NULL
+            FROM ranked r
+            WHERE cu.id = r.id AND r.rn > 1
+        """)
+
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_users_mobile_unique
+            ON customer_users (mobile)
+            WHERE mobile IS NOT NULL AND mobile <> ''
         """)
 
         cur.execute("""
@@ -1271,40 +1227,102 @@ def verify_mobile_otp(mobile, otp):
     return ok, result
 
 
-def bind_customer_mobile(mobile):
-    """Create/restore a customer identity after mobile OTP verification.
+def hash_customer_password(password):
+    password = str(password or "")
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 200000)
+    return "pbkdf2_sha256$200000$" + base64.b64encode(salt).decode("ascii") + "$" + base64.b64encode(digest).decode("ascii")
 
-    A mobile number is not a unique account key. Every new verified login can
-    have its own customer_id; payment and subscription records remain linked
-    to that customer_id.
-    """
-    mobile = normalize_mobile(mobile)
-    customer_id = "tm_" + secrets.token_hex(16)
 
-    conn = get_db()
+def verify_customer_password(password, stored):
+    try:
+        algorithm, rounds_text, salt_b64, digest_b64 = str(stored or "").split("$", 3)
+        if algorithm != "pbkdf2_sha256":
+            return False
+        rounds = int(rounds_text)
+        salt = base64.b64decode(salt_b64.encode("ascii"))
+        expected = base64.b64decode(digest_b64.encode("ascii"))
+        actual = hashlib.pbkdf2_hmac("sha256", str(password or "").encode("utf-8"), salt, rounds)
+        return hmac.compare_digest(actual, expected)
+    except Exception:
+        return False
+
+
+def find_customer_by_login(identifier):
+    value = str(identifier or "").strip()
+    email = normalize_email(value)
+    mobile = normalize_mobile(value)
+    conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO customer_users
-            (email, customer_id, mobile, last_login_at)
-            VALUES(NULL, %s, %s, NOW())
+            SELECT id, email, mobile, customer_id, password_hash, full_name
+            FROM customer_users
+            WHERE (email = %s AND %s <> '') OR (mobile = %s AND %s <> '')
+            ORDER BY id ASC
+            LIMIT 1
             """,
-            (customer_id, mobile),
+            (email, email, mobile, mobile),
         )
+        return cur.fetchone()
+    finally:
+        conn.close()
+
+
+def start_customer_session(user):
+    session["customer_id"] = user["customer_id"]
+    session["customer_logged_in"] = True
+    session["customer_email"] = user.get("email") or ""
+    session["customer_mobile"] = user.get("mobile") or ""
+
+
+def bind_customer_mobile(mobile):
+    """Attach a verified mobile to the existing account, never create duplicates."""
+    mobile = normalize_mobile(mobile)
+    old_customer_id = session.get("customer_id")
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, customer_id, email, password_hash FROM customer_users WHERE mobile = %s FOR UPDATE",
+            (mobile,),
+        )
+        existing = cur.fetchone()
+        if existing:
+            target_customer_id = existing["customer_id"]
+            if old_customer_id and old_customer_id != target_customer_id:
+                cur.execute("UPDATE customer_access SET customer_id=%s WHERE customer_id=%s", (target_customer_id, old_customer_id))
+                cur.execute("UPDATE payment_orders SET customer_id=%s WHERE customer_id=%s", (target_customer_id, old_customer_id))
+            cur.execute("UPDATE customer_users SET last_login_at=NOW() WHERE id=%s", (existing["id"],))
+        else:
+            if old_customer_id:
+                target_customer_id = old_customer_id
+                cur.execute(
+                    "UPDATE customer_users SET mobile=%s, last_login_at=NOW() WHERE customer_id=%s",
+                    (mobile, target_customer_id),
+                )
+                if cur.rowcount == 0:
+                    cur.execute(
+                        "INSERT INTO customer_users(email, customer_id, mobile, last_login_at) VALUES(NULL,%s,%s,NOW())",
+                        (target_customer_id, mobile),
+                    )
+            else:
+                target_customer_id = "tm_" + secrets.token_hex(16)
+                cur.execute(
+                    "INSERT INTO customer_users(email, customer_id, mobile, last_login_at) VALUES(NULL,%s,%s,NOW())",
+                    (target_customer_id, mobile),
+                )
         conn.commit()
-        cur.close()
     except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
-
-    session["customer_id"] = customer_id
+    session["customer_id"] = target_customer_id
     session["customer_logged_in"] = True
     session["customer_mobile"] = mobile
-    session["customer_email"] = ""
-    return customer_id
+    return target_customer_id
 
 
 @app.route("/login/request-mobile-otp", methods=["POST"])
@@ -1472,113 +1490,43 @@ def verify_mobile_otp_route():
 
 
 def bind_customer_email(email):
-    """
-    Connect the verified email to the current customer identity.
-
-    If the visitor already paid while anonymous, their existing
-    customer_id is preserved. If the email already has an account,
-    old anonymous payment/access rows are moved to that account so
-    the user does not lose access after OTP login.
-    """
-
+    """Attach verified email to one existing account; never create duplicate identities."""
     email = normalize_email(email)
     old_customer_id = session.get("customer_id")
-
-    if not old_customer_id:
-        old_customer_id = (
-            "tm_"
-            + secrets.token_hex(16)
-        )
-
-    conn = get_db(
-        dict_rows=True
-    )
-
+    conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT id, customer_id
-            FROM customer_users
-            WHERE email = %s
-            FOR UPDATE
-            """,
-            (email,),
-        )
-
-        user = cur.fetchone()
-
-        if user:
-            target_customer_id = user["customer_id"]
-
-            if old_customer_id != target_customer_id:
-                cur.execute(
-                    """
-                    UPDATE customer_access
-                    SET customer_id = %s
-                    WHERE customer_id = %s
-                    """,
-                    (
-                        target_customer_id,
-                        old_customer_id,
-                    ),
-                )
-
-                cur.execute(
-                    """
-                    UPDATE payment_orders
-                    SET customer_id = %s
-                    WHERE customer_id = %s
-                    """,
-                    (
-                        target_customer_id,
-                        old_customer_id,
-                    ),
-                )
-
-            cur.execute(
-                """
-                UPDATE customer_users
-                SET last_login_at = NOW()
-                WHERE id = %s
-                """,
-                (user["id"],),
-            )
-
+        cur.execute("SELECT id, customer_id, email, mobile, password_hash FROM customer_users WHERE email=%s FOR UPDATE", (email,))
+        by_email = cur.fetchone()
+        if by_email:
+            target_customer_id = by_email["customer_id"]
         else:
-            target_customer_id = old_customer_id
+            target_customer_id = old_customer_id or ("tm_" + secrets.token_hex(16))
+            cur.execute("SELECT id, customer_id, email, mobile, password_hash FROM customer_users WHERE customer_id=%s FOR UPDATE", (target_customer_id,))
+            current = cur.fetchone()
+            if current and current.get("mobile"):
+                cur.execute("SELECT id, customer_id FROM customer_users WHERE mobile=%s AND customer_id<>%s", (current["mobile"], target_customer_id))
+                conflict = cur.fetchone()
+                if conflict:
+                    raise RuntimeError("This mobile number is already linked to another account.")
+            if current:
+                cur.execute("UPDATE customer_users SET email=%s,last_login_at=NOW() WHERE id=%s", (email,current["id"]))
+            else:
+                cur.execute("INSERT INTO customer_users(email,customer_id,last_login_at) VALUES(%s,%s,NOW())", (email,target_customer_id))
 
-            cur.execute(
-                """
-                INSERT INTO customer_users
-                (
-                    email,
-                    customer_id,
-                    last_login_at
-                )
-                VALUES(%s, %s, NOW())
-                """,
-                (
-                    email,
-                    target_customer_id,
-                ),
-            )
-
+        if old_customer_id and old_customer_id != target_customer_id:
+            cur.execute("UPDATE customer_access SET customer_id=%s WHERE customer_id=%s", (target_customer_id, old_customer_id))
+            cur.execute("UPDATE payment_orders SET customer_id=%s WHERE customer_id=%s", (target_customer_id, old_customer_id))
+        cur.execute("UPDATE customer_users SET last_login_at=NOW() WHERE customer_id=%s", (target_customer_id,))
         conn.commit()
-        cur.close()
-
     except Exception:
         conn.rollback()
         raise
-
     finally:
         conn.close()
-
     session["customer_id"] = target_customer_id
     session["customer_logged_in"] = True
     session["customer_email"] = email
-
     return target_customer_id
 
 
@@ -1601,10 +1549,25 @@ def request_otp():
             url_for("login")
         )
 
-    conn = get_db(
-        dict_rows=True
-    )
+    conn = get_db(dict_rows=True)
 
+    existing_user = None
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT customer_id, password_hash FROM customer_users WHERE email=%s LIMIT 1",
+            (email,),
+        )
+        existing_user = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if existing_user and existing_user.get("password_hash"):
+        flash("This email is already registered. Please login with your password.", "error")
+        return redirect(url_for("login"))
+
+    conn = get_db(dict_rows=True)
     otp_row_id = None
 
     try:
@@ -1976,14 +1939,8 @@ def verify_otp():
         None,
     )
 
-    flash(
-        "Email verified. Welcome to CINEMA WORLD!",
-        "success",
-    )
-
-    return redirect(
-        url_for("user_details")
-    )
+    session["password_setup_customer_id"] = session.get("customer_id")
+    return redirect(url_for("set_password"))
 
 
 # ============================================================
@@ -3057,27 +3014,72 @@ def download_movie(movie_id):
 # LOGIN
 # ============================================================
 
-@app.route(
-    "/login",
-    methods=["GET"],
-)
+@app.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "POST":
+        identifier = (request.form.get("identifier") or request.form.get("email") or request.form.get("mobile") or "").strip()
+        password = request.form.get("password", "")
+        if not identifier or not password:
+            flash("Enter your email/mobile and password.", "error")
+            return redirect(url_for("login"))
+        user = find_customer_by_login(identifier)
+        if not user:
+            flash("Account not found. First create your account using email OTP.", "error")
+            return redirect(url_for("login"))
+        if not user.get("password_hash"):
+            session["password_setup_customer_id"] = user["customer_id"]
+            flash("Please set your password first.", "error")
+            return redirect(url_for("set_password"))
+        if not verify_customer_password(password, user["password_hash"]):
+            flash("Incorrect password.", "error")
+            return redirect(url_for("login"))
+        start_customer_session(user)
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("UPDATE customer_users SET last_login_at=NOW() WHERE customer_id=%s", (user["customer_id"],))
+            conn.commit()
+        finally:
+            conn.close()
+        return redirect(url_for("member_home") if customer_has_completed_initial_payment(user["customer_id"]) else url_for("user_details"))
+
     step = str(request.args.get("step", "")).strip().lower()
+    mode = str(request.args.get("mode", "login")).strip().lower()
+    email = normalize_email(request.args.get("email", "") or session.get("otp_email", ""))
+    return render_template("login.html", step=step, mode=mode, email=email, masked_email=mask_email(email), masked_mobile=mask_mobile(session.get("otp_mobile", "")))
 
-    if step not in {"mobile", "otp"}:
-        step = "otp" if session.get("otp_mobile") else "mobile"
 
-    mobile = normalize_mobile(
-        request.args.get("mobile", "")
-        or session.get("otp_mobile", "")
-    )
-
-    return render_template(
-        "login.html",
-        step=step,
-        mobile=mobile,
-        masked_mobile=mask_mobile(mobile),
-    )
+@app.route("/set-password", methods=["GET", "POST"])
+def set_password():
+    customer_id = session.get("password_setup_customer_id") or session.get("customer_id")
+    if not customer_id:
+        return redirect(url_for("login"))
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm_password", "")
+        if len(password) < 6:
+            flash("Password must be at least 6 characters.", "error")
+            return redirect(url_for("set_password"))
+        if password != confirm:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for("set_password"))
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("UPDATE customer_users SET password_hash=%s, last_login_at=NOW() WHERE customer_id=%s", (hash_customer_password(password), customer_id))
+            if cur.rowcount == 0:
+                raise RuntimeError("Account not found.")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        session.pop("password_setup_customer_id", None)
+        session["customer_id"] = customer_id
+        session["customer_logged_in"] = True
+        return redirect(url_for("user_details"))
+    return render_template("set_password.html")
 
 
 @app.route("/admin/login", methods=["GET", "POST"])
@@ -3144,6 +3146,14 @@ def user_details():
         conn = get_db()
         try:
             cur = conn.cursor()
+            cur.execute(
+                "SELECT customer_id FROM customer_users WHERE mobile=%s AND customer_id<>%s LIMIT 1",
+                (mobile, customer_id),
+            )
+            conflict = cur.fetchone()
+            if conflict:
+                flash("This mobile number is already used by another account.", "error")
+                return redirect(url_for("user_details"))
             cur.execute(
                 """
                 UPDATE customer_users
