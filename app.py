@@ -34,6 +34,7 @@ from flask import (
 )
 
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 # ============================================================
@@ -550,6 +551,11 @@ def init_db():
         cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS mobile TEXT
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS password_hash TEXT
         """)
 
         # Mobile OTP login uses the verified mobile as the primary login identity.
@@ -1293,39 +1299,57 @@ def verify_mobile_otp(mobile, otp):
 
 
 def bind_customer_mobile(mobile):
-    """Create/restore a customer identity after mobile OTP verification.
-
-    A mobile number is not a unique account key. Every new verified login can
-    have its own customer_id; payment and subscription records remain linked
-    to that customer_id.
-    """
+    """Connect a verified mobile to exactly one customer account."""
     mobile = normalize_mobile(mobile)
-    customer_id = "tm_" + secrets.token_hex(16)
+    old_customer_id = session.get("customer_id")
 
-    conn = get_db()
+    if not old_customer_id:
+        old_customer_id = "tm_" + secrets.token_hex(16)
+
+    conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO customer_users
-            (email, customer_id, mobile, last_login_at)
-            VALUES(NULL, %s, %s, NOW())
+            SELECT id, customer_id
+            FROM customer_users
+            WHERE mobile = %s
+            ORDER BY id ASC
+            LIMIT 1
+            FOR UPDATE
             """,
-            (customer_id, mobile),
+            (mobile,),
         )
+        user = cur.fetchone()
+
+        if user:
+            target_customer_id = user["customer_id"]
+            if old_customer_id != target_customer_id:
+                cur.execute("UPDATE customer_access SET customer_id = %s WHERE customer_id = %s", (target_customer_id, old_customer_id))
+                cur.execute("UPDATE payment_orders SET customer_id = %s WHERE customer_id = %s", (target_customer_id, old_customer_id))
+            cur.execute("UPDATE customer_users SET last_login_at = NOW() WHERE id = %s", (user["id"],))
+        else:
+            target_customer_id = old_customer_id
+            cur.execute(
+                """
+                INSERT INTO customer_users
+                (email, customer_id, mobile, last_login_at)
+                VALUES(NULL, %s, %s, NOW())
+                """,
+                (target_customer_id, mobile),
+            )
+
         conn.commit()
-        cur.close()
     except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
 
-    session["customer_id"] = customer_id
+    session["customer_id"] = target_customer_id
     session["customer_logged_in"] = True
     session["customer_mobile"] = mobile
-    session["customer_email"] = ""
-    return customer_id
+    return target_customer_id
 
 
 @app.route("/login/request-mobile-otp", methods=["POST"])
@@ -1488,8 +1512,10 @@ def verify_mobile_otp_route():
 
     session.pop("otp_mobile", None)
     session.pop("otp_mobile_sent_at", None)
-    flash("Mobile number verified. Welcome to CINEMA WORLD!", "success")
-    return redirect(url_for("user_details"))
+    session["password_setup_customer_id"] = session.get("customer_id")
+    session["login_identifier"] = mobile
+    flash("Mobile verified. Ab password set karo.", "success")
+    return redirect(url_for("customer_set_password"))
 
 
 def bind_customer_email(email):
@@ -1997,14 +2023,10 @@ def verify_otp():
         None,
     )
 
-    flash(
-        "Email verified. Welcome to CINEMA WORLD!",
-        "success",
-    )
-
-    return redirect(
-        url_for("user_details")
-    )
+    session["password_setup_customer_id"] = session.get("customer_id")
+    session["login_identifier"] = email
+    flash("Email verified. Ab password set karo.", "success")
+    return redirect(url_for("customer_set_password"))
 
 
 # ============================================================
@@ -3075,29 +3097,307 @@ def download_movie(movie_id):
 
 
 # ============================================================
+# CUSTOMER PASSWORD LOGIN
+# ============================================================
+
+def find_customer_by_identifier(identifier):
+    identifier = str(identifier or "").strip()
+    if "@" in identifier:
+        identifier = normalize_email(identifier)
+        if not valid_email(identifier):
+            return None
+        where = "LOWER(email) = LOWER(%s)"
+    else:
+        identifier = normalize_mobile(identifier)
+        if not valid_mobile(identifier):
+            return None
+        where = "mobile = %s"
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"""
+            SELECT id, customer_id, email, mobile, password_hash
+            FROM customer_users
+            WHERE {where}
+            ORDER BY id ASC
+            LIMIT 1
+            """,
+            (identifier,),
+        )
+        row = cur.fetchone()
+        cur.close()
+        return row
+    finally:
+        conn.close()
+
+
+def complete_customer_login(row):
+    customer_id = row["customer_id"]
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE customer_users SET last_login_at = NOW() WHERE id = %s",
+            (row["id"],),
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    session["customer_id"] = customer_id
+    session["customer_logged_in"] = True
+    session["customer_email"] = row.get("email") or ""
+    session["customer_mobile"] = row.get("mobile") or ""
+    return customer_id
+
+
+def start_password_or_otp(identifier):
+    identifier = str(identifier or "").strip()
+    row = find_customer_by_identifier(identifier)
+
+    if row and row.get("password_hash"):
+        session["login_identifier"] = identifier
+        return "password"
+
+    # Existing legacy OTP account without a password, or a brand-new account:
+    # verify identity once, then force Set Password.
+    if "@" in identifier:
+        email = normalize_email(identifier)
+        if valid_email(email):
+            return request_email_otp_for_login(email)
+    else:
+        mobile = normalize_mobile(identifier)
+        if valid_mobile(mobile):
+            return request_mobile_otp_for_login(mobile)
+
+    return "error"
+
+
+def request_email_otp_for_login(email):
+    conn = get_db(dict_rows=True)
+    otp_row_id = None
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT created_at FROM email_otps
+            WHERE email = %s AND used_at IS NULL
+            ORDER BY id DESC LIMIT 1
+            """,
+            (email,),
+        )
+        previous = cur.fetchone()
+        if previous and previous.get("created_at"):
+            elapsed = (datetime.now() - previous["created_at"]).total_seconds()
+            if elapsed < OTP_RESEND_SECONDS:
+                cur.close()
+                return "otp"
+
+        cur.execute("UPDATE email_otps SET used_at = NOW() WHERE email = %s AND used_at IS NULL", (email,))
+        otp = generate_otp()
+        expires_at = datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+        cur.execute(
+            """
+            INSERT INTO email_otps (email, otp_hash, expires_at, attempts)
+            VALUES(%s, %s, %s, 0) RETURNING id
+            """,
+            (email, otp_hash(email, otp), expires_at),
+        )
+        otp_row_id = cur.fetchone()["id"]
+        conn.commit()
+        cur.close()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
+    finally:
+        try: conn.close()
+        except Exception: pass
+
+    try:
+        send_otp_email(email, otp)
+    except Exception:
+        conn2 = get_db()
+        try:
+            cur2 = conn2.cursor()
+            cur2.execute("UPDATE email_otps SET used_at = NOW() WHERE id = %s", (otp_row_id,))
+            conn2.commit()
+            cur2.close()
+        finally:
+            conn2.close()
+        raise
+
+    session["otp_email"] = email
+    session["otp_sent_at"] = datetime.now().isoformat()
+    session["login_identifier"] = email
+    return "otp"
+
+
+def request_mobile_otp_for_login(mobile):
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT created_at FROM mobile_otps
+            WHERE mobile = %s AND used_at IS NULL
+            ORDER BY id DESC LIMIT 1
+            """,
+            (mobile,),
+        )
+        previous = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if previous and previous.get("created_at"):
+        elapsed = (datetime.now() - previous["created_at"]).total_seconds()
+        if elapsed < OTP_RESEND_SECONDS:
+            return "otp"
+
+    request_id = send_mobile_otp(mobile)
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE mobile_otps SET used_at = NOW() WHERE mobile = %s AND used_at IS NULL", (mobile,))
+        cur.execute(
+            "INSERT INTO mobile_otps (mobile, request_id, expires_at, attempts) VALUES(%s, %s, %s, 0)",
+            (mobile, request_id, datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)),
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    session["otp_mobile"] = mobile
+    session["otp_mobile_sent_at"] = datetime.now().isoformat()
+    session["login_identifier"] = mobile
+    return "otp"
+
+
+@app.route("/login/start", methods=["POST"])
+def login_start():
+    identifier = (request.form.get("identifier") or "").strip()
+    if not identifier:
+        flash("Email ya mobile number enter karo.", "error")
+        return redirect(url_for("login"))
+
+    try:
+        result = start_password_or_otp(identifier)
+    except Exception as exc:
+        print("LOGIN START ERROR:", repr(exc))
+        flash("Login start nahi ho paya. Please try again.", "error")
+        return redirect(url_for("login"))
+
+    if result == "password":
+        return redirect(url_for("login", step="password"))
+    if result == "otp":
+        return redirect(url_for("login", step="otp"))
+
+    flash("Valid email ya 10-digit mobile number enter karo.", "error")
+    return redirect(url_for("login"))
+
+
+@app.route("/login/password", methods=["POST"])
+def customer_password_login():
+    identifier = (request.form.get("identifier") or session.get("login_identifier") or "").strip()
+    password = request.form.get("password") or ""
+    row = find_customer_by_identifier(identifier)
+
+    if not row or not row.get("password_hash"):
+        flash("Password set nahi hai. OTP verification required hai.", "error")
+        return redirect(url_for("login"))
+
+    try:
+        ok = check_password_hash(str(row["password_hash"]), password)
+    except Exception:
+        ok = False
+
+    if not ok:
+        flash("Wrong password.", "error")
+        return redirect(url_for("login", step="password"))
+
+    complete_customer_login(row)
+    session.pop("login_identifier", None)
+    return redirect(url_for("home"))
+
+
+@app.route("/login/set-password", methods=["GET", "POST"])
+def customer_set_password():
+    customer_id = session.get("password_setup_customer_id")
+    if not customer_id:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        password = request.form.get("password") or ""
+        confirm = request.form.get("confirm_password") or ""
+        if len(password) < 6:
+            flash("Password kam se kam 6 characters ka hona chahiye.", "error")
+            return redirect(url_for("customer_set_password"))
+        if password != confirm:
+            flash("Passwords match nahi karte.", "error")
+            return redirect(url_for("customer_set_password"))
+
+        conn = get_db(dict_rows=True)
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, customer_id, email, mobile FROM customer_users WHERE customer_id = %s LIMIT 1",
+                (customer_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback()
+                cur.close()
+                flash("Account nahi mila. Please login again.", "error")
+                return redirect(url_for("login"))
+
+            cur.execute(
+                "UPDATE customer_users SET password_hash = %s, last_login_at = NOW() WHERE customer_id = %s",
+                (generate_password_hash(password), customer_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+
+        session["customer_id"] = customer_id
+        session["customer_logged_in"] = True
+        session["customer_email"] = row.get("email") or ""
+        session["customer_mobile"] = row.get("mobile") or ""
+        session.pop("password_setup_customer_id", None)
+        session.pop("login_identifier", None)
+        flash("Password set ho gaya. Welcome to CINEMA WORLD!", "success")
+        return redirect(url_for("home"))
+
+    return render_template("login.html", step="set_password", mobile="", masked_mobile="", email=session.get("login_identifier", ""), masked_email="")
+
+
+# ============================================================
 # LOGIN
 # ============================================================
 
-@app.route(
-    "/login",
-    methods=["GET"],
-)
+@app.route("/login", methods=["GET"])
 def login():
     step = str(request.args.get("step", "")).strip().lower()
+    if step not in {"mobile", "otp", "password", "set_password"}:
+        step = "mobile"
 
-    if step not in {"mobile", "otp"}:
-        step = "otp" if session.get("otp_mobile") else "mobile"
-
-    mobile = normalize_mobile(
-        request.args.get("mobile", "")
-        or session.get("otp_mobile", "")
-    )
+    identifier = request.args.get("identifier", "") or session.get("login_identifier", "")
+    email = identifier if "@" in identifier else session.get("otp_email", "")
+    mobile = normalize_mobile(identifier if "@" not in identifier else session.get("otp_mobile", ""))
 
     return render_template(
         "login.html",
         step=step,
+        identifier=identifier,
+        email=email,
         mobile=mobile,
-        masked_mobile=mask_mobile(mobile),
+        masked_email=mask_email(email) if email else "",
+        masked_mobile=mask_mobile(mobile) if mobile else "",
     )
 
 
