@@ -1,905 +1,113 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#000000">
-
-    <title>Sign In | CINEMA WORLD</title>
-
-    <style>
-        *{
-            box-sizing:border-box;
-        }
-
-        html,body{
-            margin:0;
-            padding:0;
-            min-height:100%;
-            font-family:Arial,Helvetica,sans-serif;
-            background:#000;
-            color:#fff;
-        }
-
-        body{
-            min-height:100vh;
-            overflow-x:hidden;
-            background:
-                radial-gradient(circle at 50% -10%,rgba(229,9,20,.20),transparent 35%),
-                radial-gradient(circle at 10% 90%,rgba(120,20,40,.10),transparent 30%),
-                #000;
-        }
-
-        .tm-page{
-            min-height:100vh;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:35px 18px;
-        }
-
-        .tm-card{
-            width:100%;
-            max-width:455px;
-            background:
-                linear-gradient(180deg,rgba(25,25,25,.98),rgba(9,9,9,.99));
-            border:1px solid #292929;
-            border-radius:18px;
-            padding:38px 34px 30px;
-            box-shadow:
-                0 25px 80px rgba(0,0,0,.75),
-                0 0 45px rgba(229,9,20,.08);
-        }
-
-        .tm-brand{
-            text-align:center;
-            margin-bottom:30px;
-        }
-
-        .tm-brand-title{
-            color:#e50914;
-            font-size:28px;
-            font-weight:900;
-            letter-spacing:2px;
-            line-height:1.1;
-        }
-
-        .tm-brand-subtitle{
-            margin-top:7px;
-            color:#a9a9a9;
-            font-size:13px;
-            letter-spacing:.8px;
-        }
-
-        .tm-heading{
-            text-align:center;
-            font-size:27px;
-            font-weight:800;
-            margin:0;
-        }
-
-        .tm-description{
-            text-align:center;
-            color:#aaa;
-            font-size:14px;
-            line-height:1.65;
-            margin:12px 0 27px;
-        }
-
-        .tm-label{
-            display:block;
-            color:#ddd;
-            font-size:13px;
-            font-weight:700;
-            margin-bottom:9px;
-        }
-
-        .tm-input-wrap{
-            position:relative;
-            display:flex;
-            align-items:center;
-            background:#171717;
-            border:1px solid #333;
-            border-radius:10px;
-            transition:.2s;
-            overflow:hidden;
-        }
-
-        .tm-input-wrap:focus-within{
-            border-color:#e50914;
-            box-shadow:0 0 0 3px rgba(229,9,20,.10);
-        }
-
-        .tm-prefix{
-            height:52px;
-            min-width:68px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            gap:7px;
-            border-right:1px solid #303030;
-            color:#fff;
-            font-size:14px;
-            font-weight:700;
-        }
-
-        .tm-prefix .flag{
-            font-size:20px;
-        }
-
-        .tm-input{
-            width:100%;
-            height:52px;
-            border:0;
-            outline:0;
-            background:transparent;
-            color:#fff;
-            padding:0 15px;
-            font-size:16px;
-        }
-
-        .tm-input::placeholder{
-            color:#686868;
-        }
-
-        .tm-button{
-            width:100%;
-            height:52px;
-            margin-top:15px;
-            border:0;
-            border-radius:9px;
-            background:#e50914;
-            color:#fff;
-            font-size:15px;
-            font-weight:800;
-            letter-spacing:.3px;
-            cursor:pointer;
-            transition:.18s;
-        }
-
-        .tm-button:hover{
-            background:#f40612;
-            transform:translateY(-1px);
-        }
-
-        .tm-button:active{
-            transform:translateY(0);
-        }
-
-        .tm-button:disabled{
-            opacity:.55;
-            cursor:not-allowed;
-            transform:none;
-        }
-
-        .tm-secondary{
-            background:#1c1c1c;
-            border:1px solid #363636;
-        }
-
-        .tm-secondary:hover{
-            background:#252525;
-        }
-
-        .tm-divider{
-            display:flex;
-            align-items:center;
-            gap:12px;
-            margin:25px 0 20px;
-            color:#666;
-            font-size:12px;
-            font-weight:700;
-        }
-
-        .tm-divider::before,
-        .tm-divider::after{
-            content:"";
-            flex:1;
-            height:1px;
-            background:#303030;
-        }
-
-        .tm-email-link{
-            width:100%;
-            height:50px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            gap:10px;
-            border:1px solid #383838;
-            border-radius:9px;
-            background:#151515;
-            color:#fff;
-            font-weight:700;
-            cursor:pointer;
-            transition:.18s;
-        }
-
-        .tm-email-link:hover{
-            background:#202020;
-            border-color:#555;
-        }
-
-        .tm-email-icon{
-            width:25px;
-            height:25px;
-            border-radius:6px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:#fff;
-            color:#111;
-            font-size:14px;
-            font-weight:900;
-        }
-
-        .tm-email-section{
-            display:none;
-            margin-top:2px;
-        }
-
-        .tm-email-section.active{
-            display:block;
-        }
-
-        .tm-mobile-section.hidden{
-            display:none;
-        }
-
-        .tm-back{
-            width:100%;
-            border:0;
-            background:transparent;
-            color:#999;
-            padding:12px 0 0;
-            font-size:13px;
-            cursor:pointer;
-        }
-
-        .tm-back:hover{
-            color:#fff;
-        }
-
-        .tm-secure{
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            gap:7px;
-            margin-top:25px;
-            color:#777;
-            font-size:12px;
-        }
-
-        .tm-secure strong{
-            color:#aaa;
-        }
-
-        .tm-info{
-            text-align:center;
-            color:#666;
-            font-size:11px;
-            line-height:1.6;
-            margin-top:18px;
-        }
-
-        .tm-alerts{
-            margin-bottom:18px;
-        }
-
-        .tm-alert{
-            border-radius:9px;
-            padding:11px 13px;
-            margin-bottom:8px;
-            font-size:13px;
-            line-height:1.4;
-        }
-
-        .tm-alert.error{
-            background:rgba(229,9,20,.12);
-            border:1px solid rgba(229,9,20,.35);
-            color:#ffb3b7;
-        }
-
-        .tm-alert.success{
-            background:rgba(45,180,90,.10);
-            border:1px solid rgba(45,180,90,.30);
-            color:#a9efbf;
-        }
-
-        .tm-otp-info{
-            text-align:center;
-            background:#111;
-            border:1px solid #292929;
-            border-radius:10px;
-            padding:13px;
-            color:#aaa;
-            font-size:13px;
-            margin-bottom:18px;
-        }
-
-        .tm-otp-info strong{
-            color:#fff;
-        }
-
-        .tm-otp{
-            text-align:center;
-            letter-spacing:8px;
-            font-size:25px;
-            font-weight:800;
-        }
-
-        .tm-change{
-            text-align:center;
-            margin-top:15px;
-        }
-
-        .tm-change button{
-            border:0;
-            background:transparent;
-            color:#aaa;
-            cursor:pointer;
-            font-size:13px;
-        }
-
-        .tm-change button:hover{
-            color:#fff;
-        }
-
-        .tm-hidden{
-            display:none!important;
-        }
-
-        @media(max-width:520px){
-            .tm-page{
-                padding:18px 12px;
-            }
-
-            .tm-card{
-                padding:30px 21px 25px;
-                border-radius:15px;
-            }
-
-            .tm-brand-title{
-                font-size:24px;
-            }
-
-            .tm-heading{
-                font-size:24px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="tm-page">
-    <main class="tm-card">
-
-        <div class="tm-brand">
-            <div class="tm-brand-title">CINEMA WORLD</div>
-            <div class="tm-brand-subtitle">Your Cinematic World</div>
-        </div>
-
-        <!-- FLASH MESSAGES -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="tm-alerts">
-                    {% for category, message in messages %}
-                        <div class="tm-alert {{ category }}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-
-        <!-- =====================================================
-             OTP SCREEN
-             ===================================================== -->
-
-        {% if step == "otp" %}
-
-            <h1 class="tm-heading">Welcome back</h1>
-
-            <p class="tm-description">
-                अपना verification code डालें और CINEMA WORLD में securely sign in करें।
-            </p>
-
-            {% if session.get("otp_mobile") %}
-
-                <div class="tm-otp-info">
-                    OTP भेजा गया है
-                    <strong>{{ masked_mobile }}</strong>
-                    पर।
-                </div>
-
-                <form method="POST"
-                      action="{{ url_for('verify_mobile_otp_route') }}"
-                      onsubmit="lockButton(this)">
-
-                    <label class="tm-label" for="mobileOtp">
-                        Enter OTP
-                    </label>
-
-                    <div class="tm-input-wrap">
-                        <input
-                            id="mobileOtp"
-                            name="otp"
-                            class="tm-input tm-otp"
-                            type="text"
-                            inputmode="numeric"
-                            autocomplete="one-time-code"
-                            maxlength="9"
-                            pattern="[0-9]{4,9}"
-                            placeholder="••••••"
-                            required
-                        >
-                    </div>
-
-                    <button type="submit" class="tm-button">
-                        VERIFY OTP ✓
-                    </button>
-                </form>
-
-            {% elif session.get("otp_email") %}
-
-                <div class="tm-otp-info">
-                    OTP भेजा गया है
-                    <strong>{{ session.get("otp_email") }}</strong>
-                    पर।
-                </div>
-
-                <form method="POST"
-                      action="{{ url_for('verify_otp') }}"
-                      onsubmit="lockButton(this)">
-
-                    <label class="tm-label" for="emailOtp">
-                        Enter Email OTP
-                    </label>
-
-                    <div class="tm-input-wrap">
-                        <input
-                            id="emailOtp"
-                            name="otp"
-                            class="tm-input tm-otp"
-                            type="text"
-                            inputmode="numeric"
-                            autocomplete="one-time-code"
-                            maxlength="6"
-                            pattern="[0-9]{6}"
-                            placeholder="••••••"
-                            required
-                        >
-                    </div>
-
-                    <button type="submit" class="tm-button">
-                        VERIFY OTP ✓
-                    </button>
-                </form>
-
-            {% endif %}
-
-            <div class="tm-change">
-                <button type="button" onclick="goBackToLogin()">
-                    ← Change login method
-                </button>
-            </div>
-
-            <div class="tm-secure">
-                🔒 <strong>Secure login</strong>
-                • Your information is protected
-            </div>
-
-
-        <!-- =====================================================
-             LOGIN SCREEN
-             ===================================================== -->
-
-        {% else %}
-
-            <h1 class="tm-heading">Welcome back</h1>
-
-            <p class="tm-description">
-                अपना mobile number या Gmail / Email verify करें
-                और CINEMA WORLD में securely sign in करें।
-            </p>
-
-
-            <!-- MOBILE LOGIN -->
-
-            <section id="mobileSection" class="tm-mobile-section">
-
-                <form method="POST"
-                      action="{{ url_for('request_mobile_otp') }}"
-                      onsubmit="lockButton(this)">
-
-                    <label class="tm-label" for="mobile">
-                        Mobile Number
-                    </label>
-
-                    <div class="tm-input-wrap">
-
-                        <div class="tm-prefix">
-                            <span class="flag">🇮🇳</span>
-                            <span>+91</span>
-                        </div>
-
-                        <input
-                            id="mobile"
-                            name="mobile"
-                            class="tm-input"
-                            type="tel"
-                            inputmode="numeric"
-                            autocomplete="tel"
-                            maxlength="10"
-                            pattern="[6-9][0-9]{9}"
-                            value="{{ mobile or '' }}"
-                            placeholder="Enter 10-digit mobile number"
-                            required
-                        >
-
-                    </div>
-
-                    <button type="submit" class="tm-button">
-                        GET OTP →
-                    </button>
-
-                </form>
-
-            </section>
-
-
-            <!-- EMAIL / GMAIL LOGIN -->
-
-            <div class="tm-divider">
-                <span>OR</span>
-            </div>
-
-            <button
-                id="emailOpenButton"
-                type="button"
-                class="tm-email-link"
-                onclick="showEmailLogin()"
-            >
-                <span class="tm-email-icon">✉</span>
-                Continue with Gmail / Email
-            </button>
-
-            <section id="emailSection" class="tm-email-section">
-
-                <form method="POST"
-                      action="{{ url_for('request_otp') }}"
-                      onsubmit="saveEmailBeforeSubmit(this); lockButton(this)">
-
-                    <label class="tm-label" for="email">
-                        Gmail / Email
-                    </label>
-
-                    <div class="tm-input-wrap">
-
-                        <div class="tm-prefix">
-                            <span>✉</span>
-                        </div>
-
-                        <input
-                            id="email"
-                            name="email"
-                            class="tm-input"
-                            type="email"
-                            autocomplete="email"
-                            placeholder="Enter your Gmail / Email"
-                            value="{{ request.args.get('email', '') }}"
-                            required
-                        >
-
-                    </div>
-
-                    <button type="submit" class="tm-button">
-                        GET EMAIL OTP →
-                    </button>
-
-                </form>
-
-                <button
-                    type="button"
-                    class="tm-back"
-                    onclick="showMobileLogin()"
-                >
-                    ← Use mobile number instead
-                </button>
-
-            </section>
-
-
-            <div class="tm-secure">
-                🔒 <strong>Secure login</strong>
-                • Your information is protected
-            </div>
-
-            <div class="tm-info">
-                Verification के बाद आपका account securely तैयार होगा
-                और आप User Details page पर जाएंगे।
-            </div>
-
-        {% endif %}
-
-    </main>
+{% extends "base.html" %}
+
+{% block title %}Login | CINEMA WORLD{% endblock %}
+
+{% block content %}
+<style>
+.tm-login-page{min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(circle at 15% 10%,rgba(130,25,190,.24),transparent 32%),radial-gradient(circle at 85% 85%,rgba(255,0,70,.18),transparent 32%),#050505;color:#fff}
+.tm-login-head{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 5vw;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.55);backdrop-filter:blur(14px)}
+.tm-login-brand{color:#fff;text-decoration:none;font-weight:1000;letter-spacing:2px;font-size:22px}.tm-login-brand span{color:#ff1744}
+.tm-home-link{color:#fff;text-decoration:none;font-size:14px;font-weight:800;padding:10px 16px;border:1px solid rgba(255,255,255,.18);border-radius:8px}
+.tm-login-wrap{width:min(1040px,calc(100% - 28px));margin:auto;padding:48px 0 70px}.tm-login-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:stretch}
+.tm-login-card{border:1px solid rgba(255,255,255,.12);border-radius:20px;background:rgba(18,18,22,.88);box-shadow:0 28px 80px rgba(0,0,0,.48);padding:32px}.tm-login-card.primary{background:linear-gradient(145deg,rgba(120,20,160,.20),rgba(255,23,68,.07)),rgba(18,18,22,.92)}
+.tm-login-icon{width:54px;height:54px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(135deg,#ff1744,#8e24aa);font-size:25px;margin-bottom:20px}
+.tm-login-card h1,.tm-login-card h2{margin:0 0 10px;font-weight:1000;letter-spacing:-.5px}.tm-login-card h1{font-size:32px}.tm-login-card h2{font-size:22px}
+.tm-login-sub{margin:0 0 25px;color:#aaa;line-height:1.6;font-size:14px}.tm-login-label{display:block;margin:0 0 8px;font-size:13px;color:#ddd;font-weight:800}
+.tm-login-input{width:100%;height:52px;padding:0 15px;border:1px solid rgba(255,255,255,.18);border-radius:9px;outline:none;background:#0c0c0f;color:#fff;font-size:15px;box-sizing:border-box}.tm-login-input:focus{border-color:#ff1744;box-shadow:0 0 0 3px rgba(255,23,68,.12)}
+.tm-login-btn{width:100%;min-height:52px;margin-top:15px;border:0;border-radius:9px;cursor:pointer;color:#fff;background:linear-gradient(90deg,#ff1744,#8e24aa);font-size:15px;font-weight:1000}.tm-login-btn:hover{filter:brightness(1.08)}
+.tm-login-note{margin-top:16px;color:#888;font-size:12px;line-height:1.6}.tm-back{display:inline-block;margin-top:14px;color:#aaa;text-decoration:none;font-size:13px;font-weight:700}
+.tm-divider{height:1px;background:rgba(255,255,255,.09);margin:28px 0}.tm-security{display:grid;gap:13px}.tm-security-item{display:flex;gap:12px;align-items:flex-start;color:#aaa;font-size:13px;line-height:1.5}.tm-security-item b{color:#fff;display:block;margin-bottom:2px}.tm-security-item .ico{font-size:18px}
+.tm-badge{display:inline-block;margin-bottom:12px;padding:7px 10px;border-radius:999px;background:rgba(142,36,170,.16);border:1px solid rgba(142,36,170,.32);color:#d9a8ff;font-size:11px;font-weight:900;letter-spacing:.5px}
+@media(max-width:780px){.tm-login-head{padding:0 18px;height:68px}.tm-login-brand{font-size:18px}.tm-login-grid{grid-template-columns:1fr}.tm-login-wrap{padding:28px 0 50px}.tm-login-card{padding:24px 20px;border-radius:16px}.tm-login-card h1{font-size:28px}}
+</style>
+
+<div class="tm-login-page">
+<header class="tm-login-head">
+<a class="tm-login-brand" href="{{ url_for('home') }}">CINEMA <span>WORLD</span></a>
+<a class="tm-home-link" href="{{ url_for('home') }}">Home</a>
+</header>
+
+<div class="tm-login-wrap"><div class="tm-login-grid">
+<section class="tm-login-card primary">
+<div class="tm-login-icon">🔐</div>
+
+{% if step == 'otp' %}
+<h1>Verify OTP</h1>
+<p class="tm-login-sub">Tumhari identity verify karne ke liye OTP bheja gaya hai. Verification ke baad <b>Set Password</b> hoga.</p>
+{% if email %}
+<form action="{{ url_for('verify_otp') }}" method="post" autocomplete="one-time-code">
+<label class="tm-login-label" for="otp">6-digit Email OTP</label>
+<input class="tm-login-input" id="otp" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" required autofocus>
+<button class="tm-login-btn" type="submit">Verify & Continue →</button>
+</form>
+<form action="{{ url_for('request_otp') }}" method="post"><input type="hidden" name="email" value="{{ email }}"><button class="tm-login-btn" style="background:transparent;border:1px solid rgba(255,255,255,.18)" type="submit">Send New OTP</button></form>
+{% else %}
+<form action="{{ url_for('verify_mobile_otp_route') }}" method="post" autocomplete="one-time-code">
+<label class="tm-login-label" for="otp">Mobile OTP</label>
+<input class="tm-login-input" id="otp" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="9" pattern="[0-9]{4,9}" placeholder="Enter OTP" required autofocus>
+<button class="tm-login-btn" type="submit">Verify & Continue →</button>
+</form>
+<form action="{{ url_for('request_mobile_otp') }}" method="post"><input type="hidden" name="mobile" value="{{ mobile }}"><button class="tm-login-btn" style="background:transparent;border:1px solid rgba(255,255,255,.18)" type="submit">Send New OTP</button></form>
+{% endif %}
+<a class="tm-back" href="{{ url_for('login') }}">← Change email / mobile</a>
+
+{% elif step == 'password' %}
+<span class="tm-badge">EXISTING ACCOUNT</span>
+<h1>Welcome back</h1>
+<p class="tm-login-sub">Is account ka password already set hai. <b>OTP ki zarurat nahi hai.</b></p>
+<form action="{{ url_for('customer_password_login') }}" method="post" autocomplete="on">
+<label class="tm-login-label" for="identifier">Email / Mobile</label>
+<input class="tm-login-input" id="identifier" name="identifier" value="{{ identifier }}" readonly>
+<label class="tm-login-label" for="password" style="margin-top:14px">Password</label>
+<input class="tm-login-input" id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required autofocus>
+<button class="tm-login-btn" type="submit">Login →</button>
+</form>
+<a class="tm-back" href="{{ url_for('login') }}">← Use another account</a>
+
+{% elif step == 'set_password' %}
+<span class="tm-badge">ONE-TIME SETUP</span>
+<h1>Set your password</h1>
+<p class="tm-login-sub">Verification complete. Ab password set kar do. Next time isi email/mobile se <b>OTP nahi aayega</b>.</p>
+<form action="{{ url_for('customer_set_password') }}" method="post" autocomplete="new-password">
+<label class="tm-login-label" for="password">New password</label>
+<input class="tm-login-input" id="password" name="password" type="password" minlength="6" autocomplete="new-password" placeholder="Minimum 6 characters" required autofocus>
+<label class="tm-login-label" for="confirm_password" style="margin-top:14px">Confirm password</label>
+<input class="tm-login-input" id="confirm_password" name="confirm_password" type="password" minlength="6" autocomplete="new-password" placeholder="Re-enter password" required>
+<button class="tm-login-btn" type="submit">Save Password & Login →</button>
+</form>
+
+{% else %}
+<span class="tm-badge">CINEMA WORLD ACCOUNT</span>
+<h1>Sign in</h1>
+<p class="tm-login-sub">Email ya mobile number enter karo. Existing account hua to <b>direct password login</b> milega. New account hua to sirf ek baar OTP verification hoga.</p>
+<form action="{{ url_for('login_start') }}" method="post">
+<label class="tm-login-label" for="identifier">Email address / Mobile number</label>
+<input class="tm-login-input" id="identifier" name="identifier" type="text" autocomplete="username" value="{{ identifier }}" placeholder="Email ya 10-digit mobile" required autofocus>
+<button class="tm-login-btn" type="submit">Continue →</button>
+</form>
+<p class="tm-login-note">First-time account: OTP → Set Password. Returning account: Password only.</p>
+{% endif %}
+</section>
+
+<aside class="tm-login-card">
+<h2>Simple & Secure</h2>
+<p class="tm-login-sub">CINEMA WORLD account ek email/mobile ko ek hi account se connect rakhta hai.</p>
+<div class="tm-security">
+<div class="tm-security-item"><span class="ico">🔐</span><div><b>First time</b>OTP verification ke baad password set karo.</div></div>
+<div class="tm-security-item"><span class="ico">⚡</span><div><b>Next time</b>Same email/mobile par direct password login — OTP nahi.</div></div>
+<div class="tm-security-item"><span class="ico">🎬</span><div><b>Access connected</b>Account ke movie/payment access ke saath login connected rahega.</div></div>
 </div>
-
-
-<script>
-
-    function lockButton(form){
-        const button = form.querySelector("button[type='submit']");
-
-        if(button){
-            button.disabled = true;
-            button.dataset.originalText = button.innerHTML;
-            button.innerHTML = "Please wait...";
-        }
-    }
-
-
-    /*
-     * ==========================================================
-     * HOME PAGE EMAIL → LOGIN PAGE AUTO FILL
-     * ==========================================================
-     *
-     * Home page se email:
-     * login?email=example@gmail.com
-     *
-     * ke through aata hai.
-     *
-     * Saath me purana localStorage system bhi rakha gaya hai
-     * taaki existing functionality disturb na ho.
-     */
-
-    function getSavedCinemaWorldEmail(){
-
-        try{
-            const email =
-                localStorage.getItem("cinema_world_email");
-
-            if(email && email.trim()){
-                return email.trim();
-            }
-        }catch(error){
-            console.log("Email storage unavailable");
-        }
-
-        return "";
-    }
-
-
-    function saveCinemaWorldEmail(email){
-
-        try{
-            if(email && email.trim()){
-                localStorage.setItem(
-                    "cinema_world_email",
-                    email.trim()
-                );
-            }
-        }catch(error){
-            console.log("Email could not be saved");
-        }
-    }
-
-
-    function saveEmailBeforeSubmit(form){
-
-        const input =
-            form.querySelector("#email");
-
-        if(input && input.value){
-            saveCinemaWorldEmail(input.value);
-        }
-    }
-
-
-    function showEmailLogin(){
-
-        const mobileSection =
-            document.getElementById("mobileSection");
-
-        const emailSection =
-            document.getElementById("emailSection");
-
-        const emailOpenButton =
-            document.getElementById("emailOpenButton");
-
-        if(mobileSection){
-            mobileSection.classList.add("hidden");
-        }
-
-        if(emailSection){
-            emailSection.classList.add("active");
-        }
-
-        if(emailOpenButton){
-            emailOpenButton.classList.add("tm-hidden");
-        }
-
-        const emailInput =
-            document.getElementById("email");
-
-        if(emailInput){
-
-            /*
-             * Pehle Home URL ka email use hoga.
-             * Agar URL me email nahi hai to saved email use hoga.
-             */
-
-            const urlEmail =
-                new URLSearchParams(window.location.search)
-                    .get("email");
-
-            const savedEmail =
-                getSavedCinemaWorldEmail();
-
-            if(
-                !emailInput.value &&
-                urlEmail &&
-                urlEmail.trim()
-            ){
-                emailInput.value =
-                    urlEmail.trim();
-            }
-
-            if(
-                !emailInput.value &&
-                savedEmail
-            ){
-                emailInput.value =
-                    savedEmail;
-            }
-
-            setTimeout(function(){
-                emailInput.focus();
-            },100);
-        }
-    }
-
-
-    function showMobileLogin(){
-
-        const mobileSection =
-            document.getElementById("mobileSection");
-
-        const emailSection =
-            document.getElementById("emailSection");
-
-        const emailOpenButton =
-            document.getElementById("emailOpenButton");
-
-        if(emailSection){
-            emailSection.classList.remove("active");
-        }
-
-        if(mobileSection){
-            mobileSection.classList.remove("hidden");
-        }
-
-        if(emailOpenButton){
-            emailOpenButton.classList.remove("tm-hidden");
-        }
-    }
-
-
-    function goBackToLogin(){
-        window.location.href = "{{ url_for('login') }}";
-    }
-
-
-    document.addEventListener("DOMContentLoaded", function(){
-
-        const mobileInput =
-            document.getElementById("mobile");
-
-        if(mobileInput){
-
-            mobileInput.addEventListener("input", function(){
-
-                this.value =
-                    this.value.replace(/\D/g,"").slice(0,10);
-
-            });
-
-        }
-
-
-        const otpInputs =
-            document.querySelectorAll(
-                "input[name='otp']"
-            );
-
-        otpInputs.forEach(function(input){
-
-            input.addEventListener("input", function(){
-
-                this.value =
-                    this.value.replace(/\D/g,"");
-
-            });
-
-        });
-
-
-        /*
-         * ------------------------------------------------------
-         * HOME → LOGIN AUTO EMAIL
-         * ------------------------------------------------------
-         *
-         * Home page se email aaya hai to:
-         *
-         * 1. Email box automatically fill hoga
-         * 2. Email login automatically open hoga
-         * 3. Mobile section temporarily hide hoga
-         * 4. User ko dobara email type nahi karna padega
-         *
-         * Agar Home se email nahi aaya to existing login
-         * behaviour bilkul same rahega.
-         */
-
-        const emailInput =
-            document.getElementById("email");
-
-        const urlEmail =
-            new URLSearchParams(window.location.search)
-                .get("email");
-
-        if(emailInput){
-
-            /*
-             * URL se aaya email sabse pehle use karo.
-             */
-
-            if(
-                urlEmail &&
-                urlEmail.trim()
-            ){
-
-                emailInput.value =
-                    urlEmail.trim();
-
-                /*
-                 * Future visits ke liye save bhi kar do.
-                 */
-
-                saveCinemaWorldEmail(
-                    urlEmail.trim()
-                );
-
-                /*
-                 * Email option automatically open.
-                 */
-
-                showEmailLogin();
-
-            }else{
-
-                /*
-                 * Agar URL me email nahi hai,
-                 * to existing saved email behaviour rakho.
-                 */
-
-                const savedEmail =
-                    getSavedCinemaWorldEmail();
-
-                if(savedEmail){
-
-                    emailInput.value =
-                        savedEmail;
-
-                    showEmailLogin();
-                }
-            }
-        }
-
-    });
-
-</script>
-
-</body>
-</html>
+<div class="tm-divider"></div>
+<h2>Admin Login</h2><p class="tm-login-sub">For CINEMA WORLD administration only.</p>
+<form action="{{ url_for('admin_login') }}" method="post" autocomplete="off">
+<label class="tm-login-label" for="admin_username">Username</label>
+<input class="tm-login-input" id="admin_username" name="username" type="text" autocomplete="username" placeholder="Admin username" required>
+<label class="tm-login-label" for="admin_password" style="margin-top:14px">Password</label>
+<input class="tm-login-input" id="admin_password" name="password" type="password" autocomplete="current-password" placeholder="Admin password" required>
+<button class="tm-login-btn" type="submit">Admin Login</button>
+</form>
+</aside>
+</div></div></div>
+
+<script>(function(){const o=document.getElementById('otp');if(o)o.addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(0,9);});})();</script>
+{% endblock %}
