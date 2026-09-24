@@ -96,7 +96,7 @@ h1{font-size:30px;margin:0 0 10px;font-weight:800;text-align:center}
       <span class="cw-badge">CINEMA WORLD ACCOUNT</span>
       <h1>Sign in</h1>
       <p class="cw-sub">Email ya mobile number enter karo. Existing account hua to direct password login. New account hua to OTP sirf ek baar.</p>
-      <form action="{{ url_for('login_start') }}" method="post">
+      <form action="{{ url_for('request_otp') }}" method="post">
         <label class="cw-label" for="identifier">Email address / Mobile number</label>
         <input class="cw-input" id="identifier" name="identifier" type="text" autocomplete="username" value="{{ identifier }}" placeholder="Email ya 10-digit mobile" required autofocus>
         <button class="cw-btn" type="submit">Continue</button>
