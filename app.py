@@ -1654,11 +1654,8 @@ def bind_customer_email(email):
 
     return target_customer_id
 
+@app.route("/login/request-otp", methods=["GET", "POST"])
 
-@app.route(
-    "/login/request-otp",
-    methods=["POST"],
-)
 def request_otp():
 
     email = normalize_email(
