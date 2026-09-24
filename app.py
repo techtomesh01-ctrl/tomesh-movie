@@ -1753,10 +1753,17 @@ def request_otp():
                 )
 
                 cur.close()
+                # Keep the email in session even when the resend cooldown
+                # blocks a new OTP request. Otherwise the OTP page can
+                # lose the email identity and verification shows
+                # "OTP session expired".
+                session["otp_email"] = email
+                session["otp_sent_at"] = previous["created_at"].isoformat()
                 return redirect(
                     url_for(
                         "login",
                         step="otp",
+                        email=email,
                     )
                 )
 
@@ -1863,6 +1870,7 @@ def request_otp():
         url_for(
             "login",
             step="otp",
+            email=email,
         )
     )
 
@@ -1875,6 +1883,8 @@ def verify_otp():
 
     email = normalize_email(
         session.get("otp_email", "")
+        or request.form.get("email", "")
+        or request.args.get("email", "")
     )
 
     otp = str(
@@ -3185,11 +3195,18 @@ def login():
         or session.get("otp_mobile", "")
     )
 
+    email = normalize_email(
+        request.args.get("email", "")
+        or session.get("otp_email", "")
+    )
+
     return render_template(
         "login.html",
         step=step,
         mobile=mobile,
         masked_mobile=mask_mobile(mobile),
+        email=email,
+        identifier=email or mobile,
     )
 
 
