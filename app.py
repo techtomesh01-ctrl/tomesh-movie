@@ -3188,7 +3188,7 @@ def login():
     step = str(request.args.get("step", "")).strip().lower()
 
     if step not in {"mobile", "otp"}:
-        step = "otp" if session.get("otp_mobile") else "mobile"
+        step = "otp" if (session.get("otp_mobile") or session.get("otp_email")) else "mobile"
 
     mobile = normalize_mobile(
         request.args.get("mobile", "")
@@ -3788,6 +3788,67 @@ def admin_live_activity():
 @admin_required
 def admin_notifications():
     return redirect(url_for("admin"))
+
+
+@app.route("/admin/report-csv/<report_name>")
+@admin_required
+def admin_report_csv(report_name):
+    """Export the admin report tables as CSV without exposing secrets."""
+    import csv
+    import io
+
+    allowed = {"subscriptions", "payments", "users", "movies", "access"}
+    report_name = str(report_name or "").strip().lower()
+    if report_name not in allowed:
+        return Response("Unknown report.", status=404)
+
+    queries = {
+        "subscriptions": (
+            "SELECT customer_id, subscription_id, cf_subscription_id, status, auth_status, premium_until, updated_at "
+            "FROM customer_subscriptions ORDER BY updated_at DESC",
+            "subscriptions.csv",
+        ),
+        "payments": (
+            "SELECT * FROM payment_orders ORDER BY id DESC",
+            "payments.csv",
+        ),
+        "users": (
+            "SELECT id, email, mobile, customer_id, full_name, created_at, last_login_at FROM customer_users ORDER BY id DESC",
+            "users.csv",
+        ),
+        "movies": (
+            "SELECT id, title, category, views, created_at FROM movies ORDER BY id DESC",
+            "movies.csv",
+        ),
+        "access": (
+            "SELECT * FROM customer_access ORDER BY id DESC",
+            "access.csv",
+        ),
+    }
+
+    sql, filename = queries[report_name]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(sql)
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    if rows:
+        headers = list(rows[0].keys())
+        writer.writerow(headers)
+        for row in rows:
+            writer.writerow([row.get(h) for h in headers])
+    else:
+        writer.writerow([report_name])
+
+    response = Response(output.getvalue(), mimetype="text/csv; charset=utf-8")
+    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @app.route("/admin/reports")
