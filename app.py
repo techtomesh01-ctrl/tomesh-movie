@@ -1697,12 +1697,12 @@ def login_start():
 
 @app.route(
     "/login/request-otp",
-    methods=["POST"],
+    methods=["GET", "POST"],
 )
 def request_otp():
 
     email = normalize_email(
-        request.form.get("email", "")
+        request.values.get("email", "")
     )
 
     if not valid_email(email):
