@@ -3161,41 +3161,22 @@ def download_movie(movie_id):
 # LOGIN
 # ============================================================
 
-@app.route("/login/start", methods=["POST"])
-def login_start():
-    """Start the existing customer login flow from the CINEMA WORLD login page.
-
-    This endpoint is intentionally only a router: email identifiers continue
-    through the existing Brevo email-OTP flow, while mobile identifiers
-    continue through the existing Message Central mobile-OTP flow.
-    """
-    identifier = str(request.form.get("identifier", "")).strip()
-
-    if not identifier:
-        flash("Please enter your email address or mobile number.", "error")
-        return redirect(url_for("login"))
-
-    email = normalize_email(identifier)
-    if valid_email(email):
-        return redirect(url_for("request_otp", email=email))
-
-    mobile = normalize_mobile(identifier)
-    if valid_mobile(mobile):
-        return redirect(url_for("request_mobile_otp", mobile=mobile))
-
-    flash("Please enter a valid email address or 10-digit mobile number.", "error")
-    return redirect(url_for("login"))
-
 
 @app.route(
     "/login",
     methods=["GET"],
 )
 def login():
-    step = str(request.args.get("step", "")).strip().lower()
+    step = str(
+        request.args.get("step", "")
+    ).strip().lower()
 
     if step not in {"mobile", "otp"}:
-        step = "otp" if session.get("otp_mobile") else "mobile"
+        step = (
+            "otp"
+            if session.get("otp_mobile")
+            else "mobile"
+        )
 
     mobile = normalize_mobile(
         request.args.get("mobile", "")
@@ -3210,19 +3191,39 @@ def login():
     )
 
 
-@app.route("/admin/login", methods=["GET", "POST"])
+@app.route(
+    "/admin/login",
+    methods=["GET", "POST"],
+)
 def admin_login():
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+        username = request.form.get(
+            "username",
+            "",
+        ).strip()
 
-        if username == ADMIN_USER and password == ADMIN_PASSWORD:
+        password = request.form.get(
+            "password",
+            "",
+        )
+
+        if (
+            username == ADMIN_USER
+            and password == ADMIN_PASSWORD
+        ):
             session["admin_logged_in"] = True
-            return redirect(url_for("admin"))
+            return redirect(
+                url_for("admin")
+            )
 
-        flash("Invalid username or password.", "error")
+        flash(
+            "Invalid username or password.",
+            "error",
+        )
 
-    return render_template("admin_login.html")
+    return render_template(
+        "admin_login.html"
+    )
 
 
 # LOGOUT
