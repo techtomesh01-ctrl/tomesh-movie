@@ -34,6 +34,7 @@ from flask import (
 )
 
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 # ============================================================
@@ -103,8 +104,12 @@ else:
 # ============================================================
 
 WATCH_PRICE = 1.00
-PREMIUM_PRICE = 99.00
-PREMIUM_DAYS = 30
+DOWNLOAD_PRICE = 9.00
+SHARE_PRICE = 49.00
+PREMIUM_PRICE = 199.00
+PREMIUM_DAYS = 365
+ACTIVATION_PRICE = 1.00
+FREE_WATCH_HOURS = 24
 SUBSCRIPTION_AUTH_AMOUNT = 1.00
 SUBSCRIPTION_PLAN_NAME = os.environ.get(
     "CASHFREE_SUBSCRIPTION_PLAN_NAME",
@@ -524,9 +529,11 @@ def init_db():
                 watch_until TIMESTAMP,
                 download_until TIMESTAMP,
                 premium_until TIMESTAMP,
+                share_until TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        cur.execute("ALTER TABLE customer_access ADD COLUMN IF NOT EXISTS share_until TIMESTAMP")
 
         # ----------------------------------------------------
         # CUSTOMER EMAIL ACCOUNTS
@@ -550,6 +557,11 @@ def init_db():
         cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS mobile TEXT
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS password_hash TEXT
         """)
 
         # Mobile OTP login uses the verified mobile as the primary login identity.
@@ -1300,6 +1312,13 @@ def bind_customer_mobile(mobile):
     to that customer_id.
     """
     mobile = normalize_mobile(mobile)
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor(); cur.execute("SELECT COUNT(*) AS n FROM customer_users WHERE mobile=%s", (mobile,)); count=int((cur.fetchone() or {}).get("n") or 0)
+    finally: conn.close()
+    if count >= 5:
+        raise RuntimeError("This mobile number has already reached the maximum limit of 5 accounts.")
+
     customer_id = "tm_" + secrets.token_hex(16)
 
     conn = get_db()
@@ -1603,96 +1622,84 @@ def bind_customer_email(email):
     return target_customer_id
 
 
-@app.route(
-    "/login/start",
-    methods=["POST"],
-)
+@app.route("/login/start", methods=["POST"])
 def login_start():
-    """Start login from the single Email/Mobile field used by login.html."""
-    value = str(request.form.get("email", "") or "").strip()
+    value = str(request.form.get("email", "") or request.form.get("identifier", "")).strip()
     email = normalize_email(value)
-
     if valid_email(email):
-        # Email OTP flow is kept in request_otp().
-        return redirect(
-            url_for("request_otp", email=email)
-        )
-
-    mobile = normalize_mobile(value)
-
+        conn=get_db(dict_rows=True)
+        try:
+            cur=conn.cursor(); cur.execute("SELECT password_hash FROM customer_users WHERE email=%s LIMIT 1",(email,)); row=cur.fetchone()
+        finally: conn.close()
+        if row and row.get("password_hash"):
+            session["login_identifier"] = email
+            return redirect(url_for("login", step="password", identifier=email))
+        return redirect(url_for("request_otp", email=email))
+    mobile=normalize_mobile(value)
     if valid_mobile(mobile):
-        conn = get_db(dict_rows=True)
+        conn=get_db(dict_rows=True)
         try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT created_at
-                FROM mobile_otps
-                WHERE mobile = %s AND used_at IS NULL
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (mobile,),
-            )
-            previous = cur.fetchone()
-            cur.close()
-        finally:
-            conn.close()
-
-        if previous and previous.get("created_at"):
-            elapsed = (datetime.now() - previous["created_at"]).total_seconds()
-            if elapsed < OTP_RESEND_SECONDS:
-                flash(
-                    "Please wait " + str(max(1, int(OTP_RESEND_SECONDS - elapsed))) + " seconds before requesting another OTP.",
-                    "error",
-                )
-                return redirect(url_for("login", step="otp", mobile=mobile))
-
-        try:
-            request_id = send_mobile_otp(mobile)
-        except Exception as exc:
-            print("MOBILE OTP SEND ERROR:", repr(exc))
-            flash(str(exc), "error")
-            return redirect(url_for("login"))
-
-        conn = get_db()
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                UPDATE mobile_otps
-                SET used_at = NOW()
-                WHERE mobile = %s AND used_at IS NULL
-                """,
-                (mobile,),
-            )
-            cur.execute(
-                """
-                INSERT INTO mobile_otps
-                (mobile, request_id, expires_at, attempts)
-                VALUES(%s, %s, %s, 0)
-                """,
-                (
-                    mobile,
-                    request_id,
-                    datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
-                ),
-            )
-            conn.commit()
-            cur.close()
-        finally:
-            conn.close()
-
-        session["otp_mobile"] = mobile
-        session["otp_mobile_sent_at"] = datetime.now().isoformat()
-        flash("OTP sent to " + mask_mobile(mobile) + ".", "success")
-        return redirect(url_for("login", step="otp", mobile=mobile))
-
-    flash(
-        "Please enter a valid email address or 10-digit mobile number.",
-        "error",
-    )
+            cur=conn.cursor(); cur.execute("SELECT password_hash FROM customer_users WHERE mobile=%s AND password_hash IS NOT NULL AND password_hash<>'' LIMIT 1",(mobile,)); row=cur.fetchone()
+        finally: conn.close()
+        if row and row.get("password_hash"):
+            session["login_identifier"] = mobile
+            return redirect(url_for("login", step="password", identifier=mobile))
+        return _start_mobile_otp(mobile)
+    flash("Please enter a valid email address or 10-digit mobile number.", "error")
     return redirect(url_for("login"))
+
+
+def _start_mobile_otp(mobile):
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor(); cur.execute("SELECT created_at FROM mobile_otps WHERE mobile=%s AND used_at IS NULL ORDER BY id DESC LIMIT 1",(mobile,)); previous=cur.fetchone()
+    finally: conn.close()
+    if previous and previous.get("created_at"):
+        elapsed=(datetime.now()-previous["created_at"]).total_seconds()
+        if elapsed < OTP_RESEND_SECONDS:
+            flash("Please wait " + str(max(1,int(OTP_RESEND_SECONDS-elapsed))) + " seconds before requesting another OTP.", "error")
+            return redirect(url_for("login", step="otp", mobile=mobile))
+    try: request_id=send_mobile_otp(mobile)
+    except Exception as exc:
+        print("MOBILE OTP SEND ERROR:",repr(exc)); flash(str(exc),"error"); return redirect(url_for("login"))
+    conn=get_db()
+    try:
+        cur=conn.cursor(); cur.execute("UPDATE mobile_otps SET used_at=NOW() WHERE mobile=%s AND used_at IS NULL",(mobile,)); cur.execute("INSERT INTO mobile_otps(mobile,request_id,expires_at,attempts) VALUES(%s,%s,%s,0)",(mobile,request_id,datetime.now()+timedelta(minutes=OTP_EXPIRY_MINUTES))); conn.commit()
+    finally: conn.close()
+    session["otp_mobile"]=mobile; session["otp_mobile_sent_at"]=datetime.now().isoformat()
+    flash("OTP sent to " + mask_mobile(mobile) + ".","success")
+    return redirect(url_for("login",step="otp",mobile=mobile))
+
+
+@app.route("/login/password", methods=["POST"])
+def customer_password_login():
+    identifier=str(request.form.get("identifier","")).strip()
+    password=str(request.form.get("password", ""))
+    email=normalize_email(identifier); mobile=normalize_mobile(identifier)
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        if valid_email(email):
+            cur.execute("SELECT customer_id,email,mobile,password_hash FROM customer_users WHERE email=%s LIMIT 1",(email,)); rows=cur.fetchall()
+        elif valid_mobile(mobile):
+            cur.execute("SELECT customer_id,email,mobile,password_hash FROM customer_users WHERE mobile=%s AND password_hash IS NOT NULL AND password_hash<>'' ORDER BY id ASC",(mobile,)); rows=cur.fetchall()
+        else: rows=[]
+    finally: conn.close()
+    matched=None
+    for row in rows:
+        try:
+            if row.get("password_hash") and check_password_hash(row["password_hash"], password): matched=row; break
+        except Exception: pass
+    if not matched:
+        flash("Invalid email/mobile or password.","error")
+        return redirect(url_for("login",step="password",identifier=identifier))
+    session["customer_id"]=matched["customer_id"]; session["customer_logged_in"]=True; session["customer_email"]=matched.get("email") or ""; session["customer_mobile"]=matched.get("mobile") or ""
+    conn=get_db()
+    try:
+        cur=conn.cursor(); cur.execute("UPDATE customer_users SET last_login_at=NOW() WHERE customer_id=%s",(matched["customer_id"],)); conn.commit()
+    finally: conn.close()
+    if not customer_has_completed_initial_payment(matched["customer_id"]): return redirect(url_for("user_details"))
+    return redirect(url_for("member_home"))
 
 
 @app.route(
@@ -2174,7 +2181,7 @@ def access_for_movie(movie_id):
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT watch_until, download_until, premium_until
+            SELECT movie_id, watch_until, download_until, premium_until, share_until
             FROM customer_access
             WHERE customer_id = %s
               AND (movie_id = %s OR movie_id IS NULL)
@@ -2191,99 +2198,57 @@ def access_for_movie(movie_id):
     permanent_watch = False
     temporary_watch = False
     premium = False
+    share = False
 
     for row in rows:
         if (
-            row["watch_until"] is None
+            row.get("movie_id") is None
+            and row["watch_until"] is None
             and row["premium_until"] is None
             and row["download_until"] is None
+            and row.get("share_until") is None
         ):
             permanent_watch = True
         if row["watch_until"] is not None and row["watch_until"] > now:
             temporary_watch = True
         if row["premium_until"] is not None and row["premium_until"] > now:
             premium = True
+        if row.get("share_until") is not None and row["share_until"] > now:
+            share = True
+        elif row.get("movie_id") is not None and row.get("share_until") is None and row.get("watch_until") is None and row.get("download_until") is None and row.get("premium_until") is None:
+            share = True
 
     return {
         "watch": permanent_watch or temporary_watch or premium,
-        "download": premium,
+        "download": premium or any(r.get("download_until") is not None and r["download_until"] > now for r in rows),
         "premium": premium,
+        "share": share,
     }
 
 
 def grant_access(customer_id, movie_id, payment_type):
-    conn = get_db()
+    conn=get_db()
     try:
-        cur = conn.cursor()
-        now = datetime.now()
-
-        if payment_type == "watch":
-            # ₹1 gives permanent account-wide watch access.
-            cur.execute(
-                """
-                SELECT id FROM customer_access
-                WHERE customer_id = %s
-                  AND movie_id IS NULL
-                  AND watch_until IS NULL
-                  AND premium_until IS NULL
-                  AND download_until IS NULL
-                LIMIT 1
-                """,
-                (customer_id,),
-            )
-            if not cur.fetchone():
-                cur.execute(
-                    """
-                    INSERT INTO customer_access
-                    (customer_id, movie_id, watch_until, download_until, premium_until)
-                    VALUES(%s, NULL, NULL, NULL, NULL)
-                    """,
-                    (customer_id,),
-                )
-
+        cur=conn.cursor(); now=datetime.now()
+        if payment_type == "activation":
+            until=now+timedelta(hours=FREE_WATCH_HOURS)
+            cur.execute("INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,NULL,%s,NULL,NULL,NULL)",(customer_id,until))
+        elif payment_type == "watch":
+            until=now+timedelta(hours=24)
+            cur.execute("INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,%s,%s,NULL,NULL,NULL) ON CONFLICT DO NOTHING",(customer_id,movie_id,until))
+        elif payment_type == "download":
+            until=now+timedelta(days=30)
+            cur.execute("INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,%s,NULL,%s,NULL,NULL)",(customer_id,movie_id,until))
+        elif payment_type == "share":
+            cur.execute("INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,%s,NULL,NULL,NULL,NULL)",(customer_id,movie_id))
         elif payment_type == "premium":
-            cur.execute(
-                """
-                SELECT premium_until
-                FROM customer_access
-                WHERE customer_id = %s
-                  AND movie_id IS NULL
-                  AND premium_until IS NOT NULL
-                ORDER BY premium_until DESC
-                LIMIT 1
-                """,
-                (customer_id,),
-            )
-            row = cur.fetchone()
-            current_until = row[0] if row else None
-            base = current_until if current_until and current_until > now else now
-            until = base + timedelta(days=PREMIUM_DAYS)
-
-            cur.execute(
-                """
-                DELETE FROM customer_access
-                WHERE customer_id = %s
-                  AND movie_id IS NULL
-                  AND premium_until IS NOT NULL
-                """,
-                (customer_id,),
-            )
-            cur.execute(
-                """
-                INSERT INTO customer_access
-                (customer_id, movie_id, watch_until, download_until, premium_until)
-                VALUES(%s, NULL, NULL, NULL, %s)
-                """,
-                (customer_id, until),
-            )
-
+            until=now+timedelta(days=PREMIUM_DAYS)
+            cur.execute("DELETE FROM customer_access WHERE customer_id=%s AND movie_id IS NULL AND premium_until IS NOT NULL",(customer_id,))
+            cur.execute("INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,NULL,NULL,NULL,%s,NULL)",(customer_id,until))
         else:
             raise ValueError("Unsupported payment type.")
-
         conn.commit()
-        cur.close()
-    finally:
-        conn.close()
+    finally: conn.close()
 
 
 # ============================================================
@@ -2424,97 +2389,38 @@ def cashfree_request(
 # CREATE CASHFREE ORDER
 # ============================================================
 
-@app.route(
-    "/api/payment/create",
-    methods=["POST"],
-)
+@app.route("/api/payment/create", methods=["POST"])
 def create_payment():
-    data = request.get_json(silent=True) or {}
-    payment_type = str(data.get("payment_type", "")).strip().lower()
-    movie_id = data.get("movie_id")
-    phone = re.sub(r"\D", "", str(data.get("phone", "")))
-
-    if payment_type not in {"watch", "premium"}:
-        return json_error("Invalid payment type. Use watch or premium.")
-
-    if not re.fullmatch(r"[6-9]\d{9}", phone):
-        return json_error("Enter a valid 10 digit Indian mobile number.")
-
-    try:
-        movie_id = int(movie_id)
-    except Exception:
-        return json_error("Invalid movie.")
-
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id, title FROM movies WHERE id = %s", (movie_id,))
-        movie = cur.fetchone()
-        cur.close()
-    finally:
-        conn.close()
-
-    if not movie:
-        return json_error("Movie not found.", 404)
-
-    if payment_type == "watch":
-        amount = WATCH_PRICE
-        description = "CINEMA WORLD Watch Access"
+    data=request.get_json(silent=True) or {}; payment_type=str(data.get("payment_type","")).strip().lower(); movie_id=data.get("movie_id"); phone=re.sub(r"\D","",str(data.get("phone", "")))
+    if payment_type not in {"watch","download","share","premium","activation"}: return json_error("Invalid payment type.")
+    if not re.fullmatch(r"[6-9]\d{9}",phone): return json_error("Enter a valid 10 digit Indian mobile number.")
+    if payment_type == "activation" and customer_has_completed_initial_payment(session.get("customer_id")):
+        return json_ok(already_paid=True, redirect_url=url_for("member_home"))
+    if payment_type == "activation":
+        movie=None; movie_id=None; amount=ACTIVATION_PRICE; description="CINEMA WORLD 24 Hour Activation"
     else:
-        amount = PREMIUM_PRICE
-        description = "CINEMA WORLD 30 Day Premium"
-
-    customer_id = get_customer_id()
-    order_id = "tm_" + payment_type + "_" + str(movie_id) + "_" + secrets.token_hex(8)
-    return_url = url_for("cashfree_return", movie_id=movie_id, _external=True)
-
-    payload = {
-        "order_id": order_id,
-        "order_amount": amount,
-        "order_currency": "INR",
-        "customer_details": {
-            "customer_id": customer_id,
-            "customer_phone": phone,
-        },
-        "order_meta": {"return_url": return_url},
-        "order_note": description,
-        "order_tags": {
-            "movie_id": str(movie_id),
-            "payment_type": payment_type,
-        },
-    }
-
-    try:
-        result = cashfree_request("POST", "/orders", payload)
-        payment_session_id = result.get("payment_session_id")
-        if not payment_session_id:
-            return json_error("Cashfree did not return payment session.", 502, cashfree=result)
-
-        conn = get_db()
+        try: movie_id=int(movie_id)
+        except Exception: return json_error("Invalid movie.")
+        conn=get_db(dict_rows=True)
         try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                INSERT INTO payment_orders
-                (order_id, customer_id, movie_id, payment_type, amount, status)
-                VALUES(%s,%s,%s,%s,%s,%s)
-                """,
-                (order_id, customer_id, movie_id, payment_type, amount, "ACTIVE"),
-            )
-            conn.commit()
-            cur.close()
-        finally:
-            conn.close()
-
-        return json_ok(
-            order_id=order_id,
-            payment_session_id=payment_session_id,
-            amount=amount,
-            mode=CASHFREE_JS_MODE,
-        )
+            cur=conn.cursor(); cur.execute("SELECT id,title FROM movies WHERE id=%s",(movie_id,)); movie=cur.fetchone()
+        finally: conn.close()
+        if not movie: return json_error("Movie not found.",404)
+        amount={"watch":WATCH_PRICE,"download":DOWNLOAD_PRICE,"share":SHARE_PRICE,"premium":PREMIUM_PRICE}[payment_type]
+        description=f"CINEMA WORLD {payment_type.title()} - {movie['title']}"
+    customer_id=get_customer_id(); order_id="tm_"+payment_type+"_"+secrets.token_hex(10)
+    return_url=url_for("cashfree_return",order_id=order_id,movie_id=movie_id or 0,_external=True)
+    payload={"order_id":order_id,"order_amount":amount,"order_currency":"INR","customer_details":{"customer_id":customer_id,"customer_phone":phone},"order_meta":{"return_url":return_url},"order_note":description,"order_tags":{"movie_id":str(movie_id or ""),"payment_type":payment_type}}
+    try:
+        result=cashfree_request("POST","/orders",payload); payment_session_id=result.get("payment_session_id")
+        if not payment_session_id: return json_error("Cashfree did not return payment session.",502,cashfree=result)
+        conn=get_db()
+        try:
+            cur=conn.cursor(); cur.execute("INSERT INTO payment_orders(order_id,customer_id,movie_id,payment_type,amount,status) VALUES(%s,%s,%s,%s,%s,'ACTIVE')",(order_id,customer_id,movie_id,payment_type,amount)); conn.commit()
+        finally: conn.close()
+        return json_ok(order_id=order_id,payment_session_id=payment_session_id,amount=amount,mode=CASHFREE_JS_MODE)
     except Exception as exc:
-        print("CREATE PAYMENT ERROR:", repr(exc))
-        return json_error(str(exc), 500)
+        print("CREATE PAYMENT ERROR:",repr(exc)); return json_error(str(exc),500)
 
 # ============================================================
 # CASHFREE RETURN / VERIFY
@@ -2525,12 +2431,7 @@ def create_payment():
 )
 def cashfree_return():
 
-    order_id = (
-        request.args.get(
-            "order_id",
-            "",
-        ).strip()
-    )
+    order_id = (request.args.get("order_id", "").strip())
 
     movie_id = request.args.get(
         "movie_id",
@@ -2686,7 +2587,9 @@ def cashfree_return():
                 "success",
             )
 
-            return redirect(url_for("member_home"))
+            if local_order["payment_type"] == "activation":
+                return redirect(url_for("member_home"))
+            return redirect(url_for("movie_page", movie_id=local_order["movie_id"]))
 
         flash(
             "Payment was not completed. Status: "
@@ -3238,6 +3141,21 @@ def logout():
     )
 
 
+@app.route("/customer/set-password", methods=["POST"])
+@customer_login_required
+def customer_set_password():
+    customer_id=session.get("customer_id")
+    password=str(request.form.get("password", "")); confirm=str(request.form.get("confirm_password", ""))
+    if len(password)<6: flash("Password minimum 6 characters ka hona chahiye.","error"); return redirect(url_for("user_details"))
+    if password != confirm: flash("Passwords match nahi karte.","error"); return redirect(url_for("user_details"))
+    conn=get_db()
+    try:
+        cur=conn.cursor(); cur.execute("UPDATE customer_users SET password_hash=%s WHERE customer_id=%s",(generate_password_hash(password),customer_id)); conn.commit()
+    finally: conn.close()
+    flash("Password saved successfully.","success")
+    return redirect(url_for("user_details"))
+
+
 # ============================================================
 # CUSTOMER MEMBER / USER DETAILS / MY LIST
 # ============================================================
@@ -3252,64 +3170,35 @@ def customer_login_required(view_func):
 
 
 @app.route("/user-details", methods=["GET", "POST"])
-@customer_login_required
 def user_details():
-    customer_id = session.get("customer_id")
-    if not customer_id:
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        full_name = (request.form.get("full_name") or "").strip()
-        mobile = normalize_mobile(
-            request.form.get("mobile")
-            or session.get("customer_mobile", "")
-        )
-        if not full_name:
-            flash("Please enter your full name.", "error")
-            return redirect(url_for("user_details"))
-        if not re.fullmatch(r"[6-9]\d{9}", mobile):
-            flash("Please enter a valid 10-digit mobile number.", "error")
-            return redirect(url_for("user_details"))
-
-        conn = get_db()
+    if not session.get("customer_id"):
+        session["customer_id"]="tm_"+secrets.token_hex(16); session["customer_logged_in"]=True
+    customer_id=session["customer_id"]
+    if request.method=="POST":
+        full_name=(request.form.get("full_name") or "").strip(); mobile=normalize_mobile(request.form.get("mobile") or session.get("customer_mobile", "")); email=normalize_email(request.form.get("email") or session.get("customer_email", "")); password=str(request.form.get("password", "")); confirm=str(request.form.get("confirm_password", ""))
+        if not full_name: flash("Please enter your full name.","error"); return redirect(url_for("user_details"))
+        if not valid_mobile(mobile): flash("Please enter a valid 10-digit mobile number.","error"); return redirect(url_for("user_details"))
+        if not valid_email(email): flash("Please enter a valid email address.","error"); return redirect(url_for("user_details"))
+        if len(password)<6: flash("Password minimum 6 characters ka hona chahiye.","error"); return redirect(url_for("user_details"))
+        if password!=confirm: flash("Passwords match nahi karte.","error"); return redirect(url_for("user_details"))
+        conn=get_db(dict_rows=True)
         try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                UPDATE customer_users
-                SET full_name = %s, mobile = %s
-                WHERE customer_id = %s
-                """,
-                (full_name, mobile, customer_id),
-            )
+            cur=conn.cursor(); cur.execute("SELECT id,customer_id FROM customer_users WHERE email=%s AND customer_id<>%s LIMIT 1",(email,customer_id)); existing_email=cur.fetchone()
+            if existing_email: flash("This email is already registered. Please login with that email.","error"); return redirect(url_for("user_details"))
+            cur.execute("SELECT COUNT(*) AS n FROM customer_users WHERE mobile=%s AND customer_id<>%s",(mobile,customer_id)); count=int((cur.fetchone() or {}).get("n") or 0)
+            if count>=5: flash("This mobile number has already reached the maximum limit of 5 accounts.","error"); return redirect(url_for("user_details"))
+            cur.execute("UPDATE customer_users SET email=%s,full_name=%s,mobile=%s,password_hash=%s,last_login_at=NOW() WHERE customer_id=%s",(email,full_name,mobile,generate_password_hash(password),customer_id))
+            if cur.rowcount==0: cur.execute("INSERT INTO customer_users(email,customer_id,full_name,mobile,password_hash,last_login_at) VALUES(%s,%s,%s,%s,%s,NOW())",(email,customer_id,full_name,mobile,generate_password_hash(password)))
             conn.commit()
-            cur.close()
-        finally:
-            conn.close()
-
-        session["customer_mobile"] = mobile
-        if customer_has_completed_initial_payment(customer_id):
-            return redirect(url_for("member_home"))
+        finally: conn.close()
+        session["customer_email"]=email; session["customer_mobile"]=mobile; session["customer_logged_in"]=True
+        if customer_has_completed_initial_payment(customer_id): return redirect(url_for("member_home"))
         return redirect(url_for("membership_checkout"))
-
-    conn = get_db(dict_rows=True)
+    conn=get_db(dict_rows=True)
     try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT full_name, mobile, email FROM customer_users WHERE customer_id = %s LIMIT 1",
-            (customer_id,),
-        )
-        user = cur.fetchone() or {}
-        cur.close()
-    finally:
-        conn.close()
-
-    return render_template(
-        "user_details.html",
-        full_name=user.get("full_name", ""),
-        mobile=user.get("mobile", ""),
-        customer_email=user.get("email") or session.get("customer_email", ""),
-    )
+        cur=conn.cursor(); cur.execute("SELECT full_name,mobile,email,password_hash FROM customer_users WHERE customer_id=%s LIMIT 1",(customer_id,)); user=cur.fetchone() or {}
+    finally: conn.close()
+    return render_template("user_details.html",full_name=user.get("full_name", ""),mobile=user.get("mobile", ""),customer_email=user.get("email") or session.get("customer_email", ""),has_password=bool(user.get("password_hash")))
 
 
 def get_member_movies_data():
@@ -3343,26 +3232,14 @@ def get_member_movies_data():
 
 
 def customer_has_completed_initial_payment(customer_id=None):
-    customer_id = customer_id or session.get("customer_id")
-    if not customer_id:
-        return False
-    conn = get_db(dict_rows=True)
+    customer_id=customer_id or session.get("customer_id")
+    if not customer_id: return False
+    conn=get_db(dict_rows=True)
     try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT 1
-            FROM customer_subscriptions
-            WHERE customer_id = %s
-              AND auth_status = 'SUCCESS'
-              AND status IN ('ACTIVE', 'BANK_APPROVAL_PENDING')
-            LIMIT 1
-            """,
-            (customer_id,),
-        )
-        return bool(cur.fetchone())
-    finally:
-        conn.close()
+        cur=conn.cursor(); cur.execute("SELECT 1 FROM payment_orders WHERE customer_id=%s AND payment_type='activation' AND status='PAID' LIMIT 1",(customer_id,));
+        if cur.fetchone(): return True
+        cur.execute("SELECT 1 FROM customer_subscriptions WHERE customer_id=%s AND auth_status='SUCCESS' AND status IN ('ACTIVE','BANK_APPROVAL_PENDING') LIMIT 1",(customer_id,)); return bool(cur.fetchone())
+    finally: conn.close()
 
 
 def subscription_customer_name(customer_id):
@@ -3577,14 +3454,8 @@ def create_subscription_route():
 @customer_login_required
 def membership_start():
     customer_id=session.get("customer_id")
-    if customer_has_completed_initial_payment(customer_id):
-        return redirect(url_for("member_home"))
-    try:
-        subscription_id, session_id = create_cashfree_subscription(customer_id)
-    except Exception as exc:
-        print("MEMBERSHIP START ERROR:",repr(exc))
-        return Response("<h2>Payment setup failed</h2><p>"+str(exc).replace("<","&lt;")+"</p><p>Please check Cashfree keys and try again.</p>",status=500)
-    return Response("""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CINEMA WORLD Membership</title><script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script><style>body{margin:0;background:#08080d;color:#fff;font-family:Arial,sans-serif;min-height:100vh;display:grid;place-items:center}.card{width:min(560px,92vw);padding:34px;border:1px solid #292936;border-radius:24px;background:linear-gradient(145deg,#15151e,#0b0b10);box-shadow:0 25px 80px #000}.gold{color:#f5c451}.price{font-size:44px;font-weight:800;margin-top:25px}.muted{color:#aaa;line-height:1.6}.btn{width:100%;border:0;border-radius:14px;padding:16px;background:linear-gradient(90deg,#f5c451,#ffdf80);font-size:17px;font-weight:800;cursor:pointer;margin-top:24px}.status{margin-top:16px;color:#aaa}</style></head><body><main class='card'><div class='gold'>🎬 CINEMA WORLD</div><h1>Premium Membership</h1><p class='muted'>Complete the initial authorization to activate your Premium membership.</p><div class='price'>₹1</div><div class='muted'>Initial authorization • ₹99/month recurring membership</div><button id='pay' class='btn'>Continue with Cashfree</button><div id='status' class='status'></div></main><script>const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');s.textContent='Opening secure checkout…';try{const r=await cashfree.subscriptionsCheckout({subsSessionId:"""+json.dumps(session_id)+""",redirectTarget:'_self'});if(r&&r.error)s.textContent=r.error.message||'Checkout could not be opened.'}catch(e){s.textContent=e.message||'Checkout could not be opened.'}};</script></body></html>""")
+    if customer_has_completed_initial_payment(customer_id): return redirect(url_for("member_home"))
+    return Response("""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CINEMA WORLD</title><script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script><style>body{margin:0;background:#050507;color:#fff;font-family:Arial;display:grid;place-items:center;min-height:100vh}.card{width:min(560px,92vw);padding:36px;border:1px solid #292933;border-radius:24px;background:linear-gradient(145deg,#17171f,#09090d);box-shadow:0 30px 90px #000}.brand{color:#e50914;font-weight:900;letter-spacing:2px}.price{font-size:52px;font-weight:900;margin:22px 0 4px}.muted{color:#aaa;line-height:1.6}.btn{width:100%;padding:16px;border:0;border-radius:12px;background:#e50914;color:#fff;font-size:17px;font-weight:800;cursor:pointer;margin-top:24px}.status{margin-top:15px;color:#aaa}</style></head><body><main class='card'><div class='brand'>CINEMA WORLD</div><h1>Activate Your Account</h1><p class='muted'>Ek baar ka activation payment complete karein. Payment successful hone ke baad <b>24 hours FREE</b> me kisi bhi movie ko watch kar sakte hain.</p><div class='price'>₹1</div><div class='muted'>One-time activation • 24-hour all-movie watch access</div><button id='pay' class='btn'>Pay ₹1 & Continue</button><div id='status' class='status'></div></main><script>const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');s.textContent='Secure checkout opening…';try{const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_type:'activation',phone:"""+json.dumps(session.get("customer_mobile", ""))+"""})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Payment order failed');await cashfree.checkout({paymentSessionId:d.payment_session_id,redirectTarget:'_self'});}catch(e){s.textContent=e.message||'Payment could not be opened.'}};</script></body></html>""")
 
 
 @app.route("/membership/pay/<subscription_id>")
