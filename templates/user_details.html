@@ -2,23 +2,207 @@
 {% block title %}CINEMA WORLD | Complete Your Details{% endblock %}
 {% block content %}
 <style>
-.cw-reg{min-height:calc(100vh - 1px);background:#050505;color:#fff;display:flex;align-items:center;justify-content:center;padding:38px 16px;font-family:Arial,sans-serif}.cw-card{width:min(520px,100%);background:linear-gradient(145deg,#15151a,#09090c);border:1px solid #29292f;border-radius:22px;padding:34px;box-shadow:0 30px 90px #000}.cw-brand{text-align:center;color:#e50914;font-size:28px;font-weight:900;letter-spacing:2px;margin-bottom:24px}.cw-kicker{text-align:center;color:#aaa;font-size:11px;letter-spacing:2px;font-weight:800}.cw-card h1{text-align:center;margin:8px 0 8px;font-size:30px}.cw-sub{text-align:center;color:#aaa;line-height:1.55;font-size:14px;margin-bottom:25px}.cw-msg{padding:11px;border-radius:10px;margin-bottom:14px;text-align:center;font-size:13px}.ok{background:#0c2415;color:#9be5ae;border:1px solid #245c34}.err{background:#2a0b0d;color:#ff9ba1;border:1px solid #6d171d}.cw-label{display:block;font-size:13px;font-weight:700;color:#ddd;margin:14px 0 7px}.cw-input{width:100%;height:50px;border:1px solid #444;border-radius:10px;background:#111;color:#fff;padding:0 14px;font-size:15px;outline:none}.cw-input:focus{border-color:#e50914;box-shadow:0 0 0 1px #e50914}.cw-input[readonly]{color:#bbb}.cw-btn{width:100%;height:52px;margin-top:22px;border:0;border-radius:10px;background:#e50914;color:#fff;font-size:16px;font-weight:800;cursor:pointer}.cw-btn:hover{background:#f40612}.cw-safe{text-align:center;color:#777;font-size:12px;line-height:1.6;margin-top:20px}.cw-share{background:#17171d;border:1px solid #333;border-radius:12px;padding:12px;color:#bbb;font-size:12px;margin-top:14px;text-align:center}@media(max-width:520px){.cw-card{padding:26px 20px}.cw-card h1{font-size:26px}}
+.cw-reg{min-height:calc(100vh - 1px);background:#050505;color:#fff;display:flex;align-items:center;justify-content:center;padding:38px 16px;font-family:Arial,sans-serif}
+.cw-card{width:min(520px,100%);background:linear-gradient(145deg,#15151a,#09090c);border:1px solid #29292f;border-radius:22px;padding:34px;box-shadow:0 30px 90px #000}
+.cw-brand{text-align:center;color:#e50914;font-size:28px;font-weight:900;letter-spacing:2px;margin-bottom:24px}
+.cw-kicker{text-align:center;color:#aaa;font-size:11px;letter-spacing:2px;font-weight:800}
+.cw-card h1{text-align:center;margin:8px 0 8px;font-size:30px}
+.cw-sub{text-align:center;color:#aaa;line-height:1.55;font-size:14px;margin-bottom:25px}
+.cw-msg{padding:11px;border-radius:10px;margin-bottom:14px;text-align:center;font-size:13px}
+.ok{background:#0c2415;color:#9be5ae;border:1px solid #245c34}
+.err{background:#2a0b0d;color:#ff9ba1;border:1px solid #6d171d}
+.cw-label{display:block;font-size:13px;font-weight:700;color:#ddd;margin:14px 0 7px}
+.cw-input{
+    width:100%;
+    height:50px;
+    border:1px solid #444;
+    border-radius:10px;
+    background:#111;
+    color:#fff;
+    padding:0 14px;
+    font-size:15px;
+    outline:none
+}
+.cw-input:focus{border-color:#e50914;box-shadow:0 0 0 1px #e50914}
+.cw-input[readonly]{color:#bbb}
+
+/* PASSWORD SHOW / HIDE */
+.cw-password-wrap{
+    position:relative;
+    width:100%;
+}
+.cw-password-wrap .cw-input{
+    padding-right:52px;
+}
+.cw-eye{
+    position:absolute;
+    right:8px;
+    top:50%;
+    transform:translateY(-50%);
+    width:38px;
+    height:38px;
+    border:0;
+    border-radius:8px;
+    background:transparent;
+    color:#aaa;
+    cursor:pointer;
+    font-size:19px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:2;
+}
+.cw-eye:hover{
+    color:#fff;
+    background:#292929;
+}
+
+.cw-btn{width:100%;height:52px;margin-top:22px;border:0;border-radius:10px;background:#e50914;color:#fff;font-size:16px;font-weight:800;cursor:pointer}
+.cw-btn:hover{background:#f40612}
+.cw-safe{text-align:center;color:#777;font-size:12px;line-height:1.6;margin-top:20px}
+.cw-share{background:#17171d;border:1px solid #333;border-radius:12px;padding:12px;color:#bbb;font-size:12px;margin-top:14px;text-align:center}
+
+@media(max-width:520px){
+    .cw-card{padding:26px 20px}
+    .cw-card h1{font-size:26px}
+}
 </style>
-<div class="cw-reg"><main class="cw-card">
+
+<div class="cw-reg">
+<main class="cw-card">
+
 <div class="cw-brand">CINEMA WORLD</div>
 <div class="cw-kicker">ACCOUNT SETUP</div>
+
 <h1>Complete Your Details</h1>
-<p class="cw-sub">अपनी details भरें ताकि आपका CINEMA WORLD account तैयार हो सके।</p>
-{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="cw-msg {{ 'ok' if category=='success' else 'err' }}">{{ message }}</div>{% endfor %}{% endwith %}
+
+<p class="cw-sub">
+अपनी details भरें ताकि आपका CINEMA WORLD account तैयार हो सके।
+</p>
+
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% for category,message in messages %}
+<div class="cw-msg {{ 'ok' if category=='success' else 'err' }}">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+
 <form method="post" action="{{ url_for('user_details') }}" autocomplete="on">
-<label class="cw-label">Full Name</label><input class="cw-input" name="full_name" value="{{ full_name }}" autocomplete="name" required placeholder="Enter full name">
-<label class="cw-label">Mobile Number</label><input class="cw-input" name="mobile" value="{{ mobile }}" inputmode="numeric" maxlength="10" autocomplete="tel" required placeholder="10 digit mobile number">
-<label class="cw-label">Gmail / Email</label><input class="cw-input" name="email" value="{{ customer_email }}" type="email" autocomplete="email" required placeholder="yourname@gmail.com">
-{% if customer_email %}<div class="cw-share">✓ Your verified email is already connected to this account.</div>{% endif %}
-<label class="cw-label">Create Password</label><input class="cw-input" name="password" type="password" minlength="6" autocomplete="new-password" required placeholder="Minimum 6 characters">
-<label class="cw-label">Confirm Password</label><input class="cw-input" name="confirm_password" type="password" minlength="6" autocomplete="new-password" required placeholder="Re-enter password">
-<button class="cw-btn" type="submit">Save Details & Continue →</button>
+
+<label class="cw-label">Full Name</label>
+<input
+    class="cw-input"
+    name="full_name"
+    value="{{ full_name }}"
+    autocomplete="name"
+    required
+    placeholder="Enter full name"
+>
+
+<label class="cw-label">Mobile Number</label>
+<input
+    class="cw-input"
+    name="mobile"
+    value="{{ mobile }}"
+    inputmode="numeric"
+    maxlength="10"
+    autocomplete="tel"
+    required
+    placeholder="10 digit mobile number"
+>
+
+<label class="cw-label">Gmail / Email</label>
+<input
+    class="cw-input"
+    name="email"
+    value="{{ customer_email }}"
+    type="email"
+    autocomplete="email"
+    required
+    placeholder="yourname@gmail.com"
+>
+
+{% if customer_email %}
+<div class="cw-share">
+✓ Your verified email is already connected to this account.
+</div>
+{% endif %}
+
+<label class="cw-label">Create Password</label>
+
+<div class="cw-password-wrap">
+<input
+    class="cw-input"
+    id="create_password"
+    name="password"
+    type="password"
+    minlength="6"
+    autocomplete="new-password"
+    required
+    placeholder="Minimum 6 characters"
+>
+<button
+    class="cw-eye"
+    type="button"
+    onclick="togglePassword('create_password', this)"
+    aria-label="Show password"
+    title="Show password"
+>👁️</button>
+</div>
+
+<label class="cw-label">Confirm Password</label>
+
+<div class="cw-password-wrap">
+<input
+    class="cw-input"
+    id="confirm_password"
+    name="confirm_password"
+    type="password"
+    minlength="6"
+    autocomplete="new-password"
+    required
+    placeholder="Re-enter password"
+>
+<button
+    class="cw-eye"
+    type="button"
+    onclick="togglePassword('confirm_password', this)"
+    aria-label="Show password"
+    title="Show password"
+>👁️</button>
+</div>
+
+<button class="cw-btn" type="submit">
+Save Details & Continue →
+</button>
+
 </form>
-<div class="cw-safe">🔒 Your details are secure<br>आपकी account information सुरक्षित तरीके से save की जाती है।<br>Details complete करने के बाद secure payment screen खुलेगा।</div>
-</main></div>
+
+<div class="cw-safe">
+🔒 Your details are secure<br>
+आपकी account information सुरक्षित तरीके से save की जाती है।<br>
+Details complete करने के बाद secure payment screen खुलेगा।
+</div>
+
+</main>
+</div>
+
+<script>
+function togglePassword(id, button){
+    var input = document.getElementById(id);
+    if(!input) return;
+
+    if(input.type === "password"){
+        input.type = "text";
+        button.textContent = "🙈";
+        button.setAttribute("aria-label","Hide password");
+        button.setAttribute("title","Hide password");
+    }else{
+        input.type = "password";
+        button.textContent = "👁️";
+        button.setAttribute("aria-label","Show password");
+        button.setAttribute("title","Show password");
+    }
+}
+</script>
+
 {% endblock %}
