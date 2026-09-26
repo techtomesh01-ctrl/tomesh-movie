@@ -1,21 +1,299 @@
 <!doctype html>
-<html lang="hi">
+<html lang="{{ session.get('language', 'hi') }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+
 <title>{% block title %}CINEMA WORLD{% endblock %}</title>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+body{
+    margin:0;
+    min-height:100vh;
+    background:#000;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+header{
+    width:100%;
+    min-height:68px;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:12px 24px;
+    background:rgba(0,0,0,.96);
+    border-bottom:1px solid rgba(255,255,255,.08);
+    position:relative;
+    z-index:1000;
+}
+
+.logo{
+    color:#fff;
+    text-decoration:none;
+    font-size:20px;
+    font-weight:900;
+    letter-spacing:1px;
+    white-space:nowrap;
+}
+
+.logo:hover{
+    color:#e50914;
+}
+
+.search{
+    flex:1;
+    max-width:600px;
+    display:flex;
+    gap:8px;
+}
+
+.search input{
+    flex:1;
+    height:42px;
+    border:1px solid #333;
+    border-radius:8px;
+    background:#111;
+    color:#fff;
+    padding:0 13px;
+    outline:none;
+}
+
+.search input:focus{
+    border-color:#e50914;
+}
+
+.search button{
+    height:42px;
+    padding:0 18px;
+    border:0;
+    border-radius:8px;
+    background:#e50914;
+    color:#fff;
+    font-weight:800;
+    cursor:pointer;
+}
+
+.search button:hover{
+    background:#f40612;
+}
+
+.adminlink{
+    color:#fff;
+    text-decoration:none;
+    border:1px solid #444;
+    padding:9px 14px;
+    border-radius:8px;
+    font-weight:700;
+}
+
+.adminlink:hover{
+    border-color:#e50914;
+    color:#e50914;
+}
+
+/* LANGUAGE */
+.cw-language{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    margin-left:auto;
+}
+
+.cw-language select{
+    height:40px;
+    min-width:115px;
+    padding:0 10px;
+    border-radius:8px;
+    border:1px solid #333;
+    background:#111;
+    color:#fff;
+    font-weight:700;
+    outline:none;
+    cursor:pointer;
+}
+
+.cw-language select:focus{
+    border-color:#e50914;
+}
+
+/* MAIN */
+.wrap{
+    width:100%;
+    min-height:calc(100vh - 130px);
+}
+
+/* FLASH */
+.flash{
+    width:min(700px,calc(100% - 24px));
+    margin:15px auto;
+    padding:12px 16px;
+    border-radius:9px;
+    background:#171717;
+    border:1px solid #333;
+    color:#fff;
+    text-align:center;
+}
+
+/* FOOTER */
+footer{
+    width:100%;
+    padding:25px 15px;
+    text-align:center;
+    color:#777;
+    background:#050505;
+    border-top:1px solid rgba(255,255,255,.08);
+}
+
+/* MOBILE */
+@media(max-width:800px){
+
+    header{
+        flex-wrap:wrap;
+        padding:12px 14px;
+        gap:10px;
+    }
+
+    .logo{
+        font-size:17px;
+    }
+
+    .search{
+        order:3;
+        width:100%;
+        max-width:none;
+    }
+
+    .cw-language{
+        margin-left:auto;
+    }
+
+    .cw-language select{
+        min-width:100px;
+    }
+}
+
+@media(max-width:480px){
+
+    header{
+        min-height:auto;
+    }
+
+    .logo{
+        font-size:16px;
+    }
+
+    .adminlink{
+        padding:8px 10px;
+        font-size:12px;
+    }
+
+    .cw-language select{
+        min-width:92px;
+        font-size:12px;
+    }
+
+    .search input,
+    .search button{
+        height:40px;
+    }
+}
+</style>
 </head>
+
 <body>
+
 <header>
-  <a class="logo" href="{{ url_for('home') }}">🎬 CINEMA WORLD</a>
-  <form class="search" action="{{ url_for('home') }}"><input name="q" value="{{ q|default('') }}" placeholder="Movie खोजें..."><button>Search</button></form>
-  {% if session.get('admin') %}<a class="adminlink" href="{{ url_for('admin') }}">Admin</a>{% endif %}
+
+    <a class="logo" href="{{ url_for('home') }}">
+        🎬 CINEMA WORLD
+    </a>
+
+    <form class="search" action="{{ url_for('home') }}" method="get">
+        <input
+            name="q"
+            value="{{ q|default('') }}"
+            placeholder="{% if session.get('language','hi') == 'en' %}Search movies...{% else %}Movie खोजें...{% endif %}"
+        >
+        <button type="submit">
+            {% if session.get('language','hi') == 'en' %}
+                Search
+            {% else %}
+                खोजें
+            {% endif %}
+        </button>
+    </form>
+
+    <!-- GLOBAL LANGUAGE -->
+    <form
+        class="cw-language"
+        action="{{ url_for('set_language') }}"
+        method="post"
+    >
+        <select
+            name="language"
+            onchange="this.form.submit()"
+            aria-label="Language"
+        >
+
+            <option
+                value="hi"
+                {% if session.get('language','hi') == 'hi' %}selected{% endif %}
+            >
+                हिन्दी
+            </option>
+
+            <option
+                value="en"
+                {% if session.get('language','hi') == 'en' %}selected{% endif %}
+            >
+                English
+            </option>
+
+        </select>
+    </form>
+
+    {% if session.get('admin') %}
+        <a class="adminlink" href="{{ url_for('admin') }}">
+            {% if session.get('language','hi') == 'en' %}
+                Admin
+            {% else %}
+                एडमिन
+            {% endif %}
+        </a>
+    {% endif %}
+
 </header>
+
 <div class="wrap">
-{% with messages=get_flashed_messages() %}{% if messages %}<div class="flash">{% for x in messages %}{{x}}{% endfor %}</div>{% endif %}{% endwith %}
-{% block content %}{% endblock %}
+
+    {% with messages=get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash">
+                {% for x in messages %}
+                    {{ x }}
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
 </div>
-<footer>© CINEMA WORLD</footer>
+
+<footer>
+    © CINEMA WORLD
+</footer>
+
 </body>
 </html>
