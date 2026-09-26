@@ -3481,8 +3481,34 @@ def create_subscription_route():
 def membership_start():
     customer_id=session.get("customer_id")
     if customer_has_completed_initial_payment(customer_id): return redirect(url_for("member_home"))
-    return Response("""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CINEMA WORLD</title><script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script><style>body{margin:0;background:#050507;color:#fff;font-family:Arial;display:grid;place-items:center;min-height:100vh}.card{width:min(560px,92vw);padding:36px;border:1px solid #292933;border-radius:24px;background:linear-gradient(145deg,#17171f,#09090d);box-shadow:0 30px 90px #000}.brand{color:#e50914;font-weight:900;letter-spacing:2px}.price{font-size:52px;font-weight:900;margin:22px 0 4px}.muted{color:#aaa;line-height:1.6}.btn{width:100%;padding:16px;border:0;border-radius:12px;background:#e50914;color:#fff;font-size:17px;font-weight:800;cursor:pointer;margin-top:24px}.status{margin-top:15px;color:#aaa}</style></head><body><main class='card'><div class='brand'>CINEMA WORLD</div><h1>Activate Your Account</h1><p class='muted'>Ek baar ka activation payment complete karein. Payment successful hone ke baad <b>24 hours FREE</b> me kisi bhi movie ko watch kar sakte hain.</p><div class='price'>₹1</div><div class='muted'>One-time activation • 24-hour all-movie watch access</div><button id='pay' class='btn'>Pay ₹1 & Continue</button><div id='status' class='status'></div></main><script>const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');s.textContent='Secure checkout opening…';try{const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_type:'activation',phone:"""+json.dumps(session.get("customer_mobile", ""))+"""})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Payment order failed');await cashfree.checkout({paymentSessionId:d.payment_session_id,redirectTarget:'_self'});}catch(e){s.textContent=e.message||'Payment could not be opened.'}};</script></body></html>""")
-
+    return Response("""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CINEMA WORLD</title><script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script><style>body{margin:0;background:#050507;color:#fff;font-family:Arial;display:grid;place-items:center;min-height:100vh}.card{width:min(560px,92vw);padding:36px;border:1px solid #292933;border-radius:24px;background:linear-gradient(145deg,#17171f,#09090d);box-shadow:0 30px 90px #000}.brand{color:#e50914;font-weight:900;letter-spacing:2px}.price{font-size:52px;font-weight:900;margin:22px 0 4px}.muted{color:#aaa;line-height:1.6}.btn{width:100%;padding:16px;border:0;border-radius:12px;background:#e50914;color:#fff;font-size:17px;font-weight:800;cursor:pointer;margin-top:24px}.status{margin-top:15px;color:#aaa}</style></head><body><main class='card'><div class='brand'>CINEMA WORLD</div><h1>Activate Your Account</h1><p class='muted'>Ek baar ka activation payment complete karein. Payment successful hone ke baad <b>24 hours FREE</b> me kisi bhi movie ko watch kar sakte hain.</p><div class='price'>₹1</div><div class='muted'>One-time activation
+3485
+3486
+3487
+3488
+3489
+3490
+3491
+3492
+3493
+3494
+3495
+3496
+3497
+3498
+3499
+3500
+3501
+3502
+3503
+3504
+3505
+3506
+3507
+3508
+3509
+3510
+✓ Full Movie Watch</div><button id='pay' class='btn'>Watch Full Movie — ₹1</button><div id='status' class='status'></div></main><script>const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');s.textContent='Secure checkout opening…';try{const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_type:'activation',phone:"""+json.dumps(session.get("customer_mobile", ""))+"""})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Payment order failed');await cashfree.checkout({paymentSessionId:d.payment_session_id,redirectTarget:'_self'});}catch(e){s.textContent=e.message||'Payment could not be opened.'}};</script></body></html>""")
 
 @app.route("/membership/pay/<subscription_id>")
 @customer_login_required
