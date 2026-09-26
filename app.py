@@ -3481,34 +3481,51 @@ def create_subscription_route():
 def membership_start():
     customer_id=session.get("customer_id")
     if customer_has_completed_initial_payment(customer_id): return redirect(url_for("member_home"))
-    return Response("""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CINEMA WORLD</title><script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script><style>body{margin:0;background:#050507;color:#fff;font-family:Arial;display:grid;place-items:center;min-height:100vh}.card{width:min(560px,92vw);padding:36px;border:1px solid #292933;border-radius:24px;background:linear-gradient(145deg,#17171f,#09090d);box-shadow:0 30px 90px #000}.brand{color:#e50914;font-weight:900;letter-spacing:2px}.price{font-size:52px;font-weight:900;margin:22px 0 4px}.muted{color:#aaa;line-height:1.6}.btn{width:100%;padding:16px;border:0;border-radius:12px;background:#e50914;color:#fff;font-size:17px;font-weight:800;cursor:pointer;margin-top:24px}.status{margin-top:15px;color:#aaa}</style></head><body><main class='card'><div class='brand'>CINEMA WORLD</div><h1>Activate Your Account</h1><p class='muted'>Ek baar ka activation payment complete karein. Payment successful hone ke baad <b>24 hours FREE</b> me kisi bhi movie ko watch kar sakte hain.</p><div class='price'>₹1</div><div class='muted'>One-time activation
-3485
-3486
-3487
-3488
-3489
-3490
-3491
-3492
-3493
-3494
-3495
-3496
-3497
-3498
-3499
-3500
-3501
-3502
-3503
-3504
-3505
-3506
-3507
-3508
-3509
-3510
-✓ Full Movie Watch</div><button id='pay' class='btn'>Watch Full Movie — ₹1</button><div id='status' class='status'></div></main><script>const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');s.textContent='Secure checkout opening…';try{const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_type:'activation',phone:"""+json.dumps(session.get("customer_mobile", ""))+"""})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Payment order failed');await cashfree.checkout({paymentSessionId:d.payment_session_id,redirectTarget:'_self'});}catch(e){s.textContent=e.message||'Payment could not be opened.'}};</script></body></html>""")
+    return Response("""<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>CINEMA WORLD | Activate Your Account</title>
+<script src='https://sdk.cashfree.com/js/v3/cashfree.js'></script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{min-height:100vh;background:radial-gradient(circle at 50% 0%,#300000 0%,#100000 28%,#050505 65%,#000 100%);color:#fff;font-family:Arial,Helvetica,sans-serif;display:flex;align-items:center;justify-content:center;padding:25px 16px}
+.card{width:min(520px,100%);background:linear-gradient(145deg,#181818,#090909);border:1px solid #2d2d2d;border-radius:24px;padding:38px 32px;box-shadow:0 30px 90px rgba(0,0,0,.85),0 0 50px rgba(229,9,20,.08);text-align:center}
+.brand{color:#e50914;font-size:28px;font-weight:900;letter-spacing:3px;margin-bottom:28px}.kicker{color:#888;font-size:11px;font-weight:800;letter-spacing:2px;margin-bottom:9px}
+h1{margin:0 0 13px;font-size:30px;line-height:1.2}.subtitle{margin:0 auto 28px;max-width:420px;color:#bdbdbd;font-size:15px;line-height:1.65}
+.price{font-size:62px;line-height:1;font-weight:900;margin:8px 0}.price-label{color:#e50914;font-size:12px;font-weight:900;letter-spacing:2px;margin-bottom:25px}
+.features{background:#101010;border:1px solid #292929;border-radius:16px;padding:17px 20px;text-align:left;margin-bottom:25px}.feature{color:#eee;font-size:14px;padding:9px 0;line-height:1.4}.check{color:#22c55e;font-weight:900;margin-right:9px}
+.btn{width:100%;min-height:55px;border:0;border-radius:12px;background:#e50914;color:#fff;font-size:17px;font-weight:900;cursor:pointer;transition:all .2s ease;box-shadow:0 10px 30px rgba(229,9,20,.22)}.btn:hover{background:#f40612;transform:translateY(-1px)}.btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.status{min-height:20px;margin-top:14px;color:#aaa;font-size:13px}.safe{margin-top:20px;color:#666;font-size:11px;line-height:1.5}
+@media(max-width:520px){body{padding:16px}.card{padding:30px 20px;border-radius:20px}.brand{font-size:24px}h1{font-size:26px}.price{font-size:54px}}
+</style>
+</head>
+<body>
+<main class='card'>
+<div class='brand'>CINEMA WORLD</div>
+<div class='kicker'>WELCOME</div>
+<h1>Welcome to CINEMA WORLD</h1>
+<p class='subtitle'>Sirf ₹1 me apna account activate karein aur full movie watch karein.</p>
+<div class='price'>₹1</div>
+<div class='price-label'>ONE-TIME ACTIVATION</div>
+<div class='features'>
+<div class='feature'><span class='check'>✓</span>Full Movie Watch</div>
+<div class='feature'><span class='check'>✓</span>Instant Access</div>
+<div class='feature'><span class='check'>✓</span>Secure Payment</div>
+<div class='feature'><span class='check'>✓</span>Premium Entertainment Experience</div>
+</div>
+<button id='pay' class='btn'>Watch Full Movie — ₹1</button>
+<div id='status' class='status'></div>
+<div class='safe'>🔒 Secure payment powered by Cashfree</div>
+</main>
+<script>
+const cashfree=Cashfree({mode:"""+json.dumps(CASHFREE_JS_MODE)+"""});
+document.getElementById('pay').onclick=async()=>{const s=document.getElementById('status');const btn=document.getElementById('pay');s.textContent='Secure checkout opening…';btn.disabled=true;try{const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_type:'activation',phone:"""+json.dumps(session.get("customer_mobile", ""))+"""})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Payment order failed');if(d.already_paid&&d.redirect_url){window.location.href=d.redirect_url;return}await cashfree.checkout({paymentSessionId:d.payment_session_id,redirectTarget:'_self'});}catch(e){s.textContent=e.message||'Payment could not be opened.';btn.disabled=false}};
+</script>
+</body>
+</html>""")
+
 
 @app.route("/membership/pay/<subscription_id>")
 @customer_login_required
