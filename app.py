@@ -3141,6 +3141,14 @@ def logout():
     )
 
 
+def customer_login_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if not session.get("customer_logged_in"):
+            return redirect(url_for("login"))
+        return view_func(*args, **kwargs)
+    return wrapper
+
 @app.route("/customer/set-password", methods=["POST"])
 @customer_login_required
 def customer_set_password():
@@ -3159,14 +3167,6 @@ def customer_set_password():
 # ============================================================
 # CUSTOMER MEMBER / USER DETAILS / MY LIST
 # ============================================================
-
-def customer_login_required(view_func):
-    @wraps(view_func)
-    def wrapper(*args, **kwargs):
-        if not session.get("customer_logged_in"):
-            return redirect(url_for("login"))
-        return view_func(*args, **kwargs)
-    return wrapper
 
 
 @app.route("/user-details", methods=["GET", "POST"])
