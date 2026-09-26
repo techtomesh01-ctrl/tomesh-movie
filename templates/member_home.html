@@ -5,26 +5,19 @@
 {% block content %}
 
 <style>
-/* =========================================================
-   CINEMA WORLD — PREMIUM MEMBER HOME
-   Working navigation + search + category + My List
-   ========================================================= */
-
 :root{
-    --tm-red:#e50914;
-    --tm-red2:#ff2633;
-    --tm-black:#050505;
-    --tm-dark:#0b0b0b;
-    --tm-card:#141414;
-    --tm-card2:#1b1b1b;
-    --tm-white:#fff;
-    --tm-muted:#a7a7a7;
-    --tm-border:rgba(255,255,255,.10);
+    --cw-red:#e50914;
+    --cw-red2:#ff2633;
+    --cw-black:#050505;
+    --cw-dark:#0b0b0b;
+    --cw-card:#141414;
+    --cw-card2:#1b1b1b;
+    --cw-white:#fff;
+    --cw-muted:#a7a7a7;
+    --cw-border:rgba(255,255,255,.10);
 }
 
-*{
-    box-sizing:border-box;
-}
+*{box-sizing:border-box}
 
 html{
     scroll-behavior:smooth;
@@ -37,9 +30,7 @@ body{
     font-family:Arial,Helvetica,sans-serif;
 }
 
-/* =========================================================
-   NAVBAR
-   ========================================================= */
+/* ================= NAVBAR ================= */
 
 .tm-member-nav{
     position:fixed;
@@ -51,13 +42,12 @@ body{
     display:flex;
     align-items:center;
     padding:0 5%;
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(0,0,0,.97),
-            rgba(0,0,0,.78),
-            transparent
-        );
+    background:linear-gradient(
+        to bottom,
+        rgba(0,0,0,.98),
+        rgba(0,0,0,.82),
+        transparent
+    );
     backdrop-filter:blur(7px);
 }
 
@@ -77,7 +67,7 @@ body{
 }
 
 .tm-logo span{
-    color:var(--tm-red);
+    color:var(--cw-red);
 }
 
 .tm-nav-links{
@@ -170,9 +160,7 @@ body{
     color:#000;
 }
 
-/* =========================================================
-   HERO
-   ========================================================= */
+/* ================= HERO ================= */
 
 .tm-hero{
     min-height:650px;
@@ -206,12 +194,11 @@ body{
     right:0;
     bottom:0;
     height:180px;
-    background:
-        linear-gradient(
-            to bottom,
-            transparent,
-            #050505
-        );
+    background:linear-gradient(
+        to bottom,
+        transparent,
+        #050505
+    );
 }
 
 .tm-hero-glow{
@@ -221,12 +208,11 @@ body{
     right:-130px;
     top:70px;
     border-radius:50%;
-    background:
-        radial-gradient(
-            circle,
-            rgba(229,9,20,.22),
-            transparent 67%
-        );
+    background:radial-gradient(
+        circle,
+        rgba(229,9,20,.22),
+        transparent 67%
+    );
     filter:blur(15px);
 }
 
@@ -316,9 +302,7 @@ body{
     background:rgba(255,255,255,.20);
 }
 
-/* =========================================================
-   MAIN
-   ========================================================= */
+/* ================= MAIN ================= */
 
 .tm-member-main{
     position:relative;
@@ -353,9 +337,7 @@ body{
     font-size:12px;
 }
 
-/* =========================================================
-   TRENDING HORIZONTAL
-   ========================================================= */
+/* ================= TRENDING ================= */
 
 .tm-trending-row{
     display:flex;
@@ -409,9 +391,7 @@ body{
     font-size:11px;
 }
 
-/* =========================================================
-   CATEGORY
-   ========================================================= */
+/* ================= CATEGORY ================= */
 
 .tm-category-row{
     display:flex;
@@ -438,9 +418,7 @@ body{
     color:#fff;
 }
 
-/* =========================================================
-   MOVIE GRID
-   ========================================================= */
+/* ================= MOVIE GRID ================= */
 
 .tm-movie-grid{
     display:grid;
@@ -490,11 +468,15 @@ body{
 .tm-no-poster{
     width:100%;
     height:100%;
+    min-height:240px;
     display:flex;
     align-items:center;
     justify-content:center;
-    background:
-        linear-gradient(135deg,#191919,#303030);
+    background:linear-gradient(
+        135deg,
+        #191919,
+        #303030
+    );
     color:#777;
     font-size:12px;
     font-weight:900;
@@ -506,12 +488,11 @@ body{
     right:0;
     bottom:0;
     height:55%;
-    background:
-        linear-gradient(
-            to top,
-            rgba(0,0,0,.9),
-            transparent
-        );
+    background:linear-gradient(
+        to top,
+        rgba(0,0,0,.9),
+        transparent
+    );
 }
 
 .tm-card-info{
@@ -579,9 +560,7 @@ body{
     border-color:#e50914;
 }
 
-/* =========================================================
-   MY LIST
-   ========================================================= */
+/* ================= MY LIST ================= */
 
 .tm-my-list-section{
     scroll-margin-top:90px;
@@ -612,9 +591,7 @@ body{
     font-size:13px;
 }
 
-/* =========================================================
-   SEARCH EMPTY
-   ========================================================= */
+/* ================= SEARCH EMPTY ================= */
 
 .tm-search-empty{
     display:none;
@@ -625,9 +602,7 @@ body{
     border-radius:10px;
 }
 
-/* =========================================================
-   FOOTER
-   ========================================================= */
+/* ================= FOOTER ================= */
 
 .tm-member-footer{
     width:90%;
@@ -644,11 +619,10 @@ body{
     color:#aaa;
 }
 
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
+/* ================= RESPONSIVE ================= */
 
 @media(max-width:1200px){
+
     .tm-movie-grid{
         grid-template-columns:repeat(4,minmax(0,1fr));
     }
@@ -659,6 +633,7 @@ body{
 }
 
 @media(max-width:900px){
+
     .tm-nav-links{
         display:none;
     }
@@ -685,6 +660,7 @@ body{
 }
 
 @media(max-width:650px){
+
     .tm-member-nav{
         height:60px;
         padding:0 4%;
@@ -768,9 +744,7 @@ body{
     }
 }
 
-/* =========================================================
-   TOAST
-   ========================================================= */
+/* ================= TOAST ================= */
 
 .tm-toast{
     position:fixed;
@@ -798,12 +772,9 @@ body{
     opacity:1;
     transform:translateX(-50%) translateY(0);
 }
-
 </style>
 
-<!-- =========================================================
-     NAVBAR
-     ========================================================= -->
+<!-- ================= NAVBAR ================= -->
 
 <nav class="tm-member-nav">
 
@@ -811,26 +782,18 @@ body{
 <div class="tm-nav-left">
 
     <a class="tm-logo" href="#top">
-        TOMESH <span>MOVIES</span>
+        CINEMA <span>WORLD</span>
     </a>
 
     <div class="tm-nav-links">
 
-        <a href="#top">
-            Home
-        </a>
+        <a href="#top">Home</a>
 
-        <a href="#movies">
-            Movies
-        </a>
+        <a href="#movies">Movies</a>
 
-        <a href="#categories">
-            Categories
-        </a>
+        <a href="#categories">Categories</a>
 
-        <a href="#my-list">
-            My List
-        </a>
+        <a href="#my-list">My List</a>
 
     </div>
 
@@ -849,9 +812,7 @@ body{
             autocomplete="off"
         >
 
-        <span class="tm-search-icon">
-            🔍
-        </span>
+        <span class="tm-search-icon">🔍</span>
 
     </div>
 
@@ -860,7 +821,7 @@ body{
     </div>
 
     <div class="tm-avatar">
-        T
+        C
     </div>
 
     <a
@@ -875,9 +836,7 @@ body{
 
 </nav>
 
-<!-- =========================================================
-     HERO
-     ========================================================= -->
+<!-- ================= HERO ================= -->
 
 <section
     class="tm-hero"
@@ -936,38 +895,34 @@ body{
 
 <main class="tm-member-main">
 
-<!-- =========================================================
-     TRENDING
-     ========================================================= -->
+```
+<!-- ================= TRENDING ================= -->
 
 <section class="tm-section">
 
-```
-<div class="tm-section-head">
+    <div class="tm-section-head">
 
-    <h2>
-        Trending Now
-    </h2>
+        <h2>Trending Now</h2>
 
-    <span class="tm-section-count">
-        Latest movies
-    </span>
+        <span class="tm-section-count">
+            Latest movies
+        </span>
 
-</div>
+    </div>
 
 
-<div class="tm-trending-row">
+    <div class="tm-trending-row">
 
-    {% for movie in movies[:10] %}
+        {% for movie in movies[:10] %}
 
-    <div class="tm-trending-card">
+        <div class="tm-trending-card">
 
-        <a
-            href="{{ url_for('movie_page', movie_id=movie.id) }}"
-            class="tm-poster-link"
-        >
+            <a
+                href="{{ url_for('movie_page', movie_id=movie.id) }}"
+                class="tm-poster-link"
+            >
 
-            {% if movie.poster_url %}
+                {% if movie.poster_url %}
 
                 <img
                     class="tm-trending-poster"
@@ -976,399 +931,377 @@ body{
                     loading="lazy"
                 >
 
-            {% else %}
+                {% else %}
 
-                <div
-                    class="tm-trending-poster tm-no-poster"
-                >
+                <div class="tm-trending-poster tm-no-poster">
                     NO POSTER
                 </div>
 
-            {% endif %}
+                {% endif %}
 
-        </a>
+            </a>
 
-        <div class="tm-trending-info">
+            <div class="tm-trending-info">
 
-            <div class="tm-trending-title">
-                {{ movie.title }}
-            </div>
+                <div class="tm-trending-title">
+                    {{ movie.title }}
+                </div>
 
-            <div class="tm-trending-category">
-                {{ movie.category or "Movie" }}
+                <div class="tm-trending-category">
+                    {{ movie.category or "Movie" }}
+                </div>
+
             </div>
 
         </div>
 
+        {% else %}
+
+        <div style="color:#777;">
+            No movies available yet.
+        </div>
+
+        {% endfor %}
+
     </div>
-
-    {% else %}
-
-    <div style="color:#777;">
-        No movies available yet.
-    </div>
-
-    {% endfor %}
-
-</div>
-```
 
 </section>
 
-<!-- =========================================================
-     CATEGORIES
-     ========================================================= -->
+
+<!-- ================= CATEGORIES ================= -->
 
 <section
     class="tm-section"
     id="categories"
 >
 
-```
-<div class="tm-section-head">
+    <div class="tm-section-head">
 
-    <h2>
-        Browse by Category
-    </h2>
+        <h2>Browse by Category</h2>
 
-</div>
+    </div>
 
 
-<div class="tm-category-row">
+    <div class="tm-category-row">
 
-    <button
-        type="button"
-        class="tm-category-btn active"
-        data-category="all"
-    >
-        All
-    </button>
+        <button
+            type="button"
+            class="tm-category-btn active"
+            data-category="all"
+        >
+            All
+        </button>
 
-    <button
-        type="button"
-        class="tm-category-btn"
-        data-category="action"
-    >
-        Action
-    </button>
+        <button
+            type="button"
+            class="tm-category-btn"
+            data-category="action"
+        >
+            Action
+        </button>
 
-    <button
-        type="button"
-        class="tm-category-btn"
-        data-category="drama"
-    >
-        Drama
-    </button>
+        <button
+            type="button"
+            class="tm-category-btn"
+            data-category="drama"
+        >
+            Drama
+        </button>
 
-    <button
-        type="button"
-        class="tm-category-btn"
-        data-category="thriller"
-    >
-        Thriller
-    </button>
+        <button
+            type="button"
+            class="tm-category-btn"
+            data-category="thriller"
+        >
+            Thriller
+        </button>
 
-    <button
-        type="button"
-        class="tm-category-btn"
-        data-category="comedy"
-    >
-        Comedy
-    </button>
+        <button
+            type="button"
+            class="tm-category-btn"
+            data-category="comedy"
+        >
+            Comedy
+        </button>
 
-    <button
-        type="button"
-        class="tm-category-btn"
-        data-category="hindi"
-    >
-        Hindi
-    </button>
+        <button
+            type="button"
+            class="tm-category-btn"
+            data-category="hindi"
+        >
+            Hindi
+        </button>
 
-    <button
-        type="button"
-        class="tm-category-btn"
-        data-category="classic"
-    >
-        Classic
-    </button>
+        <button
+            type="button"
+            class="tm-category-btn"
+            data-category="classic"
+        >
+            Classic
+        </button>
 
-</div>
-```
+    </div>
 
 </section>
 
-<!-- =========================================================
-     MY LIST
-     ========================================================= -->
+
+<!-- ================= MY LIST ================= -->
 
 <section
     class="tm-section tm-my-list-section"
     id="my-list"
 >
 
-```
-<div class="tm-section-head">
+    <div class="tm-section-head">
 
-    <h2>
-        My List
-    </h2>
+        <h2>My List</h2>
 
-    <span
-        class="tm-section-count"
-        id="tmMyListCount"
-    >
-        0 saved
-    </span>
-
-</div>
-
-
-<div
-    class="tm-movie-grid"
-    id="tmMyListGrid"
->
-
-    {% for movie in movies %}
-
-    <article
-        class="tm-movie-card tm-my-list-card"
-        data-movie-id="{{ movie.id }}"
-        data-title="{{ movie.title|lower }}"
-        data-category="{{ (movie.category or '')|lower }}"
-        style="display:none;"
-    >
-
-        <a
-            class="tm-poster-link"
-            href="{{ url_for('movie_page', movie_id=movie.id) }}"
+        <span
+            class="tm-section-count"
+            id="tmMyListCount"
         >
+            0 saved
+        </span>
 
-            <div class="tm-poster-wrap">
-
-                {% if movie.poster_url %}
-
-                <img
-                    class="tm-poster"
-                    src="{{ movie.poster_url }}"
-                    alt="{{ movie.title }}"
-                    loading="lazy"
-                >
-
-                {% else %}
-
-                <div class="tm-no-poster">
-                    NO POSTER
-                </div>
-
-                {% endif %}
-
-                <div class="tm-card-gradient"></div>
-
-            </div>
-
-            <div class="tm-card-info">
-
-                <h3 class="tm-movie-title">
-                    {{ movie.title }}
-                </h3>
-
-                <div class="tm-movie-meta">
-                    {{ movie.category or "Movie" }}
-                </div>
-
-            </div>
-
-        </a>
-
-
-        <div class="tm-card-actions">
-
-            <a
-                class="tm-watch-card-btn"
-                href="{{ url_for('movie_page', movie_id=movie.id) }}"
-            >
-                ▶ Watch
-            </a>
-
-            <button
-                type="button"
-                class="tm-list-btn saved"
-                data-movie-id="{{ movie.id }}"
-                data-list-action="remove"
-            >
-                ✓ Saved
-            </button>
-
-        </div>
-
-    </article>
-
-    {% endfor %}
-
-</div>
-
-
-<div
-    class="tm-my-list-empty"
-    id="tmMyListEmpty"
->
-
-    <div class="tm-my-list-empty-icon">
-        ＋
     </div>
 
-    <h3>
-        Your My List is empty
-    </h3>
 
-    <p>
-        Movies you add with “+ My List” will appear here.
-    </p>
+    <div
+        class="tm-movie-grid"
+        id="tmMyListGrid"
+    >
 
-</div>
-```
+        {% for movie in movies %}
+
+        <article
+            class="tm-movie-card tm-my-list-card"
+            data-movie-id="{{ movie.id }}"
+            data-title="{{ movie.title|lower }}"
+            data-category="{{ (movie.category or '')|lower }}"
+            style="display:none;"
+        >
+
+            <a
+                class="tm-poster-link"
+                href="{{ url_for('movie_page', movie_id=movie.id) }}"
+            >
+
+                <div class="tm-poster-wrap">
+
+                    {% if movie.poster_url %}
+
+                    <img
+                        class="tm-poster"
+                        src="{{ movie.poster_url }}"
+                        alt="{{ movie.title }}"
+                        loading="lazy"
+                    >
+
+                    {% else %}
+
+                    <div class="tm-no-poster">
+                        NO POSTER
+                    </div>
+
+                    {% endif %}
+
+                    <div class="tm-card-gradient"></div>
+
+                </div>
+
+
+                <div class="tm-card-info">
+
+                    <h3 class="tm-movie-title">
+                        {{ movie.title }}
+                    </h3>
+
+                    <div class="tm-movie-meta">
+                        {{ movie.category or "Movie" }}
+                    </div>
+
+                </div>
+
+            </a>
+
+
+            <div class="tm-card-actions">
+
+                <a
+                    class="tm-watch-card-btn"
+                    href="{{ url_for('movie_page', movie_id=movie.id) }}"
+                >
+                    ▶ Watch
+                </a>
+
+                <button
+                    type="button"
+                    class="tm-list-btn saved"
+                    data-movie-id="{{ movie.id }}"
+                >
+                    ✓ Saved
+                </button>
+
+            </div>
+
+        </article>
+
+        {% endfor %}
+
+    </div>
+
+
+    <div
+        class="tm-my-list-empty"
+        id="tmMyListEmpty"
+    >
+
+        <div class="tm-my-list-empty-icon">
+            ＋
+        </div>
+
+        <h3>Your My List is empty</h3>
+
+        <p>
+            Movies you add with “+ My List” will appear here.
+        </p>
+
+    </div>
 
 </section>
 
-<!-- =========================================================
-     ALL MOVIES
-     ========================================================= -->
+
+<!-- ================= ALL MOVIES ================= -->
 
 <section
     class="tm-section"
     id="movies"
 >
 
-```
-<div class="tm-section-head">
+    <div class="tm-section-head">
 
-    <h2>
-        All Movies
-    </h2>
+        <h2>All Movies</h2>
 
-    <span
-        class="tm-section-count"
-        id="tmMovieCount"
-    >
-        {{ movies|length }} movies
-    </span>
-
-</div>
-
-
-<div
-    class="tm-movie-grid"
-    id="tmMovieGrid"
->
-
-    {% for movie in movies %}
-
-    <article
-        class="tm-movie-card tm-all-movie-card"
-        data-movie-id="{{ movie.id }}"
-        data-title="{{ movie.title|lower }}"
-        data-category="{{ (movie.category or '')|lower }}"
-    >
-
-        <a
-            class="tm-poster-link"
-            href="{{ url_for('movie_page', movie_id=movie.id) }}"
+        <span
+            class="tm-section-count"
+            id="tmMovieCount"
         >
+            {{ movies|length }} movies
+        </span>
 
-            <div class="tm-poster-wrap">
-
-                {% if movie.poster_url %}
-
-                <img
-                    class="tm-poster"
-                    src="{{ movie.poster_url }}"
-                    alt="{{ movie.title }}"
-                    loading="lazy"
-                >
-
-                {% else %}
-
-                <div class="tm-no-poster">
-                    NO POSTER
-                </div>
-
-                {% endif %}
-
-                <div class="tm-card-gradient"></div>
-
-            </div>
-
-
-            <div class="tm-card-info">
-
-                <h3 class="tm-movie-title">
-                    {{ movie.title }}
-                </h3>
-
-                <div class="tm-movie-meta">
-                    {{ movie.category or "Movie" }}
-                </div>
-
-            </div>
-
-        </a>
-
-
-        <div class="tm-card-actions">
-
-            <a
-                class="tm-watch-card-btn"
-                href="{{ url_for('movie_page', movie_id=movie.id) }}"
-            >
-                ▶ Watch
-            </a>
-
-            <button
-                type="button"
-                class="tm-list-btn"
-                data-movie-id="{{ movie.id }}"
-                data-list-action="add"
-            >
-                ＋ My List
-            </button>
-
-        </div>
-
-    </article>
-
-    {% else %}
-
-    <div
-        style="
-            grid-column:1/-1;
-            padding:50px 20px;
-            text-align:center;
-            color:#777;
-        "
-    >
-        No movies available.
     </div>
 
-    {% endfor %}
 
-</div>
+    <div
+        class="tm-movie-grid"
+        id="tmMovieGrid"
+    >
+
+        {% for movie in movies %}
+
+        <article
+            class="tm-movie-card tm-all-movie-card"
+            data-movie-id="{{ movie.id }}"
+            data-title="{{ movie.title|lower }}"
+            data-category="{{ (movie.category or '')|lower }}"
+        >
+
+            <a
+                class="tm-poster-link"
+                href="{{ url_for('movie_page', movie_id=movie.id) }}"
+            >
+
+                <div class="tm-poster-wrap">
+
+                    {% if movie.poster_url %}
+
+                    <img
+                        class="tm-poster"
+                        src="{{ movie.poster_url }}"
+                        alt="{{ movie.title }}"
+                        loading="lazy"
+                    >
+
+                    {% else %}
+
+                    <div class="tm-no-poster">
+                        NO POSTER
+                    </div>
+
+                    {% endif %}
+
+                    <div class="tm-card-gradient"></div>
+
+                </div>
 
 
-<div
-    class="tm-search-empty"
-    id="tmSearchEmpty"
->
-    No movies found.
-</div>
-```
+                <div class="tm-card-info">
+
+                    <h3 class="tm-movie-title">
+                        {{ movie.title }}
+                    </h3>
+
+                    <div class="tm-movie-meta">
+                        {{ movie.category or "Movie" }}
+                    </div>
+
+                </div>
+
+            </a>
+
+
+            <div class="tm-card-actions">
+
+                <a
+                    class="tm-watch-card-btn"
+                    href="{{ url_for('movie_page', movie_id=movie.id) }}"
+                >
+                    ▶ Watch
+                </a>
+
+                <button
+                    type="button"
+                    class="tm-list-btn"
+                    data-movie-id="{{ movie.id }}"
+                >
+                    ＋ My List
+                </button>
+
+            </div>
+
+        </article>
+
+        {% else %}
+
+        <div
+            style="
+                grid-column:1/-1;
+                padding:50px 20px;
+                text-align:center;
+                color:#777;
+            "
+        >
+            No movies available.
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+
+    <div
+        class="tm-search-empty"
+        id="tmSearchEmpty"
+    >
+        No movies found.
+    </div>
 
 </section>
+```
 
 </main>
 
-<!-- =========================================================
-     FOOTER
-     ========================================================= -->
+<!-- ================= FOOTER ================= -->
 
 <footer class="tm-member-footer">
 
@@ -1386,9 +1319,7 @@ Movies • Entertainment • Stories
 
 </footer>
 
-<!-- =========================================================
-     TOAST
-     ========================================================= -->
+<!-- ================= TOAST ================= -->
 
 <div
     class="tm-toast"
@@ -1396,18 +1327,11 @@ Movies • Entertainment • Stories
 ></div>
 
 <script>
-/* =========================================================
-   CINEMA WORLD — MEMBER HOME JAVASCRIPT
-   ========================================================= */
 
 (function(){
 
     "use strict";
 
-
-    /* -------------------------------------------------------
-       ELEMENTS
-       ------------------------------------------------------- */
 
     const searchInput =
         document.getElementById("tmSearch");
@@ -1466,17 +1390,14 @@ Movies • Entertainment • Stories
         );
 
 
-    /* -------------------------------------------------------
-       STORAGE KEY
-       ------------------------------------------------------- */
+    /*
+     * CINEMA WORLD
+     * New storage key.
+     */
 
     const STORAGE_KEY =
-        "tomesh_movies_my_list_v1";
+        "cinema_world_my_list_v1";
 
-
-    /* -------------------------------------------------------
-       GET LIST
-       ------------------------------------------------------- */
 
     function getMyList(){
 
@@ -1518,10 +1439,6 @@ Movies • Entertainment • Stories
     }
 
 
-    /* -------------------------------------------------------
-       SAVE LIST
-       ------------------------------------------------------- */
-
     function saveMyList(list){
 
         try{
@@ -1541,26 +1458,8 @@ Movies • Entertainment • Stories
     }
 
 
-    /* -------------------------------------------------------
-       CHECK SAVED
-       ------------------------------------------------------- */
-
-    function isSaved(movieId){
-
-        const list =
-            getMyList();
-
-        return list.indexOf(
-            String(movieId)
-        ) !== -1;
-    }
-
-
-    /* -------------------------------------------------------
-       TOAST
-       ------------------------------------------------------- */
-
     let toastTimer = null;
+
 
     function showToast(message){
 
@@ -1593,10 +1492,6 @@ Movies • Entertainment • Stories
     }
 
 
-    /* -------------------------------------------------------
-       UPDATE BUTTONS
-       ------------------------------------------------------- */
-
     function updateButtons(){
 
         const saved =
@@ -1622,9 +1517,6 @@ Movies • Entertainment • Stories
                         "saved"
                     );
 
-                    button.dataset.listAction =
-                        "remove";
-
                 }else{
 
                     button.textContent =
@@ -1634,8 +1526,6 @@ Movies • Entertainment • Stories
                         "saved"
                     );
 
-                    button.dataset.listAction =
-                        "add";
                 }
 
             }
@@ -1643,16 +1533,13 @@ Movies • Entertainment • Stories
     }
 
 
-    /* -------------------------------------------------------
-       UPDATE MY LIST SECTION
-       ------------------------------------------------------- */
-
     function updateMyListSection(){
 
         const saved =
             getMyList();
 
         let visibleCount = 0;
+
 
         myListCards.forEach(
             function(card){
@@ -1685,12 +1572,7 @@ Movies • Entertainment • Stories
         if(myListCount){
 
             myListCount.textContent =
-                visibleCount +
-                (
-                    visibleCount === 1
-                    ? " saved"
-                    : " saved"
-                );
+                visibleCount + " saved";
         }
 
 
@@ -1703,10 +1585,6 @@ Movies • Entertainment • Stories
         }
     }
 
-
-    /* -------------------------------------------------------
-       ADD / REMOVE
-       ------------------------------------------------------- */
 
     function toggleMyList(movieId){
 
@@ -1754,10 +1632,6 @@ Movies • Entertainment • Stories
     }
 
 
-    /* -------------------------------------------------------
-       BUTTON CLICK
-       ------------------------------------------------------- */
-
     myListButtons.forEach(
         function(button){
 
@@ -1786,11 +1660,8 @@ Movies • Entertainment • Stories
     );
 
 
-    /* -------------------------------------------------------
-       SEARCH + CATEGORY
-       ------------------------------------------------------- */
-
-    let activeCategory = "all";
+    let activeCategory =
+        "all";
 
 
     function filterMovies(){
@@ -1802,9 +1673,7 @@ Movies • Entertainment • Stories
                 .toLowerCase()
             : "";
 
-
-        let visible =
-            0;
+        let visible = 0;
 
 
         movieCards.forEach(
@@ -1889,10 +1758,6 @@ Movies • Entertainment • Stories
     }
 
 
-    /* -------------------------------------------------------
-       CATEGORY BUTTONS
-       ------------------------------------------------------- */
-
     categoryButtons.forEach(
         function(button){
 
@@ -1947,10 +1812,6 @@ Movies • Entertainment • Stories
     );
 
 
-    /* -------------------------------------------------------
-       MY LIST NAVBAR
-       ------------------------------------------------------- */
-
     document
         .querySelectorAll(
             'a[href="#my-list"]'
@@ -1978,18 +1839,14 @@ Movies • Entertainment • Stories
         );
 
 
-    /* -------------------------------------------------------
-       INITIAL LOAD
-       ------------------------------------------------------- */
-
     updateButtons();
 
     updateMyListSection();
 
     filterMovies();
 
-
 })();
+
 </script>
 
 {% endblock %}
