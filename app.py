@@ -3090,18 +3090,18 @@ def download_movie(movie_id):
 def login():
     step = str(request.args.get("step", "")).strip().lower()
 
-    if step not in {"mobile", "otp"}:
-        step = "otp" if (session.get("otp_mobile") or session.get("otp_email")) else "mobile"
+    if step not in {"mobile", "otp", "password", "set_password"}:
+        step = "mobile"
 
-    mobile = normalize_mobile(
-        request.args.get("mobile", "")
-        or session.get("otp_mobile", "")
-    )
-
-    email = normalize_email(
-        request.args.get("email", "")
+    identifier = str(
+        request.args.get("identifier", "")
+        or request.args.get("email", "")
+        or session.get("login_identifier", "")
         or session.get("otp_email", "")
-    )
+        or session.get("otp_mobile", "")
+    ).strip()
+    mobile = normalize_mobile(request.args.get("mobile", "") or identifier or session.get("otp_mobile", ""))
+    email = normalize_email(request.args.get("email", "") or identifier or session.get("otp_email", ""))
 
     return render_template(
         "login.html",
@@ -3109,7 +3109,7 @@ def login():
         mobile=mobile,
         masked_mobile=mask_mobile(mobile),
         email=email,
-        identifier=email or mobile,
+        identifier=identifier,
     )
 
 
