@@ -1624,6 +1624,11 @@ def bind_customer_email(email):
 
 @app.route("/login/start", methods=["POST"])
 def login_start():
+    # Clear stale OTP/login-routing state so a fresh login never loops
+    # back to an old OTP screen.
+    for _key in ("otp_email", "otp_sent_at", "otp_mobile", "otp_mobile_sent_at", "login_identifier"):
+        session.pop(_key, None)
+
     value = str(request.form.get("email", "") or request.form.get("identifier", "")).strip()
     email = normalize_email(value)
     if valid_email(email):
@@ -3090,18 +3095,27 @@ def download_movie(movie_id):
 def login():
     step = str(request.args.get("step", "")).strip().lower()
 
+    # Direct /login always starts at the identifier screen. Never infer the
+    # screen from stale OTP session keys.
     if step not in {"mobile", "otp", "password", "set_password"}:
         step = "mobile"
 
     identifier = str(
         request.args.get("identifier", "")
-        or request.args.get("email", "")
         or session.get("login_identifier", "")
-        or session.get("otp_email", "")
-        or session.get("otp_mobile", "")
     ).strip()
-    mobile = normalize_mobile(request.args.get("mobile", "") or identifier or session.get("otp_mobile", ""))
-    email = normalize_email(request.args.get("email", "") or identifier or session.get("otp_email", ""))
+
+    mobile = normalize_mobile(
+        request.args.get("mobile", "")
+        or session.get("otp_mobile", "")
+        or (identifier if step in {"password", "otp"} else "")
+    )
+
+    email = normalize_email(
+        request.args.get("email", "")
+        or session.get("otp_email", "")
+        or (identifier if step in {"password", "otp"} else "")
+    )
 
     return render_template(
         "login.html",
@@ -3109,8 +3123,20 @@ def login():
         mobile=mobile,
         masked_mobile=mask_mobile(mobile),
         email=email,
-        identifier=identifier,
+        identifier=identifier or email or mobile,
     )
+
+
+@app.route("/set-language", methods=["POST"])
+def set_language():
+    language = str(request.form.get("language", "en")).strip().lower()
+    if language not in {"en", "hi"}:
+        language = "en"
+    session["language"] = language
+    target = request.referrer or url_for("home")
+    if not target.startswith(request.host_url):
+        target = url_for("home")
+    return redirect(target)
 
 
 @app.route("/admin/login", methods=["GET", "POST"])
@@ -3149,6 +3175,7 @@ def customer_login_required(view_func):
         return view_func(*args, **kwargs)
     return wrapper
 
+
 @app.route("/customer/set-password", methods=["POST"])
 @customer_login_required
 def customer_set_password():
@@ -3167,7 +3194,6 @@ def customer_set_password():
 # ============================================================
 # CUSTOMER MEMBER / USER DETAILS / MY LIST
 # ============================================================
-
 
 @app.route("/user-details", methods=["GET", "POST"])
 def user_details():
