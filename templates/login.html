@@ -43,7 +43,7 @@ h1{font-size:30px;margin:0 0 10px;font-weight:800;text-align:center}.cw-sub{colo
 {% else %}
 <span class="cw-badge">CINEMA WORLD ACCOUNT</span><h1>Sign in</h1><p class="cw-sub">Email ya mobile number enter karo. Existing account hua to direct password login. New account hua to OTP sirf ek baar.</p>
 <form action="{{ url_for('login_start') }}" method="post" autocomplete="on"><label class="cw-label" for="identifier">Email address / Mobile number</label><input class="cw-input" id="identifier" name="email" type="text" autocomplete="username" value="{{ identifier or '' }}" placeholder="Email ya 10-digit mobile" required autofocus><button class="cw-btn" type="submit">Continue</button></form>
-<p class="cw-note">1 email = 1 account • 1 mobile = 1 account<br>Returning user: Password only • New user: OTP → Set Password</p>
+<p class="cw-note">1 email = 1 account • 1 mobile = maximum 5 accounts<br>Returning user: Password only • New user: OTP → Set Password</p>
 {% endif %}<div class="cw-footer">CINEMA WORLD</div>
 </main></div>
 <script>(function(){var o=document.getElementById('otp');if(o)o.addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(0,9);});})();</script>
