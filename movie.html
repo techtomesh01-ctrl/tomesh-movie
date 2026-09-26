@@ -1,74 +1,1652 @@
 {% extends "base.html" %}
 
-{% block title %}
-{{ m.title }} - CINEMA WORLD
-{% endblock %}
+{% block title %}{{ movie.title }} | CINEMA WORLD{% endblock %}
 
 {% block content %}
 
-<div class="movie-page">
+<style>
+/* =========================================================
+   CINEMA WORLD — PREMIUM NETFLIX STYLE WATCH PAGE
+   Existing backend / R2 / access / payment routes preserved
+========================================================= */
 
-    <a class="back-btn" href="{{ url_for('home') }}">
-        ← Back to Movies
+.tm-watch-page{
+    min-height:100vh;
+    color:#fff;
+    background:
+        radial-gradient(circle at 12% 0%,rgba(112,35,170,.20),transparent 28%),
+        radial-gradient(circle at 90% 8%,rgba(220,35,65,.15),transparent 27%),
+        linear-gradient(180deg,#050505 0%,#080808 48%,#030303 100%);
+    padding:18px 12px 80px;
+}
+
+.tm-watch-wrap{
+    width:100%;
+    max-width:1320px;
+    margin:auto;
+}
+
+/* =========================================================
+   TOP BAR
+========================================================= */
+
+.tm-topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    margin-bottom:16px;
+}
+
+.tm-back{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:40px;
+    padding:9px 14px;
+    border-radius:11px;
+
+    color:#fff;
+    text-decoration:none;
+
+    background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.10);
+
+    backdrop-filter:blur(12px);
+    transition:.2s ease;
+}
+
+.tm-back:hover{
+    background:rgba(255,255,255,.10);
+    border-color:rgba(255,255,255,.18);
+    transform:translateY(-1px);
+}
+
+.tm-brand-mini{
+    color:#aaa;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:2px;
+}
+
+/* =========================================================
+   PLAYER — CINEMA WORLD PRO PLAYER
+========================================================= */
+.tm-player-box{position:relative;width:100%;overflow:hidden;background:#000;border-radius:18px;border:1px solid rgba(255,255,255,.08);box-shadow:0 25px 80px rgba(0,0,0,.65),0 0 50px rgba(80,20,120,.08);}
+.tm-player{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;user-select:none;}
+.tm-video{display:block;width:100%;height:100%;object-fit:contain;background:#000;cursor:pointer;}
+.tm-player::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.50),transparent 22%,transparent 62%,rgba(0,0,0,.88));opacity:.0;transition:opacity .22s;z-index:2;}
+.tm-player.active::after,.tm-player:hover::after{opacity:1;}
+.tm-video-top{position:absolute;left:0;right:0;top:0;height:90px;z-index:4;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.68),transparent);opacity:0;transition:.25s;}
+.tm-player.active .tm-video-top{opacity:1;}
+.tm-player-title{position:absolute;left:18px;top:16px;z-index:5;color:#fff;font-size:12px;font-weight:850;letter-spacing:.2px;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:.2s;}
+.tm-player.active .tm-player-title{opacity:1;}
+.tm-center-play{position:absolute;left:50%;top:50%;z-index:8;width:78px;height:78px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);box-shadow:0 18px 55px rgba(0,0,0,.55),0 0 35px rgba(255,255,255,.07);cursor:pointer;font-size:27px;transition:.2s;}
+.tm-center-play:hover{transform:translate(-50%,-50%) scale(1.08);background:rgba(0,0,0,.82);}
+.tm-controls{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:42px 15px 11px;opacity:0;background:linear-gradient(180deg,transparent,rgba(0,0,0,.94));transition:opacity .22s;}
+.tm-player.active .tm-controls,.tm-player:hover .tm-controls{opacity:1;}
+.tm-progress-wrap{width:100%;padding:9px 0 8px;cursor:pointer;touch-action:none;}
+.tm-progress{position:relative;width:100%;height:5px;border-radius:99px;background:rgba(255,255,255,.28);transition:height .15s;}
+.tm-progress-wrap:hover .tm-progress{height:7px;}
+.tm-progress-buffer,.tm-progress-value{position:absolute;left:0;top:0;height:100%;border-radius:99px;pointer-events:none;}
+.tm-progress-buffer{width:0;background:rgba(255,255,255,.34);}
+.tm-progress-value{width:0;background:#ff1744;}
+.tm-progress-dot{position:absolute;left:0;top:50%;width:13px;height:13px;transform:translate(-50%,-50%);border-radius:50%;background:#ff1744;opacity:0;transition:.12s;box-shadow:0 0 0 3px rgba(255,23,68,.18);}
+.tm-progress-wrap:hover .tm-progress-dot{opacity:1;}
+.tm-control-row{display:flex;align-items:center;min-height:38px;}
+.tm-left-controls,.tm-right-controls{display:flex;align-items:center;gap:2px;}
+.tm-right-controls{margin-left:auto;}
+.tm-control-btn{width:38px;height:36px;display:flex;align-items:center;justify-content:center;border:0;border-radius:8px;background:transparent;color:#fff;cursor:pointer;font-size:16px;transition:.15s;}
+.tm-control-btn:hover{background:rgba(255,255,255,.13);}
+.tm-skip{font-size:12px;font-weight:900;}
+.tm-time{margin-left:7px;color:#eee;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.tm-volume-wrap{display:flex;align-items:center;margin-left:2px;}
+.tm-volume-slider{width:78px;height:4px;accent-color:#fff;cursor:pointer;}
+.tm-settings{position:relative;}
+.tm-settings-menu{position:absolute;right:0;bottom:43px;width:180px;padding:8px;border-radius:13px;background:rgba(18,18,18,.98);border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 55px rgba(0,0,0,.65);display:none;backdrop-filter:blur(16px);}
+.tm-settings.open .tm-settings-menu{display:block;}
+.tm-settings-title{padding:7px 9px;color:#777;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;}
+.tm-speed-btn{width:100%;padding:9px 10px;border:0;border-radius:8px;background:transparent;color:#fff;text-align:left;cursor:pointer;font-size:12px;}
+.tm-speed-btn:hover,.tm-speed-btn.active{background:rgba(255,255,255,.10);}
+.tm-loading{position:absolute;left:50%;top:50%;z-index:9;width:48px;height:48px;transform:translate(-50%,-50%);border:4px solid rgba(255,255,255,.18);border-top-color:#fff;border-right-color:#ff1744;border-radius:50%;display:none;animation:tmSpin .8s linear infinite;box-shadow:0 0 35px rgba(255,23,68,.18);}
+.tm-player.buffering .tm-loading{display:block;}
+.tm-player.ready .tm-loading{display:none;}
+@keyframes tmSpin{to{transform:translate(-50%,-50%) rotate(360deg);}}
+.tm-player-error{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;text-align:center;padding:25px;background:rgba(0,0,0,.76);backdrop-filter:blur(5px);}
+.tm-player.error-state .tm-player-error{display:flex;}
+.tm-error-box{max-width:420px;}
+.tm-error-icon{font-size:34px;margin-bottom:10px;}
+.tm-error-title{font-size:18px;font-weight:950;margin-bottom:6px;}
+.tm-error-text{color:#aaa;font-size:12px;line-height:1.6;margin-bottom:14px;}
+.tm-retry{border:0;border-radius:10px;padding:10px 16px;color:#fff;background:linear-gradient(135deg,#e51f48,#9b233e);font-weight:900;cursor:pointer;}
+.tm-pip-btn{display:flex;}
+@media(max-width:700px){.tm-player-box{border-radius:13px}.tm-center-play{width:62px;height:62px;font-size:22px}.tm-controls{padding:34px 7px 7px}.tm-control-btn{width:34px;height:34px;font-size:14px}.tm-volume-wrap{display:none}.tm-time{font-size:10px}.tm-player-title{left:10px;top:10px;font-size:10px}.tm-settings-menu{bottom:39px;width:165px}}
+@media(max-width:420px){.tm-controls{padding-left:4px;padding-right:4px}.tm-control-btn{width:31px}.tm-time{margin-left:3px}.tm-pip-btn{display:none}.tm-center-play{width:56px;height:56px}}
+
+/* =========================================================
+   LOCK SCREEN
+========================================================= */
+
+.tm-lock{
+    width:100%;
+    aspect-ratio:16/9;
+
+    min-height:420px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    padding:30px;
+
+    text-align:center;
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(110,30,165,.28),
+            transparent 45%
+        ),
+        #030303;
+}
+
+.tm-lock-box{
+    max-width:500px;
+}
+
+.tm-lock-icon-wrap{
+    width:78px;
+    height:78px;
+
+    margin:0 auto 18px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    border-radius:22px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(137,45,194,.22),
+            rgba(220,38,72,.15)
+        );
+
+    border:1px solid rgba(255,255,255,.12);
+}
+
+.tm-lock-icon{
+    font-size:36px;
+}
+
+.tm-lock h2{
+    margin-bottom:9px;
+
+    font-size:32px;
+    font-weight:950;
+}
+
+.tm-lock p{
+    max-width:430px;
+
+    margin:0 auto 22px;
+
+    color:#aaa;
+
+    font-size:14px;
+    line-height:1.7;
+}
+
+.tm-lock-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+
+    min-height:46px;
+
+    padding:11px 20px;
+
+    border-radius:11px;
+
+    color:#fff;
+    text-decoration:none;
+
+    background:
+        linear-gradient(
+            135deg,
+            #7c25ba,
+            #d32e55
+        );
+
+    font-weight:900;
+}
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.tm-status{
+    display:none;
+
+    margin-top:10px;
+    padding:11px 13px;
+
+    border-radius:10px;
+
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.08);
+
+    color:#aaa;
+
+    font-size:13px;
+}
+
+.tm-status.tm-error{
+    color:#ffd3da;
+
+    background:rgba(130,20,38,.16);
+
+    border-color:rgba(255,55,90,.25);
+}
+
+/* =========================================================
+   MOVIE INFORMATION
+========================================================= */
+
+.tm-movie-head{
+    display:grid;
+
+    grid-template-columns:minmax(0,1fr) 260px;
+
+    gap:30px;
+
+    align-items:start;
+
+    padding:28px 2px 0;
+}
+
+.tm-info-main{
+    min-width:0;
+}
+
+.tm-eyebrow{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+
+    gap:8px;
+
+    margin-bottom:11px;
+}
+
+.tm-eyebrow-badge{
+    display:inline-flex;
+    align-items:center;
+
+    min-height:27px;
+
+    padding:5px 9px;
+
+    border-radius:999px;
+
+    color:#ccc;
+
+    background:rgba(255,255,255,.055);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    font-size:10px;
+    font-weight:900;
+
+    letter-spacing:.7px;
+    text-transform:uppercase;
+}
+
+.tm-eyebrow-badge.hot{
+    color:#ffb7c2;
+
+    background:rgba(220,35,65,.10);
+
+    border-color:rgba(220,35,65,.20);
+}
+
+.tm-title{
+    margin:0 0 12px;
+
+    max-width:1000px;
+
+    font-size:clamp(30px,5vw,54px);
+
+    line-height:1.05;
+
+    font-weight:950;
+
+    letter-spacing:-1.5px;
+}
+
+.tm-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+
+    margin-bottom:17px;
+}
+
+.tm-badge{
+    display:inline-flex;
+    align-items:center;
+
+    min-height:31px;
+
+    padding:6px 10px;
+
+    border-radius:999px;
+
+    color:#d0d0d0;
+
+    background:rgba(255,255,255,.055);
+
+    border:1px solid rgba(255,255,255,.07);
+
+    font-size:11px;
+    font-weight:750;
+}
+
+.tm-badge.premium{
+    color:#ffd66c;
+
+    background:rgba(200,145,30,.11);
+
+    border-color:rgba(230,175,55,.20);
+}
+
+.tm-description{
+    max-width:900px;
+
+    color:#aaa;
+
+    font-size:15px;
+    line-height:1.85;
+
+    white-space:pre-line;
+}
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.tm-action-row{
+    display:flex;
+    flex-wrap:wrap;
+
+    gap:10px;
+
+    margin-top:22px;
+}
+
+.tm-action-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+
+    min-height:45px;
+
+    padding:11px 17px;
+
+    border-radius:11px;
+
+    color:#fff;
+    text-decoration:none;
+
+    background:rgba(255,255,255,.055);
+
+    border:1px solid rgba(255,255,255,.09);
+
+    font-size:13px;
+    font-weight:900;
+
+    transition:.2s;
+}
+
+.tm-action-btn:hover{
+    transform:translateY(-1px);
+    background:rgba(255,255,255,.10);
+}
+
+.tm-action-btn.primary{
+    background:
+        linear-gradient(
+            135deg,
+            #e51f48,
+            #ff3157
+        );
+
+    border-color:transparent;
+
+    box-shadow:
+        0 10px 30px rgba(225,30,70,.20);
+}
+
+.tm-action-btn.download{
+    background:
+        linear-gradient(
+            135deg,
+            #9b233e,
+            #cc2f57
+        );
+
+    border-color:transparent;
+}
+
+.tm-active-pill{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+
+    min-height:45px;
+
+    padding:11px 16px;
+
+    border-radius:11px;
+
+    color:#d8ffd6;
+
+    background:rgba(55,160,58,.10);
+
+    border:1px solid rgba(80,200,80,.20);
+
+    font-size:13px;
+    font-weight:900;
+}
+
+/* =========================================================
+   POSTER
+========================================================= */
+
+.tm-poster-card{
+    position:relative;
+
+    overflow:hidden;
+
+    border-radius:16px;
+
+    background:#0d0d0d;
+
+    border:1px solid rgba(255,255,255,.09);
+
+    box-shadow:
+        0 20px 55px rgba(0,0,0,.45);
+}
+
+.tm-poster{
+    display:block;
+
+    width:100%;
+
+    aspect-ratio:2/3;
+
+    object-fit:cover;
+}
+
+.tm-poster-shade{
+    position:absolute;
+
+    left:0;
+    right:0;
+    bottom:0;
+
+    padding:32px 14px 14px;
+
+    color:#ddd;
+
+    font-size:12px;
+    font-weight:850;
+
+    background:
+        linear-gradient(
+            transparent,
+            rgba(0,0,0,.90)
+        );
+}
+
+/* =========================================================
+   PAYMENT
+========================================================= */
+
+.tm-payment{
+    margin-top:28px;
+
+    padding:24px;
+
+    border-radius:18px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(105,30,160,.18),
+            rgba(215,35,68,.07)
+        );
+
+    border:1px solid rgba(255,255,255,.09);
+}
+
+.tm-payment-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+
+    gap:20px;
+
+    margin-bottom:17px;
+}
+
+.tm-payment h2{
+    margin-bottom:6px;
+
+    font-size:22px;
+    font-weight:950;
+}
+
+.tm-payment-sub{
+    color:#999;
+
+    font-size:13px;
+    line-height:1.6;
+}
+
+.tm-secure{
+    flex-shrink:0;
+
+    padding:7px 10px;
+
+    border-radius:999px;
+
+    color:#bbb;
+
+    background:rgba(255,255,255,.05);
+
+    border:1px solid rgba(255,255,255,.07);
+
+    font-size:10px;
+    font-weight:900;
+}
+
+.tm-phone{
+    width:100%;
+    max-width:430px;
+
+    min-height:48px;
+
+    margin-bottom:14px;
+    padding:13px 14px;
+
+    outline:none;
+
+    border-radius:11px;
+
+    border:1px solid rgba(255,255,255,.13);
+
+    background:#0a0a0a;
+
+    color:#fff;
+
+    font-size:14px;
+}
+
+.tm-phone::placeholder{
+    color:#666;
+}
+
+.tm-phone:focus{
+    border-color:#a143d3;
+
+    box-shadow:
+        0 0 0 3px rgba(161,67,211,.12);
+}
+
+.tm-pay-grid{
+    display:grid;
+
+    grid-template-columns:repeat(2,minmax(0,1fr));
+
+    gap:12px;
+}
+
+.tm-pay-btn{
+    width:100%;
+
+    padding:15px;
+
+    border:0;
+    border-radius:13px;
+
+    color:#fff;
+
+    text-align:left;
+
+    cursor:pointer;
+
+    background:
+        linear-gradient(
+            135deg,
+            #7423b2,
+            #c52c55
+        );
+
+    box-shadow:
+        0 10px 25px rgba(0,0,0,.25);
+
+    transition:.2s;
+}
+
+.tm-pay-btn:hover{
+    transform:translateY(-2px);
+    filter:brightness(1.06);
+}
+
+.tm-pay-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    gap:10px;
+
+    font-size:15px;
+    font-weight:950;
+}
+
+.tm-pay-btn small{
+    display:block;
+
+    margin-top:5px;
+
+    color:#ddd;
+
+    font-size:11px;
+    line-height:1.5;
+}
+
+.tm-premium{
+    width:100%;
+
+    margin-top:12px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #825400,
+            #dca425,
+            #956100
+        );
+}
+
+.tm-premium-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    gap:10px;
+}
+
+.tm-premium-tag{
+    padding:5px 8px;
+
+    border-radius:999px;
+
+    color:#fff1ad;
+
+    background:rgba(255,255,255,.12);
+
+    font-size:9px;
+    font-weight:900;
+}
+
+.tm-payment-note{
+    margin-top:14px;
+
+    color:#777;
+
+    font-size:11px;
+    line-height:1.6;
+}
+
+/* =========================================================
+   FOOT NOTE
+========================================================= */
+
+.tm-foot-note{
+    margin-top:23px;
+
+    padding:14px 15px;
+
+    border-radius:11px;
+
+    color:#707070;
+
+    background:rgba(255,255,255,.025);
+
+    border:1px solid rgba(255,255,255,.05);
+
+    font-size:11px;
+    line-height:1.6;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+.tm-volume-mobile{
+    display:none;
+}
+
+@media(max-width:950px){
+
+    .tm-movie-head{
+        grid-template-columns:1fr;
+    }
+
+    .tm-poster-card{
+        width:210px;
+    }
+}
+
+@media(max-width:700px){
+
+    .tm-watch-page{
+        padding:12px 8px 60px;
+    }
+
+    .tm-player-box{
+        border-radius:13px;
+    }
+
+    .tm-center-play{
+        width:62px;
+        height:62px;
+
+        font-size:22px;
+    }
+
+    .tm-controls{
+        padding:35px 7px 7px;
+    }
+
+    .tm-control-btn{
+        width:34px;
+        height:34px;
+
+        font-size:15px;
+    }
+
+    .tm-volume-wrap{
+        display:none;
+    }
+
+    .tm-volume-mobile{
+        display:flex;
+    }
+
+    .tm-time{
+        font-size:10px;
+    }
+
+    .tm-lock{
+        min-height:300px;
+        padding:20px;
+    }
+
+    .tm-lock h2{
+        font-size:25px;
+    }
+
+    .tm-title{
+        font-size:30px;
+        letter-spacing:-.8px;
+    }
+
+    .tm-description{
+        font-size:13px;
+        line-height:1.75;
+    }
+
+    .tm-payment{
+        padding:18px;
+    }
+
+    .tm-payment-top{
+        display:block;
+    }
+
+    .tm-secure{
+        display:inline-flex;
+        margin-top:10px;
+    }
+
+    .tm-pay-grid{
+        grid-template-columns:1fr;
+    }
+
+    .tm-poster-card{
+        width:180px;
+    }
+}
+
+@media(max-width:420px){
+
+    .tm-brand-mini{
+        display:none;
+    }
+
+    .tm-title{
+        font-size:26px;
+    }
+
+    .tm-action-row{
+        display:grid;
+        grid-template-columns:1fr;
+    }
+
+    .tm-action-btn,
+    .tm-active-pill{
+        width:100%;
+    }
+
+    .tm-payment h2{
+        font-size:20px;
+    }
+}
+</style>
+
+
+<div class="tm-watch-page">
+
+<div class="tm-watch-wrap">
+
+
+<!-- =========================================================
+     TOP BAR
+========================================================= -->
+
+<div class="tm-topbar">
+
+    <a
+        href="{{ url_for('home') }}"
+        class="tm-back"
+    >
+        ← Back to Home
     </a>
 
-    <div class="player-box">
-
-        {% if m.video_url %}
-
-        <video
-            class="movie-player"
-            controls
-            preload="metadata"
-            playsinline
-            {% if m.poster_url %}
-            poster="{{ m.poster_url }}"
-            {% endif %}
-        >
-
-            <source
-                src="{{ m.video_url }}"
-                type="video/mp4"
-            >
-
-            आपका browser video नहीं चला सकता।
-
-        </video>
-
-        {% else %}
-
-        <p>Video उपलब्ध नहीं है।</p>
-
-        {% endif %}
-
-    </div>
-
-    <div class="movie-info">
-
-        <h1>
-            {{ m.title }}
-        </h1>
-
-        {% if m.category %}
-        <p>
-            <strong>Category:</strong>
-            {{ m.category }}
-        </p>
-        {% endif %}
-
-        <p>
-            <strong>Views:</strong>
-            {{ m.views }}
-        </p>
-
-        {% if m.description %}
-        <div class="movie-description">
-            {{ m.description }}
-        </div>
-        {% endif %}
-
+    <div class="tm-brand-mini">
+        CINEMA WORLD
     </div>
 
 </div>
+
+
+<!-- =========================================================
+     PLAYER
+========================================================= -->
+
+<div class="tm-player-box">
+
+{% if access.watch and movie.video_url %}
+
+<div id="tmPlayer" class="tm-player" tabindex="0">
+    <div class="tm-video-top"></div>
+    <div class="tm-player-title">{{ movie.title }}</div>
+
+    <video id="tmVideo" class="tm-video" playsinline preload="metadata" poster="{{ movie.poster_url or movie.poster or '' }}">
+        <source src="{{ movie.video_url }}" type="{{ movie.video_mime or 'video/mp4' }}">
+        Your browser does not support HTML5 video.
+    </video>
+
+    <div id="tmLoading" class="tm-loading" aria-label="Loading"></div>
+
+    <button id="tmCenterPlay" class="tm-center-play" type="button" aria-label="Play">▶</button>
+
+    <div id="tmPlayerError" class="tm-player-error">
+        <div class="tm-error-box">
+            <div class="tm-error-icon">⚠️</div>
+            <div class="tm-error-title">Video play nahi ho paya</div>
+            <div id="tmPlayerErrorText" class="tm-error-text">Network ya video source problem ho sakti hai.</div>
+            <button id="tmRetry" class="tm-retry" type="button">↻ Retry</button>
+        </div>
+    </div>
+
+    <div id="tmControls" class="tm-controls">
+        <div id="tmProgressWrap" class="tm-progress-wrap" aria-label="Seek">
+            <div id="tmProgress" class="tm-progress">
+                <div id="tmBuffered" class="tm-progress-buffer"></div>
+                <div id="tmProgressValue" class="tm-progress-value"></div>
+                <div id="tmProgressDot" class="tm-progress-dot"></div>
+            </div>
+        </div>
+
+        <div class="tm-control-row">
+            <div class="tm-left-controls">
+                <button id="tmPlay" class="tm-control-btn" type="button" aria-label="Play/Pause">▶</button>
+                <button id="tmBack10" class="tm-control-btn tm-skip" type="button" aria-label="Back 10 seconds">↶10</button>
+                <button id="tmForward10" class="tm-control-btn tm-skip" type="button" aria-label="Forward 10 seconds">10↷</button>
+
+                <div class="tm-volume-wrap">
+                    <button id="tmMute" class="tm-control-btn" type="button" aria-label="Mute">🔊</button>
+                    <input id="tmVolume" class="tm-volume-slider" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+                </div>
+                <button id="tmMobileMute" class="tm-control-btn tm-volume-mobile" type="button" aria-label="Mute">🔊</button>
+                <div id="tmTime" class="tm-time">0:00 / 0:00</div>
+            </div>
+
+            <div class="tm-right-controls">
+                <button id="tmPip" class="tm-control-btn tm-pip-btn" type="button" aria-label="Picture in Picture">▣</button>
+                <div id="tmSettings" class="tm-settings">
+                    <button id="tmSettingsBtn" class="tm-control-btn" type="button" aria-label="Playback speed">⚙</button>
+                    <div id="tmSettingsMenu" class="tm-settings-menu">
+                        <div class="tm-settings-title">Playback Speed</div>
+                        <button class="tm-speed-btn active" data-speed="1" type="button">Normal</button>
+                        <button class="tm-speed-btn" data-speed="0.75" type="button">0.75×</button>
+                        <button class="tm-speed-btn" data-speed="1.25" type="button">1.25×</button>
+                        <button class="tm-speed-btn" data-speed="1.5" type="button">1.5×</button>
+                        <button class="tm-speed-btn" data-speed="2" type="button">2×</button>
+                    </div>
+                </div>
+                <button id="tmFullscreen" class="tm-control-btn" type="button" aria-label="Fullscreen">⛶</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="tm-lock">
+    <div class="tm-lock-box">
+        <div class="tm-lock-icon-wrap"><div class="tm-lock-icon">🔒</div></div>
+        <h2>Watch Access Locked</h2>
+        <p>Movie watch करने के लिए access unlock करें। Payment section नीचे available है।</p>
+        <a href="#tmPaymentBox" class="tm-lock-btn">🎬 Unlock Movie</a>
+    </div>
+</div>
+{% endif %}
+
+</div>
+
+
+<!-- VIDEO STATUS -->
+
+<div
+    id="tmVideoStatus"
+    class="tm-status"
+></div>
+
+
+<!-- =========================================================
+     MOVIE INFORMATION
+========================================================= -->
+
+<div class="tm-movie-head">
+
+
+<div class="tm-info-main">
+
+    <div class="tm-eyebrow">
+
+        {% if movie.category %}
+
+        <span class="tm-eyebrow-badge">
+            {{ movie.category }}
+        </span>
+
+        {% endif %}
+
+        <span class="tm-eyebrow-badge hot">
+            CINEMA WORLD
+        </span>
+
+        {% if access.premium %}
+
+        <span class="tm-eyebrow-badge">
+            PREMIUM ACTIVE
+        </span>
+
+        {% endif %}
+
+    </div>
+
+
+    <h1 class="tm-title">
+        {{ movie.title }}
+    </h1>
+
+
+    <div class="tm-meta">
+
+        {% if movie.category %}
+
+        <span class="tm-badge">
+            🎬 {{ movie.category }}
+        </span>
+
+        {% endif %}
+
+        <span class="tm-badge">
+            👁 {{ movie.views or 0 }} Views
+        </span>
+
+        <span class="tm-badge">
+            HD
+        </span>
+
+        {% if access.watch %}
+
+        <span class="tm-badge">
+            ▶ Watch Active
+        </span>
+
+        {% endif %}
+
+        {% if access.download %}
+
+        <span class="tm-badge">
+            ⬇ Download Active
+        </span>
+
+        {% endif %}
+
+        {% if access.premium %}
+
+        <span class="tm-badge premium">
+            👑 Premium Active
+        </span>
+
+        {% endif %}
+
+    </div>
+
+
+    {% if movie.description %}
+
+    <div class="tm-description">
+        {{ movie.description }}
+    </div>
+
+    {% endif %}
+
+
+    <!-- =====================================================
+         ACTION BUTTONS
+    ====================================================== -->
+
+    <div class="tm-action-row">
+
+        {% if access.watch %}
+
+        <a
+            href="#tmPlayer"
+            id="tmWatchNow"
+            class="tm-action-btn primary"
+        >
+            ▶ Watch Now
+        </a>
+
+        {% endif %}
+
+
+        {% if access.download %}
+
+        <a
+            href="{{ url_for(
+                'download_movie',
+                movie_id=movie.id
+            ) }}"
+            class="tm-action-btn download"
+        >
+            ⬇ Download Movie
+        </a>
+
+        {% endif %}
+
+
+        {% if access.premium %}
+
+        <div class="tm-active-pill">
+            👑 Premium Access Active
+        </div>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =====================================================
+         PAYMENT
+    ====================================================== -->
+
+    {% if not access.watch or not access.download %}
+
+    <div
+        id="tmPaymentBox"
+        class="tm-payment"
+    >
+
+        <div class="tm-payment-top">
+
+            <div>
+
+                <h2>
+                    🎬 Unlock {{ movie.title }}
+                </h2>
+
+                <p class="tm-payment-sub">
+                    Secure Cashfree checkout के जरिए payment करें।
+                </p>
+
+            </div>
+
+            <div class="tm-secure">
+                🔒 Secure Payment
+            </div>
+
+        </div>
+
+
+        <input
+            id="tmPhone"
+            class="tm-phone"
+            type="tel"
+            inputmode="numeric"
+            maxlength="10"
+            autocomplete="tel"
+            placeholder="10 digit mobile number"
+        >
+
+
+        <div class="tm-pay-grid">
+
+            {% if not access.watch %}
+
+            <button
+                type="button"
+                class="tm-pay-btn"
+                onclick="startPayment('watch')"
+            >
+
+                <div class="tm-pay-title">
+                    <span>₹1 Watch</span>
+                    <span>▶</span>
+                </div>
+
+                <small>
+                    24 hours movie watch access
+                </small>
+
+            </button>
+
+            {% endif %}
+
+
+            {% if not access.download %}
+
+            <button
+                type="button"
+                class="tm-pay-btn"
+                onclick="startPayment('download')"
+            >
+
+                <div class="tm-pay-title">
+                    <span>₹9 Download</span>
+                    <span>⬇</span>
+                </div>
+
+                <small>
+                    This movie download access
+                </small>
+
+            </button>
+
+            {% endif %}
+
+        </div>
+
+
+        {% if access.share %}
+        <button type="button" class="tm-pay-btn" onclick="shareMovie()">
+            <div class="tm-pay-title"><span>🔗 Share Movie</span><span>↗</span></div>
+            <small>Shareable registration link ready</small>
+        </button>
+        {% else %}
+        <button type="button" class="tm-pay-btn" onclick="startPayment('share')">
+            <div class="tm-pay-title"><span>🔗 ₹49 Share</span><span>↗</span></div>
+            <small>Unlock sharing for this movie</small>
+        </button>
+        {% endif %}
+
+        {% if not access.premium %}
+
+        <button
+            type="button"
+            class="tm-pay-btn tm-premium"
+            onclick="startPayment('premium')"
+        >
+
+            <div class="tm-premium-wrap">
+
+                <div>
+
+                    <div class="tm-pay-title">
+                        <span>
+                            👑 ₹199 Premium
+                        </span>
+                    </div>
+
+                    <small>
+                        1 year watch + download on CINEMA WORLD
+                    </small>
+
+                </div>
+
+                <div class="tm-premium-tag">
+                    BEST VALUE
+                </div>
+
+            </div>
+
+        </button>
+
+        {% endif %}
+
+
+        <div
+            id="tmPaymentStatus"
+            class="tm-status"
+        ></div>
+
+
+        <div class="tm-payment-note">
+            Payment complete होने के बाद access automatically update होगा।
+            Page refresh करने पर नया access दिखाई देगा।
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+    <div class="tm-foot-note">
+        CINEMA WORLD पर केवल अपनी या properly licensed content ही publish करें।
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     POSTER
+========================================================= -->
+
+{% if movie.poster_url or movie.poster %}
+
+<div class="tm-poster-card">
+
+    <img
+        class="tm-poster"
+        src="{{ movie.poster_url or movie.poster }}"
+        alt="{{ movie.title }}"
+        loading="lazy"
+    >
+
+    <div class="tm-poster-shade">
+        {{ movie.title }}
+    </div>
+
+</div>
+
+{% endif %}
+
+
+</div>
+
+</div>
+
+
+<!-- =========================================================
+     CASHFREE
+========================================================= -->
+
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+
+
+<script>
+/* =========================================================
+   PAYMENT
+========================================================= */
+
+const TM_MOVIE_ID =
+    {{ movie.id | tojson }};
+
+const TM_CASHFREE_MODE =
+    {{ cashfree_mode | tojson }};
+
+
+function paymentStatus(message){
+
+    const box =
+        document.getElementById(
+            "tmPaymentStatus"
+        );
+
+    if(!box){
+        return;
+    }
+
+    box.style.display = "block";
+
+    box.classList.remove(
+        "tm-error"
+    );
+
+    box.textContent =
+        message;
+}
+
+
+async function startPayment(type){
+
+    const phoneInput =
+        document.getElementById(
+            "tmPhone"
+        );
+
+    if(!phoneInput){
+        return;
+    }
+
+    const phone =
+        phoneInput.value
+            .replace(/\D/g,"")
+            .trim();
+
+
+    if(!/^[6-9]\d{9}$/.test(phone)){
+
+        paymentStatus(
+            "कृपया सही 10 digit mobile number डालें।"
+        );
+
+        phoneInput.focus();
+
+        return;
+    }
+
+
+    paymentStatus(
+        "Cashfree checkout तैयार हो रहा है..."
+    );
+
+
+    try{
+
+        const response =
+            await fetch(
+                "{{ url_for('create_payment') }}",
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:JSON.stringify({
+                        movie_id:
+                            TM_MOVIE_ID,
+
+                        payment_type:
+                            type,
+
+                        phone:
+                            phone
+                    })
+                }
+            );
+
+
+        let data = null;
+
+
+        try{
+
+            data =
+                await response.json();
+
+        }
+        catch(error){
+
+            throw new Error(
+                "Payment server से valid response नहीं मिला।"
+            );
+
+        }
+
+
+        if(
+            !response.ok ||
+            !data.ok
+        ){
+
+            throw new Error(
+                data.error ||
+                "Payment order create नहीं हुआ।"
+            );
+
+        }
+
+
+        if(!data.payment_session_id){
+
+            throw new Error(
+                "Payment session नहीं मिला।"
+            );
+
+        }
+
+
+        const cashfree =
+            Cashfree({
+                mode:
+                    TM_CASHFREE_MODE
+            });
+
+
+        await cashfree.checkout({
+
+            paymentSessionId:
+                data.payment_session_id,
+
+            redirectTarget:
+                "_self"
+
+        });
+
+    }
+    catch(error){
+
+        console.error(
+            "CINEMA WORLD payment error:",
+            error
+        );
+
+
+        const box =
+            document.getElementById(
+                "tmPaymentStatus"
+            );
+
+
+        if(box){
+
+            box.style.display =
+                "block";
+
+            box.classList.add(
+                "tm-error"
+            );
+
+            box.textContent =
+                error.message ||
+                "Payment शुरू नहीं हो पाया।";
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   CINEMA WORLD PRO VIDEO PLAYER
+========================================================= */
+(function(){
+    const player=document.getElementById("tmPlayer");
+    const video=document.getElementById("tmVideo");
+    if(!player||!video) return;
+
+    const $=id=>document.getElementById(id);
+    const centerPlay=$("tmCenterPlay"), playBtn=$("tmPlay"), back10=$("tmBack10"), forward10=$("tmForward10");
+    const muteBtn=$("tmMute"), mobileMuteBtn=$("tmMobileMute"), volume=$("tmVolume"), fullscreenBtn=$("tmFullscreen");
+    const pipBtn=$("tmPip"), time=$("tmTime"), progressWrap=$("tmProgressWrap"), progressValue=$("tmProgressValue");
+    const progressDot=$("tmProgressDot"), buffered=$("tmBuffered"), settings=$("tmSettings"), settingsBtn=$("tmSettingsBtn");
+    const errorLayer=$("tmPlayerError"), errorText=$("tmPlayerErrorText"), retryBtn=$("tmRetry"), status=$("tmVideoStatus");
+    let hideTimer=null, loadTimer=null;
+
+    function formatTime(sec){
+        if(!Number.isFinite(sec)||sec<0) return "0:00";
+        sec=Math.floor(sec); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+        return h>0 ? h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0") : m+":"+String(s).padStart(2,"0");
+    }
+    function setStatus(msg,err=false){ if(!status) return; status.textContent=msg||""; status.style.display=msg?"block":"none"; status.classList.toggle("tm-error",!!err); }
+    function setBuffering(on){ player.classList.toggle("buffering",on); if(on) player.classList.remove("ready"); else player.classList.add("ready"); }
+    function updateTime(){ if(time) time.textContent=formatTime(video.currentTime)+" / "+formatTime(video.duration); }
+    function updateProgress(){
+        if(!Number.isFinite(video.duration)||video.duration<=0) return;
+        const pct=Math.max(0,Math.min(100,(video.currentTime/video.duration)*100));
+        progressValue.style.width=pct+"%"; progressDot.style.left=pct+"%";
+    }
+    function updateBuffered(){
+        if(!buffered) return;
+        try{
+            if(video.buffered.length&&Number.isFinite(video.duration)&&video.duration>0){
+                const end=video.buffered.end(video.buffered.length-1);
+                buffered.style.width=Math.min(100,(end/video.duration)*100)+"%";
+            } else buffered.style.width="0%";
+        }catch(e){buffered.style.width="0%";}
+    }
+    function updatePlayIcon(){
+        const icon=video.paused?"▶":"❚❚";
+        if(playBtn) playBtn.textContent=icon;
+        if(centerPlay){ centerPlay.textContent="▶"; centerPlay.style.opacity=video.paused?"1":"0"; }
+    }
+    function showControls(){
+        player.classList.add("active"); clearTimeout(hideTimer);
+        if(!video.paused){ hideTimer=setTimeout(()=>{ if(!settings.classList.contains("open")) player.classList.remove("active"); },3000); }
+    }
+    function togglePlay(){
+        if(video.paused){
+            video.play().catch(()=>{ setError("Browser ne video play ko block kar diya."); });
+        }else video.pause();
+        showControls();
+    }
+    function toggleMute(){ video.muted=!video.muted; updateVolumeIcon(); showControls(); }
+    function updateVolumeIcon(){
+        const icon=video.muted||video.volume===0?"🔇":(video.volume<.5?"🔉":"🔊");
+        if(muteBtn) muteBtn.textContent=icon; if(mobileMuteBtn) mobileMuteBtn.textContent=icon;
+    }
+    function setVolume(v){ video.volume=Number(v); video.muted=video.volume===0; updateVolumeIcon(); showControls(); }
+    function seek(delta){ video.currentTime=Math.max(0,Math.min(video.duration||Infinity,video.currentTime+delta)); showControls(); }
+    function seekAt(clientX){
+        if(!Number.isFinite(video.duration)||video.duration<=0) return;
+        const r=progressWrap.getBoundingClientRect(); const ratio=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+        video.currentTime=ratio*video.duration;
+    }
+    function toggleFullscreen(){
+        if(document.fullscreenElement){ document.exitFullscreen().catch(()=>{}); return; }
+        if(player.requestFullscreen) player.requestFullscreen().catch(()=>{});
+        else if(player.webkitRequestFullscreen) player.webkitRequestFullscreen();
+    }
+    function setError(msg){
+        setBuffering(false); player.classList.add("error-state");
+        if(errorText) errorText.textContent=msg||"Video load nahi ho paya.";
+        setStatus("Video error — Retry दबाएँ",true);
+    }
+    function clearError(){ player.classList.remove("error-state"); setStatus(""); }
+    function retry(){
+        clearError(); setBuffering(true);
+        video.load();
+        video.play().catch(()=>{});
+    }
+
+    centerPlay.addEventListener("click",togglePlay);
+    playBtn.addEventListener("click",togglePlay);
+    video.addEventListener("click",togglePlay);
+    back10.addEventListener("click",()=>seek(-10));
+    forward10.addEventListener("click",()=>seek(10));
+    muteBtn.addEventListener("click",toggleMute);
+    mobileMuteBtn.addEventListener("click",toggleMute);
+    volume.addEventListener("input",()=>setVolume(volume.value));
+    fullscreenBtn.addEventListener("click",()=>{toggleFullscreen();showControls();});
+    retryBtn.addEventListener("click",retry);
+    progressWrap.addEventListener("click",e=>{seekAt(e.clientX);showControls();});
+    progressWrap.addEventListener("pointerdown",e=>{seekAt(e.clientX);showControls();});
+
+    if(pipBtn){
+        pipBtn.addEventListener("click",async()=>{
+            try{
+                if(document.pictureInPictureElement) await document.exitPictureInPicture();
+                else if(document.pictureInPictureEnabled) await video.requestPictureInPicture();
+            }catch(e){}
+            showControls();
+        });
+    }
+    settingsBtn.addEventListener("click",e=>{e.stopPropagation();settings.classList.toggle("open");showControls();});
+    document.addEventListener("click",e=>{if(!settings.contains(e.target))settings.classList.remove("open");});
+    document.querySelectorAll(".tm-speed-btn").forEach(btn=>btn.addEventListener("click",()=>{
+        video.playbackRate=Number(btn.dataset.speed);
+        document.querySelectorAll(".tm-speed-btn").forEach(x=>x.classList.remove("active"));
+        btn.classList.add("active"); settings.classList.remove("open"); showControls();
+    }));
+
+    ["mousemove","touchstart","pointerdown"].forEach(ev=>player.addEventListener(ev,showControls,{passive:true}));
+    player.addEventListener("mouseleave",()=>{if(!video.paused){clearTimeout(hideTimer);hideTimer=setTimeout(()=>{if(!settings.classList.contains("open"))player.classList.remove("active");},1200);}});
+
+    video.addEventListener("loadstart",()=>{clearTimeout(loadTimer);clearError();setBuffering(true);setStatus("Video loading...");loadTimer=setTimeout(()=>{if(video.readyState<3)setStatus("Video load hone me thoda time lag raha hai...");},5000);});
+    video.addEventListener("loadedmetadata",()=>{clearTimeout(loadTimer);setBuffering(false);updateTime();setStatus("");});
+    video.addEventListener("loadeddata",()=>{setBuffering(false);setStatus("");});
+    video.addEventListener("canplay",()=>{setBuffering(false);setStatus("");});
+    video.addEventListener("playing",()=>{setBuffering(false);clearError();updatePlayIcon();showControls();});
+    video.addEventListener("pause",()=>{updatePlayIcon();showControls();});
+    video.addEventListener("timeupdate",()=>{updateTime();updateProgress();});
+    video.addEventListener("progress",updateBuffered);
+    video.addEventListener("waiting",()=>{setBuffering(true);setStatus("Buffering...");});
+    video.addEventListener("stalled",()=>{setStatus("Network slow hai — video continue karne ki koshish ho rahi hai...");});
+    video.addEventListener("ended",()=>{player.classList.add("active");updatePlayIcon();});
+    video.addEventListener("error",()=>{
+        const code=video.error&&video.error.code;
+        const msg=code===2?"Network connection problem. Retry karke dekho.":code===3?"Video decoding problem. Browser format ko decode nahi kar pa raha.":code===4?"Video format/source browser me supported nahi hai.":"Video source load nahi ho paya.";
+        setError(msg);
+    });
+
+    document.addEventListener("keydown",e=>{
+        const tag=document.activeElement?.tagName||""; if(["INPUT","TEXTAREA","BUTTON"].includes(tag)) return;
+        if(e.code==="Space"){e.preventDefault();togglePlay();}
+        else if(e.key==="ArrowLeft") seek(-5);
+        else if(e.key==="ArrowRight") seek(5);
+        else if(e.key.toLowerCase()==="f") toggleFullscreen();
+        else if(e.key.toLowerCase()==="m") toggleMute();
+    });
+
+    const watchNow=$("tmWatchNow");
+    if(watchNow) watchNow.addEventListener("click",()=>setTimeout(()=>video.scrollIntoView({behavior:"smooth",block:"center"}),100));
+
+    video.volume=1; volume.value=1; updateVolumeIcon(); updateTime(); updatePlayIcon();
+})();
+</script>
 
 {% endblock %}
