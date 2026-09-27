@@ -3868,8 +3868,8 @@ def admin():
 def admin_add():
 
     if request.method == "GET":
-        return redirect(
-            url_for("admin")
+        return render_template(
+            "admin_add.html"
         )
 
     title = request.form.get(
