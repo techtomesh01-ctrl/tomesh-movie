@@ -5126,10 +5126,10 @@ def internal_error(error):
 # ============================================================
 
 def recover_known_r2_movies():
-    """Restore the two existing R2 uploads into the movies table if missing.
+    """Restore and repair the known R2 movie-to-poster mappings.
 
     This is database-only: it never uploads, deletes, renames, or modifies R2
-    objects. Existing movie rows with the same video key are left untouched.
+    objects. The poster is always tied to its exact movie video key.
     """
     legacy_movies = [
         {
@@ -5152,6 +5152,29 @@ def recover_known_r2_movies():
     try:
         cur = conn.cursor()
         for movie in legacy_movies:
+            # Repair an existing row if its poster was accidentally paired
+            # with the other movie. Matching is done by the exact video key.
+            cur.execute(
+                """
+                UPDATE movies
+                SET
+                    poster = %s,
+                    title = %s,
+                    category = %s,
+                    description = %s
+                WHERE video = %s
+                """,
+                (
+                    movie["poster"],
+                    movie["title"],
+                    movie["category"],
+                    movie["description"],
+                    movie["video"],
+                ),
+            )
+
+            # If the movie row does not exist, restore it without creating a
+            # duplicate when the exact video key is already present.
             cur.execute(
                 """
                 INSERT INTO movies (title, category, description, poster, video)
@@ -5171,7 +5194,7 @@ def recover_known_r2_movies():
             )
         conn.commit()
         cur.close()
-        print("R2 movie recovery check completed.")
+        print("R2 movie/poster mapping check completed.")
     finally:
         conn.close()
 
