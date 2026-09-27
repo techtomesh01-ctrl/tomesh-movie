@@ -574,6 +574,11 @@ def init_db():
             ADD COLUMN IF NOT EXISTS block_reason TEXT
         """)
 
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS profile_photo TEXT
+        """)
+
         # Mobile OTP login uses the verified mobile as the primary login identity.
         # Existing email accounts remain compatible.
         cur.execute("""
@@ -3237,6 +3242,138 @@ def user_details():
     return render_template("user_details.html",full_name=user.get("full_name", ""),mobile=user.get("mobile", ""),customer_email=user.get("email") or session.get("customer_email", ""),has_password=bool(user.get("password_hash")))
 
 
+def get_customer_profile(customer_id=None):
+    customer_id = customer_id or session.get("customer_id")
+    if not customer_id:
+        return {
+            "full_name": "",
+            "email": "",
+            "mobile": "",
+            "profile_photo": "",
+            "created_at": None,
+            "last_login_at": None,
+        }
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT full_name, email, mobile, profile_photo, created_at, last_login_at
+            FROM customer_users
+            WHERE customer_id = %s
+            LIMIT 1
+            """,
+            (customer_id,),
+        )
+        row = cur.fetchone() or {}
+        cur.close()
+    finally:
+        conn.close()
+
+    return row
+
+
+@app.route("/profile", methods=["GET", "POST"])
+@customer_login_required
+def customer_profile():
+    customer_id = session.get("customer_id")
+
+    if request.method == "POST":
+        full_name = (request.form.get("full_name") or "").strip()
+        profile_photo = (request.form.get("profile_photo") or "").strip()
+
+        if len(full_name) > 100:
+            flash("Name bahut lamba hai.", "error")
+            return redirect(url_for("customer_profile"))
+
+        if profile_photo and (
+            not profile_photo.startswith("data:image/")
+            or len(profile_photo) > 900000
+        ):
+            flash("Profile photo valid nahi hai ya bahut badi hai.", "error")
+            return redirect(url_for("customer_profile"))
+
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                UPDATE customer_users
+                SET full_name = %s, profile_photo = %s
+                WHERE customer_id = %s
+                """,
+                (full_name, profile_photo, customer_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+
+        session["customer_name"] = full_name
+        flash("Profile updated successfully.", "success")
+        return redirect(url_for("customer_profile"))
+
+    profile = get_customer_profile(customer_id)
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+
+        cur.execute(
+            "SELECT COUNT(*) AS n FROM customer_movie_list WHERE customer_id = %s",
+            (customer_id,),
+        )
+        my_list_count = int((cur.fetchone() or {}).get("n") or 0)
+
+        cur.execute(
+            "SELECT COUNT(*) AS n FROM payment_orders WHERE customer_id = %s AND status = 'PAID'",
+            (customer_id,),
+        )
+        paid_count = int((cur.fetchone() or {}).get("n") or 0)
+
+        cur.execute(
+            """
+            SELECT payment_type, amount, status, created_at, paid_at, movie_id
+            FROM payment_orders
+            WHERE customer_id = %s
+            ORDER BY id DESC
+            LIMIT 10
+            """,
+            (customer_id,),
+        )
+        payments = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT MAX(premium_until) AS premium_until
+            FROM customer_access
+            WHERE customer_id = %s
+            """,
+            (customer_id,),
+        )
+        premium_row = cur.fetchone() or {}
+
+        cur.close()
+    finally:
+        conn.close()
+
+    premium_until = premium_row.get("premium_until")
+    premium_active = bool(
+        premium_until and premium_until > datetime.now()
+    )
+
+    return render_template(
+        "profile.html",
+        profile=profile,
+        my_list_count=my_list_count,
+        paid_count=paid_count,
+        payments=payments,
+        premium_until=premium_until,
+        premium_active=premium_active,
+    )
+
+
 def get_member_movies_data():
     customer_id = session.get("customer_id")
     conn = get_db(dict_rows=True)
@@ -3610,6 +3747,7 @@ def member_home():
         saved_movie_ids=[int(m["id"]) for m in saved_movies],
         categories=categories,
         customer_email=session.get("customer_email", ""),
+        customer_profile=get_customer_profile(customer_id),
         premium=has_active_premium(),
     )
 
