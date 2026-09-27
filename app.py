@@ -2267,7 +2267,14 @@ def access_for_movie(movie_id):
             and row.get("share_until") is None
         ):
             permanent_watch = True
-        if row["watch_until"] is not None and row["watch_until"] > now:
+        # Watch payments are account-wide for 24 hours. Ignore old
+        # movie-specific watch rows so a previous movie payment cannot
+        # accidentally unlock that movie again after its intended window.
+        if (
+            row.get("movie_id") is None
+            and row["watch_until"] is not None
+            and row["watch_until"] > now
+        ):
             temporary_watch = True
         if row["premium_until"] is not None and row["premium_until"] > now:
             premium = True
@@ -2292,8 +2299,14 @@ def grant_access(customer_id, movie_id, payment_type):
             until=now+timedelta(hours=FREE_WATCH_HOURS)
             cur.execute("INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,NULL,%s,NULL,NULL,NULL)",(customer_id,until))
         elif payment_type == "watch":
-            until=now+timedelta(hours=24)
-            cur.execute("INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,%s,%s,NULL,NULL,NULL) ON CONFLICT DO NOTHING",(customer_id,movie_id,until))
+            # One ₹1 Watch payment unlocks the whole account for 24 hours.
+            # movie_id is intentionally NULL: every movie is watchable during
+            # this active 24-hour window, including repeat views.
+            until=now+timedelta(hours=FREE_WATCH_HOURS)
+            cur.execute(
+                "INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,NULL,%s,NULL,NULL,NULL)",
+                (customer_id,until),
+            )
         elif payment_type == "download":
             until=now+timedelta(days=30)
             cur.execute("INSERT INTO customer_access(customer_id,movie_id,watch_until,download_until,premium_until,share_until) VALUES(%s,%s,NULL,%s,NULL,NULL)",(customer_id,movie_id,until))
