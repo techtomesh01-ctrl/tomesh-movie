@@ -5154,21 +5154,24 @@ def recover_known_r2_movies():
         for movie in legacy_movies:
             # Repair an existing row if its poster was accidentally paired
             # with the other movie. Matching is done by the exact video key.
+            # Keep the two existing movie banners swapped exactly as requested.
+            # Movie 1 video -> Movie 2 poster
+            # Movie 2 video -> Movie 1 poster
+            poster_for_video = {
+                "videos/7143734e197443298a636a93349dd124.mp4":
+                    "posters/d4382d2e21e04d70896cba154b11185b.webp",
+                "videos/ad2f2438ef2948d28000b4bbfc5e164e.mp4":
+                    "posters/ed7160c7c44d4d86830f72ce6667c73c.png",
+            }
+
             cur.execute(
                 """
                 UPDATE movies
-                SET
-                    poster = %s,
-                    title = %s,
-                    category = %s,
-                    description = %s
+                SET poster = %s
                 WHERE video = %s
                 """,
                 (
-                    movie["poster"],
-                    movie["title"],
-                    movie["category"],
-                    movie["description"],
+                    poster_for_video.get(movie["video"], movie["poster"]),
                     movie["video"],
                 ),
             )
