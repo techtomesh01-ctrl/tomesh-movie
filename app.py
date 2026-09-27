@@ -3789,92 +3789,142 @@ def admin_search():
 @app.route("/admin")
 @admin_required
 def admin():
+    section = str(request.args.get("section", "dashboard")).strip().lower()
+    allowed_sections = {
+        "dashboard","movies","users","payments","subscriptions","watch",
+        "analytics","live","ads","notifications","reports","r2","health",
+        "security","settings","search"
+    }
+    if section not in allowed_sections:
+        section = "dashboard"
 
-    conn = get_db(
-        dict_rows=True
-    )
+    q = str(request.args.get("q", "") or "").strip()
 
+    conn = get_db(dict_rows=True)
     try:
-
         cur = conn.cursor()
 
-        cur.execute(
-            """
-            SELECT
-                COUNT(*) AS total_movies,
-                COALESCE(SUM(views),0)
-                AS total_views
-            FROM movies
-            """
-        )
+        cur.execute("SELECT COUNT(*) AS total_movies, COALESCE(SUM(views),0) AS total_views FROM movies")
+        stats = cur.fetchone() or {}
 
-        stats = cur.fetchone()
+        cur.execute("SELECT COUNT(*) AS n FROM customer_users")
+        total_users = int((cur.fetchone() or {}).get("n") or 0)
 
-        cur.execute(
-            """
-            SELECT *
-            FROM movies
-            ORDER BY id DESC
-            """
-        )
+        cur.execute("""
+            SELECT COUNT(*) AS n FROM customer_subscriptions
+            WHERE status IN ('ACTIVE','BANK_APPROVAL_PENDING')
+        """)
+        active_subscriptions = int((cur.fetchone() or {}).get("n") or 0)
 
+        cur.execute("""
+            SELECT COALESCE(SUM(amount),0) AS revenue
+            FROM payment_orders
+            WHERE UPPER(status) IN ('PAID','SUCCESS','COMPLETED')
+        """)
+        total_revenue = (cur.fetchone() or {}).get("revenue") or 0
+
+        cur.execute("SELECT * FROM movies ORDER BY id DESC")
         movies = cur.fetchall()
 
-        # Load registered customer accounts for the Admin → Users section.
-        cur.execute(
-            """
-            SELECT
-                id,
-                email,
-                mobile,
-                customer_id,
-                full_name,
-                created_at,
-                last_login_at,
-                COALESCE(is_blocked, FALSE) AS is_blocked,
-                block_reason
-            FROM customer_users
-            ORDER BY id DESC
-            """
-        )
-
+        cur.execute("""
+            SELECT id,email,mobile,customer_id,full_name,created_at,last_login_at
+            FROM customer_users ORDER BY id DESC
+        """)
         users = cur.fetchall()
 
-        cur.close()
+        cur.execute("SELECT * FROM payment_orders ORDER BY id DESC LIMIT 200")
+        payments = cur.fetchall()
 
+        cur.execute("""
+            SELECT customer_id,subscription_id,cf_subscription_id,status,auth_status,premium_until,updated_at
+            FROM customer_subscriptions ORDER BY updated_at DESC LIMIT 200
+        """)
+        subscriptions = cur.fetchall()
+
+        cur.execute("""
+            SELECT ca.customer_id,ca.movie_id,m.title,ca.watch_until,ca.download_until,ca.premium_until
+            FROM customer_access ca
+            LEFT JOIN movies m ON m.id=ca.movie_id
+            ORDER BY ca.id DESC LIMIT 200
+        """)
+        access = cur.fetchall()
+
+        cur.execute("SELECT * FROM movies ORDER BY views DESC NULLS LAST, id DESC LIMIT 10")
+        top_movies = cur.fetchall()
+
+        cur.execute("""
+            SELECT 'payment' AS event_type, order_id AS ref, customer_id, status, amount, created_at AS event_time
+            FROM payment_orders
+            UNION ALL
+            SELECT 'subscription' AS event_type, subscription_id AS ref, customer_id, status, NULL AS amount, updated_at AS event_time
+            FROM customer_subscriptions
+            ORDER BY event_time DESC LIMIT 50
+        """)
+        live_events = cur.fetchall()
+
+        search_movies = []
+        search_users = []
+        search_payments = []
+        if q:
+            like = "%" + q + "%"
+            cur.execute("""
+                SELECT * FROM movies
+                WHERE title ILIKE %s OR category ILIKE %s OR description ILIKE %s
+                ORDER BY id DESC LIMIT 50
+            """, (like,like,like))
+            search_movies = cur.fetchall()
+
+            cur.execute("""
+                SELECT id,email,mobile,customer_id,full_name,created_at,last_login_at
+                FROM customer_users
+                WHERE COALESCE(full_name,'') ILIKE %s
+                   OR COALESCE(email,'') ILIKE %s
+                   OR COALESCE(mobile,'') ILIKE %s
+                   OR customer_id ILIKE %s
+                ORDER BY id DESC LIMIT 50
+            """, (like,like,like,like))
+            search_users = cur.fetchall()
+
+            cur.execute("""
+                SELECT * FROM payment_orders
+                WHERE order_id ILIKE %s OR customer_id ILIKE %s OR payment_type ILIKE %s
+                ORDER BY id DESC LIMIT 50
+            """, (like,like,like))
+            search_payments = cur.fetchall()
+
+        cur.close()
     finally:
         conn.close()
 
     for movie in movies:
-
         try:
-
-            movie["poster_url"] = (
-                media_url(
-                    movie.get("poster")
-                )
-                if movie.get("poster")
-                else None
-            )
-
+            movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
         except Exception:
-
             movie["poster_url"] = None
 
     return render_template(
         "admin.html",
+        section=section,
+        q=q,
         movies=movies,
-        total_movies=(
-            stats["total_movies"]
-            if stats else 0
-        ),
-        total_views=(
-            stats["total_views"]
-            if stats else 0
-        ),
-        total_users=len(users),
         users=users,
+        payments=payments,
+        subscriptions=subscriptions,
+        access=access,
+        top_movies=top_movies,
+        live_events=live_events,
+        search_movies=search_movies,
+        search_users=search_users,
+        search_payments=search_payments,
+        total_movies=int(stats.get("total_movies") or 0),
+        total_users=total_users,
+        active_subscriptions=active_subscriptions,
+        total_views=int(stats.get("total_views") or 0),
+        total_revenue=total_revenue,
         ads=get_ads(),
+        config={
+            "R2_BUCKET": R2_BUCKET,
+        },
     )
 
 
