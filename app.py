@@ -3935,7 +3935,7 @@ def admin_analytics():
 @app.route("/admin/live-activity")
 @admin_required
 def admin_live_activity():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin_activity"))
 
 
 @app.route("/admin/notifications")
