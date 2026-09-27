@@ -63,7 +63,7 @@
       <div class="tm-stats">
         <div class="tm-stat"><b id="remaining">—</b><span>Remaining</span></div>
         <div class="tm-stat"><b>Direct R2</b><span>Upload mode</span></div>
-        <div class="tm-stat"><b>3 Parallel</b><span>Parts at once</span></div>
+        <div class="tm-stat"><b>2 Parallel</b><span>Parts at once</span></div>
         <div class="tm-stat"><b>Auto Retry</b><span>4 attempts / part</span></div>
       </div>
       <div class="tm-badges"><span class="tm-badge">10 MB Parts</span><span class="tm-badge">Cancel Anytime</span><span class="tm-badge">MP4 + MKV + WebM + MOV</span></div>
@@ -101,7 +101,7 @@
   const MAX_POSTER = 25 * 1024 * 1024;
   const VIDEO_EXT = ['mp4','mkv','webm','mov'];
   const POSTER_EXT = ['jpg','jpeg','png','webp'];
-  const PARALLEL = 3;
+  const PARALLEL = 2;
   const RETRIES = 4;
   let cancelled = false;
   let activeUploads = [];
@@ -155,7 +155,7 @@
     if(!uploadId) return;
     try{await fetch('/api/r2/multipart/abort',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,upload_id:uploadId})});}catch(e){}
   }
-  async function putPart(url, blob, onBytes){
+  async function putPart(url, blob, onBytes, key, uploadId, partNumber){
     for(let attempt=1;attempt<=RETRIES;attempt++){
       if(cancelled) throw new Error('Upload cancelled.');
       try{
@@ -172,6 +172,11 @@
         if(cancelled) throw new Error('Upload cancelled.');
         if(attempt===RETRIES) throw e;
         stage.textContent='Retrying failed part ('+attempt+'/'+RETRIES+')...';
+        try{
+          const fresh=await getPartUrls(key,uploadId,[partNumber]);
+          const freshMap=fresh.urls||fresh.url_map||fresh.part_urls||{};
+          url=freshMap[String(partNumber)]||freshMap[partNumber]||url;
+        }catch(refreshErr){}
         await new Promise(r=>setTimeout(r,700*attempt));
       }
     }
@@ -198,7 +203,7 @@
           const start=idx*partSize, end=Math.min(file.size,start+partSize);
           const blob=file.slice(start,end); const n=idx+1;
           stage.textContent='Uploading '+prefix.replace('/','')+' part '+n+' / '+totalParts+'...';
-          const etag=await putPart(map[String(n)]||map[n],blob,(sz)=>{doneForFile+=sz; onTotal(sz);});
+          const etag=await putPart(map[String(n)]||map[n],blob,(sz)=>{doneForFile+=sz; onTotal(sz);},key,uploadId,n);
           etags[idx]={PartNumber:n,ETag:etag};
         }
       }
