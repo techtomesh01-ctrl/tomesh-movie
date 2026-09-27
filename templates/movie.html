@@ -1507,7 +1507,10 @@ async function startPayment(type){
    SHARE MOVIE
 ========================================================= */
 function shareMovie(){
-    const shareUrl = window.location.href;
+    const shareUrl = new URL(
+        "{{ url_for('shared_movie', movie_id=movie.id) }}",
+        window.location.origin
+    ).toString();
     const shareData = {
         title: {{ movie.title | tojson }},
         text: "Watch {{ movie.title | e }} on CINEMA WORLD",
