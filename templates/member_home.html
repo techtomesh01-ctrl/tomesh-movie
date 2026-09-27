@@ -162,6 +162,32 @@ body{
 
 /* ================= HERO ================= */
 
+.tm-profile-link{
+    display:flex;
+    align-items:center;
+    text-decoration:none;
+}
+
+.tm-profile-btn{
+    color:#fff;
+    text-decoration:none;
+    font-size:12px;
+    font-weight:800;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:6px;
+}
+
+.tm-profile-btn:hover{
+    background:#fff;
+    color:#000;
+}
+
+.tm-avatar-img{
+    object-fit:cover;
+    border:1px solid rgba(255,255,255,.25);
+}
+
 .tm-hero{
     min-height:650px;
     position:relative;
@@ -200,6 +226,44 @@ body{
         #050505
     );
 }
+
+.tm-hero-collage{
+    position:absolute;
+    right:4%;
+    top:75px;
+    width:min(48vw,680px);
+    height:500px;
+    z-index:1;
+    pointer-events:none;
+    opacity:.92;
+}
+
+.tm-hero-collage::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+        linear-gradient(90deg,#050505 0%,rgba(5,5,5,.72) 22%,rgba(5,5,5,.10) 68%,rgba(5,5,5,.55) 100%),
+        linear-gradient(0deg,#050505 0%,transparent 30%,rgba(0,0,0,.18) 100%);
+    z-index:3;
+}
+
+.tm-hero-poster{
+    position:absolute;
+    width:230px;
+    height:345px;
+    object-fit:cover;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.15);
+    box-shadow:0 28px 70px rgba(0,0,0,.72);
+    filter:saturate(1.12) contrast(1.05);
+}
+
+.tm-hero-poster:nth-child(1){right:42%;top:70px;transform:rotate(-7deg);z-index:1}
+.tm-hero-poster:nth-child(2){right:25%;top:28px;transform:rotate(2deg);z-index:2}
+.tm-hero-poster:nth-child(3){right:7%;top:70px;transform:rotate(7deg);z-index:1}
+.tm-hero-poster:nth-child(4){right:34%;top:190px;transform:rotate(-1deg);z-index:4}
+.tm-hero-poster:nth-child(5){right:15%;top:185px;transform:rotate(4deg);z-index:3}
 
 .tm-hero-glow{
     position:absolute;
@@ -688,6 +752,23 @@ body{
         font-size:10px;
     }
 
+    .tm-profile-btn{
+        display:none;
+    }
+
+    .tm-hero-collage{
+        right:-45%;
+        top:70px;
+        width:125%;
+        height:430px;
+        opacity:.48;
+    }
+
+    .tm-hero-poster{
+        width:155px;
+        height:235px;
+    }
+
     .tm-hero{
         min-height:540px;
     }
@@ -820,9 +901,30 @@ body{
         MEMBER
     </div>
 
-    <div class="tm-avatar">
-        C
-    </div>
+    <a
+        class="tm-profile-link"
+        href="{{ url_for('customer_profile') }}"
+        title="My Profile"
+    >
+        {% if customer_profile and customer_profile.profile_photo %}
+            <img
+                class="tm-avatar tm-avatar-img"
+                src="{{ customer_profile.profile_photo }}"
+                alt="Profile"
+            >
+        {% else %}
+            <div class="tm-avatar">
+                {{ ((customer_profile.full_name if customer_profile else '') or (customer_email or 'C'))[:1]|upper }}
+            </div>
+        {% endif %}
+    </a>
+
+    <a
+        class="tm-profile-btn"
+        href="{{ url_for('customer_profile') }}"
+    >
+        Profile
+    </a>
 
     <a
         class="tm-logout"
@@ -845,6 +947,19 @@ body{
 
 
 <div class="tm-hero-glow"></div>
+
+<div class="tm-hero-collage" aria-hidden="true">
+    {% for movie in movies[:5] %}
+        {% if movie.poster_url %}
+            <img
+                class="tm-hero-poster"
+                src="{{ movie.poster_url }}"
+                alt=""
+                loading="eager"
+            >
+        {% endif %}
+    {% endfor %}
+</div>
 
 <div class="tm-hero-content">
 
