@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}CINEMA WORLD | User Activity{% endblock %}
+{% block content %}
+<style>
+.cwa{min-height:100vh;background:#070707;color:#fff;padding:45px 4%;font-family:Arial,Helvetica,sans-serif}
+.cwa-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}
+.cwa h1{margin:0;font-size:30px}.cwa a{color:#fff;text-decoration:none}
+.cwa-note{color:#888;font-size:12px;margin:6px 0 20px}
+.cwa-box{background:#111;border:1px solid #292929;border-radius:12px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}
+th,td{padding:12px 10px;border-bottom:1px solid #222;text-align:left;vertical-align:top}
+th{font-size:10px;color:#999;text-transform:uppercase;position:sticky;top:0;background:#151515}
+.name{font-weight:800}.muted{color:#777}.action{color:#e50914;font-weight:800}.device{color:#888;max-width:280px;word-break:break-word}
+</style>
+<div class="cwa">
+    <div class="cwa-head">
+        <div>
+            <div style="color:#e50914;font-size:10px;font-weight:900;letter-spacing:2px">CINEMA WORLD • ADMIN</div>
+            <h1>User Activity</h1>
+        </div>
+        <a href="{{ url_for('admin') }}">← Admin</a>
+    </div>
+    <div class="cwa-note">
+        User activity events are recorded without storing passwords, OTP values or payment credentials.
+    </div>
+    <div class="cwa-box">
+        <table>
+            <thead><tr><th>Date / Time</th><th>User</th><th>Action</th><th>Path</th><th>Method</th><th>Device / Browser</th></tr></thead>
+            <tbody>
+            {% for a in activities %}
+                <tr>
+                    <td>{{ a.created_at.strftime('%d %b %Y %I:%M %p') if a.created_at else '-' }}</td>
+                    <td>
+                        <div class="name">{{ a.full_name or 'Member' }}</div>
+                        <div class="muted">{{ a.email or a.mobile or '-' }}</div>
+                    </td>
+                    <td class="action">{{ a.action }}</td>
+                    <td class="muted">{{ a.path or '-' }}</td>
+                    <td>{{ a.method or '-' }}</td>
+                    <td class="device">{{ a.user_agent or '-' }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="muted">No activity recorded yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
