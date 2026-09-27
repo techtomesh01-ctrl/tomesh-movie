@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}CINEMA WORLD | My Profile{% endblock %}
+
+{% block content %}
+<style>
+.cw-profile{
+    min-height:100vh;
+    background:
+        radial-gradient(circle at 15% 0%,rgba(229,9,20,.18),transparent 32%),
+        #050505;
+    color:#fff;
+    padding:95px 5% 70px;
+    font-family:Arial,Helvetica,sans-serif;
+}
+.cw-profile-top{
+    width:min(1200px,100%);
+    margin:0 auto 24px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+}
+.cw-back{
+    color:#aaa;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:800;
+}
+.cw-back:hover{color:#fff}
+.cw-profile-title{margin:0;font-size:32px;font-weight:900}
+.cw-profile-grid{
+    width:min(1200px,100%);
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:330px 1fr;
+    gap:18px;
+}
+.cw-panel{
+    background:rgba(18,18,18,.94);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:14px;
+    padding:22px;
+    box-shadow:0 18px 55px rgba(0,0,0,.35);
+}
+.cw-profile-card{text-align:center}
+.cw-photo-wrap{position:relative;width:130px;height:130px;margin:4px auto 18px}
+.cw-photo,.cw-photo-fallback{
+    width:130px;height:130px;border-radius:50%;object-fit:cover;
+    border:3px solid #e50914;
+    box-shadow:0 0 0 6px rgba(229,9,20,.12);
+}
+.cw-photo-fallback{
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#e50914,#540007);
+    font-size:46px;font-weight:900;
+}
+.cw-name{font-size:23px;font-weight:900;margin:0 0 5px}
+.cw-contact{color:#888;font-size:12px;line-height:1.6}
+.cw-premium{
+    margin-top:18px;padding:15px;border-radius:10px;
+    background:linear-gradient(135deg,rgba(229,9,20,.18),rgba(255,255,255,.04));
+    border:1px solid rgba(229,9,20,.35);
+}
+.cw-premium strong{display:block;font-size:14px}
+.cw-premium span{display:block;color:#aaa;font-size:11px;margin-top:5px}
+.cw-form{margin-top:20px;text-align:left}
+.cw-label{display:block;color:#bbb;font-size:12px;font-weight:800;margin:0 0 7px}
+.cw-input{
+    width:100%;height:45px;border:1px solid #333;border-radius:7px;
+    background:#0d0d0d;color:#fff;padding:0 12px;margin-bottom:12px;outline:none;
+}
+.cw-input:focus{border-color:#e50914}
+.cw-file{width:100%;color:#aaa;font-size:12px;margin-bottom:12px}
+.cw-btn{
+    width:100%;height:45px;border:0;border-radius:7px;
+    background:#e50914;color:#fff;font-weight:900;cursor:pointer;
+}
+.cw-btn:hover{background:#ff1c27}
+.cw-stats{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;
+}
+.cw-stat{padding:16px;background:#101010;border:1px solid #222;border-radius:10px}
+.cw-stat b{display:block;font-size:22px}
+.cw-stat span{display:block;color:#888;font-size:11px;margin-top:4px}
+.cw-section-title{margin:0 0 13px;font-size:18px}
+.cw-feature-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+.cw-feature{
+    display:block;text-decoration:none;color:#fff;padding:15px;border:1px solid #252525;
+    border-radius:10px;background:#0d0d0d;
+}
+.cw-feature:hover{border-color:#e50914;transform:translateY(-1px)}
+.cw-feature b{display:block;font-size:13px}.cw-feature span{display:block;color:#888;font-size:11px;margin-top:5px}
+.cw-table-wrap{overflow:auto}
+.cw-table{width:100%;border-collapse:collapse;font-size:12px}
+.cw-table th,.cw-table td{padding:11px 8px;border-bottom:1px solid #222;text-align:left;white-space:nowrap}
+.cw-table th{color:#aaa;font-size:10px;text-transform:uppercase}
+.cw-muted{color:#777;font-size:12px}
+.cw-flash{margin:0 auto 18px;width:min(1200px,100%);padding:12px;border-radius:8px;background:#111;border:1px solid #333;text-align:center;font-size:12px}
+@media(max-width:800px){
+    .cw-profile{padding:78px 14px 45px}
+    .cw-profile-grid{grid-template-columns:1fr}
+    .cw-stats{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:520px){
+    .cw-profile-title{font-size:25px}
+    .cw-feature-grid{grid-template-columns:1fr}
+    .cw-stats{gap:7px}.cw-stat{padding:12px 8px}.cw-stat b{font-size:18px}
+}
+</style>
+
+<div class="cw-profile">
+    <div class="cw-profile-top">
+        <div>
+            <div style="color:#e50914;font-size:10px;font-weight:900;letter-spacing:2px;margin-bottom:6px">CINEMA WORLD • MEMBER</div>
+            <h1 class="cw-profile-title">My Profile</h1>
+        </div>
+        <a class="cw-back" href="{{ url_for('member_home') }}">← Back to Movies</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="cw-flash">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="cw-profile-grid">
+        <aside class="cw-panel cw-profile-card">
+            <div class="cw-photo-wrap">
+                {% if profile.profile_photo %}
+                    <img class="cw-photo" src="{{ profile.profile_photo }}" alt="Profile photo">
+                {% else %}
+                    <div class="cw-photo-fallback">
+                        {{ ((profile.full_name or profile.email or 'C')[:1])|upper }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <h2 class="cw-name">{{ profile.full_name or "CINEMA WORLD Member" }}</h2>
+            <div class="cw-contact">
+                {{ profile.email or "Email not added" }}<br>
+                {{ profile.mobile or "Mobile not added" }}
+            </div>
+
+            <div class="cw-premium">
+                <strong>👑 {% if premium_active %}Premium Active{% else %}Premium Not Active{% endif %}</strong>
+                <span>
+                    {% if premium_until %}Valid until {{ premium_until.strftime('%d %b %Y') }}{% else %}Unlock CINEMA WORLD Premium{% endif %}
+                </span>
+            </div>
+
+            <form class="cw-form" method="post" enctype="multipart/form-data">
+                <label class="cw-label">Your name</label>
+                <input class="cw-input" name="full_name" maxlength="100" value="{{ profile.full_name or '' }}" placeholder="Full name">
+
+                <label class="cw-label">Profile photo</label>
+                <input class="cw-file" id="profilePhotoFile" type="file" accept="image/jpeg,image/png,image/webp">
+                <input type="hidden" id="profilePhotoData" name="profile_photo" value="{{ profile.profile_photo or '' }}">
+
+                <button class="cw-btn" type="submit">Save Profile</button>
+            </form>
+        </aside>
+
+        <section>
+            <div class="cw-stats">
+                <div class="cw-stat"><b>{{ my_list_count }}</b><span>My List</span></div>
+                <div class="cw-stat"><b>{{ paid_count }}</b><span>Paid Orders</span></div>
+                <div class="cw-stat"><b>{% if premium_active %}ON{% else %}OFF{% endif %}</b><span>Premium</span></div>
+            </div>
+
+            <div class="cw-panel">
+                <h2 class="cw-section-title">Your CINEMA WORLD</h2>
+                <div class="cw-feature-grid">
+                    <a class="cw-feature" href="{{ url_for('member_home') }}#my-list">
+                        <b>❤️ My List</b><span>Your saved movies</span>
+                    </a>
+                    <a class="cw-feature" href="{{ url_for('member_home') }}#movies">
+                        <b>🎬 Movies</b><span>Browse all available movies</span>
+                    </a>
+                    <a class="cw-feature" href="{{ url_for('member_home') }}">
+                        <b>▶ Continue Watching</b><span>Return to your movie library</span>
+                    </a>
+                    <a class="cw-feature" href="{{ url_for('membership_checkout') }}">
+                        <b>👑 Premium</b><span>Premium access and benefits</span>
+                    </a>
+                </div>
+
+                <h2 class="cw-section-title">Recent Payments</h2>
+                {% if payments %}
+                    <div class="cw-table-wrap">
+                        <table class="cw-table">
+                            <thead><tr><th>Type</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                            <tbody>
+                            {% for p in payments %}
+                                <tr>
+                                    <td>{{ p.payment_type or '-' }}</td>
+                                    <td>₹{{ p.amount }}</td>
+                                    <td>{{ p.status or '-' }}</td>
+                                    <td>{{ p.created_at.strftime('%d %b %Y') if p.created_at else '-' }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="cw-muted">No payment history yet.</div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+(function(){
+    const input=document.getElementById("profilePhotoFile");
+    const output=document.getElementById("profilePhotoData");
+    if(!input || !output) return;
+    input.addEventListener("change",function(){
+        const file=this.files && this.files[0];
+        if(!file) return;
+        if(file.size>5*1024*1024){ alert("Photo 5 MB se chhoti rakho."); this.value=""; return; }
+        const reader=new FileReader();
+        reader.onload=function(){
+            const img=new Image();
+            img.onload=function(){
+                const max=512, scale=Math.min(1,max/Math.max(img.width,img.height));
+                const c=document.createElement("canvas");
+                c.width=Math.max(1,Math.round(img.width*scale));
+                c.height=Math.max(1,Math.round(img.height*scale));
+                const ctx=c.getContext("2d");
+                ctx.drawImage(img,0,0,c.width,c.height);
+                output.value=c.toDataURL("image/jpeg",0.78);
+            };
+            img.src=reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+})();
+</script>
+{% endblock %}
