@@ -3879,7 +3879,18 @@ def admin():
         """)
         users = cur.fetchall()
 
-        cur.execute("SELECT * FROM payment_orders ORDER BY id DESC LIMIT 200")
+        cur.execute("""
+            SELECT
+                p.*,
+                u.full_name,
+                u.email,
+                u.mobile
+            FROM payment_orders p
+            LEFT JOIN customer_users u
+              ON u.customer_id = p.customer_id
+            ORDER BY p.id DESC
+            LIMIT 200
+        """)
         payments = cur.fetchall()
 
         cur.execute("""
