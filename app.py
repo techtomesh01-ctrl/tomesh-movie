@@ -3949,6 +3949,35 @@ def admin():
         except Exception:
             movie["poster_url"] = None
 
+    # Admin R2 overview: read-only listing only. This does not upload,
+    # delete, move, or modify any R2 object.
+    r2_objects = []
+    r2_error = ""
+    if section == "r2":
+        try:
+            result = get_r2_client().list_objects_v2(
+                Bucket=R2_BUCKET,
+                MaxKeys=100,
+            )
+            for obj in result.get("Contents", []):
+                r2_objects.append({
+                    "key": obj.get("Key", ""),
+                    "size": int(obj.get("Size") or 0),
+                    "modified": obj.get("LastModified"),
+                })
+        except Exception as exc:
+            r2_error = str(exc)
+            print("ADMIN R2 LIST ERROR:", repr(exc))
+
+    admin_config = {
+        "R2_BUCKET": R2_BUCKET,
+        "SECRET_KEY": bool(app.secret_key),
+        "CASHFREE": bool(CASHFREE_APP_ID and CASHFREE_SECRET_KEY),
+        "R2": bool(R2_ACCOUNT_ID and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_BUCKET and R2_ENDPOINT),
+        "BREVO": bool(BREVO_API_KEY and BREVO_FROM),
+        "MESSAGE_CENTRAL": bool(MESSAGE_CENTRAL_CUSTOMER_ID and MESSAGE_CENTRAL_AUTH_TOKEN),
+    }
+
     return render_template(
         "admin.html",
         section=section,
@@ -3969,9 +3998,9 @@ def admin():
         total_views=int(stats.get("total_views") or 0),
         total_revenue=total_revenue,
         ads=get_ads(),
-        config={
-            "R2_BUCKET": R2_BUCKET,
-        },
+        config=admin_config,
+        r2_objects=r2_objects,
+        r2_error=r2_error,
     )
 
 
