@@ -631,6 +631,28 @@ def init_db():
             ON customer_movie_list(customer_id)
         """)
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customer_activity (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                path TEXT,
+                method TEXT,
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_activity_customer
+            ON customer_activity(customer_id)
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_activity_created
+            ON customer_activity(created_at DESC)
+        """)
+
         # ----------------------------------------------------
         # EMAIL OTP CODES
         # ----------------------------------------------------
@@ -3206,6 +3228,56 @@ def customer_set_password():
     return redirect(url_for("user_details"))
 
 
+def log_customer_activity():
+    if not session.get("customer_logged_in"):
+        return
+
+    path = str(request.path or "")
+    if path.startswith("/static/") or path.startswith("/api/r2/"):
+        return
+
+    customer_id = session.get("customer_id")
+    if not customer_id:
+        return
+
+    try:
+        user_agent = (request.user_agent.string or "")[:500]
+        action = (
+            "POST " + path
+            if request.method == "POST"
+            else "OPEN " + path
+        )
+
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO customer_activity
+                (customer_id, action, path, method, user_agent)
+                VALUES(%s,%s,%s,%s,%s)
+                """,
+                (
+                    customer_id,
+                    action[:300],
+                    path[:500],
+                    request.method[:20],
+                    user_agent,
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+    except Exception as exc:
+        print("CUSTOMER ACTIVITY LOG ERROR:", repr(exc))
+
+
+@app.before_request
+def track_customer_activity():
+    log_customer_activity()
+
+
 # ============================================================
 # CUSTOMER MEMBER / USER DETAILS / MY LIST
 # ============================================================
@@ -3970,6 +4042,41 @@ def admin_search():
 # ============================================================
 # ADMIN
 # ============================================================
+
+@app.route("/admin/activity")
+@admin_required
+def admin_activity():
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT
+                ca.created_at,
+                ca.action,
+                ca.path,
+                ca.method,
+                ca.user_agent,
+                u.full_name,
+                u.email,
+                u.mobile
+            FROM customer_activity ca
+            LEFT JOIN customer_users u
+              ON u.customer_id = ca.customer_id
+            ORDER BY ca.id DESC
+            LIMIT 300
+            """
+        )
+        activities = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+
+    return render_template(
+        "admin_activity.html",
+        activities=activities,
+    )
+
 
 @app.route("/admin")
 @admin_required
