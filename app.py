@@ -564,6 +564,16 @@ def init_db():
             ADD COLUMN IF NOT EXISTS password_hash TEXT
         """)
 
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS block_reason TEXT
+        """)
+
         # Mobile OTP login uses the verified mobile as the primary login identity.
         # Existing email accounts remain compatible.
         cur.execute("""
@@ -3642,6 +3652,43 @@ def api_my_list(movie_id):
 
 # ============================================================
 # ADMIN DASHBOARD MISSING ENDPOINTS
+@app.route("/admin/user-restriction/<int:user_id>", methods=["POST"])
+@admin_required
+def admin_user_restriction(user_id):
+    action = str(request.form.get("action", "block")).strip().lower()
+    reason = str(request.form.get("reason", "")).strip()[:500]
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT customer_id FROM customer_users WHERE id=%s LIMIT 1", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            flash("User not found.", "error")
+            return redirect(url_for("admin", section="users"))
+
+        customer_id = row[0]
+
+        if action == "unblock":
+            cur.execute("UPDATE customer_users SET is_blocked=FALSE, block_reason=NULL WHERE id=%s", (user_id,))
+            flash("User unblocked.", "success")
+        elif action == "revoke_premium":
+            cur.execute("UPDATE customer_access SET premium_until=CURRENT_TIMESTAMP WHERE customer_id=%s AND premium_until IS NOT NULL", (customer_id,))
+            cur.execute("UPDATE customer_subscriptions SET status='CANCELLED', premium_until=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE customer_id=%s", (customer_id,))
+            flash("Premium access revoked.", "success")
+        else:
+            cur.execute("UPDATE customer_users SET is_blocked=TRUE, block_reason=%s WHERE id=%s", (reason or "Restricted by Admin", user_id))
+            flash("User blocked.", "success")
+
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    return redirect(url_for("admin", section="users"))
+
+
 # Only added to prevent admin.html BuildError
 # ============================================================
 
