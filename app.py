@@ -2823,9 +2823,6 @@ def shared_movie(movie_id):
     "/movie/<int:movie_id>"
 )
 def movie_page(movie_id):
-    # Direct/shared movie URLs now always open the CINEMA WORLD Home page.
-    # No movie page or payment checkout is opened automatically.
-    return redirect(url_for("home"))
 
     conn = get_db(
         dict_rows=True
