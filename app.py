@@ -517,6 +517,22 @@ def init_db():
             )
         """)
 
+        # Remove only duplicate unfinished activation orders when a real
+        # activation payment already exists. This keeps Recent Payments clean
+        # without touching successful payments or any other payment type.
+        cur.execute("""
+            DELETE FROM payment_orders p
+            WHERE p.payment_type = 'activation'
+              AND p.status = 'ACTIVE'
+              AND EXISTS (
+                  SELECT 1
+                  FROM payment_orders paid
+                  WHERE paid.customer_id = p.customer_id
+                    AND paid.payment_type = 'activation'
+                    AND paid.status = 'PAID'
+              )
+        """)
+
         # ----------------------------------------------------
         # CUSTOMER ACCESS
         # ----------------------------------------------------
@@ -2438,6 +2454,27 @@ def create_payment():
     if not re.fullmatch(r"[6-9]\d{9}",phone): return json_error("Enter a valid 10 digit Indian mobile number.")
     if payment_type == "activation" and customer_has_completed_initial_payment(session.get("customer_id")):
         return json_ok(already_paid=True, redirect_url=url_for("member_home"))
+    if payment_type == "activation":
+        # Do not create multiple activation orders when the user double-clicks
+        # or refreshes the payment page. Old abandoned orders are harmless and
+        # are cleared after 30 minutes so a genuinely failed attempt can retry.
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "DELETE FROM payment_orders WHERE customer_id=%s AND payment_type='activation' AND status='ACTIVE' AND created_at < NOW() - INTERVAL '30 minutes'",
+                (session.get("customer_id"),),
+            )
+            cur.execute(
+                "SELECT order_id FROM payment_orders WHERE customer_id=%s AND payment_type='activation' AND status='ACTIVE' ORDER BY id DESC LIMIT 1",
+                (session.get("customer_id"),),
+            )
+            existing_activation = cur.fetchone()
+            conn.commit()
+            if existing_activation:
+                return json_error("Activation payment is already in progress. Please finish that payment first.", 409)
+        finally:
+            conn.close()
     if payment_type == "activation":
         movie=None; movie_id=None; amount=ACTIVATION_PRICE; description="CINEMA WORLD 24 Hour Activation"
     else:
