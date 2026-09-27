@@ -3233,7 +3233,11 @@ def log_customer_activity():
         return
 
     path = str(request.path or "")
-    if path.startswith("/static/") or path.startswith("/api/r2/"):
+    if (
+        path.startswith("/static/")
+        or path.startswith("/api/r2/")
+        or path.startswith("/admin")
+    ):
         return
 
     customer_id = session.get("customer_id")
