@@ -4521,6 +4521,140 @@ def admin_add():
     )
 
 
+
+# ============================================================
+# EDIT MOVIE
+# ============================================================
+
+@app.route(
+    "/admin/edit/<int:movie_id>",
+    methods=["GET"],
+)
+@admin_required
+def admin_edit_movie(movie_id):
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT *
+            FROM movies
+            WHERE id = %s
+        """, (movie_id,))
+        movie = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not movie:
+        flash("Movie not found.", "error")
+        return redirect(url_for("admin"))
+
+    return render_template("admin_edit.html", movie=movie)
+
+
+@app.route(
+    "/api/movie/update",
+    methods=["POST"],
+)
+@admin_required
+def admin_update_movie():
+    try:
+        data = request.get_json(silent=True) or {}
+        movie_id = int(data.get("movie_id"))
+    except Exception:
+        return json_error("Invalid movie.")
+
+    title = str(data.get("title") or "").strip()
+    category = str(data.get("category") or "").strip()
+    description = str(data.get("description") or "").strip()
+    new_video = str(data.get("video_key") or "").strip()
+    new_poster = str(data.get("poster_key") or "").strip()
+
+    if not title:
+        return json_error("Movie title required.")
+
+    if new_video:
+        try:
+            validate_r2_key(new_video)
+        except Exception as exc:
+            return json_error(str(exc))
+        if not new_video.startswith(VIDEO_PREFIX):
+            return json_error("Invalid video key.")
+
+    if new_poster:
+        try:
+            validate_r2_key(new_poster)
+        except Exception as exc:
+            return json_error(str(exc))
+        if not new_poster.startswith(POSTER_PREFIX):
+            return json_error("Invalid poster key.")
+
+    conn = get_db(dict_rows=True)
+    old_video = None
+    old_poster = None
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT video, poster
+            FROM movies
+            WHERE id = %s
+        """, (movie_id,))
+        old = cur.fetchone()
+
+        if not old:
+            cur.close()
+            return json_error("Movie not found.", 404)
+
+        old_video = old.get("video")
+        old_poster = old.get("poster")
+        video_value = new_video or old_video
+        poster_value = new_poster or old_poster
+
+        cur.execute("""
+            UPDATE movies
+            SET title=%s,
+                category=%s,
+                description=%s,
+                video=%s,
+                poster=%s
+            WHERE id=%s
+        """, (
+            title,
+            category,
+            description,
+            video_value,
+            poster_value,
+            movie_id,
+        ))
+        conn.commit()
+        cur.close()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
+
+    if new_video and old_video and new_video != old_video:
+        try:
+            r2_delete(old_video)
+        except Exception as exc:
+            print("OLD VIDEO DELETE ERROR:", repr(exc))
+
+    if new_poster and old_poster and new_poster != old_poster:
+        try:
+            r2_delete(old_poster)
+        except Exception as exc:
+            print("OLD POSTER DELETE ERROR:", repr(exc))
+
+    return json_ok(
+        movie_id=movie_id,
+        message="Movie updated successfully.",
+    )
+
+
 # ============================================================
 # DELETE MOVIE
 # ============================================================
