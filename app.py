@@ -5111,6 +5111,61 @@ def internal_error(error):
 
 
 # ============================================================
+# ONE-TIME R2 MOVIE RECOVERY
+# ============================================================
+
+def recover_known_r2_movies():
+    """Restore the two existing R2 uploads into the movies table if missing.
+
+    This is database-only: it never uploads, deletes, renames, or modifies R2
+    objects. Existing movie rows with the same video key are left untouched.
+    """
+    legacy_movies = [
+        {
+            "title": "Vishwanath & Sons | Full Movie in Hindi Dubbed | Suriya, Mamitha Baiju | Venky Atluri",
+            "category": "Drama",
+            "description": "Vishwanath & Sons movie",
+            "poster": "posters/ed7160c7c44d4d86830f72ce6667c73c.png",
+            "video": "videos/7143734e197443298a636a93349dd124.mp4",
+        },
+        {
+            "title": "Test Movie",
+            "category": "Drama",
+            "description": "Test movie",
+            "poster": "posters/d4382d2e21e04d70896cba154b11185b.webp",
+            "video": "videos/ad2f2438ef2948d28000b4bbfc5e164e.mp4",
+        },
+    ]
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        for movie in legacy_movies:
+            cur.execute(
+                """
+                INSERT INTO movies (title, category, description, poster, video)
+                SELECT %s, %s, %s, %s, %s
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM movies WHERE video = %s
+                )
+                """,
+                (
+                    movie["title"],
+                    movie["category"],
+                    movie["description"],
+                    movie["poster"],
+                    movie["video"],
+                    movie["video"],
+                ),
+            )
+        conn.commit()
+        cur.close()
+        print("R2 movie recovery check completed.")
+    finally:
+        conn.close()
+
+
+# ============================================================
 # DATABASE INIT
 # ============================================================
 
@@ -5118,6 +5173,7 @@ try:
 
     if DATABASE_URL:
         init_db()
+        recover_known_r2_movies()
         print(
             "Database initialized successfully."
         )
