@@ -871,12 +871,14 @@
 
 <div class="tm-topbar">
 
+    {% if not access.watch %}
     <a
         href="{{ url_for('home') }}"
         class="tm-back"
     >
         ← Back to Home
     </a>
+    {% endif %}
 
     <div class="tm-brand-mini">
         CINEMA WORLD
