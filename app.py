@@ -3820,6 +3820,26 @@ def admin():
 
         movies = cur.fetchall()
 
+        # Load registered customer accounts for the Admin → Users section.
+        cur.execute(
+            """
+            SELECT
+                id,
+                email,
+                mobile,
+                customer_id,
+                full_name,
+                created_at,
+                last_login_at,
+                COALESCE(is_blocked, FALSE) AS is_blocked,
+                block_reason
+            FROM customer_users
+            ORDER BY id DESC
+            """
+        )
+
+        users = cur.fetchall()
+
         cur.close()
 
     finally:
@@ -3852,6 +3872,8 @@ def admin():
             stats["total_views"]
             if stats else 0
         ),
+        total_users=len(users),
+        users=users,
         ads=get_ads(),
     )
 
