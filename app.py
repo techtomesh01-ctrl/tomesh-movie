@@ -2814,23 +2814,9 @@ except AssertionError:
     "/share/movie/<int:movie_id>"
 )
 def shared_movie(movie_id):
-    # A shared link must always land on the exact movie details page.
-    # It never starts Cashfree checkout or any payment automatically.
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM movies WHERE id = %s", (movie_id,))
-        movie = cur.fetchone()
-        cur.close()
-    finally:
-        conn.close()
-
-    if not movie:
-        abort(404)
-
-    return redirect(
-        url_for("movie_page", movie_id=movie_id, shared="1")
-    )
+    # Shared movie links now always open the CINEMA WORLD Home page.
+    # No movie page or payment checkout is opened automatically.
+    return redirect(url_for("home"))
 
 
 @app.route(
