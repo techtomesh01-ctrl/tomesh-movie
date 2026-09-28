@@ -3871,9 +3871,9 @@ def set_language():
     if language not in {"en", "hi"}:
         language = "en"
     session["language"] = language
-    target = request.referrer or url_for("index")
+    target = request.referrer or url_for("home")
     if not target.startswith(request.host_url):
-        target = url_for("index")
+        target = url_for("home")
     return redirect(target)
 
 
