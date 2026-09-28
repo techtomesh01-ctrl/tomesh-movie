@@ -2982,7 +2982,6 @@ def movie_page(movie_id):
 # ============================================================
 
 @app.route("/movie/<int:movie_id>/comment", methods=["POST"])
-@customer_login_required
 def add_movie_comment(movie_id):
     customer_id = session.get("customer_id")
     comment = str(request.form.get("comment", "")).strip()
