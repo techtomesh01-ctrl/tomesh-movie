@@ -2960,12 +2960,19 @@ def movie_page(movie_id):
     finally:
         comments_conn.close()
 
+    comment_csrf = hmac.new(
+        str(app.secret_key).encode("utf-8"),
+        (str(session.get("customer_id", "")) + "|" + str(movie_id)).encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
     return render_template(
         "movie.html",
         movie=movie,
         ads=get_ads(),
         access=access,
         comments=comments,
+        comment_csrf=comment_csrf,
         cashfree_mode=CASHFREE_JS_MODE,
     )
 
