@@ -709,6 +709,7 @@ def init_db():
             )
         """)
         cur.execute("""CREATE INDEX IF NOT EXISTS idx_customer_bank_accounts_customer ON customer_bank_accounts(customer_id, id DESC)""")
+        cur.execute("""ALTER TABLE customer_bank_accounts ADD COLUMN IF NOT EXISTS withdrawal_hold_until TIMESTAMP""")
         cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_account_id INTEGER""")
         cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS withdrawal_fee NUMERIC(10,2) NOT NULL DEFAULT 0""")
         cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS net_amount NUMERIC(10,2)""")
@@ -1353,7 +1354,7 @@ def get_earnings_summary(customer_id):
         cur.execute("""
             SELECT COALESCE(SUM(COALESCE(total_debit,amount)),0) AS reserved
             FROM withdrawal_requests
-            WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','APPROVED')
+            WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','APPROVED','PAID')
         """,(customer_id,))
         reserved = cur.fetchone() or {}
         credited = float(rewards.get("credited") or 0)
@@ -5195,16 +5196,20 @@ def request_earnings_withdrawal():
         supplied=hmac.new(str(app.secret_key).encode(),("withdrawal-pin:"+pin).encode(),hashlib.sha256).hexdigest()
         if not re.fullmatch(r"\d{6}",pin) or not hmac.compare_digest(supplied,str(expected)):
             conn.rollback(); flash("Withdrawal PIN incorrect hai.","error"); return redirect(url_for("user_earnings"))
-        cur.execute("""SELECT id,account_holder_name,account_number,ifsc,bank_name,status FROM customer_bank_accounts
+        cur.execute("""SELECT id,account_holder_name,account_number,ifsc,bank_name,status,withdrawal_hold_until FROM customer_bank_accounts
                        WHERE customer_id=%s AND status='VERIFIED' ORDER BY id DESC LIMIT 1""",(customer_id,))
         bank=cur.fetchone()
         if not bank:
             conn.rollback(); flash("Verified bank account ke bina withdrawal nahi ho sakta.","error"); return redirect(url_for("user_earnings"))
+        if bank.get("withdrawal_hold_until") and bank["withdrawal_hold_until"] > datetime.now():
+            conn.rollback()
+            flash("Bank verification ke baad security hold complete hone tak withdrawal temporarily locked hai.", "error")
+            return redirect(url_for("user_earnings"))
         fee=round(amount*WITHDRAWAL_FEE_RATE,2)
         total_debit=round(amount+fee,2)
         cur.execute("""SELECT COALESCE((SELECT SUM(amount) FROM referral_rewards WHERE referrer_customer_id=%s AND status='AVAILABLE'),0)
                               -COALESCE((SELECT SUM(COALESCE(total_debit,amount)) FROM withdrawal_requests
-                                         WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','APPROVED')),0) AS available""",(customer_id,customer_id))
+                                         WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','APPROVED','PAID')),0) AS available""",(customer_id,customer_id))
         available=float((cur.fetchone() or {}).get("available") or 0)
         if total_debit>available+0.001:
             conn.rollback(); flash(f"Insufficient available balance. ₹{total_debit:.2f} total debit ke liye balance chahiye.","error"); return redirect(url_for("user_earnings"))
@@ -5358,11 +5363,12 @@ def admin_process_bank(bank_id):
             conn.rollback(); flash("Bank account not found.","error"); return redirect(url_for("admin",section="withdrawals"))
         new_status="VERIFIED" if action=="verify" else "REJECTED"
         cur.execute("""UPDATE customer_bank_accounts SET status=%s,verification_note=%s,verification_ref=%s,
-                       verified_at=%s,rejected_at=%s,last_verified_at=%s,updated_at=NOW() WHERE id=%s""",
+                       verified_at=%s,rejected_at=%s,last_verified_at=%s,withdrawal_hold_until=%s,updated_at=NOW() WHERE id=%s""",
                     (new_status,note or None,"ADMIN-"+secrets.token_hex(8),
                      datetime.now() if action=="verify" else None,
                      datetime.now() if action=="reject" else None,
-                     datetime.now() if action=="verify" else None,bank_id))
+                     datetime.now() if action=="verify" else None,
+                     datetime.now()+timedelta(hours=24) if action=="verify" else None,bank_id))
         cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
                        VALUES(%s,%s,%s,'BANK')""",
                     (bank["customer_id"],"Bank verification "+("successful" if action=="verify" else "rejected"),
