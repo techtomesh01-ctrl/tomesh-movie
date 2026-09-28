@@ -1996,4 +1996,54 @@ window.cwSearchMovies = function(value){
 
 </script>
 
+<script>
+(function(){
+    function cinemaWorldSearch(){
+        var input = document.getElementById("tmSearch");
+        var cards = document.querySelectorAll("#tmMovieGrid .tm-all-movie-card");
+        var empty = document.getElementById("tmSearchEmpty");
+        var count = document.getElementById("tmMovieCount");
+
+        if(!input){ return; }
+
+        var q = String(input.value || "").toLowerCase().trim();
+        var shown = 0;
+
+        cards.forEach(function(card){
+            var title = String(card.getAttribute("data-title") || "").toLowerCase();
+            var category = String(card.getAttribute("data-category") || "").toLowerCase();
+            var visible = (q === "" || title.indexOf(q) !== -1 || category.indexOf(q) !== -1);
+
+            card.hidden = !visible;
+            if(visible){ shown++; }
+        });
+
+        if(count){
+            count.textContent = shown + (shown === 1 ? " movie" : " movies");
+        }
+
+        if(empty){
+            empty.style.display = (shown === 0 ? "block" : "none");
+        }
+    }
+
+    function startCinemaWorldSearch(){
+        var input = document.getElementById("tmSearch");
+        if(!input){ return; }
+
+        input.removeEventListener("input", cinemaWorldSearch);
+        input.addEventListener("input", cinemaWorldSearch);
+        input.addEventListener("change", cinemaWorldSearch);
+        input.addEventListener("keyup", cinemaWorldSearch);
+        cinemaWorldSearch();
+    }
+
+    if(document.readyState === "loading"){
+        document.addEventListener("DOMContentLoaded", startCinemaWorldSearch);
+    }else{
+        startCinemaWorldSearch();
+    }
+})();
+</script>
+
 {% endblock %}
