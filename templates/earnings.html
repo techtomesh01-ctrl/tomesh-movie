@@ -1,26 +1,143 @@
 {% extends "base.html" %}
-{% block title %}CINEMA WORLD | My Earnings{% endblock %}
+{% block title %}CINEMA WORLD | Earnings & Withdraw{% endblock %}
 {% block content %}
 <style>
-.cw-page{min-height:100vh;background:#050505;color:#fff;padding:42px 16px 70px;font-family:Arial,sans-serif}.cw-wrap{width:min(1100px,100%);margin:auto}.cw-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}.cw-brand{font-size:25px;font-weight:950}.cw-brand span{color:#e50914}.cw-back{color:#fff;text-decoration:none;border:1px solid #303036;border-radius:10px;padding:10px 13px;font-size:12px;font-weight:800}.cw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.cw-stat{background:#111115;border:1px solid #28282f;border-radius:16px;padding:18px}.cw-stat b{font-size:25px;display:block}.cw-stat span,.muted{color:#92929c;font-size:12px}.cw-card{background:#0e0e12;border:1px solid #28282f;border-radius:17px;padding:20px;margin-top:14px}.cw-card h2{margin:0 0 6px;font-size:18px}.cw-ref{display:flex;gap:8px;margin-top:14px}.cw-ref input,.cw-form input{flex:1;background:#08080b;color:#fff;border:1px solid #35353c;border-radius:10px;padding:12px}.cw-btn{border:0;border-radius:10px;padding:11px 14px;background:#e50914;color:#fff;font-weight:900;cursor:pointer}.cw-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.cw-form input{min-width:180px}.cw-table-wrap{overflow:auto}.cw-table{width:100%;min-width:650px;border-collapse:collapse;margin-top:12px}.cw-table th,.cw-table td{text-align:left;padding:11px 8px;border-bottom:1px solid #22222a;font-size:12px}.cw-table th{color:#777985;font-size:10px;text-transform:uppercase}.badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#19191f;border:1px solid #303038;font-size:10px;font-weight:900}.note{margin-top:12px;padding:11px;border:1px dashed #33333b;border-radius:10px;color:#999;font-size:11px;line-height:1.5}@media(max-width:750px){.cw-grid{grid-template-columns:repeat(2,1fr)}.cw-ref{flex-direction:column}}
+.cw-earn{min-height:100vh;background:radial-gradient(circle at 15% 0%,rgba(229,9,20,.12),transparent 35%),#050507;color:#fff;padding:32px 16px 80px;font-family:Arial,sans-serif}
+.cw-wrap{width:min(1120px,100%);margin:auto}.cw-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}
+.cw-brand{font-size:26px;font-weight:950;letter-spacing:.4px}.cw-brand span{color:#e50914}.muted{color:#92929c;font-size:12px}
+.cw-back,.cw-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:11px;padding:11px 14px;border:1px solid #303039;text-decoration:none;color:#fff;background:#101014;font-size:12px;font-weight:900;cursor:pointer}
+.cw-btn.red{background:#e50914;border-color:#e50914}.cw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.cw-stat,.cw-card{background:linear-gradient(145deg,#111116,#0b0b0e);border:1px solid #292930;border-radius:17px;box-shadow:0 14px 45px rgba(0,0,0,.24)}
+.cw-stat{padding:18px}.cw-stat b{font-size:25px;display:block}.cw-stat span{display:block;color:#888894;font-size:11px;margin-top:6px}
+.cw-card{padding:20px;margin-top:14px}.cw-card h2{margin:0 0 7px;font-size:17px}.cw-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.cw-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#17171d;border:1px solid #303039}.cw-icon svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:1.8}
+.cw-ref{display:flex;gap:8px;margin-top:14px}.cw-input,.cw-form input,.cw-form select{width:100%;box-sizing:border-box;background:#07070a;color:#fff;border:1px solid #35353d;border-radius:10px;padding:12px;outline:none}
+.cw-form{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}.cw-form .full{grid-column:1/-1}
+.cw-presets{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.cw-preset{border:1px solid #303039;background:#111116;color:#ddd;border-radius:9px;padding:9px 12px;cursor:pointer;font-weight:800;font-size:11px}
+.cw-breakdown{margin-top:12px;padding:13px;border:1px solid #292930;border-radius:12px;background:#08080b}.cw-breakdown div{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.cw-breakdown strong{font-size:14px}
+.cw-note{margin-top:12px;padding:12px;border:1px dashed #34343c;border-radius:11px;color:#9a9aa4;font-size:11px;line-height:1.55}
+.cw-status{display:inline-flex;padding:5px 9px;border-radius:999px;border:1px solid #303039;background:#18181e;font-size:10px;font-weight:900}
+.cw-bank{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}.cw-bank .full{grid-column:1/-1}
+.cw-table-wrap{overflow:auto}.cw-table{width:100%;min-width:720px;border-collapse:collapse;margin-top:12px}.cw-table th,.cw-table td{text-align:left;padding:11px 8px;border-bottom:1px solid #222229;font-size:11px}.cw-table th{color:#777985;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+.cw-notice{padding:10px 12px;margin-top:9px;border-left:3px solid #e50914;background:#101014;border-radius:8px;font-size:11px;line-height:1.5}
+.cw-svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8}
+@media(max-width:780px){.cw-grid{grid-template-columns:repeat(2,1fr)}.cw-form,.cw-bank{grid-template-columns:1fr}.cw-bank .full,.cw-form .full{grid-column:auto}.cw-head{align-items:flex-start;flex-direction:column}}
+@media(max-width:450px){.cw-grid{grid-template-columns:1fr 1fr}.cw-stat{padding:14px}.cw-stat b{font-size:20px}}
 </style>
-<div class="cw-page"><div class="cw-wrap">
-<div class="cw-head"><div><div class="cw-brand">CINEMA <span>WORLD</span></div><div class="muted">My Referral & Earnings</div></div><a class="cw-back" href="{{ url_for('member_home') }}">← Member Home</a></div>
-<div class="cw-grid">
-<div class="cw-stat"><b>₹{{ '%.2f'|format(summary.available) }}</b><span>Available to Withdraw</span></div>
-<div class="cw-stat"><b>₹{{ '%.2f'|format(summary.pending) }}</b><span>Pending — 24 Hours</span></div>
-<div class="cw-stat"><b>₹{{ '%.2f'|format(summary.total_earned) }}</b><span>Total Referral Rewards</span></div>
-<div class="cw-stat"><b>{{ summary.referrals }}</b><span>Successful Referrals</span></div>
+
+<div class="cw-earn"><div class="cw-wrap">
+<div class="cw-head">
+  <div><div class="cw-brand">CINEMA <span>WORLD</span></div><div class="muted">Referral Earnings & Secure Bank Withdrawal</div></div>
+  <a class="cw-back" href="{{ url_for('member_home') }}">Member Home</a>
 </div>
-<section class="cw-card"><h2>🔗 My Referral Link</h2><div class="muted">Eligible Premium payment se ₹50 reward. Signup/click par reward nahi.</div>
-<div class="cw-ref"><input id="refLink" readonly value="{{ referral_url }}"><button class="cw-btn" type="button" onclick="copyReferral()">Copy Link</button></div>
-<div class="note">Reward successful eligible Premium payment ke baad 24 hours pending rahega. Refund/cancellation/self-referral/duplicate activity par reward hold ya reverse ho sakta hai.</div>
+
+<div class="cw-grid">
+  <div class="cw-stat"><b>₹{{ '%.2f'|format(summary.available) }}</b><span>Available Balance</span></div>
+  <div class="cw-stat"><b>₹{{ '%.2f'|format(summary.pending) }}</b><span>Pending — 24 Hours</span></div>
+  <div class="cw-stat"><b>₹{{ '%.2f'|format(summary.total_earned) }}</b><span>Total Earned</span></div>
+  <div class="cw-stat"><b>{{ summary.referrals }}</b><span>Total Referrals</span></div>
+</div>
+
+<section class="cw-card">
+  <div class="cw-row"><div><h2>Referral Link</h2><div class="muted">₹25 reward only after a qualifying successful Premium payment.</div></div>
+  <div class="cw-icon"><svg class="cw-svg" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1 1"/><path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1-1"/></svg></div></div>
+  <div class="cw-ref"><input id="refLink" class="cw-input" readonly value="{{ referral_url }}"><button class="cw-btn red" type="button" onclick="copyReferral()">Copy Link</button></div>
+  <div class="cw-note">Reward 24 hours Pending rahega. Refund, failed payment, self-referral ya duplicate activity par reward hold/reverse ho sakta hai.</div>
 </section>
-<section class="cw-card"><h2>💸 Withdraw Earnings</h2><div class="muted">Minimum withdrawal ₹{{ withdrawal_min|int }}. फिलहाल Admin verification ke baad UPI payout process hoga.</div>
-<form class="cw-form" method="post" action="{{ url_for('request_earnings_withdrawal') }}"><input name="amount" type="number" min="{{ withdrawal_min }}" step="0.01" placeholder="Amount (₹)" required><input name="payout_details" maxlength="100" placeholder="Your UPI ID" required><button class="cw-btn" type="submit">Request Withdrawal</button></form>
+
+<section class="cw-card">
+  <div class="cw-row"><div><h2>Bank Account</h2><div class="muted">Withdrawal ke liye sirf ek verified bank account allowed hai.</div></div>
+  <span class="cw-status">{{ bank_account.status if bank_account else 'NOT ADDED' }}</span></div>
+  {% if bank_account %}
+    <div class="cw-bank">
+      <div><b>Account Holder</b><div class="muted">{{ bank_account.account_holder_name }}</div></div>
+      <div><b>Bank</b><div class="muted">{{ bank_account.bank_name }}</div></div>
+      <div><b>Account</b><div class="muted">•••• •••• {{ bank_account.account_number[-4:] }}</div></div>
+      <div><b>IFSC</b><div class="muted">{{ bank_account.ifsc }}</div></div>
+    </div>
+    {% if bank_account.verification_note %}<div class="cw-notice">{{ bank_account.verification_note }}</div>{% endif %}
+  {% else %}
+    <form class="cw-bank" method="post" action="{{ url_for('save_withdrawal_bank') }}">
+      <input class="cw-input" name="account_holder_name" placeholder="Account Holder Name" required>
+      <input class="cw-input" name="bank_name" placeholder="Bank Name" required>
+      <input class="cw-input" name="account_number" inputmode="numeric" placeholder="Bank Account Number" required>
+      <input class="cw-input" name="ifsc" placeholder="IFSC Code" maxlength="11" required>
+      <button class="cw-btn red full" type="submit">Submit Bank for Verification</button>
+    </form>
+  {% endif %}
 </section>
-<section class="cw-card"><h2>📈 Referral Rewards</h2><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Reward</th><th>User</th><th>Status</th><th>Available</th><th>Date</th></tr></thead><tbody>{% for r in rewards %}<tr><td>₹{{ r.amount }}</td><td>{{ r.full_name or r.email or 'Customer' }}</td><td><span class="badge">{{ r.status }}</span></td><td>{{ r.available_at }}</td><td>{{ r.created_at }}</td></tr>{% else %}<tr><td colspan="5">No referral rewards yet.</td></tr>{% endfor %}</tbody></table></div></section>
-<section class="cw-card"><h2>🧾 Withdrawal History</h2><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Amount</th><th>UPI</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead><tbody>{% for w in withdrawals %}<tr><td>#{{ w.id }}</td><td>₹{{ w.amount }}</td><td>{{ w.payout_details }}</td><td><span class="badge">{{ w.status }}</span></td><td>{{ w.transaction_ref or '—' }}</td><td>{{ w.created_at }}</td></tr>{% else %}<tr><td colspan="6">No withdrawal requests yet.</td></tr>{% endfor %}</tbody></table></div></section>
+
+<section class="cw-card">
+  <div class="cw-row"><div><h2>Withdrawal PIN</h2><div class="muted">6-digit PIN. Admin ko PIN kabhi visible nahi hoga.</div></div>
+  <span class="cw-status">{{ 'SET' if pin_set else 'NOT SET' }}</span></div>
+  {% if not pin_set %}
+  <form class="cw-form">
+    <input class="cw-input" name="pin" id="pin1" inputmode="numeric" maxlength="6" placeholder="6-digit PIN" required>
+    <input class="cw-input" name="pin_confirm" id="pin2" inputmode="numeric" maxlength="6" placeholder="Confirm PIN" required>
+    <button class="cw-btn red full" type="button" onclick="setPin()">Set Withdrawal PIN</button>
+  </form>
+  {% else %}
+  <div class="cw-note">PIN set hai. Security ke liye PIN change karne ka option sirf verified login flow ke through handle kiya jayega.</div>
+  {% endif %}
+</section>
+
+<section class="cw-card">
+  <div class="cw-row"><div><h2>Withdraw Earnings</h2><div class="muted">Minimum ₹{{ withdrawal_min|int }} • Maximum ₹{{ withdrawal_max|int }} • Bank only • 5% fee</div></div>
+  <div class="cw-icon"><svg class="cw-svg" viewBox="0 0 24 24"><path d="M3 6h18v14H3z"/><path d="M3 10h18M7 15h4"/></svg></div></div>
+  <div class="cw-presets">
+    {% for x in [100,300,500,1000,2000,2500,3000,5000] %}<button type="button" class="cw-preset" onclick="pickAmount({{x}})">₹{{ '{:,}'.format(x) }}</button>{% endfor %}
+  </div>
+  <form id="withdrawForm" class="cw-form" method="post" action="{{ url_for('request_earnings_withdrawal') }}">
+    <input class="cw-input" id="withdrawAmount" name="amount" type="number" min="{{ withdrawal_min }}" max="{{ withdrawal_max }}" step="0.01" placeholder="Custom amount (₹)" oninput="calcFee()" required>
+    <input class="cw-input" name="withdrawal_pin" inputmode="numeric" maxlength="6" placeholder="Withdrawal PIN" required>
+    <div class="cw-breakdown full">
+      <div><span>Withdrawal amount</span><b id="bdAmount">₹0.00</b></div>
+      <div><span>Withdrawal fee (5%)</span><b id="bdFee">₹0.00</b></div>
+      <div><span>You receive</span><b id="bdReceive">₹0.00</b></div>
+      <div><span>Total deducted</span><b id="bdTotal">₹0.00</b></div>
+    </div>
+    <button class="cw-btn red full" type="submit" {% if not pin_set or not bank_account or bank_account.status!='VERIFIED' %}disabled{% endif %}>Request Withdrawal</button>
+  </form>
+  <div class="cw-note">Example: ₹500 withdrawal = ₹25 fee = ₹525 total balance deduction. User ko ₹500 milna hai. Actual bank payout complete hone ke baad hi status Paid hoga.</div>
+</section>
+
+<section class="cw-card">
+  <div class="cw-row"><div><h2>Account Summary</h2><div class="muted">Lifetime withdrawal records</div></div></div>
+  <div class="cw-grid" style="margin-top:12px">
+    <div class="cw-stat"><b>₹{{ '%.2f'|format(summary.withdrawn or 0) }}</b><span>Total Withdrawn</span></div>
+    <div class="cw-stat"><b>₹{{ '%.2f'|format(summary.withdrawal_fees or 0) }}</b><span>Total Withdrawal Fees</span></div>
+    <div class="cw-stat"><b>₹{{ '%.2f'|format(summary.reserved or 0) }}</b><span>Reserved</span></div>
+    <div class="cw-stat"><b>₹{{ '%.2f'|format(summary.credited or 0) }}</b><span>Reward Credits</span></div>
+  </div>
+</section>
+
+{% if notifications %}
+<section class="cw-card"><h2>Notifications</h2>
+{% for n in notifications %}<div class="cw-notice"><b>{{ n.title }}</b><div class="muted">{{ n.message }} • {{ n.created_at }}</div></div>{% endfor %}
+</section>
+{% endif %}
+
+<section class="cw-card"><h2>Referral History</h2>
+<div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Reward</th><th>Referred User</th><th>Status</th><th>Available</th><th>Date</th></tr></thead><tbody>
+{% for r in rewards %}<tr><td>₹{{ r.amount }}</td><td>{{ r.full_name or r.email or 'Customer' }}</td><td><span class="cw-status">{{ r.status }}</span></td><td>{{ r.available_at }}</td><td>{{ r.created_at }}</td></tr>
+{% else %}<tr><td colspan="5">No referral rewards yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+
+<section class="cw-card"><h2>Withdrawal History</h2>
+<div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Receive</th><th>Fee</th><th>Total Debit</th><th>Status</th><th>UTR</th><th>Date</th></tr></thead><tbody>
+{% for w in withdrawals %}<tr><td>#{{w.id}}</td><td>₹{{w.net_amount or w.amount}}</td><td>₹{{w.withdrawal_fee or 0}}</td><td>₹{{w.total_debit or w.amount}}</td><td><span class="cw-status">{{w.status}}</span></td><td>{{w.utr or w.transaction_ref or '—'}}</td><td>{{w.created_at}}</td></tr>
+{% else %}<tr><td colspan="7">No withdrawal requests yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+
+<section class="cw-card"><h2>Withdrawal Terms & Fees</h2><div class="cw-note">
+Minimum withdrawal ₹100. Fee 5% extra hai aur user ke selected withdrawal amount ke upar charge hoti hai. Bank verification aur Admin review required hai. Request reserve hone ke baad double withdrawal allowed nahi. Rejected/failed request ka reserved amount release kiya jayega. Actual transfer confirm hone aur UTR/reference save hone ke baad hi Paid status diya jayega.
+</div></section>
 </div></div>
-<script>function copyReferral(){const i=document.getElementById('refLink');i.select();i.setSelectionRange(0,99999);navigator.clipboard.writeText(i.value).then(()=>alert('Referral link copied.')).catch(()=>{});}</script>
+
+<script>
+function copyReferral(){const i=document.getElementById('refLink');if(!i)return;i.select();i.setSelectionRange(0,99999);navigator.clipboard.writeText(i.value).then(()=>alert('Referral link copied.')).catch(()=>{});}
+function pickAmount(n){const i=document.getElementById('withdrawAmount');i.value=n;calcFee();}
+function calcFee(){const a=parseFloat(document.getElementById('withdrawAmount').value||0);const f=a*0.05;document.getElementById('bdAmount').textContent='₹'+a.toFixed(2);document.getElementById('bdFee').textContent='₹'+f.toFixed(2);document.getElementById('bdReceive').textContent='₹'+a.toFixed(2);document.getElementById('bdTotal').textContent='₹'+(a+f).toFixed(2);}
+async function setPin(){const p=document.getElementById('pin1').value,p2=document.getElementById('pin2').value;if(!/^\d{6}$/.test(p)||p!==p2){alert('6-digit PIN dono same hona chahiye.');return;}const fd=new FormData();fd.append('pin',p);fd.append('pin_confirm',p2);const r=await fetch('{{ url_for("set_withdrawal_pin") }}',{method:'POST',body:fd});if(r.ok)location.reload();else alert('PIN set nahi hua.');}
+</script>
 {% endblock %}
