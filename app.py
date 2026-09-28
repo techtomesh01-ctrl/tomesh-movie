@@ -3130,15 +3130,18 @@ def stream_movie(movie_id):
 
     else:
 
-        access = access_for_movie(
-            movie_id
-        )
-
-        if not access["watch"]:
-            return Response(
-                "Payment required.",
-                status=403,
+        # Owner/Admin can preview any movie without customer payment.
+        # Normal customers continue to use the existing paid-access rules.
+        if not session.get("admin_logged_in"):
+            access = access_for_movie(
+                movie_id
             )
+
+            if not access["watch"]:
+                return Response(
+                    "Payment required.",
+                    status=403,
+                )
 
     # --------------------------------------------------------
     # Get movie/video key.
