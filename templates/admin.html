@@ -41,7 +41,7 @@
 <aside class="cw-side">
   <div class="cw-side-title">Management</div>
   <nav class="cw-nav">
-    {% for key,label,ico in [('dashboard','Dashboard','home'),('movies','Movies & Catalog','movie'),('users','Users','users'),('payments','Payments','card'),('subscriptions','Subscriptions','cycle'),('watch','Watch Activity','play'),('analytics','Analytics','chart'),('live','Live Activity','activity'),('ads','Ads Manager','ad'),('notifications','Notifications','bell'),('reports','Reports','report'),('r2','R2 Storage','cloud'),('health','System Health','health'),('security','Security','lock'),('settings','Settings','settings'),('search','Global Search','search')] %}
+    {% for key,label,ico in [('dashboard','Dashboard','home'),('movies','Movies & Catalog','movie'),('users','Users','users'),('payments','Payments','card'),('subscriptions','Subscriptions','cycle'),('watch','Watch Activity','play'),('analytics','Analytics','chart'),('live','Live Activity','activity'),('comments','Comments','comment'),('ads','Ads Manager','ad'),('notifications','Notifications','bell'),('reports','Reports','report'),('r2','R2 Storage','cloud'),('health','System Health','health'),('security','Security','lock'),('settings','Settings','settings'),('search','Global Search','search')] %}
       <a class="{% if section==key %}active{% endif %}" href="{{ url_for('admin', section=key) }}">{{ icon(ico) }} {{ label }}</a>
     {% endfor %}
   </nav>
@@ -63,7 +63,7 @@
   </div>
   <section class="cw-card"><div class="cw-card-head"><div><h2>Owner Control Center</h2><div class="cw-muted">Every module below is connected to the current application data.</div></div></div>
     <div class="cw-grid">
-      {% for key,title,desc,ico in [('movies','Movies & Catalog','Content, posters, videos and catalog management.','movie'),('users','Users','Customer accounts and account activity.','users'),('payments','Payments','Cashfree orders, statuses and payment records.','card'),('subscriptions','Subscriptions','Subscription and authorization records.','cycle'),('watch','Watch Activity','Movie views and access activity.','play'),('analytics','Analytics','Content, users, views and revenue insights.','chart'),('live','Live Activity','Latest payment and customer events.','activity'),('ads','Ads Manager','Top, player and bottom advertising controls.','ad'),('notifications','Notifications','Admin notification and event center.','bell'),('reports','Reports','Downloadable CSV reports from database records.','report'),('r2','R2 Storage','Cloudflare R2 object and storage visibility.','cloud'),('health','System Health','Database and storage health checks.','health'),('security','Security','Admin authentication and security status.','lock'),('settings','Website Settings','Application configuration status.','settings'),('search','Global Search','Search across movies, users and orders.','search')] %}
+      {% for key,title,desc,ico in [('movies','Movies & Catalog','Content, posters, videos and catalog management.','movie'),('users','Users','Customer accounts and account activity.','users'),('payments','Payments','Cashfree orders, statuses and payment records.','card'),('subscriptions','Subscriptions','Subscription and authorization records.','cycle'),('watch','Watch Activity','Movie views and access activity.','play'),('analytics','Analytics','Content, users, views and revenue insights.','chart'),('live','Live Activity','Latest payment and customer events.','activity'),('comments','Comments','Review and remove movie comments.','comment'),('ads','Ads Manager','Top, player and bottom advertising controls.','ad'),('notifications','Notifications','Admin notification and event center.','bell'),('reports','Reports','Downloadable CSV reports from database records.','report'),('r2','R2 Storage','Cloudflare R2 object and storage visibility.','cloud'),('health','System Health','Database and storage health checks.','health'),('security','Security','Admin authentication and security status.','lock'),('settings','Website Settings','Application configuration status.','settings'),('search','Global Search','Search across movies, users and orders.','search')] %}
       <a class="cw-module" href="{{ url_for('admin', section=key) }}"><div class="micon">{{ icon(ico) }}</div><h3>{{ title }}</h3><p>{{ desc }}</p><small>Open Control →</small></a>
       {% endfor %}
     </div>
@@ -85,6 +85,40 @@
 {% if section=='analytics' %}<section class="cw-card"><div class="cw-card-head"><div><h2>Analytics</h2><div class="cw-muted">Database-backed content and business overview.</div></div></div><div class="cw-status-list"><div class="cw-status"><b>Total Views</b><span>{{total_views or 0}} recorded movie views</span></div><div class="cw-status"><b>Top Content</b><span>{% if top_movies %}{{top_movies[0].title}} — {{top_movies[0].views}} views{% else %}No movie data{% endif %}</span></div><div class="cw-status"><b>Revenue</b><span>₹{{'%.2f'|format(total_revenue or 0)}} paid orders</span></div></div></section><section class="cw-card"><div class="cw-card-head"><h2>Most Viewed Movies</h2></div><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Rank</th><th>Movie</th><th>Category</th><th>Views</th></tr></thead><tbody>{% for m in top_movies %}<tr><td>{{loop.index}}</td><td>{{m.title}}</td><td>{{m.category or '—'}}</td><td>{{m.views}}</td></tr>{% else %}<tr><td colspan="4" class="cw-empty">No analytics data.</td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
 
 {% if section=='live' %}<section class="cw-card"><div class="cw-card-head"><div><h2>Live Activity</h2><div class="cw-muted">Latest events available in the current database.</div></div></div><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Type</th><th>Reference</th><th>Customer</th><th>Status</th><th>Amount</th><th>Time</th></tr></thead><tbody>{% for e in live_events %}<tr><td>{{e.event_type}}</td><td>{{e.ref}}</td><td>{{e.customer_id}}</td><td>{{e.status}}</td><td>{% if e.amount %}₹{{e.amount}}{% else %}—{% endif %}</td><td>{{e.event_at}}</td></tr>{% else %}<tr><td colspan="6" class="cw-empty">No recent events.</td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
+
+{% if section=='comments' %}
+<section class="cw-card">
+  <div class="cw-card-head">
+    <div>
+      <h2>Movie Comments</h2>
+      <div class="cw-muted">Latest comments posted by CINEMA WORLD users. Delete spam or unwanted comments here.</div>
+    </div>
+  </div>
+  <div class="cw-table-wrap">
+    <table class="cw-table">
+      <thead><tr><th>ID</th><th>Movie</th><th>User</th><th>Comment</th><th>Created</th><th>Action</th></tr></thead>
+      <tbody>
+      {% for c in comments_admin %}
+        <tr>
+          <td>{{c.id}}</td>
+          <td>{{c.movie_id}}</td>
+          <td>{{c.display_name}}</td>
+          <td style="min-width:260px;max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere">{{c.comment}}</td>
+          <td>{{c.created_at}}</td>
+          <td>
+            <form method="post" action="{{url_for('admin_delete_comment', comment_id=c.id)}}">
+              <button class="cw-btn red" type="submit" onclick="return confirm('Delete this comment?')">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="cw-empty">No comments found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
 
 {% if section=='ads' %}<section class="cw-card"><div class="cw-card-head"><div><h2>Ads Manager</h2><div class="cw-muted">Save the existing Top, Player and Bottom ad settings.</div></div></div><form method="post" action="{{url_for('admin_ads')}}"><div class="cw-form-grid"><div class="cw-field"><label>TOP AD CODE</label><textarea name="ad_top">{{ads.top or ''}}</textarea></div><div class="cw-field"><label>PLAYER AD CODE</label><textarea name="ad_player">{{ads.player or ''}}</textarea></div><div class="cw-field"><label>BOTTOM AD CODE</label><textarea name="ad_bottom">{{ads.bottom or ''}}</textarea></div><div class="cw-field"><label>ADS.TXT</label><textarea readonly>google.com, pub-8697157365303435, DIRECT, f08c47fec0942fa0</textarea></div></div><button class="cw-btn red" type="submit">Save Ads</button></form></section>{% endif %}
 
