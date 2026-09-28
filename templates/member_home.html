@@ -1797,12 +1797,14 @@ Movies • Entertainment • Stories
                 const title =
                     (
                         card.dataset.title ||
+                        card.querySelector(".tm-movie-title")?.textContent ||
                         ""
                     ).toLowerCase();
 
                 const category =
                     (
                         card.dataset.category ||
+                        card.querySelector(".tm-movie-meta")?.textContent ||
                         ""
                     ).toLowerCase();
 
@@ -1868,6 +1870,16 @@ Movies • Entertainment • Stories
 
         searchInput.addEventListener(
             "input",
+            filterMovies
+        );
+
+        searchInput.addEventListener(
+            "keyup",
+            filterMovies
+        );
+
+        searchInput.addEventListener(
+            "search",
             filterMovies
         );
     }
