@@ -889,7 +889,7 @@ body{
             id="tmSearch"
             class="tm-search"
             type="search"
-            placeholder="Search movies..."
+            placeholder="Search movies..."\n            oninput="window.cwSearchMovies(this.value)"
             autocomplete="off"
         >
 
@@ -1442,6 +1442,25 @@ Movies • Entertainment • Stories
 ></div>
 
 <script>
+
+window.cwSearchMovies = function(value){
+    const query = String(value || "").trim().toLowerCase();
+    const cards = document.querySelectorAll(".tm-all-movie-card");
+    const empty = document.getElementById("tmSearchEmpty");
+    const count = document.getElementById("tmMovieCount");
+    let visible = 0;
+    cards.forEach(function(card){
+        const titleEl = card.querySelector(".tm-movie-title");
+        const metaEl = card.querySelector(".tm-movie-meta");
+        const title = String(card.getAttribute("data-title") || (titleEl ? titleEl.textContent : "")).toLowerCase();
+        const category = String(card.getAttribute("data-category") || (metaEl ? metaEl.textContent : "")).toLowerCase();
+        const show = !query || title.includes(query) || category.includes(query);
+        card.style.display = show ? "" : "none";
+        if(show) visible++;
+    });
+    if(count) count.textContent = visible + (visible === 1 ? " movie" : " movies");
+    if(empty) empty.style.display = visible === 0 ? "block" : "none";
+};
 
 (function(){
 
