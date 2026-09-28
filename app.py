@@ -50,6 +50,11 @@ app.secret_key = (
 
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 
+# Harden browser session cookies. HTTPS is used on the production Render site.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = True
+
 
 # ============================================================
 # ADMIN
@@ -62,6 +67,12 @@ ADMIN_USER = os.environ.get(
 ADMIN_PASSWORD = os.environ.get(
     "ADMIN_PASSWORD", "change-me-now"
 ).strip() or "change-me-now"
+
+# Lightweight brute-force protection for the owner login.
+_ADMIN_LOGIN_GUARD = {}
+_ADMIN_LOGIN_GUARD_LOCK = threading.Lock()
+_ADMIN_LOGIN_WINDOW = 10 * 60
+_ADMIN_LOGIN_MAX_FAILURES = 5
 
 
 # ============================================================
@@ -2220,6 +2231,23 @@ def make_stream_token(movie_id, ttl_seconds=24 * 60 * 60):
     return data + "." + signature
 
 
+def customer_is_blocked(customer_id):
+    customer_id = str(customer_id or "").strip()
+    if not customer_id:
+        return False
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT is_blocked FROM customer_users WHERE customer_id=%s LIMIT 1",
+            (customer_id,),
+        )
+        row = cur.fetchone()
+        return bool(row and row.get("is_blocked"))
+    finally:
+        conn.close()
+
+
 def verify_stream_token(token, movie_id):
     try:
         token = str(token or "").strip()
@@ -2251,6 +2279,9 @@ def verify_stream_token(token, movie_id):
         if not customer_id or not customer_id.startswith("tm_"):
             return False
 
+        if customer_is_blocked(customer_id):
+            return False
+
         return True
 
     except Exception:
@@ -2259,6 +2290,14 @@ def verify_stream_token(token, movie_id):
 
 def access_for_movie(movie_id):
     customer_id = get_customer_id()
+
+    if customer_is_blocked(customer_id):
+        return {
+            "watch": False,
+            "download": False,
+            "premium": False,
+            "share": False,
+        }
 
     conn = get_db(dict_rows=True)
     try:
@@ -3419,10 +3458,29 @@ def admin_login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+        client_key = (request.remote_addr or "unknown") + "|" + username.lower()
+        now_ts = time.time()
+
+        with _ADMIN_LOGIN_GUARD_LOCK:
+            state = _ADMIN_LOGIN_GUARD.get(client_key, [])
+            state = [ts for ts in state if now_ts - ts < _ADMIN_LOGIN_WINDOW]
+            if len(state) >= _ADMIN_LOGIN_MAX_FAILURES:
+                _ADMIN_LOGIN_GUARD[client_key] = state
+                flash("Too many failed login attempts. Please try again later.", "error")
+                return render_template("admin_login.html")
 
         if username == ADMIN_USER and password == ADMIN_PASSWORD:
+            with _ADMIN_LOGIN_GUARD_LOCK:
+                _ADMIN_LOGIN_GUARD.pop(client_key, None)
+            session.clear()
             session["admin_logged_in"] = True
             return redirect(url_for("admin"))
+
+        with _ADMIN_LOGIN_GUARD_LOCK:
+            state = _ADMIN_LOGIN_GUARD.get(client_key, [])
+            state = [ts for ts in state if now_ts - ts < _ADMIN_LOGIN_WINDOW]
+            state.append(now_ts)
+            _ADMIN_LOGIN_GUARD[client_key] = state
 
         flash("Invalid username or password.", "error")
 
@@ -3447,6 +3505,13 @@ def customer_login_required(view_func):
     def wrapper(*args, **kwargs):
         if not session.get("customer_logged_in"):
             return redirect(url_for("login"))
+
+        customer_id = session.get("customer_id")
+        if customer_is_blocked(customer_id):
+            session.clear()
+            flash("Your account has been restricted by the administrator.", "error")
+            return redirect(url_for("login"))
+
         return view_func(*args, **kwargs)
     return wrapper
 
