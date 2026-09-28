@@ -659,6 +659,32 @@ def init_db():
             )
         """)
 
+        # ----------------------------------------------------
+        # MOVIE COMMENTS
+        # ----------------------------------------------------
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movie_comments (
+                id SERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL,
+                customer_id TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                comment TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movie_comments_movie
+            ON movie_comments(movie_id, id DESC)
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movie_comments_customer
+            ON movie_comments(customer_id)
+        """)
+
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_customer_activity_customer
             ON customer_activity(customer_id)
@@ -2914,13 +2940,157 @@ def movie_page(movie_id):
         movie.get("views") or 0
     )
 
+    comments = []
+
+    comments_conn = get_db(dict_rows=True)
+    try:
+        comments_cur = comments_conn.cursor()
+        comments_cur.execute(
+            """
+            SELECT id, display_name, comment, created_at
+            FROM movie_comments
+            WHERE movie_id = %s
+            ORDER BY id DESC
+            LIMIT 100
+            """,
+            (movie_id,),
+        )
+        comments = comments_cur.fetchall()
+        comments_cur.close()
+    finally:
+        comments_conn.close()
+
     return render_template(
         "movie.html",
         movie=movie,
         ads=get_ads(),
         access=access,
+        comments=comments,
         cashfree_mode=CASHFREE_JS_MODE,
     )
+
+
+# ============================================================
+# MOVIE COMMENTS
+# ============================================================
+
+@app.route("/movie/<int:movie_id>/comment", methods=["POST"])
+@customer_login_required
+def add_movie_comment(movie_id):
+    customer_id = session.get("customer_id")
+    comment = str(request.form.get("comment", "")).strip()
+
+    if not customer_id or not session.get("customer_logged_in"):
+        flash("Please login to comment.", "error")
+        return redirect(url_for("movie_page", movie_id=movie_id))
+
+    if len(comment) < 2:
+        flash("Comment thoda aur likho.", "error")
+        return redirect(url_for("movie_page", movie_id=movie_id))
+
+    if len(comment) > 500:
+        flash("Comment maximum 500 characters ka ho sakta hai.", "error")
+        return redirect(url_for("movie_page", movie_id=movie_id))
+
+    csrf_token = str(request.form.get("comment_csrf", "")).strip()
+    expected_token = hmac.new(
+        str(app.secret_key).encode("utf-8"),
+        (str(customer_id) + "|" + str(movie_id)).encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not csrf_token or not hmac.compare_digest(csrf_token, expected_token):
+        flash("Comment request invalid. Please try again.", "error")
+        return redirect(url_for("movie_page", movie_id=movie_id))
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+
+        cur.execute("SELECT id FROM movies WHERE id = %s", (movie_id,))
+        if not cur.fetchone():
+            cur.close()
+            abort(404)
+
+        cur.execute(
+            """
+            SELECT created_at
+            FROM movie_comments
+            WHERE customer_id = %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (customer_id,),
+        )
+        last_comment = cur.fetchone()
+
+        if last_comment and last_comment.get("created_at"):
+            elapsed = (datetime.now() - last_comment["created_at"]).total_seconds()
+            if elapsed < 30:
+                cur.close()
+                flash("Please wait 30 seconds before posting another comment.", "error")
+                return redirect(url_for("movie_page", movie_id=movie_id))
+
+        cur.execute(
+            """
+            SELECT full_name, email, mobile
+            FROM customer_users
+            WHERE customer_id = %s
+            LIMIT 1
+            """,
+            (customer_id,),
+        )
+        user = cur.fetchone() or {}
+
+        display_name = str(
+            user.get("full_name")
+            or user.get("email")
+            or user.get("mobile")
+            or "CINEMA WORLD User"
+        ).strip()[:100]
+
+        cur.execute(
+            """
+            INSERT INTO movie_comments
+            (movie_id, customer_id, display_name, comment)
+            VALUES(%s, %s, %s, %s)
+            """,
+            (movie_id, customer_id, display_name, comment),
+        )
+
+        conn.commit()
+        cur.close()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    flash("Comment posted successfully.", "success")
+    return redirect(url_for("movie_page", movie_id=movie_id))
+
+
+@app.route("/admin/comments/delete/<int:comment_id>", methods=["POST"])
+@admin_required
+def admin_delete_comment(comment_id):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM movie_comments WHERE id = %s",
+            (comment_id,),
+        )
+        deleted = cur.rowcount > 0
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    flash(
+        "Comment deleted." if deleted else "Comment not found.",
+        "success" if deleted else "error",
+    )
+    return redirect(url_for("admin", section="comments"))
 
 
 # ============================================================
@@ -4148,7 +4318,7 @@ def admin():
     allowed_sections = {
         "dashboard","movies","users","payments","subscriptions","watch",
         "analytics","live","ads","notifications","reports","r2","health",
-        "security","settings","search"
+        "security","settings","search","comments"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -4268,6 +4438,24 @@ def admin():
         except Exception:
             movie["poster_url"] = None
 
+    comments_admin = []
+    if section == "comments":
+        cur_comments = get_db(dict_rows=True)
+        try:
+            cc = cur_comments.cursor()
+            cc.execute(
+                """
+                SELECT id, movie_id, display_name, comment, created_at
+                FROM movie_comments
+                ORDER BY id DESC
+                LIMIT 500
+                """
+            )
+            comments_admin = cc.fetchall()
+            cc.close()
+        finally:
+            cur_comments.close()
+
     # Admin R2 overview: read-only listing only. This does not upload,
     # delete, move, or modify any R2 object.
     r2_objects = []
@@ -4311,6 +4499,7 @@ def admin():
         search_movies=search_movies,
         search_users=search_users,
         search_payments=search_payments,
+        comments_admin=comments_admin,
         total_movies=int(stats.get("total_movies") or 0),
         total_users=total_users,
         active_subscriptions=active_subscriptions,
