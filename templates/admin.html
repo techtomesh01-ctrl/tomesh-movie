@@ -88,18 +88,66 @@
 {% if section=='live' %}<section class="cw-card"><div class="cw-card-head"><div><h2>Live Activity</h2><div class="cw-muted">Latest events available in the current database.</div></div></div><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Type</th><th>Reference</th><th>Customer</th><th>Status</th><th>Amount</th><th>Time</th></tr></thead><tbody>{% for e in live_events %}<tr><td>{{e.event_type}}</td><td>{{e.ref}}</td><td>{{e.customer_id}}</td><td>{{e.status}}</td><td>{% if e.amount %}₹{{e.amount}}{% else %}—{% endif %}</td><td>{{e.event_at}}</td></tr>{% else %}<tr><td colspan="6" class="cw-empty">No recent events.</td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
 
 {% if section=='earnings' %}
-<section class="cw-card"><div class="cw-card-head"><div><h2>Referral Earnings</h2><div class="cw-muted">Referral reward records and 24-hour pending window.</div></div><a class="cw-btn" href="{{url_for('admin_report_csv', report_name='referrals')}}">Export CSV</a></div>
+<section class="cw-card"><div class="cw-card-head"><div><h2>Referral Earnings</h2><div class="cw-muted">₹25 referral reward records and 24-hour pending window.</div></div><a class="cw-btn" href="{{url_for('admin_report_csv', report_name='referrals')}}">Export CSV</a></div>
 <div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Referrer</th><th>New Customer</th><th>Amount</th><th>Status</th><th>Available</th></tr></thead><tbody>
 {% for r in referral_rewards_admin %}<tr><td>{{r.id}}</td><td>{{r.referrer_name or r.referrer_customer_id}}</td><td>{{r.referred_name or r.referred_customer_id}}</td><td>₹{{r.amount}}</td><td><span class="cw-badge">{{r.status}}</span></td><td>{{r.available_at}}</td></tr>{% else %}<tr><td colspan="6" class="cw-empty">No referral rewards yet.</td></tr>{% endfor %}
 </tbody></table></div></section>
 {% endif %}
 
 {% if section=='withdrawals' %}
-<section class="cw-card"><div class="cw-card-head"><div><h2>Withdrawal Requests</h2><div class="cw-muted">Review user withdrawal requests and their current status.</div></div><a class="cw-btn" href="{{url_for('admin_report_csv', report_name='withdrawals')}}">Export CSV</a></div>
-<div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Payout Detail</th><th>Status</th><th>Requested</th><th>Reference</th></tr></thead><tbody>
-{% for w in withdrawals_admin %}<tr><td>#{{w.id}}</td><td>{{w.full_name or 'User'}}<br><span class="cw-muted">{{w.customer_id}}</span></td><td>₹{{w.amount}}</td><td>{{w.payout_details}}</td><td><span class="cw-badge">{{w.status}}</span></td><td>{{w.created_at}}</td><td>{{w.transaction_ref or '—'}}</td></tr>{% else %}<tr><td colspan="7" class="cw-empty">No withdrawal requests.</td></tr>{% endfor %}
+<section class="cw-card">
+  <div class="cw-card-head"><div><h2>Withdrawals & Bank Verification</h2><div class="cw-muted">Bank-only payouts • 5% user fee • manual review • actual payout must be confirmed before Paid.</div></div></div>
+  <div class="cw-stats" style="margin-top:12px">
+    <div class="cw-stat"><b>₹{{ '%.2f'|format(withdrawal_financials.reserved or 0) }}</b><span>Reserved / Pending Approval</span></div>
+    <div class="cw-stat"><b>₹{{ '%.2f'|format(withdrawal_financials.paid or 0) }}</b><span>Total Paid to Users</span></div>
+    <div class="cw-stat"><b>₹{{ '%.2f'|format(withdrawal_financials.fees or 0) }}</b><span>Withdrawal Fees</span></div>
+    <div class="cw-stat"><b>{{ pending_bank_verifications or 0 }}</b><span>Bank Verifications Pending</span></div>
+  </div>
+</section>
+
+<section class="cw-card"><div class="cw-card-head"><div><h2>Bank Verification Queue</h2><div class="cw-muted">Verify the beneficiary details before approving a withdrawal.</div></div></div>
+<div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>User</th><th>Account Holder</th><th>Bank</th><th>Account</th><th>IFSC</th><th>Status</th><th>Action</th></tr></thead><tbody>
+{% for b in bank_accounts_admin %}
+<tr><td>#{{b.id}}</td><td>{{b.full_name or 'User'}}<br><span class="cw-muted">{{b.customer_id}}</span></td><td>{{b.account_holder_name}}</td><td>{{b.bank_name}}</td><td>•••• {{b.account_number[-4:]}}</td><td>{{b.ifsc}}</td><td><span class="cw-badge">{{b.status}}</span></td><td>
+{% if b.status=='PENDING' %}
+<form method="post" action="{{url_for('admin_process_bank',bank_id=b.id)}}" style="display:flex;gap:5px;flex-wrap:wrap">
+<button class="cw-btn red" name="action" value="verify" type="submit">Verify</button>
+<button class="cw-btn" name="action" value="reject" type="submit">Reject</button>
+<input name="note" placeholder="Note" style="max-width:150px;background:#09090c;border:1px solid #292930;color:#fff;border-radius:8px;padding:7px">
+</form>
+{% else %}{{b.verification_note or '—'}}{% endif %}
+</td></tr>
+{% else %}<tr><td colspan="8" class="cw-empty">No bank verification requests.</td></tr>{% endfor %}
 </tbody></table></div></section>
-{% endif %}
+
+<section class="cw-card"><div class="cw-card-head"><div><h2>Withdrawal Requests</h2><div class="cw-muted">Approve first. Transfer actual funds only after confirming available payout funds. Then record UTR and mark Paid.</div></div><a class="cw-btn" href="{{url_for('admin_report_csv',report_name='withdrawals')}}">Export CSV</a></div>
+<div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>User</th><th>Receive</th><th>Fee</th><th>Total Debit</th><th>Bank</th><th>Status</th><th>Action</th></tr></thead><tbody>
+{% for w in withdrawals_admin %}
+<tr>
+<td>#{{w.id}}</td>
+<td>{{w.full_name or 'User'}}<br><span class="cw-muted">{{w.customer_id}}</span></td>
+<td>₹{{w.net_amount or w.amount}}</td><td>₹{{w.withdrawal_fee or 0}}</td><td>₹{{w.total_debit or w.amount}}</td>
+<td>{{w.bank_name or '—'}}<br>•••• {{w.account_number[-4:] if w.account_number else '—'}}<br>{{w.ifsc or '—'}}</td>
+<td><span class="cw-badge">{{w.status}}</span></td>
+<td>
+{% if w.status=='PENDING' %}
+<form method="post" action="{{url_for('admin_process_withdrawal',withdrawal_id=w.id)}}" style="display:flex;gap:5px;flex-wrap:wrap">
+<button class="cw-btn red" name="action" value="approve" type="submit">Approve</button>
+<button class="cw-btn" name="action" value="reject" type="submit">Reject</button>
+<input name="admin_note" placeholder="Note" style="max-width:150px;background:#09090c;border:1px solid #292930;color:#fff;border-radius:8px;padding:7px">
+</form>
+{% elif w.status=='APPROVED' %}
+<form method="post" action="{{url_for('admin_process_withdrawal',withdrawal_id=w.id)}}" style="display:flex;gap:5px;flex-wrap:wrap">
+<input name="transaction_ref" required placeholder="Actual UTR / reference" style="max-width:180px;background:#09090c;border:1px solid #292930;color:#fff;border-radius:8px;padding:7px">
+<input name="admin_note" placeholder="Note" style="max-width:130px;background:#09090c;border:1px solid #292930;color:#fff;border-radius:8px;padding:7px">
+<button class="cw-btn red" name="action" value="paid" type="submit">Mark Paid</button>
+<button class="cw-btn" name="action" value="reject" type="submit">Reject</button>
+</form>
+{% else %}<span class="cw-muted">{{w.utr or w.transaction_ref or '—'}}</span>{% endif %}
+</td></tr>
+{% else %}<tr><td colspan="8" class="cw-empty">No withdrawal requests.</td></tr>{% endfor %}
+</tbody></table></div></section>
+
 
 {% if section=='support' %}
 <section class="cw-card"><div class="cw-card-head"><div><h2>Customer Support</h2><div class="cw-muted">User problems, replies and screenshots.</div></div></div>
