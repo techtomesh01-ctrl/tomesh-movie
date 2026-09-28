@@ -128,9 +128,12 @@ SUBSCRIPTION_PLAN_NAME = os.environ.get(
     "CINEMA WORLD Premium Monthly",
 ).strip() or "CINEMA WORLD Premium Monthly"
 SUBSCRIPTION_MAX_CYCLES = 120
-REFERRAL_REWARD_AMOUNT = 50.00
+REFERRAL_REWARD_AMOUNT = 25.00
 REFERRAL_PENDING_HOURS = 24
 WITHDRAWAL_MIN_AMOUNT = 100.00
+WITHDRAWAL_FEE_RATE = 0.05
+WITHDRAWAL_PIN_LENGTH = 6
+WITHDRAWAL_MAX_AMOUNT = 5000.00
 SUPPORT_MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024
 CASHFREE_WEBHOOK_SECRET = os.environ.get(
     "CASHFREE_WEBHOOK_SECRET",
@@ -692,6 +695,50 @@ def init_db():
             ON withdrawal_requests(customer_id, id DESC)
         """)
 
+        cur.execute("""ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS withdrawal_pin_hash TEXT""")
+        cur.execute("""ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS withdrawal_pin_set_at TIMESTAMP""")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customer_bank_accounts (
+                id SERIAL PRIMARY KEY, customer_id TEXT NOT NULL,
+                account_holder_name TEXT NOT NULL, account_number TEXT NOT NULL,
+                ifsc TEXT NOT NULL, bank_name TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING', verification_note TEXT,
+                verification_ref TEXT, verified_at TIMESTAMP, rejected_at TIMESTAMP,
+                last_verified_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""CREATE INDEX IF NOT EXISTS idx_customer_bank_accounts_customer ON customer_bank_accounts(customer_id, id DESC)""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_account_id INTEGER""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS withdrawal_fee NUMERIC(10,2) NOT NULL DEFAULT 0""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS net_amount NUMERIC(10,2)""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS total_debit NUMERIC(10,2)""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS utr TEXT""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS idempotency_key TEXT""")
+        cur.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_withdrawal_idempotency ON withdrawal_requests(idempotency_key) WHERE idempotency_key IS NOT NULL""")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS wallet_ledger (
+                id BIGSERIAL PRIMARY KEY, customer_id TEXT NOT NULL,
+                entry_type TEXT NOT NULL, direction TEXT NOT NULL, amount NUMERIC(12,2) NOT NULL,
+                reference_type TEXT, reference_id TEXT, description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""CREATE INDEX IF NOT EXISTS idx_wallet_ledger_customer ON wallet_ledger(customer_id, id DESC)""")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customer_notifications (
+                id BIGSERIAL PRIMARY KEY, customer_id TEXT NOT NULL,
+                title TEXT NOT NULL, message TEXT NOT NULL,
+                notification_type TEXT NOT NULL DEFAULT 'INFO',
+                is_read BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""CREATE INDEX IF NOT EXISTS idx_customer_notifications_customer ON customer_notifications(customer_id, id DESC)""")
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS support_tickets (
                 id SERIAL PRIMARY KEY,
@@ -1238,44 +1285,49 @@ def create_referral_reward_for_order(local_order):
             VALUES(%s,%s,%s,%s,'PENDING',NOW() + (%s || ' hours')::interval)
             ON CONFLICT (payment_order_id) DO NOTHING
             """,
-            (
-                payment_order_id,
-                attribution["referrer_customer_id"],
-                referred_customer_id,
-                REFERRAL_REWARD_AMOUNT,
-                REFERRAL_PENDING_HOURS,
-            ),
+            (payment_order_id, attribution["referrer_customer_id"], referred_customer_id,
+             REFERRAL_REWARD_AMOUNT, REFERRAL_PENDING_HOURS),
         )
+        created = cur.rowcount > 0
+        if created:
+            referrer = attribution["referrer_customer_id"]
+            cur.execute("""
+                INSERT INTO wallet_ledger
+                (customer_id,entry_type,direction,amount,reference_type,reference_id,description)
+                VALUES(%s,'REFERRAL_PENDING','CREDIT',%s,'REFERRAL_REWARD',%s,'₹25 referral reward pending for 24 hours')
+                ON CONFLICT DO NOTHING
+            """,(referrer,REFERRAL_REWARD_AMOUNT,str(payment_order_id)))
+            cur.execute("""
+                INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                VALUES(%s,'Referral reward pending',%s,'EARNINGS')
+            """,(referrer,f"₹{REFERRAL_REWARD_AMOUNT:.0f} referral reward is pending for 24 hours."))
         conn.commit()
-        return cur.rowcount > 0
+        return created
     finally:
         conn.close()
 
 
 def settle_due_referral_rewards(customer_id=None):
-    conn = get_db()
+    conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
         if customer_id:
-            cur.execute(
-                """
-                UPDATE referral_rewards
-                SET status='AVAILABLE', updated_at=NOW()
-                WHERE referrer_customer_id=%s
-                  AND status='PENDING'
-                  AND available_at <= NOW()
-                """,
-                (customer_id,),
-            )
+            cur.execute("SELECT id,referrer_customer_id,amount FROM referral_rewards WHERE referrer_customer_id=%s AND status='PENDING' AND available_at<=NOW() FOR UPDATE",(customer_id,))
         else:
-            cur.execute(
-                """
-                UPDATE referral_rewards
-                SET status='AVAILABLE', updated_at=NOW()
-                WHERE status='PENDING'
-                  AND available_at <= NOW()
-                """
-            )
+            cur.execute("SELECT id,referrer_customer_id,amount FROM referral_rewards WHERE status='PENDING' AND available_at<=NOW() FOR UPDATE")
+        rows = cur.fetchall()
+        for row in rows:
+            cur.execute("UPDATE referral_rewards SET status='AVAILABLE',updated_at=NOW() WHERE id=%s AND status='PENDING'",(row["id"],))
+            if cur.rowcount:
+                cur.execute("""
+                    INSERT INTO wallet_ledger(customer_id,entry_type,direction,amount,reference_type,reference_id,description)
+                    VALUES(%s,'REFERRAL_AVAILABLE','CREDIT',%s,'REFERRAL_REWARD',%s,'Referral reward became available')
+                    ON CONFLICT DO NOTHING
+                """,(row["referrer_customer_id"],row["amount"],str(row["id"])))
+                cur.execute("""
+                    INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                    VALUES(%s,'Referral reward available',%s,'EARNINGS')
+                """,(row["referrer_customer_id"],f"₹{float(row['amount']):.0f} referral reward is now available to withdraw."))
         conn.commit()
     finally:
         conn.close()
@@ -1298,18 +1350,21 @@ def get_earnings_summary(customer_id):
             (customer_id,),
         )
         rewards = cur.fetchone() or {}
-        cur.execute(
-            """
-            SELECT COALESCE(SUM(amount),0) AS reserved
+        cur.execute("""
+            SELECT COALESCE(SUM(COALESCE(total_debit,amount)),0) AS reserved
             FROM withdrawal_requests
-            WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','PAID')
-            """,
-            (customer_id,),
-        )
+            WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','APPROVED')
+        """,(customer_id,))
         reserved = cur.fetchone() or {}
         credited = float(rewards.get("credited") or 0)
         reserved_amount = float(reserved.get("reserved") or 0)
         available = max(0.0, credited - reserved_amount)
+        cur.execute("""
+            SELECT COALESCE(SUM(CASE WHEN status='PAID' THEN COALESCE(net_amount,amount) ELSE 0 END),0) AS withdrawn,
+                   COALESCE(SUM(CASE WHEN status='PAID' THEN COALESCE(withdrawal_fee,0) ELSE 0 END),0) AS fees
+            FROM withdrawal_requests WHERE customer_id=%s
+        """,(customer_id,))
+        paid_stats = cur.fetchone() or {}
 
         cur.execute(
             "SELECT COUNT(*) AS n FROM referral_attributions WHERE referrer_customer_id=%s",
@@ -1323,6 +1378,8 @@ def get_earnings_summary(customer_id):
             "credited": credited,
             "reserved": reserved_amount,
             "available": available,
+            "withdrawn": float(paid_stats.get("withdrawn") or 0),
+            "withdrawal_fees": float(paid_stats.get("fees") or 0),
             "referrals": referrals,
         }
     finally:
@@ -4799,7 +4856,15 @@ def admin():
         cur.execute("SELECT COALESCE(SUM(amount),0) AS n FROM referral_rewards WHERE status IN ('PENDING','AVAILABLE')")
         total_referral_rewards = (cur.fetchone() or {}).get("n") or 0
         cur.execute("SELECT COALESCE(SUM(amount),0) AS n FROM withdrawal_requests WHERE status='PENDING'")
-        pending_withdrawals_total = (cur.fetchone() or {}).get("n") or 0
+        pending_withdrawals_total=(cur.fetchone() or {}).get("n") or 0
+        cur.execute("""SELECT
+          COALESCE(SUM(CASE WHEN status IN ('PENDING','APPROVED') THEN COALESCE(total_debit,amount) ELSE 0 END),0) AS reserved,
+          COALESCE(SUM(CASE WHEN status='PAID' THEN COALESCE(net_amount,amount) ELSE 0 END),0) AS paid,
+          COALESCE(SUM(CASE WHEN status='PAID' THEN COALESCE(withdrawal_fee,0) ELSE 0 END),0) AS fees
+          FROM withdrawal_requests""")
+        withdrawal_financials=cur.fetchone() or {}
+        cur.execute("SELECT COUNT(*) AS n FROM customer_bank_accounts WHERE status='PENDING'")
+        pending_bank_verifications=int((cur.fetchone() or {}).get("n") or 0)
 
         cur.execute("SELECT * FROM movies ORDER BY id DESC")
         movies = cur.fetchall()
@@ -4865,13 +4930,21 @@ def admin():
         referral_rewards_admin = cur.fetchall()
 
         cur.execute("""
-            SELECT
-                w.*, u.full_name, u.email, u.mobile
+            SELECT w.*,u.full_name,u.email,u.mobile,
+                   b.account_holder_name,b.account_number,b.ifsc,b.bank_name,b.status AS bank_status
             FROM withdrawal_requests w
             LEFT JOIN customer_users u ON u.customer_id=w.customer_id
+            LEFT JOIN customer_bank_accounts b ON b.id=w.bank_account_id
             ORDER BY w.id DESC LIMIT 300
         """)
-        withdrawals_admin = cur.fetchall()
+        withdrawals_admin=cur.fetchall()
+        cur.execute("""
+            SELECT b.*,u.full_name,u.email,u.mobile
+            FROM customer_bank_accounts b
+            LEFT JOIN customer_users u ON u.customer_id=b.customer_id
+            ORDER BY b.id DESC LIMIT 300
+        """)
+        bank_accounts_admin=cur.fetchall()
 
         cur.execute("""
             SELECT id, customer_id, subject, status, screenshot_key, created_at, updated_at, resolved_at
@@ -5002,7 +5075,10 @@ def admin():
         r2_error=r2_error,
         referral_rewards_admin=referral_rewards_admin,
         withdrawals_admin=withdrawals_admin,
+        bank_accounts_admin=bank_accounts_admin,
         support_admin=support_admin,
+        withdrawal_financials=withdrawal_financials,
+        pending_bank_verifications=pending_bank_verifications,
         total_referral_rewards=total_referral_rewards,
         pending_withdrawals_total=pending_withdrawals_total,
     )
@@ -5015,114 +5091,138 @@ def admin():
 @app.route("/earnings")
 @customer_login_required
 def user_earnings():
-    customer_id = session.get("customer_id")
-    referral_code = ensure_referral_code(customer_id)
-    summary = get_earnings_summary(customer_id)
-
-    conn = get_db(dict_rows=True)
+    customer_id=session.get("customer_id")
+    referral_code=ensure_referral_code(customer_id)
+    summary=get_earnings_summary(customer_id)
+    conn=get_db(dict_rows=True)
     try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT rr.amount, rr.status, rr.available_at, rr.created_at,
-                   rr.referred_customer_id, u.full_name, u.email
-            FROM referral_rewards rr
-            LEFT JOIN customer_users u ON u.customer_id=rr.referred_customer_id
-            WHERE rr.referrer_customer_id=%s
-            ORDER BY rr.id DESC LIMIT 100
-            """,
-            (customer_id,),
-        )
-        rewards = cur.fetchall()
-
-        cur.execute(
-            """
-            SELECT id, amount, payout_method, payout_details, status,
-                   admin_note, transaction_ref, created_at, processed_at
-            FROM withdrawal_requests
-            WHERE customer_id=%s
-            ORDER BY id DESC LIMIT 50
-            """,
-            (customer_id,),
-        )
-        withdrawals = cur.fetchall()
+        cur=conn.cursor()
+        cur.execute("""SELECT rr.amount,rr.status,rr.available_at,rr.created_at,rr.referred_customer_id,u.full_name,u.email
+                       FROM referral_rewards rr LEFT JOIN customer_users u ON u.customer_id=rr.referred_customer_id
+                       WHERE rr.referrer_customer_id=%s ORDER BY rr.id DESC LIMIT 100""",(customer_id,))
+        rewards=cur.fetchall()
+        cur.execute("""SELECT id,amount,withdrawal_fee,net_amount,total_debit,status,admin_note,transaction_ref,utr,created_at,approved_at,paid_at,processed_at
+                       FROM withdrawal_requests WHERE customer_id=%s ORDER BY id DESC LIMIT 50""",(customer_id,))
+        withdrawals=cur.fetchall()
+        cur.execute("""SELECT id,account_holder_name,account_number,ifsc,bank_name,status,verification_note,verification_ref,verified_at,created_at,updated_at
+                       FROM customer_bank_accounts WHERE customer_id=%s ORDER BY id DESC LIMIT 1""",(customer_id,))
+        bank_account=cur.fetchone()
+        cur.execute("SELECT withdrawal_pin_hash IS NOT NULL AS pin_set FROM customer_users WHERE customer_id=%s",(customer_id,))
+        pin_set=bool((cur.fetchone() or {}).get("pin_set"))
+        cur.execute("""SELECT id,title,message,notification_type,is_read,created_at FROM customer_notifications
+                       WHERE customer_id=%s ORDER BY id DESC LIMIT 20""",(customer_id,))
+        notifications=cur.fetchall()
     finally:
         conn.close()
-
-    referral_url = url_for("home", ref=referral_code, _external=True) if referral_code else ""
-
-    return render_template(
-        "earnings.html",
-        summary=summary,
-        referral_code=referral_code,
-        referral_url=referral_url,
-        rewards=rewards,
-        withdrawals=withdrawals,
-        withdrawal_min=WITHDRAWAL_MIN_AMOUNT,
-    )
+    referral_url=url_for("home",ref=referral_code,_external=True) if referral_code else ""
+    return render_template("earnings.html",summary=summary,referral_code=referral_code,referral_url=referral_url,
+        rewards=rewards,withdrawals=withdrawals,withdrawal_min=WITHDRAWAL_MIN_AMOUNT,
+        withdrawal_fee_rate=WITHDRAWAL_FEE_RATE,withdrawal_max=WITHDRAWAL_MAX_AMOUNT,
+        bank_account=bank_account,pin_set=pin_set,notifications=notifications)
 
 
-@app.route("/earnings/withdraw", methods=["POST"])
+@app.route("/earnings/pin",methods=["POST"])
 @customer_login_required
-def request_earnings_withdrawal():
-    customer_id = session.get("customer_id")
+def set_withdrawal_pin():
+    customer_id=session.get("customer_id")
+    pin=str(request.form.get("pin","") or "").strip()
+    pin2=str(request.form.get("pin_confirm","") or "").strip()
+    if not re.fullmatch(r"\d{6}",pin) or pin!=pin2:
+        flash("Withdrawal PIN exactly 6 digits ka hona chahiye aur dono same hone chahiye.","error")
+        return redirect(url_for("user_earnings"))
+    pin_hash=hmac.new(str(app.secret_key).encode(),("withdrawal-pin:"+pin).encode(),hashlib.sha256).hexdigest()
+    conn=get_db()
     try:
-        amount = float(str(request.form.get("amount", "")).strip())
-    except Exception:
-        amount = 0
+        cur=conn.cursor()
+        cur.execute("UPDATE customer_users SET withdrawal_pin_hash=%s,withdrawal_pin_set_at=NOW() WHERE customer_id=%s",(pin_hash,customer_id))
+        conn.commit()
+    finally: conn.close()
+    flash("Withdrawal PIN securely set ho gaya.","success")
+    return redirect(url_for("user_earnings"))
 
-    payout_details = str(request.form.get("payout_details", "") or "").strip()
-    if amount < WITHDRAWAL_MIN_AMOUNT:
-        flash(f"Minimum withdrawal is ₹{int(WITHDRAWAL_MIN_AMOUNT)}.", "error")
-        return redirect(url_for("user_earnings"))
 
-    if amount > 100000:
-        flash("Withdrawal amount is too high.", "error")
-        return redirect(url_for("user_earnings"))
-
-    if not re.fullmatch(r"[A-Za-z0-9._-]{2,100}@[A-Za-z]{2,30}", payout_details):
-        flash("Please enter a valid UPI ID.", "error")
-        return redirect(url_for("user_earnings"))
-
-    settle_due_referral_rewards(customer_id)
-
-    conn = get_db(dict_rows=True)
+@app.route("/earnings/bank",methods=["POST"])
+@customer_login_required
+def save_withdrawal_bank():
+    customer_id=session.get("customer_id")
+    holder=re.sub(r"\s+"," ",str(request.form.get("account_holder_name","") or "").strip())[:120]
+    account=re.sub(r"\D","",str(request.form.get("account_number","") or ""))
+    ifsc=str(request.form.get("ifsc","") or "").strip().upper()
+    bank=re.sub(r"\s+"," ",str(request.form.get("bank_name","") or "").strip())[:120]
+    if len(holder)<2 or not re.fullmatch(r"\d{8,20}",account):
+        flash("Valid account-holder name aur bank account number dijiye.","error"); return redirect(url_for("user_earnings"))
+    if not re.fullmatch(r"[A-Z]{4}0[A-Z0-9]{6}",ifsc):
+        flash("Valid IFSC code dijiye.","error"); return redirect(url_for("user_earnings"))
+    if len(bank)<2:
+        flash("Bank name required hai.","error"); return redirect(url_for("user_earnings"))
+    conn=get_db(dict_rows=True)
     try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT
-              COALESCE((SELECT SUM(amount) FROM referral_rewards
-                        WHERE referrer_customer_id=%s AND status='AVAILABLE'),0)
-              -
-              COALESCE((SELECT SUM(amount) FROM withdrawal_requests
-                        WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','PAID')),0)
-              AS available
-            """,
-            (customer_id, customer_id),
-        )
-        available = float((cur.fetchone() or {}).get("available") or 0)
-        if amount > available + 0.001:
-            conn.rollback()
-            flash("Withdrawal amount is greater than your available balance.", "error")
-            return redirect(url_for("user_earnings"))
-
-        cur.execute(
-            """
-            INSERT INTO withdrawal_requests
-            (customer_id, amount, payout_method, payout_details, status)
-            VALUES(%s,%s,'UPI',%s,'PENDING')
-            """,
-            (customer_id, amount, payout_details),
-        )
+        cur=conn.cursor()
+        cur.execute("SELECT id FROM customer_bank_accounts WHERE customer_id=%s AND status IN ('PENDING','VERIFIED') ORDER BY id DESC LIMIT 1",(customer_id,))
+        if cur.fetchone():
+            conn.rollback(); flash("Ek active bank account already hai. Pehle existing verification complete/change request process karein.","error"); return redirect(url_for("user_earnings"))
+        cur.execute("""INSERT INTO customer_bank_accounts(customer_id,account_holder_name,account_number,ifsc,bank_name,status)
+                       VALUES(%s,%s,%s,%s,%s,'PENDING')""",(customer_id,holder,account,ifsc,bank))
+        cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                       VALUES(%s,'Bank verification pending','Your bank account has been submitted for manual verification.','BANK')""",(customer_id,))
         conn.commit()
     except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+        conn.rollback(); raise
+    finally: conn.close()
+    flash("Bank account submitted. Admin verification ke baad withdrawal enable hoga.","success")
+    return redirect(url_for("user_earnings"))
 
-    flash("Withdrawal request submitted. Admin verification is required.", "success")
+
+@app.route("/earnings/withdraw",methods=["POST"])
+@customer_login_required
+def request_earnings_withdrawal():
+    customer_id=session.get("customer_id")
+    try: amount=float(str(request.form.get("amount","")).strip())
+    except Exception: amount=0
+    pin=str(request.form.get("withdrawal_pin","") or "").strip()
+    if amount<WITHDRAWAL_MIN_AMOUNT or amount>WITHDRAWAL_MAX_AMOUNT:
+        flash(f"Withdrawal ₹{int(WITHDRAWAL_MIN_AMOUNT)} se ₹{int(WITHDRAWAL_MAX_AMOUNT)} ke beech hona chahiye.","error")
+        return redirect(url_for("user_earnings"))
+    settle_due_referral_rewards(customer_id)
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        cur.execute("SELECT withdrawal_pin_hash FROM customer_users WHERE customer_id=%s",(customer_id,))
+        user=cur.fetchone() or {}
+        expected=user.get("withdrawal_pin_hash")
+        if not expected:
+            conn.rollback(); flash("Pehle 6-digit Withdrawal PIN set kijiye.","error"); return redirect(url_for("user_earnings"))
+        supplied=hmac.new(str(app.secret_key).encode(),("withdrawal-pin:"+pin).encode(),hashlib.sha256).hexdigest()
+        if not re.fullmatch(r"\d{6}",pin) or not hmac.compare_digest(supplied,str(expected)):
+            conn.rollback(); flash("Withdrawal PIN incorrect hai.","error"); return redirect(url_for("user_earnings"))
+        cur.execute("""SELECT id,account_holder_name,account_number,ifsc,bank_name,status FROM customer_bank_accounts
+                       WHERE customer_id=%s AND status='VERIFIED' ORDER BY id DESC LIMIT 1""",(customer_id,))
+        bank=cur.fetchone()
+        if not bank:
+            conn.rollback(); flash("Verified bank account ke bina withdrawal nahi ho sakta.","error"); return redirect(url_for("user_earnings"))
+        fee=round(amount*WITHDRAWAL_FEE_RATE,2)
+        total_debit=round(amount+fee,2)
+        cur.execute("""SELECT COALESCE((SELECT SUM(amount) FROM referral_rewards WHERE referrer_customer_id=%s AND status='AVAILABLE'),0)
+                              -COALESCE((SELECT SUM(COALESCE(total_debit,amount)) FROM withdrawal_requests
+                                         WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','APPROVED')),0) AS available""",(customer_id,customer_id))
+        available=float((cur.fetchone() or {}).get("available") or 0)
+        if total_debit>available+0.001:
+            conn.rollback(); flash(f"Insufficient available balance. ₹{total_debit:.2f} total debit ke liye balance chahiye.","error"); return redirect(url_for("user_earnings"))
+        key="cw-withdraw-"+secrets.token_hex(16)
+        cur.execute("""INSERT INTO withdrawal_requests(customer_id,amount,payout_method,payout_details,status,bank_account_id,withdrawal_fee,net_amount,total_debit,idempotency_key)
+                       VALUES(%s,%s,'BANK',%s,'PENDING',%s,%s,%s,%s,%s)""",
+                    (customer_id,amount,"BANK:"+str(bank["id"]),bank["id"],fee,amount,total_debit,key))
+        cur.execute("""INSERT INTO wallet_ledger(customer_id,entry_type,direction,amount,reference_type,reference_id,description)
+                       VALUES(%s,'WITHDRAWAL_RESERVED','DEBIT',%s,'WITHDRAWAL',%s,%s)""",
+                    (customer_id,total_debit,key,f"Withdrawal ₹{amount:.2f} reserved; fee ₹{fee:.2f}"))
+        cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                       VALUES(%s,'Withdrawal requested',%s,'WITHDRAWAL')""",
+                    (customer_id,f"Withdrawal request for ₹{amount:.2f} submitted. You receive ₹{amount:.2f}; total balance debit is ₹{total_debit:.2f}."))
+        conn.commit()
+    except Exception:
+        conn.rollback(); raise
+    finally: conn.close()
+    flash("Withdrawal request submitted. Admin verification and actual payout confirmation required.","success")
     return redirect(url_for("user_earnings"))
 
 
@@ -5229,62 +5329,112 @@ def help_support():
 # ADMIN EARNINGS / WITHDRAWALS / SUPPORT
 # ============================================================
 
-@app.route("/admin/withdrawal/<int:withdrawal_id>/process", methods=["POST"])
-@admin_required
-def admin_process_withdrawal(withdrawal_id):
-    action = str(request.form.get("action", "") or "").strip().lower()
-    transaction_ref = str(request.form.get("transaction_ref", "") or "").strip()[:150]
-    admin_note = str(request.form.get("admin_note", "") or "").strip()[:1000]
-
-    if action not in {"paid", "reject"}:
-        flash("Invalid withdrawal action.", "error")
-        return redirect(url_for("admin", section="withdrawals"))
-
-    conn = get_db(dict_rows=True)
+@app.route("/notifications/read/<int:notification_id>",methods=["POST"])
+@customer_login_required
+def mark_customer_notification_read(notification_id):
+    customer_id=session.get("customer_id")
+    conn=get_db()
     try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id,customer_id,amount,status FROM withdrawal_requests WHERE id=%s FOR UPDATE",
-            (withdrawal_id,),
-        )
-        row = cur.fetchone()
-        if not row:
-            conn.rollback()
-            flash("Withdrawal not found.", "error")
-            return redirect(url_for("admin", section="withdrawals"))
-        if str(row["status"]).upper() != "PENDING":
-            conn.rollback()
-            flash("This withdrawal has already been processed.", "error")
-            return redirect(url_for("admin", section="withdrawals"))
+        cur=conn.cursor()
+        cur.execute("UPDATE customer_notifications SET is_read=TRUE WHERE id=%s AND customer_id=%s",(notification_id,customer_id))
+        conn.commit()
+    finally: conn.close()
+    return redirect(url_for("user_earnings"))
 
-        if action == "paid" and not transaction_ref:
-            conn.rollback()
-            flash("Enter the payout transaction/reference number before marking Paid.", "error")
-            return redirect(url_for("admin", section="withdrawals"))
 
-        cur.execute(
-            """
-            UPDATE withdrawal_requests
-            SET status=%s, admin_note=%s, transaction_ref=%s, processed_at=NOW()
-            WHERE id=%s
-            """,
-            (
-                "PAID" if action == "paid" else "REJECTED",
-                admin_note or None,
-                transaction_ref or None,
-                withdrawal_id,
-            ),
-        )
+@app.route("/admin/bank/<int:bank_id>/process",methods=["POST"])
+@admin_required
+def admin_process_bank(bank_id):
+    action=str(request.form.get("action","") or "").strip().lower()
+    note=str(request.form.get("note","") or "").strip()[:1000]
+    if action not in {"verify","reject"}:
+        flash("Invalid bank verification action.","error"); return redirect(url_for("admin",section="withdrawals"))
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        cur.execute("SELECT * FROM customer_bank_accounts WHERE id=%s FOR UPDATE",(bank_id,))
+        bank=cur.fetchone()
+        if not bank:
+            conn.rollback(); flash("Bank account not found.","error"); return redirect(url_for("admin",section="withdrawals"))
+        new_status="VERIFIED" if action=="verify" else "REJECTED"
+        cur.execute("""UPDATE customer_bank_accounts SET status=%s,verification_note=%s,verification_ref=%s,
+                       verified_at=%s,rejected_at=%s,last_verified_at=%s,updated_at=NOW() WHERE id=%s""",
+                    (new_status,note or None,"ADMIN-"+secrets.token_hex(8),
+                     datetime.now() if action=="verify" else None,
+                     datetime.now() if action=="reject" else None,
+                     datetime.now() if action=="verify" else None,bank_id))
+        cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                       VALUES(%s,%s,%s,'BANK')""",
+                    (bank["customer_id"],"Bank verification "+("successful" if action=="verify" else "rejected"),
+                     "Your bank account has been "+("verified. Withdrawal is now enabled after your PIN is set." if action=="verify" else "rejected. Please submit corrected bank details.")))
         conn.commit()
     except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+        conn.rollback(); raise
+    finally: conn.close()
+    flash("Bank verification updated.","success"); return redirect(url_for("admin",section="withdrawals"))
 
-    flash("Withdrawal marked " + ("Paid." if action == "paid" else "Rejected."), "success")
-    return redirect(url_for("admin", section="withdrawals"))
 
+@app.route("/admin/withdrawal/<int:withdrawal_id>/process",methods=["POST"])
+@admin_required
+def admin_process_withdrawal(withdrawal_id):
+    action=str(request.form.get("action","") or "").strip().lower()
+    transaction_ref=str(request.form.get("transaction_ref","") or "").strip()[:150]
+    admin_note=str(request.form.get("admin_note","") or "").strip()[:1000]
+    if action not in {"approve","paid","reject"}:
+        flash("Invalid withdrawal action.","error"); return redirect(url_for("admin",section="withdrawals"))
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        cur.execute("""SELECT w.*,b.account_holder_name,b.account_number,b.ifsc,b.bank_name,b.status AS bank_status
+                       FROM withdrawal_requests w LEFT JOIN customer_bank_accounts b ON b.id=w.bank_account_id
+                       WHERE w.id=%s FOR UPDATE""",(withdrawal_id,))
+        row=cur.fetchone()
+        if not row:
+            conn.rollback(); flash("Withdrawal not found.","error"); return redirect(url_for("admin",section="withdrawals"))
+        status=str(row.get("status") or "").upper()
+        if action=="approve":
+            if status!="PENDING":
+                conn.rollback(); flash("Only Pending withdrawals can be approved.","error"); return redirect(url_for("admin",section="withdrawals"))
+            if str(row.get("bank_status") or "").upper()!="VERIFIED":
+                conn.rollback(); flash("Verified bank account required before approval.","error"); return redirect(url_for("admin",section="withdrawals"))
+            cur.execute("""UPDATE withdrawal_requests SET status='APPROVED',admin_note=%s,approved_at=NOW(),processed_at=NOW()
+                           WHERE id=%s AND status='PENDING'""",(admin_note or None,withdrawal_id))
+            cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                           VALUES(%s,'Withdrawal approved',%s,'WITHDRAWAL')""",
+                        (row["customer_id"],f"Withdrawal #{withdrawal_id} approved for ₹{float(row['net_amount'] or row['amount']):.2f}. Actual payout is still pending."))
+            conn.commit(); flash("Approved. Actual bank transfer ke baad hi Paid mark karein.","success")
+            return redirect(url_for("admin",section="withdrawals"))
+        if action=="paid":
+            if status!="APPROVED":
+                conn.rollback(); flash("Only Approved withdrawals can be marked Paid.","error"); return redirect(url_for("admin",section="withdrawals"))
+            if not transaction_ref:
+                conn.rollback(); flash("Actual payout UTR/reference required before Paid.","error"); return redirect(url_for("admin",section="withdrawals"))
+            cur.execute("""UPDATE withdrawal_requests SET status='PAID',admin_note=%s,transaction_ref=%s,utr=%s,paid_at=NOW(),processed_at=NOW()
+                           WHERE id=%s AND status='APPROVED'""",(admin_note or None,transaction_ref,transaction_ref,withdrawal_id))
+            if cur.rowcount!=1:
+                conn.rollback(); flash("Withdrawal status changed; Paid was not applied.","error"); return redirect(url_for("admin",section="withdrawals"))
+            cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                           VALUES(%s,'Withdrawal paid',%s,'WITHDRAWAL')""",
+                        (row["customer_id"],f"Withdrawal #{withdrawal_id} of ₹{float(row['net_amount'] or row['amount']):.2f} is marked Paid. UTR/reference: {transaction_ref}."))
+            conn.commit(); flash("Paid recorded with UTR/reference.","success")
+            return redirect(url_for("admin",section="withdrawals"))
+        if status not in {"PENDING","APPROVED"}:
+            conn.rollback(); flash("This withdrawal cannot be rejected now.","error"); return redirect(url_for("admin",section="withdrawals"))
+        reason=admin_note or "Withdrawal rejected by admin."
+        cur.execute("""UPDATE withdrawal_requests SET status='REJECTED',admin_note=%s,rejection_reason=%s,processed_at=NOW()
+                       WHERE id=%s AND status IN ('PENDING','APPROVED')""",(reason,reason,withdrawal_id))
+        cur.execute("""INSERT INTO wallet_ledger(customer_id,entry_type,direction,amount,reference_type,reference_id,description)
+                       VALUES(%s,'WITHDRAWAL_RELEASED','CREDIT',%s,'WITHDRAWAL',%s,'Rejected withdrawal released back to available balance')
+                       ON CONFLICT DO NOTHING""",(row["customer_id"],row["total_debit"] or row["amount"],str(withdrawal_id)))
+        cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                       VALUES(%s,'Withdrawal rejected',%s,'WITHDRAWAL')""",
+                    (row["customer_id"],f"Withdrawal #{withdrawal_id} was rejected. Reserved amount has been released back to your available balance."))
+        conn.commit()
+    except Exception:
+        conn.rollback(); raise
+    finally: conn.close()
+    flash("Withdrawal rejected and reserved balance released.","success")
+    return redirect(url_for("admin",section="withdrawals"))
 
 @app.route("/admin/support/<int:ticket_id>/reply", methods=["POST"])
 @admin_required
