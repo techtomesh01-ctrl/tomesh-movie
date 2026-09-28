@@ -5581,13 +5581,6 @@ def recover_known_r2_movies():
             "poster": "posters/ed7160c7c44d4d86830f72ce6667c73c.png",
             "video": "videos/7143734e197443298a636a93349dd124.mp4",
         },
-        {
-            "title": "Test Movie",
-            "category": "Drama",
-            "description": "Test movie",
-            "poster": "posters/d4382d2e21e04d70896cba154b11185b.webp",
-            "video": "videos/ad2f2438ef2948d28000b4bbfc5e164e.mp4",
-        },
     ]
 
     conn = get_db()
