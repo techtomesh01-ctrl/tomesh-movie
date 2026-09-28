@@ -48,7 +48,7 @@
 <section class="cw-card">
   <div class="cw-row"><div><h2>Bank Account</h2><div class="muted">Withdrawal ke liye sirf ek verified bank account allowed hai.</div></div>
   <span class="cw-status">{{ bank_account.status if bank_account else 'NOT ADDED' }}</span></div>
-  {% if bank_account %}
+  {% if bank_account and bank_account.status in ['PENDING','VERIFIED'] %}
     <div class="cw-bank">
       <div><b>Account Holder</b><div class="muted">{{ bank_account.account_holder_name }}</div></div>
       <div><b>Bank</b><div class="muted">{{ bank_account.bank_name }}</div></div>
@@ -56,6 +56,11 @@
       <div><b>IFSC</b><div class="muted">{{ bank_account.ifsc }}</div></div>
     </div>
     {% if bank_account.verification_note %}<div class="cw-notice">{{ bank_account.verification_note }}</div>{% endif %}
+    {% if bank_account.status=='VERIFIED' %}
+      <form method="post" action="{{ url_for('request_bank_change') }}" style="margin-top:12px">
+        <button class="cw-btn" type="submit">Request Bank Change</button>
+      </form>
+    {% endif %}
   {% else %}
     <form class="cw-bank" method="post" action="{{ url_for('save_withdrawal_bank') }}">
       <input class="cw-input" name="account_holder_name" placeholder="Account Holder Name" required>
