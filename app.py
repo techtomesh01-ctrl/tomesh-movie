@@ -4912,9 +4912,11 @@ def admin():
         subscriptions = cur.fetchall()
 
         cur.execute("""
-            SELECT ca.customer_id,ca.movie_id,m.title,ca.watch_until,ca.download_until,ca.premium_until
+            SELECT ca.customer_id,ca.movie_id,m.title,ca.watch_until,ca.download_until,ca.premium_until,
+                   u.full_name,u.email,u.mobile
             FROM customer_access ca
             LEFT JOIN movies m ON m.id=ca.movie_id
+            LEFT JOIN customer_users u ON u.customer_id=ca.customer_id
             ORDER BY ca.id DESC LIMIT 200
         """)
         access = cur.fetchall()
