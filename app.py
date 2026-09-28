@@ -504,6 +504,11 @@ def init_db():
         """)
 
         cur.execute("""
+            ALTER TABLE movies
+            ADD COLUMN IF NOT EXISTS trending_position INTEGER
+        """)
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT
@@ -2831,7 +2836,12 @@ def home():
                 """
                 SELECT *
                 FROM movies
-                ORDER BY id DESC
+                ORDER BY
+                    CASE
+                        WHEN trending_position IS NULL THEN 999999
+                        ELSE trending_position
+                    END ASC,
+                    id DESC
                 """
             )
 
@@ -4584,6 +4594,59 @@ def admin():
         r2_objects=r2_objects,
         r2_error=r2_error,
     )
+
+
+# ============================================================
+# ADMIN TRENDING POSITION
+# ============================================================
+
+@app.route(
+    "/admin/movie/<int:movie_id>/trending",
+    methods=["POST"],
+)
+@admin_required
+def admin_movie_trending(movie_id):
+    raw = str(request.form.get("trending_position", "") or "").strip()
+
+    if raw:
+        try:
+            position = int(raw)
+        except ValueError:
+            flash("Trending position must be a number from 1 to 12.", "error")
+            return redirect(url_for("admin", section="movies"))
+
+        if position < 1 or position > 12:
+            flash("Trending position must be between 1 and 12.", "error")
+            return redirect(url_for("admin", section="movies"))
+    else:
+        position = None
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE movies
+            SET trending_position = %s
+            WHERE id = %s
+            """,
+            (position, movie_id),
+        )
+        if cur.rowcount == 0:
+            conn.rollback()
+            cur.close()
+            flash("Movie not found.", "error")
+            return redirect(url_for("admin", section="movies"))
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    flash(
+        f"Trending position {'removed' if position is None else position} saved.",
+        "success",
+    )
+    return redirect(url_for("admin", section="movies"))
 
 
 # ============================================================
