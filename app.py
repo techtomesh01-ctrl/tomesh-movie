@@ -3296,15 +3296,22 @@ except AssertionError:
     "/share/movie/<int:movie_id>"
 )
 def shared_movie(movie_id):
-    # Shared movie links now always open the CINEMA WORLD Home page.
-    # No movie page or payment checkout is opened automatically.
-    return redirect(url_for("home"))
+    # A shared link opens the same movie page, but the movie page itself
+    # requires a logged-in customer (or admin). No movie details/player
+    # are exposed to visitors who are not logged in.
+    return redirect(url_for("movie_page", movie_id=movie_id))
 
 
 @app.route(
     "/movie/<int:movie_id>"
 )
 def movie_page(movie_id):
+
+    # Movie pages are private. A shared URL may point to this page, but
+    # visitors must log in before the movie page is shown.
+    if not session.get("customer_logged_in") and not session.get("admin_logged_in"):
+        flash("Please login to view this movie.", "error")
+        return redirect(url_for("login"))
 
     conn = get_db(
         dict_rows=True
