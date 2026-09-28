@@ -5142,6 +5142,41 @@ def set_withdrawal_pin():
     return redirect(url_for("user_earnings"))
 
 
+@app.route("/earnings/bank/change",methods=["POST"])
+@customer_login_required
+def request_bank_change():
+    customer_id=session.get("customer_id")
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        cur.execute("""SELECT id FROM withdrawal_requests
+                       WHERE customer_id=%s AND status IN ('PENDING','APPROVED','PROCESSING')
+                       LIMIT 1""",(customer_id,))
+        if cur.fetchone():
+            conn.rollback()
+            flash("Pending/approved withdrawal complete hone tak bank change locked hai.","error")
+            return redirect(url_for("user_earnings"))
+        cur.execute("""SELECT id FROM customer_bank_accounts
+                       WHERE customer_id=%s AND status='VERIFIED'
+                       ORDER BY id DESC LIMIT 1 FOR UPDATE""",(customer_id,))
+        bank=cur.fetchone()
+        if not bank:
+            conn.rollback()
+            flash("Verified bank account nahi mila.","error")
+            return redirect(url_for("user_earnings"))
+        cur.execute("""UPDATE customer_bank_accounts
+                       SET status='CHANGE_PENDING',verification_note='User requested bank change.',updated_at=NOW()
+                       WHERE id=%s""",(bank["id"],))
+        cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                       VALUES(%s,'Bank change requested','Your existing bank account is locked for withdrawal until the new bank account is verified.','BANK')""",(customer_id,))
+        conn.commit()
+    except Exception:
+        conn.rollback(); raise
+    finally: conn.close()
+    flash("Bank change request opened. Ab naya bank account submit karke re-verification kar sakte hain.","success")
+    return redirect(url_for("user_earnings"))
+
+
 @app.route("/earnings/bank",methods=["POST"])
 @customer_login_required
 def save_withdrawal_bank():
