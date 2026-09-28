@@ -21,13 +21,21 @@
 .cw-table-wrap{overflow:auto}.cw-table{width:100%;min-width:720px;border-collapse:collapse;margin-top:12px}.cw-table th,.cw-table td{text-align:left;padding:11px 8px;border-bottom:1px solid #222229;font-size:11px}.cw-table th{color:#777985;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
 .cw-notice{padding:10px 12px;margin-top:9px;border-left:3px solid #e50914;background:#101014;border-radius:8px;font-size:11px;line-height:1.5}
 .cw-svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8}
-@media(max-width:780px){.cw-grid{grid-template-columns:repeat(2,1fr)}.cw-form,.cw-bank{grid-template-columns:1fr}.cw-bank .full,.cw-form .full{grid-column:auto}.cw-head{align-items:flex-start;flex-direction:column}}
-@media(max-width:450px){.cw-grid{grid-template-columns:1fr 1fr}.cw-stat{padding:14px}.cw-stat b{font-size:20px}}
+.cw-earn-status{border-color:#3a2023;background:linear-gradient(145deg,#151014,#0b0b0e)}
+.cw-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.cw-step{display:flex;gap:9px;padding:12px;border:1px solid #292930;border-radius:12px;background:#09090c}
+.cw-step>span{width:27px;height:27px;flex:0 0 27px;display:grid;place-items:center;border-radius:50%;background:#e50914;font-weight:900;font-size:11px}
+.cw-step b{display:block;font-size:11px}.cw-step small{display:block;color:#85858f;font-size:10px;line-height:1.45;margin-top:4px}
+.cw-trust{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.cw-trust span{font-size:10px;color:#aaa;border:1px solid #292930;border-radius:999px;padding:6px 9px;background:#0b0b0e}
+
+@media(max-width:780px){.cw-steps{grid-template-columns:1fr 1fr}.cw-grid{grid-template-columns:repeat(2,1fr)}.cw-form,.cw-bank{grid-template-columns:1fr}.cw-bank .full,.cw-form .full{grid-column:auto}.cw-head{align-items:flex-start;flex-direction:column}}
+@media(max-width:450px){.cw-steps{grid-template-columns:1fr}.cw-grid{grid-template-columns:1fr 1fr}.cw-stat{padding:14px}.cw-stat b{font-size:20px}}
 </style>
 
 <div class="cw-earn"><div class="cw-wrap">
 <div class="cw-head">
-  <div><div class="cw-brand">CINEMA <span>WORLD</span></div><div class="muted">Referral Earnings & Secure Bank Withdrawal</div></div>
+  <div><div class="cw-brand">CINEMA <span>WORLD</span></div><div class="muted">Real Rewards • Verified Earnings • Secure Bank Withdrawal</div></div>
   <a class="cw-back" href="{{ url_for('member_home') }}">Member Home</a>
 </div>
 
@@ -37,6 +45,28 @@
   <div class="cw-stat"><b>₹{{ '%.2f'|format(summary.total_earned) }}</b><span>Total Earned</span></div>
   <div class="cw-stat"><b>{{ summary.referrals }}</b><span>Total Referrals</span></div>
 </div>
+
+<section class="cw-card cw-earn-status">
+  <div class="cw-row">
+    <div>
+      <h2>💰 Your Earning Center</h2>
+      <div class="muted">Yahan sirf genuine qualifying activity se earned rewards show hote hain.</div>
+    </div>
+    <span class="cw-status">{{ 'READY TO EARN' if summary.referrals else 'START EARNING' }}</span>
+  </div>
+  <div class="cw-steps">
+    <div class="cw-step"><span>1</span><div><b>Share your referral link</b><small>Friends ko CINEMA WORLD ka unique link bhejo.</small></div></div>
+    <div class="cw-step"><span>2</span><div><b>Qualifying Premium payment</b><small>Reward tabhi create hota hai jab eligible Premium payment successfully paid ho.</small></div></div>
+    <div class="cw-step"><span>3</span><div><b>24-hour verification</b><small>Reward pehle Pending rahega; refund, failure, duplicate ya self-referral par reward hold/reverse ho sakta hai.</small></div></div>
+    <div class="cw-step"><span>4</span><div><b>Withdraw to verified bank</b><small>Available balance ₹100+ hone par verified bank account se withdrawal request kar sakte ho.</small></div></div>
+  </div>
+  <div class="cw-trust">
+    <span>✓ No signup reward</span>
+    <span>✓ No fake balance</span>
+    <span>✓ Bank verification required</span>
+    <span>✓ Actual payout → UTR → Paid</span>
+  </div>
+</section>
 
 <section class="cw-card">
   <div class="cw-row"><div><h2>Referral Link</h2><div class="muted">₹25 reward only after a qualifying successful Premium payment.</div></div>
