@@ -768,6 +768,149 @@
 }
 
 /* =========================================================
+   COMMENTS
+========================================================= */
+
+.tm-comments{
+    margin-top:28px;
+    padding:22px;
+    border-radius:18px;
+    background:rgba(255,255,255,.035);
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.tm-comments-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:15px;
+    margin-bottom:16px;
+}
+
+.tm-comments h2{
+    margin:0 0 5px;
+    font-size:21px;
+    font-weight:950;
+}
+
+.tm-comments-sub{
+    color:#888;
+    font-size:12px;
+}
+
+.tm-comment-form{
+    display:flex;
+    gap:10px;
+    margin-bottom:18px;
+}
+
+.tm-comment-input{
+    flex:1;
+    min-height:46px;
+    resize:vertical;
+    min-height:90px;
+    padding:12px 13px;
+    border-radius:11px;
+    outline:none;
+    border:1px solid rgba(255,255,255,.12);
+    background:#0a0a0a;
+    color:#fff;
+    font:inherit;
+    font-size:13px;
+}
+
+.tm-comment-input:focus{
+    border-color:#a143d3;
+    box-shadow:0 0 0 3px rgba(161,67,211,.10);
+}
+
+.tm-comment-submit{
+    align-self:flex-end;
+    min-height:44px;
+    padding:10px 16px;
+    border:0;
+    border-radius:11px;
+    color:#fff;
+    background:linear-gradient(135deg,#e51f48,#9b233e);
+    font-weight:900;
+    cursor:pointer;
+}
+
+.tm-comment-login{
+    margin-bottom:18px;
+    padding:13px 14px;
+    border-radius:11px;
+    color:#aaa;
+    background:rgba(255,255,255,.025);
+    border:1px solid rgba(255,255,255,.06);
+    font-size:12px;
+}
+
+.tm-comment-login a{
+    color:#ff5474;
+    font-weight:900;
+    text-decoration:none;
+}
+
+.tm-comment-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.tm-comment{
+    padding:13px 14px;
+    border-radius:12px;
+    background:rgba(255,255,255,.025);
+    border:1px solid rgba(255,255,255,.055);
+}
+
+.tm-comment-top{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:7px;
+}
+
+.tm-comment-name{
+    color:#fff;
+    font-size:12px;
+    font-weight:900;
+}
+
+.tm-comment-time{
+    color:#666;
+    font-size:10px;
+}
+
+.tm-comment-text{
+    color:#bbb;
+    font-size:13px;
+    line-height:1.65;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+}
+
+.tm-no-comments{
+    color:#666;
+    font-size:12px;
+    padding:10px 0;
+}
+
+@media(max-width:700px){
+    .tm-comments{
+        padding:17px;
+    }
+    .tm-comment-form{
+        display:block;
+    }
+    .tm-comment-submit{
+        width:100%;
+        margin-top:8px;
+    }
+}
+
+/* =========================================================
    FOOT NOTE
 ========================================================= */
 
@@ -1327,6 +1470,53 @@
 
     {% endif %}
 
+
+    <!-- =====================================================
+         COMMENTS
+    ===================================================== -->
+
+    <section class="tm-comments" id="comments">
+        <div class="tm-comments-head">
+            <div>
+                <h2>💬 Comments</h2>
+                <div class="tm-comments-sub">Share your thoughts about this movie.</div>
+            </div>
+            <div class="tm-comment-time">{{ comments|length }} comments</div>
+        </div>
+
+        {% if session.get('customer_logged_in') %}
+        <form class="tm-comment-form" method="post" action="{{ url_for('add_movie_comment', movie_id=movie.id) }}">
+            <input type="hidden" name="comment_csrf" value="{{ comment_csrf }}">
+            <textarea
+                class="tm-comment-input"
+                name="comment"
+                maxlength="500"
+                placeholder="Write a comment... (max 500 characters)"
+                required
+            ></textarea>
+            <button class="tm-comment-submit" type="submit">Post Comment</button>
+        </form>
+        {% else %}
+        <div class="tm-comment-login">
+            Login karke comment kar sakte ho.
+            <a href="{{ url_for('login', next=url_for('movie_page', movie_id=movie.id)) }}">Sign In</a>
+        </div>
+        {% endif %}
+
+        <div class="tm-comment-list">
+            {% for c in comments %}
+            <article class="tm-comment">
+                <div class="tm-comment-top">
+                    <div class="tm-comment-name">{{ c.display_name }}</div>
+                    <div class="tm-comment-time">{{ c.created_at }}</div>
+                </div>
+                <div class="tm-comment-text">{{ c.comment }}</div>
+            </article>
+            {% else %}
+            <div class="tm-no-comments">Abhi koi comment nahi hai. Pehla comment aap karo.</div>
+            {% endfor %}
+        </div>
+    </section>
 
     <div class="tm-foot-note">
         CINEMA WORLD पर केवल अपनी या properly licensed content ही publish करें।
