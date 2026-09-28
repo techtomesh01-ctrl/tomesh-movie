@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}CINEMA WORLD | My Earnings{% endblock %}
+{% block content %}
+<style>
+.cw-page{min-height:100vh;background:#050505;color:#fff;padding:42px 16px 70px;font-family:Arial,sans-serif}.cw-wrap{width:min(1100px,100%);margin:auto}.cw-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}.cw-brand{font-size:25px;font-weight:950}.cw-brand span{color:#e50914}.cw-back{color:#fff;text-decoration:none;border:1px solid #303036;border-radius:10px;padding:10px 13px;font-size:12px;font-weight:800}.cw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.cw-stat{background:#111115;border:1px solid #28282f;border-radius:16px;padding:18px}.cw-stat b{font-size:25px;display:block}.cw-stat span,.muted{color:#92929c;font-size:12px}.cw-card{background:#0e0e12;border:1px solid #28282f;border-radius:17px;padding:20px;margin-top:14px}.cw-card h2{margin:0 0 6px;font-size:18px}.cw-ref{display:flex;gap:8px;margin-top:14px}.cw-ref input,.cw-form input{flex:1;background:#08080b;color:#fff;border:1px solid #35353c;border-radius:10px;padding:12px}.cw-btn{border:0;border-radius:10px;padding:11px 14px;background:#e50914;color:#fff;font-weight:900;cursor:pointer}.cw-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.cw-form input{min-width:180px}.cw-table-wrap{overflow:auto}.cw-table{width:100%;min-width:650px;border-collapse:collapse;margin-top:12px}.cw-table th,.cw-table td{text-align:left;padding:11px 8px;border-bottom:1px solid #22222a;font-size:12px}.cw-table th{color:#777985;font-size:10px;text-transform:uppercase}.badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#19191f;border:1px solid #303038;font-size:10px;font-weight:900}.note{margin-top:12px;padding:11px;border:1px dashed #33333b;border-radius:10px;color:#999;font-size:11px;line-height:1.5}@media(max-width:750px){.cw-grid{grid-template-columns:repeat(2,1fr)}.cw-ref{flex-direction:column}}
+</style>
+<div class="cw-page"><div class="cw-wrap">
+<div class="cw-head"><div><div class="cw-brand">CINEMA <span>WORLD</span></div><div class="muted">My Referral & Earnings</div></div><a class="cw-back" href="{{ url_for('member_home') }}">← Member Home</a></div>
+<div class="cw-grid">
+<div class="cw-stat"><b>₹{{ '%.2f'|format(summary.available) }}</b><span>Available to Withdraw</span></div>
+<div class="cw-stat"><b>₹{{ '%.2f'|format(summary.pending) }}</b><span>Pending — 24 Hours</span></div>
+<div class="cw-stat"><b>₹{{ '%.2f'|format(summary.total_earned) }}</b><span>Total Referral Rewards</span></div>
+<div class="cw-stat"><b>{{ summary.referrals }}</b><span>Successful Referrals</span></div>
+</div>
+<section class="cw-card"><h2>🔗 My Referral Link</h2><div class="muted">Eligible Premium payment se ₹50 reward. Signup/click par reward nahi.</div>
+<div class="cw-ref"><input id="refLink" readonly value="{{ referral_url }}"><button class="cw-btn" type="button" onclick="copyReferral()">Copy Link</button></div>
+<div class="note">Reward successful eligible Premium payment ke baad 24 hours pending rahega. Refund/cancellation/self-referral/duplicate activity par reward hold ya reverse ho sakta hai.</div>
+</section>
+<section class="cw-card"><h2>💸 Withdraw Earnings</h2><div class="muted">Minimum withdrawal ₹{{ withdrawal_min|int }}. फिलहाल Admin verification ke baad UPI payout process hoga.</div>
+<form class="cw-form" method="post" action="{{ url_for('request_earnings_withdrawal') }}"><input name="amount" type="number" min="{{ withdrawal_min }}" step="0.01" placeholder="Amount (₹)" required><input name="payout_details" maxlength="100" placeholder="Your UPI ID" required><button class="cw-btn" type="submit">Request Withdrawal</button></form>
+</section>
+<section class="cw-card"><h2>📈 Referral Rewards</h2><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Reward</th><th>User</th><th>Status</th><th>Available</th><th>Date</th></tr></thead><tbody>{% for r in rewards %}<tr><td>₹{{ r.amount }}</td><td>{{ r.full_name or r.email or 'Customer' }}</td><td><span class="badge">{{ r.status }}</span></td><td>{{ r.available_at }}</td><td>{{ r.created_at }}</td></tr>{% else %}<tr><td colspan="5">No referral rewards yet.</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="cw-card"><h2>🧾 Withdrawal History</h2><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Amount</th><th>UPI</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead><tbody>{% for w in withdrawals %}<tr><td>#{{ w.id }}</td><td>₹{{ w.amount }}</td><td>{{ w.payout_details }}</td><td><span class="badge">{{ w.status }}</span></td><td>{{ w.transaction_ref or '—' }}</td><td>{{ w.created_at }}</td></tr>{% else %}<tr><td colspan="6">No withdrawal requests yet.</td></tr>{% endfor %}</tbody></table></div></section>
+</div></div>
+<script>function copyReferral(){const i=document.getElementById('refLink');i.select();i.setSelectionRange(0,99999);navigator.clipboard.writeText(i.value).then(()=>alert('Referral link copied.')).catch(()=>{});}</script>
+{% endblock %}
