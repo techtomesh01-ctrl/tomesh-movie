@@ -13,6 +13,7 @@ from functools import wraps
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+from io import BytesIO
 
 import boto3
 import psycopg2
@@ -127,6 +128,10 @@ SUBSCRIPTION_PLAN_NAME = os.environ.get(
     "CINEMA WORLD Premium Monthly",
 ).strip() or "CINEMA WORLD Premium Monthly"
 SUBSCRIPTION_MAX_CYCLES = 120
+REFERRAL_REWARD_AMOUNT = 50.00
+REFERRAL_PENDING_HOURS = 24
+WITHDRAWAL_MIN_AMOUNT = 100.00
+SUPPORT_MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024
 CASHFREE_WEBHOOK_SECRET = os.environ.get(
     "CASHFREE_WEBHOOK_SECRET",
     "",
@@ -375,6 +380,9 @@ def validate_r2_key(key):
     if key.startswith(POSTER_PREFIX):
         return key
 
+    if key.startswith("support/"):
+        return key
+
     raise ValueError("Invalid R2 object prefix.")
 
 
@@ -609,6 +617,113 @@ def init_db():
         cur.execute("""
             ALTER TABLE customer_users
             ADD COLUMN IF NOT EXISTS profile_photo TEXT
+        """)
+
+        cur.execute("""
+            ALTER TABLE customer_users
+            ADD COLUMN IF NOT EXISTS referral_code TEXT
+        """)
+
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_users_referral_code
+            ON customer_users(referral_code)
+            WHERE referral_code IS NOT NULL
+        """)
+
+        cur.execute("""
+            UPDATE customer_users
+            SET referral_code = 'CW' || UPPER(SUBSTRING(MD5(customer_id || RANDOM()::text) FROM 1 FOR 10))
+            WHERE referral_code IS NULL
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS referral_attributions (
+                id SERIAL PRIMARY KEY,
+                referrer_customer_id TEXT NOT NULL,
+                referred_customer_id TEXT UNIQUE NOT NULL,
+                referral_code TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_referral_attributions_referrer
+            ON referral_attributions(referrer_customer_id)
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS referral_rewards (
+                id SERIAL PRIMARY KEY,
+                payment_order_id INTEGER UNIQUE NOT NULL,
+                referrer_customer_id TEXT NOT NULL,
+                referred_customer_id TEXT NOT NULL,
+                amount NUMERIC(10,2) NOT NULL DEFAULT 50.00,
+                status TEXT NOT NULL DEFAULT 'PENDING',
+                available_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reversed_at TIMESTAMP,
+                reason TEXT
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_referral_rewards_referrer
+            ON referral_rewards(referrer_customer_id, status, available_at)
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                amount NUMERIC(10,2) NOT NULL,
+                payout_method TEXT NOT NULL DEFAULT 'UPI',
+                payout_details TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING',
+                admin_note TEXT,
+                transaction_ref TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                processed_at TIMESTAMP
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_withdrawal_requests_customer
+            ON withdrawal_requests(customer_id, id DESC)
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS support_tickets (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'OPEN',
+                screenshot_key TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                resolved_at TIMESTAMP
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_support_tickets_customer
+            ON support_tickets(customer_id, id DESC)
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS support_messages (
+                id SERIAL PRIMARY KEY,
+                ticket_id INTEGER NOT NULL,
+                sender_type TEXT NOT NULL,
+                message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_support_messages_ticket
+            ON support_messages(ticket_id, id)
         """)
 
         # Mobile OTP login uses the verified mobile as the primary login identity.
@@ -992,6 +1107,226 @@ def get_customer_id():
         ] = customer_id
 
     return customer_id
+
+
+# ============================================================
+# REFERRAL / EARNINGS HELPERS
+# ============================================================
+
+def normalize_referral_code(value):
+    value = str(value or "").strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{6,20}", value):
+        return ""
+    return value
+
+
+def ensure_referral_code(customer_id):
+    customer_id = str(customer_id or "").strip()
+    if not customer_id:
+        return ""
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT referral_code FROM customer_users WHERE customer_id=%s LIMIT 1",
+            (customer_id,),
+        )
+        row = cur.fetchone()
+        if row and row.get("referral_code"):
+            return str(row["referral_code"])
+
+        for _ in range(5):
+            code = "CW" + secrets.token_hex(5).upper()
+            try:
+                cur.execute(
+                    "UPDATE customer_users SET referral_code=%s WHERE customer_id=%s AND referral_code IS NULL",
+                    (code, customer_id),
+                )
+                if cur.rowcount:
+                    conn.commit()
+                    return code
+                conn.rollback()
+                cur.execute(
+                    "SELECT referral_code FROM customer_users WHERE customer_id=%s LIMIT 1",
+                    (customer_id,),
+                )
+                row = cur.fetchone()
+                if row and row.get("referral_code"):
+                    return str(row["referral_code"])
+            except Exception:
+                conn.rollback()
+        return ""
+    finally:
+        conn.close()
+
+
+def apply_referral_attribution(customer_id):
+    customer_id = str(customer_id or "").strip()
+    code = normalize_referral_code(session.get("referral_code"))
+    if not customer_id or not code:
+        return False
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT customer_id FROM customer_users WHERE referral_code=%s LIMIT 1",
+            (code,),
+        )
+        referrer = cur.fetchone()
+        if not referrer or referrer["customer_id"] == customer_id:
+            session.pop("referral_code", None)
+            return False
+
+        cur.execute(
+            "SELECT 1 FROM referral_attributions WHERE referred_customer_id=%s LIMIT 1",
+            (customer_id,),
+        )
+        if cur.fetchone():
+            session.pop("referral_code", None)
+            return False
+
+        cur.execute(
+            """
+            INSERT INTO referral_attributions
+            (referrer_customer_id, referred_customer_id, referral_code)
+            VALUES(%s,%s,%s)
+            ON CONFLICT (referred_customer_id) DO NOTHING
+            """,
+            (referrer["customer_id"], customer_id, code),
+        )
+        conn.commit()
+        created = cur.rowcount > 0
+        session.pop("referral_code", None)
+        return created
+    finally:
+        conn.close()
+
+
+def create_referral_reward_for_order(local_order):
+    if not local_order or str(local_order.get("payment_type") or "").lower() != "premium":
+        return False
+
+    payment_order_id = local_order.get("id")
+    referred_customer_id = str(local_order.get("customer_id") or "").strip()
+    if not payment_order_id or not referred_customer_id:
+        return False
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT referrer_customer_id FROM referral_attributions WHERE referred_customer_id=%s LIMIT 1",
+            (referred_customer_id,),
+        )
+        attribution = cur.fetchone()
+        if not attribution:
+            return False
+
+        cur.execute(
+            "SELECT 1 FROM referral_rewards WHERE payment_order_id=%s LIMIT 1",
+            (payment_order_id,),
+        )
+        if cur.fetchone():
+            return False
+
+        cur.execute(
+            """
+            INSERT INTO referral_rewards
+            (payment_order_id, referrer_customer_id, referred_customer_id, amount, status, available_at)
+            VALUES(%s,%s,%s,%s,'PENDING',NOW() + (%s || ' hours')::interval)
+            ON CONFLICT (payment_order_id) DO NOTHING
+            """,
+            (
+                payment_order_id,
+                attribution["referrer_customer_id"],
+                referred_customer_id,
+                REFERRAL_REWARD_AMOUNT,
+                REFERRAL_PENDING_HOURS,
+            ),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def settle_due_referral_rewards(customer_id=None):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        if customer_id:
+            cur.execute(
+                """
+                UPDATE referral_rewards
+                SET status='AVAILABLE', updated_at=NOW()
+                WHERE referrer_customer_id=%s
+                  AND status='PENDING'
+                  AND available_at <= NOW()
+                """,
+                (customer_id,),
+            )
+        else:
+            cur.execute(
+                """
+                UPDATE referral_rewards
+                SET status='AVAILABLE', updated_at=NOW()
+                WHERE status='PENDING'
+                  AND available_at <= NOW()
+                """
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_earnings_summary(customer_id):
+    settle_due_referral_rewards(customer_id)
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT
+                COALESCE(SUM(CASE WHEN status IN ('PENDING','AVAILABLE') THEN amount ELSE 0 END),0) AS total_earned,
+                COALESCE(SUM(CASE WHEN status='PENDING' THEN amount ELSE 0 END),0) AS pending,
+                COALESCE(SUM(CASE WHEN status='AVAILABLE' THEN amount ELSE 0 END),0) AS credited
+            FROM referral_rewards
+            WHERE referrer_customer_id=%s
+            """,
+            (customer_id,),
+        )
+        rewards = cur.fetchone() or {}
+        cur.execute(
+            """
+            SELECT COALESCE(SUM(amount),0) AS reserved
+            FROM withdrawal_requests
+            WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','PAID')
+            """,
+            (customer_id,),
+        )
+        reserved = cur.fetchone() or {}
+        credited = float(rewards.get("credited") or 0)
+        reserved_amount = float(reserved.get("reserved") or 0)
+        available = max(0.0, credited - reserved_amount)
+
+        cur.execute(
+            "SELECT COUNT(*) AS n FROM referral_attributions WHERE referrer_customer_id=%s",
+            (customer_id,),
+        )
+        referrals = int((cur.fetchone() or {}).get("n") or 0)
+
+        return {
+            "total_earned": float(rewards.get("total_earned") or 0),
+            "pending": float(rewards.get("pending") or 0),
+            "credited": credited,
+            "reserved": reserved_amount,
+            "available": available,
+            "referrals": referrals,
+        }
+    finally:
+        conn.close()
 
 
 # ============================================================
@@ -1422,10 +1757,10 @@ def bind_customer_mobile(mobile):
         cur.execute(
             """
             INSERT INTO customer_users
-            (email, customer_id, mobile, last_login_at)
-            VALUES(NULL, %s, %s, NOW())
+            (email, customer_id, mobile, last_login_at, referral_code)
+            VALUES(NULL, %s, %s, NOW(), %s)
             """,
-            (customer_id, mobile),
+            (customer_id, mobile, "CW" + secrets.token_hex(5).upper()),
         )
         conn.commit()
         cur.close()
@@ -1439,6 +1774,7 @@ def bind_customer_mobile(mobile):
     session["customer_logged_in"] = True
     session["customer_mobile"] = mobile
     session["customer_email"] = ""
+    apply_referral_attribution(customer_id)
     return customer_id
 
 
@@ -1690,13 +2026,15 @@ def bind_customer_email(email):
                 (
                     email,
                     customer_id,
-                    last_login_at
+                    last_login_at,
+                    referral_code
                 )
-                VALUES(%s, %s, NOW())
+                VALUES(%s, %s, NOW(), %s)
                 """,
                 (
                     email,
                     target_customer_id,
+                    "CW" + secrets.token_hex(5).upper(),
                 ),
             )
 
@@ -1713,6 +2051,8 @@ def bind_customer_email(email):
     session["customer_id"] = target_customer_id
     session["customer_logged_in"] = True
     session["customer_email"] = email
+    if not user:
+        apply_referral_attribution(target_customer_id)
 
     return target_customer_id
 
@@ -2729,6 +3069,7 @@ def cashfree_return():
                         "payment_type"
                     ],
                 )
+                create_referral_reward_for_order(local_order)
 
             # Restore the paid customer identity in the current browser session.
             # This is critical when the user returns from Cashfree or opens the
@@ -3591,6 +3932,13 @@ def log_customer_activity():
 
 
 @app.before_request
+def capture_referral_link():
+    code = normalize_referral_code(request.args.get("ref"))
+    if code and not session.get("customer_logged_in"):
+        session["referral_code"] = code
+
+
+@app.before_request
 def track_customer_activity():
     log_customer_activity()
 
@@ -3611,6 +3959,7 @@ def user_details():
         if not valid_email(email): flash("Please enter a valid email address.","error"); return redirect(url_for("user_details"))
         if len(password)<6: flash("Password minimum 6 characters ka hona chahiye.","error"); return redirect(url_for("user_details"))
         if password!=confirm: flash("Passwords match nahi karte.","error"); return redirect(url_for("user_details"))
+        created_new_account = False
         conn=get_db(dict_rows=True)
         try:
             cur=conn.cursor(); cur.execute("SELECT id,customer_id FROM customer_users WHERE email=%s AND customer_id<>%s LIMIT 1",(email,customer_id)); existing_email=cur.fetchone()
@@ -3618,10 +3967,14 @@ def user_details():
             cur.execute("SELECT COUNT(*) AS n FROM customer_users WHERE mobile=%s AND customer_id<>%s",(mobile,customer_id)); count=int((cur.fetchone() or {}).get("n") or 0)
             if count>=5: flash("This mobile number has already reached the maximum limit of 5 accounts.","error"); return redirect(url_for("user_details"))
             cur.execute("UPDATE customer_users SET email=%s,full_name=%s,mobile=%s,password_hash=%s,last_login_at=NOW() WHERE customer_id=%s",(email,full_name,mobile,generate_password_hash(password),customer_id))
-            if cur.rowcount==0: cur.execute("INSERT INTO customer_users(email,customer_id,full_name,mobile,password_hash,last_login_at) VALUES(%s,%s,%s,%s,%s,NOW())",(email,customer_id,full_name,mobile,generate_password_hash(password)))
+            if cur.rowcount==0:
+                cur.execute("INSERT INTO customer_users(email,customer_id,full_name,mobile,password_hash,last_login_at,referral_code) VALUES(%s,%s,%s,%s,%s,NOW(),%s)",(email,customer_id,full_name,mobile,generate_password_hash(password),"CW"+secrets.token_hex(5).upper()))
+                created_new_account = True
             conn.commit()
         finally: conn.close()
         session["customer_email"]=email; session["customer_mobile"]=mobile; session["customer_logged_in"]=True
+        if created_new_account:
+            apply_referral_attribution(customer_id)
         if customer_has_completed_initial_payment(customer_id): return redirect(url_for("member_home"))
         return redirect(url_for("membership_checkout"))
     conn=get_db(dict_rows=True)
@@ -4268,7 +4621,7 @@ def admin_report_csv(report_name):
     import csv
     import io
 
-    allowed = {"subscriptions", "payments", "users", "movies", "access"}
+    allowed = {"subscriptions", "payments", "users", "movies", "access", "referrals", "withdrawals"}
     report_name = str(report_name or "").strip().lower()
     if report_name not in allowed:
         return Response("Unknown report.", status=404)
@@ -4294,6 +4647,14 @@ def admin_report_csv(report_name):
         "access": (
             "SELECT * FROM customer_access ORDER BY id DESC",
             "access.csv",
+        ),
+        "referrals": (
+            "SELECT * FROM referral_rewards ORDER BY id DESC",
+            "referral_rewards.csv",
+        ),
+        "withdrawals": (
+            "SELECT * FROM withdrawal_requests ORDER BY id DESC",
+            "withdrawals.csv",
         ),
     }
 
@@ -4402,7 +4763,7 @@ def admin():
     allowed_sections = {
         "dashboard","movies","users","payments","subscriptions","watch",
         "analytics","live","ads","notifications","reports","r2","health",
-        "security","settings","search","comments"
+        "security","settings","search","comments","earnings","withdrawals","support"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -4431,6 +4792,14 @@ def admin():
             WHERE UPPER(status) IN ('PAID','SUCCESS','COMPLETED')
         """)
         total_revenue = (cur.fetchone() or {}).get("revenue") or 0
+
+        cur.execute("UPDATE referral_rewards SET status='AVAILABLE', updated_at=NOW() WHERE status='PENDING' AND available_at <= NOW()")
+        conn.commit()
+
+        cur.execute("SELECT COALESCE(SUM(amount),0) AS n FROM referral_rewards WHERE status IN ('PENDING','AVAILABLE')")
+        total_referral_rewards = (cur.fetchone() or {}).get("n") or 0
+        cur.execute("SELECT COALESCE(SUM(amount),0) AS n FROM withdrawal_requests WHERE status='PENDING'")
+        pending_withdrawals_total = (cur.fetchone() or {}).get("n") or 0
 
         cur.execute("SELECT * FROM movies ORDER BY id DESC")
         movies = cur.fetchall()
@@ -4481,6 +4850,44 @@ def admin():
             ORDER BY event_time DESC LIMIT 50
         """)
         live_events = cur.fetchall()
+
+        cur.execute("""
+            SELECT
+                rr.id, rr.amount, rr.status, rr.available_at, rr.created_at,
+                rr.referrer_customer_id, rr.referred_customer_id,
+                u.full_name AS referrer_name,
+                r.full_name AS referred_name
+            FROM referral_rewards rr
+            LEFT JOIN customer_users u ON u.customer_id=rr.referrer_customer_id
+            LEFT JOIN customer_users r ON r.customer_id=rr.referred_customer_id
+            ORDER BY rr.id DESC LIMIT 300
+        """)
+        referral_rewards_admin = cur.fetchall()
+
+        cur.execute("""
+            SELECT
+                w.*, u.full_name, u.email, u.mobile
+            FROM withdrawal_requests w
+            LEFT JOIN customer_users u ON u.customer_id=w.customer_id
+            ORDER BY w.id DESC LIMIT 300
+        """)
+        withdrawals_admin = cur.fetchall()
+
+        cur.execute("""
+            SELECT id, customer_id, subject, status, screenshot_key, created_at, updated_at, resolved_at
+            FROM support_tickets
+            ORDER BY id DESC LIMIT 200
+        """)
+        support_admin = cur.fetchall()
+        for ticket in support_admin:
+            cur.execute("""
+                SELECT id, sender_type, message, created_at
+                FROM support_messages
+                WHERE ticket_id=%s
+                ORDER BY id ASC
+            """, (ticket["id"],))
+            ticket["messages"] = cur.fetchall()
+            ticket["screenshot_url"] = media_url(ticket["screenshot_key"]) if ticket.get("screenshot_key") else None
 
         search_movies = []
         search_users = []
@@ -4593,7 +5000,330 @@ def admin():
         config=admin_config,
         r2_objects=r2_objects,
         r2_error=r2_error,
+        referral_rewards_admin=referral_rewards_admin,
+        withdrawals_admin=withdrawals_admin,
+        support_admin=support_admin,
+        total_referral_rewards=total_referral_rewards,
+        pending_withdrawals_total=pending_withdrawals_total,
     )
+
+
+# ============================================================
+# USER EARNINGS
+# ============================================================
+
+@app.route("/earnings")
+@customer_login_required
+def user_earnings():
+    customer_id = session.get("customer_id")
+    referral_code = ensure_referral_code(customer_id)
+    summary = get_earnings_summary(customer_id)
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT rr.amount, rr.status, rr.available_at, rr.created_at,
+                   rr.referred_customer_id, u.full_name, u.email
+            FROM referral_rewards rr
+            LEFT JOIN customer_users u ON u.customer_id=rr.referred_customer_id
+            WHERE rr.referrer_customer_id=%s
+            ORDER BY rr.id DESC LIMIT 100
+            """,
+            (customer_id,),
+        )
+        rewards = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT id, amount, payout_method, payout_details, status,
+                   admin_note, transaction_ref, created_at, processed_at
+            FROM withdrawal_requests
+            WHERE customer_id=%s
+            ORDER BY id DESC LIMIT 50
+            """,
+            (customer_id,),
+        )
+        withdrawals = cur.fetchall()
+    finally:
+        conn.close()
+
+    referral_url = url_for("home", ref=referral_code, _external=True) if referral_code else ""
+
+    return render_template(
+        "earnings.html",
+        summary=summary,
+        referral_code=referral_code,
+        referral_url=referral_url,
+        rewards=rewards,
+        withdrawals=withdrawals,
+        withdrawal_min=WITHDRAWAL_MIN_AMOUNT,
+    )
+
+
+@app.route("/earnings/withdraw", methods=["POST"])
+@customer_login_required
+def request_earnings_withdrawal():
+    customer_id = session.get("customer_id")
+    try:
+        amount = float(str(request.form.get("amount", "")).strip())
+    except Exception:
+        amount = 0
+
+    payout_details = str(request.form.get("payout_details", "") or "").strip()
+    if amount < WITHDRAWAL_MIN_AMOUNT:
+        flash(f"Minimum withdrawal is ₹{int(WITHDRAWAL_MIN_AMOUNT)}.", "error")
+        return redirect(url_for("user_earnings"))
+
+    if amount > 100000:
+        flash("Withdrawal amount is too high.", "error")
+        return redirect(url_for("user_earnings"))
+
+    if not re.fullmatch(r"[A-Za-z0-9._-]{2,100}@[A-Za-z]{2,30}", payout_details):
+        flash("Please enter a valid UPI ID.", "error")
+        return redirect(url_for("user_earnings"))
+
+    settle_due_referral_rewards(customer_id)
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT
+              COALESCE((SELECT SUM(amount) FROM referral_rewards
+                        WHERE referrer_customer_id=%s AND status='AVAILABLE'),0)
+              -
+              COALESCE((SELECT SUM(amount) FROM withdrawal_requests
+                        WHERE customer_id=%s AND status IN ('PENDING','PROCESSING','PAID')),0)
+              AS available
+            """,
+            (customer_id, customer_id),
+        )
+        available = float((cur.fetchone() or {}).get("available") or 0)
+        if amount > available + 0.001:
+            conn.rollback()
+            flash("Withdrawal amount is greater than your available balance.", "error")
+            return redirect(url_for("user_earnings"))
+
+        cur.execute(
+            """
+            INSERT INTO withdrawal_requests
+            (customer_id, amount, payout_method, payout_details, status)
+            VALUES(%s,%s,'UPI',%s,'PENDING')
+            """,
+            (customer_id, amount, payout_details),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    flash("Withdrawal request submitted. Admin verification is required.", "success")
+    return redirect(url_for("user_earnings"))
+
+
+# ============================================================
+# USER SUPPORT
+# ============================================================
+
+@app.route("/help-support", methods=["GET", "POST"])
+@customer_login_required
+def help_support():
+    customer_id = session.get("customer_id")
+
+    if request.method == "POST":
+        subject = str(request.form.get("subject", "") or "").strip()
+        message = str(request.form.get("message", "") or "").strip()
+        screenshot = request.files.get("screenshot")
+
+        if len(subject) < 3 or len(subject) > 150:
+            flash("Subject 3–150 characters ka hona chahiye.", "error")
+            return redirect(url_for("help_support"))
+        if len(message) < 5 or len(message) > 5000:
+            flash("Problem 5–5000 characters ki honi chahiye.", "error")
+            return redirect(url_for("help_support"))
+
+        screenshot_key = None
+        if screenshot and screenshot.filename:
+            ext = get_extension(screenshot.filename)
+            if ext not in {"jpg", "jpeg", "png", "webp"}:
+                flash("Screenshot sirf JPG, PNG ya WEBP hona chahiye.", "error")
+                return redirect(url_for("help_support"))
+            data = screenshot.read(SUPPORT_MAX_SCREENSHOT_BYTES + 1)
+            if len(data) > SUPPORT_MAX_SCREENSHOT_BYTES:
+                flash("Screenshot maximum 5 MB ka ho sakta hai.", "error")
+                return redirect(url_for("help_support"))
+            screenshot_key = "support/" + secrets.token_hex(16) + "." + ext
+            get_r2_client().upload_fileobj(
+                BytesIO(data),
+                R2_BUCKET,
+                screenshot_key,
+                ExtraArgs={"ContentType": content_type_for_key(screenshot.filename)},
+            )
+
+        conn = get_db(dict_rows=True)
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO support_tickets(customer_id,subject,status,screenshot_key)
+                VALUES(%s,%s,'OPEN',%s)
+                RETURNING id
+                """,
+                (customer_id, subject, screenshot_key),
+            )
+            ticket_id = cur.fetchone()["id"]
+            cur.execute(
+                """
+                INSERT INTO support_messages(ticket_id,sender_type,message)
+                VALUES(%s,'USER',%s)
+                """,
+                (ticket_id, message),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+        flash(f"Support ticket #{ticket_id} created.", "success")
+        return redirect(url_for("help_support"))
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id,subject,status,screenshot_key,created_at,updated_at,resolved_at
+            FROM support_tickets
+            WHERE customer_id=%s
+            ORDER BY id DESC LIMIT 50
+            """,
+            (customer_id,),
+        )
+        tickets = cur.fetchall()
+        for ticket in tickets:
+            cur.execute(
+                """
+                SELECT id,sender_type,message,created_at
+                FROM support_messages
+                WHERE ticket_id=%s
+                ORDER BY id ASC
+                """,
+                (ticket["id"],),
+            )
+            ticket["messages"] = cur.fetchall()
+            ticket["screenshot_url"] = media_url(ticket["screenshot_key"]) if ticket.get("screenshot_key") else None
+    finally:
+        conn.close()
+
+    return render_template("support.html", tickets=tickets)
+
+
+# ============================================================
+# ADMIN EARNINGS / WITHDRAWALS / SUPPORT
+# ============================================================
+
+@app.route("/admin/withdrawal/<int:withdrawal_id>/process", methods=["POST"])
+@admin_required
+def admin_process_withdrawal(withdrawal_id):
+    action = str(request.form.get("action", "") or "").strip().lower()
+    transaction_ref = str(request.form.get("transaction_ref", "") or "").strip()[:150]
+    admin_note = str(request.form.get("admin_note", "") or "").strip()[:1000]
+
+    if action not in {"paid", "reject"}:
+        flash("Invalid withdrawal action.", "error")
+        return redirect(url_for("admin", section="withdrawals"))
+
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id,customer_id,amount,status FROM withdrawal_requests WHERE id=%s FOR UPDATE",
+            (withdrawal_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.rollback()
+            flash("Withdrawal not found.", "error")
+            return redirect(url_for("admin", section="withdrawals"))
+        if str(row["status"]).upper() != "PENDING":
+            conn.rollback()
+            flash("This withdrawal has already been processed.", "error")
+            return redirect(url_for("admin", section="withdrawals"))
+
+        if action == "paid" and not transaction_ref:
+            conn.rollback()
+            flash("Enter the payout transaction/reference number before marking Paid.", "error")
+            return redirect(url_for("admin", section="withdrawals"))
+
+        cur.execute(
+            """
+            UPDATE withdrawal_requests
+            SET status=%s, admin_note=%s, transaction_ref=%s, processed_at=NOW()
+            WHERE id=%s
+            """,
+            (
+                "PAID" if action == "paid" else "REJECTED",
+                admin_note or None,
+                transaction_ref or None,
+                withdrawal_id,
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    flash("Withdrawal marked " + ("Paid." if action == "paid" else "Rejected."), "success")
+    return redirect(url_for("admin", section="withdrawals"))
+
+
+@app.route("/admin/support/<int:ticket_id>/reply", methods=["POST"])
+@admin_required
+def admin_support_reply(ticket_id):
+    message = str(request.form.get("message", "") or "").strip()
+    status = str(request.form.get("status", "IN_PROGRESS") or "IN_PROGRESS").strip().upper()
+    if len(message) < 2 or len(message) > 5000:
+        flash("Reply 2–5000 characters ki honi chahiye.", "error")
+        return redirect(url_for("admin", section="support"))
+
+    if status not in {"OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"}:
+        status = "IN_PROGRESS"
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM support_tickets WHERE id=%s FOR UPDATE", (ticket_id,))
+        if not cur.fetchone():
+            conn.rollback()
+            flash("Support ticket not found.", "error")
+            return redirect(url_for("admin", section="support"))
+        cur.execute(
+            "INSERT INTO support_messages(ticket_id,sender_type,message) VALUES(%s,'ADMIN',%s)",
+            (ticket_id, message),
+        )
+        cur.execute(
+            """
+            UPDATE support_tickets
+            SET status=%s, updated_at=NOW(), resolved_at=%s
+            WHERE id=%s
+            """,
+            (status, datetime.now() if status in {"RESOLVED","CLOSED"} else None, ticket_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    flash(f"Reply added to ticket #{ticket_id}.", "success")
+    return redirect(url_for("admin", section="support"))
 
 
 # ============================================================
