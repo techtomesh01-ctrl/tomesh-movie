@@ -29,8 +29,49 @@
 .cw-trust{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .cw-trust span{font-size:10px;color:#aaa;border:1px solid #292930;border-radius:999px;padding:6px 9px;background:#0b0b0e}
 
-@media(max-width:780px){.cw-steps{grid-template-columns:1fr 1fr}.cw-grid{grid-template-columns:repeat(2,1fr)}.cw-form,.cw-bank{grid-template-columns:1fr}.cw-bank .full,.cw-form .full{grid-column:auto}.cw-head{align-items:flex-start;flex-direction:column}}
-@media(max-width:450px){.cw-steps{grid-template-columns:1fr}.cw-grid{grid-template-columns:1fr 1fr}.cw-stat{padding:14px}.cw-stat b{font-size:20px}}
+@media(max-width:980px){
+  .cw-wrap{width:min(760px,100%)}
+  .cw-grid{grid-template-columns:repeat(2,1fr)}
+  .cw-steps{grid-template-columns:1fr 1fr}
+}
+@media(max-width:780px){
+  .cw-earn{padding:18px 10px 55px}
+  .cw-head{align-items:stretch;flex-direction:column;gap:10px}
+  .cw-brand{font-size:23px}
+  .cw-back{width:100%;box-sizing:border-box}
+  .cw-grid{grid-template-columns:1fr 1fr;gap:9px}
+  .cw-stat{padding:14px;border-radius:14px}
+  .cw-stat b{font-size:20px}
+  .cw-card{padding:15px;margin-top:10px;border-radius:14px}
+  .cw-form,.cw-bank{grid-template-columns:1fr}
+  .cw-bank .full,.cw-form .full{grid-column:auto}
+  .cw-steps{grid-template-columns:1fr}
+  .cw-ref{flex-direction:column}
+  .cw-ref .cw-btn{width:100%;box-sizing:border-box}
+  .cw-input,.cw-form input,.cw-form select{min-height:46px;font-size:14px}
+  .cw-btn{min-height:46px}
+  .cw-presets{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .cw-preset{min-height:44px}
+  .cw-table{min-width:680px}
+  .cw-table th,.cw-table td{padding:10px 7px}
+}
+@media(max-width:450px){
+  .cw-earn{padding:14px 8px 45px}
+  .cw-grid{grid-template-columns:1fr 1fr}
+  .cw-stat{padding:12px}
+  .cw-stat b{font-size:18px}
+  .cw-stat span{font-size:10px}
+  .cw-card h2{font-size:16px}
+  .cw-row{align-items:flex-start}
+  .cw-icon{width:34px;height:34px;flex:0 0 34px}
+  .cw-breakdown{padding:11px}
+  .cw-trust{gap:6px}
+  .cw-trust span{font-size:9px}
+}
+@media(min-width:1200px){
+  .cw-earn{padding-top:40px}
+  .cw-wrap{width:min(1180px,100%)}
+}
 </style>
 
 <div class="cw-earn"><div class="cw-wrap">
