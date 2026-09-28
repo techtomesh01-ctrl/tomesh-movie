@@ -2609,6 +2609,14 @@ def verify_otp():
         "success",
     )
 
+    # Existing activated members go straight to Member Home after login.
+    # New/unactivated accounts continue through the existing setup flow.
+    customer_id = session.get("customer_id")
+    if customer_has_completed_initial_payment(customer_id):
+        return redirect(
+            url_for("member_home")
+        )
+
     return redirect(
         url_for("user_details")
     )
