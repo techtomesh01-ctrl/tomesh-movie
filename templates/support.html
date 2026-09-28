@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}CINEMA WORLD | Help & Support{% endblock %}
+{% block content %}
+<style>
+.cw-page{min-height:100vh;background:#050505;color:#fff;padding:42px 16px 70px;font-family:Arial,sans-serif}.cw-wrap{width:min(1050px,100%);margin:auto}.cw-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}.brand{font-size:25px;font-weight:950}.brand span{color:#e50914}.back{color:#fff;text-decoration:none;border:1px solid #303036;border-radius:10px;padding:10px 13px;font-size:12px;font-weight:800}.card{background:#0e0e12;border:1px solid #28282f;border-radius:17px;padding:20px;margin-bottom:14px}.card h2{margin:0 0 7px;font-size:18px}.muted{color:#92929c;font-size:12px}.input,.textarea{width:100%;background:#08080b;color:#fff;border:1px solid #35353c;border-radius:10px;padding:12px;outline:none}.textarea{min-height:140px;resize:vertical}.btn{border:0;border-radius:10px;padding:12px 16px;background:#e50914;color:#fff;font-weight:900;cursor:pointer}.ticket{border:1px solid #292930;border-radius:14px;padding:15px;margin-top:12px;background:#0c0c10}.ticket-top{display:flex;justify-content:space-between;gap:10px}.badge{padding:5px 8px;border-radius:999px;border:1px solid #303038;font-size:10px;font-weight:900}.msg{margin-top:10px;padding:10px;border-radius:10px;background:#15151a;border:1px solid #25252c;line-height:1.5;font-size:12px}.user{border-left:3px solid #777}.admin{border-left:3px solid #e50914}.shot{max-width:100%;max-height:320px;border-radius:10px;margin-top:10px;border:1px solid #333}.note{margin-top:10px;color:#8e8e98;font-size:11px;line-height:1.5}
+</style>
+<div class="cw-page"><div class="cw-wrap">
+<div class="cw-head"><div><div class="brand">CINEMA <span>WORLD</span></div><div class="muted">Help & Support</div></div><a class="back" href="{{ url_for('member_home') }}">← Member Home</a></div>
+<section class="card"><h2>🆘 Create Support Ticket</h2><div class="muted">Problem ho to message ke saath screenshot bhi bhej sakte hain.</div>
+<form method="post" enctype="multipart/form-data" style="margin-top:14px">
+<input class="input" name="subject" maxlength="150" placeholder="Subject — Payment / Referral / Withdrawal / Login" required>
+<textarea class="textarea" name="message" maxlength="5000" placeholder="Apni problem detail me likhein..." required style="margin-top:10px"></textarea>
+<div style="margin-top:10px"><input class="input" type="file" name="screenshot" accept=".jpg,.jpeg,.png,.webp"></div>
+<div class="note">Screenshot maximum 5 MB. JPG, PNG, WEBP. OTP/password jaise sensitive details screenshot me na bhejein.</div>
+<button class="btn" type="submit" style="margin-top:12px">Submit Ticket</button>
+</form></section>
+<section class="card"><h2>📋 My Support Tickets</h2>
+{% for t in tickets %}<div class="ticket"><div class="ticket-top"><div><b>#{{ t.id }} — {{ t.subject }}</b><div class="muted">{{ t.created_at }}</div></div><span class="badge">{{ t.status }}</span></div>
+{% if t.screenshot_url %}<img class="shot" src="{{ t.screenshot_url }}" alt="Support screenshot">{% endif %}
+{% for m in t.messages %}<div class="msg {{ 'admin' if m.sender_type=='ADMIN' else 'user' }}"><b>{{ 'CINEMA WORLD Support' if m.sender_type=='ADMIN' else 'You' }}</b><br>{{ m.message }}<div class="muted" style="margin-top:5px">{{ m.created_at }}</div></div>{% endfor %}
+</div>{% else %}<div class="muted" style="margin-top:12px">No support tickets yet.</div>{% endfor %}
+</section></div></div>
+{% endblock %}
