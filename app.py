@@ -2609,12 +2609,6 @@ def verify_otp():
         "success",
     )
 
-    # Existing members who have already completed the initial activation
-    # should return directly to the Member Home after login. Only a genuinely
-    # new/unactivated account continues to the profile/payment setup.
-    if customer_has_completed_initial_payment():
-        return redirect(url_for("member_home"))
-
     return redirect(
         url_for("user_details")
     )
