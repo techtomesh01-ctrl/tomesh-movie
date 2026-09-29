@@ -188,6 +188,16 @@
         Legal Name: <strong style="color:#fff;">Tomesh Kumar Patel</strong>
     </div>
 
+{% if session.get('customer_logged_in') %}
+<div id="cwScreenShareRequest" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;padding:20px"><div style="width:min(480px,100%);background:#111;color:#fff;border:1px solid #333;border-radius:18px;padding:24px"><div style="font-size:12px;color:#e50914;font-weight:900">CINEMA WORLD • SCREEN SHARE</div><h2>Admin is requesting your screen</h2><p style="color:#bbb;line-height:1.6;font-size:13px">Your browser will ask you to choose a screen, window or tab. Nothing is shared unless you approve it.</p><p style="color:#ffb0b0;font-size:12px;font-weight:700">The Admin may view and record the approved screen during this session.</p><div style="display:flex;gap:8px;justify-content:flex-end"><button id="cwShareDecline" style="padding:11px 15px;border-radius:10px;background:#222;color:#fff;border:1px solid #444">Decline</button><button id="cwShareAllow" style="padding:11px 15px;border-radius:10px;background:#e50914;color:#fff;border:0;font-weight:900">Continue & Share</button></div></div></div>
+<script>
+(function(){let sid=null,pc=null,stream=null,ci=0;const modal=document.getElementById('cwScreenShareRequest');function show(){if(modal)modal.style.display='flex'}function hide(){if(modal)modal.style.display='none'}
+async function post(c){try{await fetch('/api/live-monitor/candidate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,role:'user',candidate:c})})}catch(e){}}
+async function pollState(){if(!pc||!sid)return;try{const r=await fetch('/api/live-monitor/state?session_id='+encodeURIComponent(sid),{cache:'no-store'}),d=await r.json();if(!d.ok||d.status==='STOPPED'){pc.close();pc=null;sid=null;return}const a=d.admin_candidates||[];while(ci<a.length){try{await pc.addIceCandidate(a[ci])}catch(e){}ci++}}catch(e){}setTimeout(pollState,1200)}
+async function accept(d){try{sid=d.id;stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});hide();pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});stream.getTracks().forEach(t=>pc.addTrack(t,stream));pc.onicecandidate=e=>e.candidate&&post(e.candidate.toJSON());await pc.setRemoteDescription(d.offer);const a=await pc.createAnswer();await pc.setLocalDescription(a);await fetch('/api/live-monitor/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,answer:pc.localDescription.toJSON()})});pollState();stream.getVideoTracks()[0].onended=()=>fetch('/api/live-monitor/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid})})}catch(e){hide();if(stream)stream.getTracks().forEach(t=>t.stop());sid=null}}
+async function check(){if(sid)return;try{const r=await fetch('/api/live-monitor/pending',{cache:'no-store'}),d=await r.json();if(d.requested&&d.status==='REQUESTED'&&d.offer)show()}catch(e){}}
+document.getElementById('cwShareAllow')?.addEventListener('click',()=>fetch('/api/live-monitor/pending',{cache:'no-store'}).then(r=>r.json()).then(d=>d.requested&&accept(d)));document.getElementById('cwShareDecline')?.addEventListener('click',hide);setInterval(check,2000)})();
+</script>{% endif %}
 
 </body>
 
