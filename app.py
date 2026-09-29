@@ -4932,7 +4932,7 @@ def ensure_live_screen_table():
     try:
         cur = conn.cursor()
         cur.execute("""CREATE TABLE IF NOT EXISTS live_screen_sessions (
-            id UUID PRIMARY KEY,
+            id TEXT PRIMARY KEY,
             customer_id TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'REQUESTED',
             offer JSONB,
