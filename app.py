@@ -4678,6 +4678,9 @@ def member_home():
     if not customer_has_completed_initial_payment(customer_id):
         return redirect(url_for("membership_start"))
     movies = get_member_movies_data()
+    top_rated_movies = [m for m in movies if int(m.get("rating_count") or 0) > 0]
+    top_rated_movies.sort(key=lambda m: (float(m.get("average_rating") or 0), int(m.get("rating_count") or 0), int(m.get("id") or 0)), reverse=True)
+    top_rated_movies = top_rated_movies[:10]
     saved_movies = [m for m in movies if m.get("in_my_list")]
     categories = []
     seen = set()
@@ -4690,6 +4693,7 @@ def member_home():
     return render_template(
         "member_home.html",
         movies=movies,
+        top_rated_movies=top_rated_movies,
         saved_movies=saved_movies,
         my_list_movies=saved_movies,
         saved_movie_ids=[int(m["id"]) for m in saved_movies],
