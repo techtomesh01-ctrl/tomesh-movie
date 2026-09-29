@@ -1335,6 +1335,14 @@ body{
     </div>
 
 
+    <section id="tmContinueWatching" style="display:none;margin-bottom:28px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
+            <h2 style="margin:0;font-size:21px;font-weight:950;">Continue Watching</h2>
+            <span style="color:#777;font-size:11px;">Resume where you left off</span>
+        </div>
+        <div id="tmContinueGrid" class="tm-movie-grid"></div>
+    </section>
+
     <div
         class="tm-movie-grid"
         id="tmMovieGrid"
@@ -1875,6 +1883,35 @@ window.cwSearchMovies = function(value){
                 showToast("Please try again.");
             });
         });
+    }
+
+    function renderContinueWatching(){
+        const section=document.getElementById("tmContinueWatching");
+        const grid=document.getElementById("tmContinueGrid");
+        if(!section||!grid) return;
+        const items=[];
+        document.querySelectorAll("#tmMovieGrid .tm-all-movie-card").forEach(function(card){
+            const id=card.dataset.movieId;
+            if(!id) return;
+            try{
+                const saved=JSON.parse(localStorage.getItem("cw_resume_movie_"+id)||"null");
+                if(saved && Number.isFinite(saved.time) && Number.isFinite(saved.duration) && saved.time>10 && saved.time<saved.duration-8){
+                    items.push({card:card,saved:saved});
+                }
+            }catch(e){}
+        });
+        items.sort((a,b)=>(b.saved.savedAt||0)-(a.saved.savedAt||0));
+        grid.innerHTML="";
+        items.slice(0,8).forEach(function(item){
+            const clone=item.card.cloneNode(true);
+            const badge=document.createElement("div");
+            badge.style.cssText="position:absolute;left:8px;right:8px;bottom:8px;padding:5px 7px;border-radius:7px;background:rgba(0,0,0,.82);color:#fff;font-size:10px;font-weight:900;z-index:3;";
+            badge.textContent="▶ Resume "+Math.round((item.saved.time/item.saved.duration)*100)+"%";
+            clone.style.position="relative";
+            grid.appendChild(clone);
+            clone.appendChild(badge);
+        });
+        section.style.display=items.length?"":"none";
     }
 
     let activeCategory =
