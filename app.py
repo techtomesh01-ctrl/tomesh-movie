@@ -3578,6 +3578,104 @@ def movie_page(movie_id):
 
 
 # ============================================================
+# MOVIE ACTIVITY / HISTORY / WATCHLIST API
+# ============================================================
+
+@app.route("/api/movie-activity/<int:movie_id>", methods=["POST"])
+def movie_activity(movie_id):
+    customer_id = session.get("customer_id")
+    if not customer_id or not session.get("customer_logged_in"):
+        return json_error("Login required.", 401)
+    action = str((request.get_json(silent=True) or {}).get("action") or "").strip().lower()
+    if action not in {"start", "complete"}:
+        return json_error("Invalid action.", 400)
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM movies WHERE id=%s", (movie_id,))
+        if not cur.fetchone():
+            cur.close(); abort(404)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movie_watch_history (
+                id SERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL,
+                customer_id TEXT NOT NULL,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_watched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed BOOLEAN DEFAULT FALSE,
+                UNIQUE(movie_id, customer_id),
+                FOREIGN KEY(movie_id) REFERENCES movies(id) ON DELETE CASCADE
+            )
+        """)
+        if action == "start":
+            cur.execute("""
+                INSERT INTO movie_watch_history(movie_id,customer_id)
+                VALUES(%s,%s)
+                ON CONFLICT(movie_id,customer_id)
+                DO UPDATE SET last_watched_at=CURRENT_TIMESTAMP
+            """,(movie_id,str(customer_id)))
+        else:
+            cur.execute("""
+                INSERT INTO movie_watch_history(movie_id,customer_id,completed)
+                VALUES(%s,%s,TRUE)
+                ON CONFLICT(movie_id,customer_id)
+                DO UPDATE SET last_watched_at=CURRENT_TIMESTAMP,completed=TRUE
+            """,(movie_id,str(customer_id)))
+        conn.commit(); cur.close()
+    finally:
+        conn.close()
+    return json_ok()
+
+@app.route("/watch-history")
+@customer_login_required
+def watch_history():
+    customer_id=session.get("customer_id")
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        cur.execute("""
+            SELECT h.movie_id,h.last_watched_at,h.completed,m.title,m.poster
+            FROM movie_watch_history h JOIN movies m ON m.id=h.movie_id
+            WHERE h.customer_id=%s ORDER BY h.last_watched_at DESC LIMIT 100
+        """,(str(customer_id),))
+        history=cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+    for m in history:
+        m["poster_url"]=media_url(m["poster"]) if m.get("poster") else None
+    return render_template("watch_history.html", history=history)
+
+@app.route("/api/my-list/<int:movie_id>", methods=["POST"])
+@customer_login_required
+def toggle_my_list(movie_id):
+    customer_id=str(session.get("customer_id"))
+    conn=get_db()
+    try:
+        cur=conn.cursor()
+        cur.execute("SELECT id FROM movies WHERE id=%s",(movie_id,))
+        if not cur.fetchone(): cur.close(); abort(404)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customer_watchlist (
+                id SERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL,
+                customer_id TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(movie_id,customer_id),
+                FOREIGN KEY(movie_id) REFERENCES movies(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("SELECT 1 FROM customer_watchlist WHERE movie_id=%s AND customer_id=%s",(movie_id,customer_id))
+        exists=bool(cur.fetchone())
+        if exists:
+            cur.execute("DELETE FROM customer_watchlist WHERE movie_id=%s AND customer_id=%s",(movie_id,customer_id))
+        else:
+            cur.execute("INSERT INTO customer_watchlist(movie_id,customer_id) VALUES(%s,%s) ON CONFLICT DO NOTHING",(movie_id,customer_id))
+        conn.commit(); cur.close()
+    finally: conn.close()
+    return redirect(url_for("movie_page",movie_id=movie_id))
+
+# ============================================================
 # MOVIE LIKES / REPORTS
 # ============================================================
 
