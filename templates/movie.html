@@ -1,6 +1,22 @@
 {% extends "base.html" %}
 
 {% block title %}{{ movie.title }} | CINEMA WORLD<script>
+(function(){
+  try{
+    const key="cw_recent_movies_v1";
+    const movie={
+      id:{{ movie.id|tojson }},
+      title:{{ movie.title|tojson }},
+      url:{{ url_for('movie_page', movie_id=movie.id)|tojson }},
+      poster:{{ (movie.poster_url or "")|tojson }},
+      viewedAt:Date.now()
+    };
+    let list=JSON.parse(localStorage.getItem(key)||"[]");
+    list=list.filter(x=>String(x.id)!==String(movie.id));
+    list.unshift(movie);
+    localStorage.setItem(key,JSON.stringify(list.slice(0,20)));
+  }catch(e){}
+})();
 function cwCopyMovieLink(){
   const url=window.location.href;
   if(navigator.clipboard){
