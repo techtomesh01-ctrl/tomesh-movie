@@ -856,6 +856,11 @@ def init_db():
         """)
 
         cur.execute("""
+            ALTER TABLE movie_search_demands
+            ADD COLUMN IF NOT EXISTS fulfilled_movie_id INTEGER
+        """)
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS movie_search_demand_users (
                 id SERIAL PRIMARY KEY,
                 demand_id INTEGER NOT NULL REFERENCES movie_search_demands(id) ON DELETE CASCADE,
@@ -6583,6 +6588,42 @@ def api_movie_save():
             )
 
             movie_id = cur.fetchone()[0]
+
+            # Fulfil matching customer movie requests and create a real
+            # in-app notification for every customer who requested it.
+            normalized_title = re.sub(r"\\s+", " ", title).strip().casefold()
+            cur.execute("""
+                SELECT id
+                FROM movie_search_demands
+                WHERE normalized_term = %s
+                  AND (fulfilled_movie_id IS NULL OR fulfilled_movie_id = %s)
+                LIMIT 1
+            """, (normalized_title, movie_id))
+            demand_row = cur.fetchone()
+            if demand_row:
+                cur.execute("""
+                    SELECT DISTINCT customer_id
+                    FROM movie_search_demand_users
+                    WHERE demand_id = %s
+                """, (demand_row[0],))
+                demand_users = cur.fetchall()
+                for demand_user in demand_users:
+                    cur.execute("""
+                        INSERT INTO customer_notifications
+                            (customer_id, title, message, notification_type)
+                        VALUES
+                            (%s, %s, %s, 'MOVIE')
+                    """, (
+                        demand_user[0],
+                        "Movie is now available 🎬",
+                        title + " is now available on CINEMA WORLD. Open it and start watching.",
+                    ))
+                cur.execute("""
+                    UPDATE movie_search_demands
+                    SET fulfilled_movie_id = %s,
+                        last_searched_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (movie_id, demand_row[0]))
 
             conn.commit()
             cur.close()
