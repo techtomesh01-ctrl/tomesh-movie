@@ -527,6 +527,34 @@ def init_db():
         """)
 
         # ----------------------------------------------------
+        # MOVIE ENGAGEMENT
+        # ----------------------------------------------------
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movie_likes (
+                id SERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL,
+                customer_id TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(movie_id, customer_id),
+                FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_movie_likes_movie ON movie_likes(movie_id)")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movie_reports (
+                id SERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL,
+                customer_id TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                details TEXT,
+                status TEXT NOT NULL DEFAULT 'OPEN',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_movie_reports_status ON movie_reports(status, created_at DESC)")
+
+        # ----------------------------------------------------
         # PAYMENT ORDERS
         # ----------------------------------------------------
 
