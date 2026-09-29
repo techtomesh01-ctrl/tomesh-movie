@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}CINEMA WORLD • Live Monitor{% endblock %}
+{% block content %}
+<style>
+.lm{min-height:100vh;background:#050505;color:#fff;padding:28px;max-width:1400px;margin:auto}
+.lm h1{margin:0}.muted{color:#888;font-size:13px}.grid{display:grid;grid-template-columns:340px 1fr;gap:18px;margin-top:20px}.card{background:#111;border:1px solid #262626;border-radius:16px;padding:18px}.user{padding:13px;border:1px solid #292929;border-radius:12px;margin-bottom:10px}.btn{border:0;border-radius:9px;padding:9px 12px;background:#e50914;color:#fff;font-weight:800;cursor:pointer}.btn.dark{background:#222;border:1px solid #444}.btn:disabled{opacity:.5;cursor:not-allowed}video{width:100%;background:#000;border-radius:12px;min-height:360px;object-fit:contain}.status{margin:10px 0;font-size:13px}.rec{color:#ff5555;font-weight:900}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.lm{padding:15px}video{min-height:220px}}
+</style>
+<div class="lm">
+  <div style="display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap">
+    <div><h1>🔴 Live Screen Monitor</h1><div class="muted">User approval is required before any screen is shared.</div></div>
+    <a href="{{ url_for('admin',section='live') }}" class="btn dark">← Admin Live Activity</a>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>Users</h3><div class="muted" style="margin-bottom:14px">Select a user to send a screen-share request.</div>
+      {% for u in monitor_users %}
+      <div class="user"><b>{{u.full_name or 'Unnamed user'}}</b><div class="muted">{{u.email or u.mobile or u.customer_id}}</div><button class="btn" style="margin-top:9px" onclick="requestShare('{{u.customer_id|e}}')">Request Screen</button></div>
+      {% else %}<div class="muted">No users found.</div>{% endfor %}
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">Live Screen</h3><div id="status" class="status muted">No active session.</div></div><div><button id="record" class="btn" disabled>● Start Recording</button> <button id="stop" class="btn dark" disabled>Stop</button></div></div>
+      <video id="remote" autoplay playsinline controls></video>
+      <div id="recordingInfo" class="muted" style="margin-top:10px">Recording is created in your browser and saved locally when stopped.</div>
+    </div>
+  </div>
+</div>
+<script>
+let sid=null,pc=null,remoteStream=null,rec=null,chunks=[],ci=0;
+const video=document.getElementById('remote'),statusEl=document.getElementById('status'),recordBtn=document.getElementById('record'),stopBtn=document.getElementById('stop');
+function status(t,c){statusEl.textContent=t;statusEl.className='status '+(c||'')}
+async function sendCandidate(c){await fetch('/api/live-monitor/candidate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,role:'admin',candidate:c})})}
+async function poll(){
+ if(!sid||!pc)return;
+ try{const r=await fetch('/api/live-monitor/state?session_id='+encodeURIComponent(sid),{cache:'no-store'}),d=await r.json();
+  if(!d.ok||d.status==='STOPPED'){cleanup();return}
+  if(d.answer&&!pc.currentRemoteDescription)await pc.setRemoteDescription(d.answer);
+  const a=d.user_candidates||[];while(ci<a.length){try{await pc.addIceCandidate(a[ci])}catch(e){}ci++}
+ }catch(e){}setTimeout(poll,1200)
+}
+async function requestShare(customer){
+ cleanup(); sid=null; ci=0;
+ const r=await fetch('/admin/live-monitor/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:customer})});
+ const d=await r.json();if(!d.ok){status(d.error||'Request failed','rec');return}
+ sid=d.session_id;pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+ pc.onicecandidate=e=>e.candidate&&sendCandidate(e.candidate.toJSON());
+ pc.ontrack=e=>{remoteStream=e.streams[0];video.srcObject=remoteStream;recordBtn.disabled=false;stopBtn.disabled=false;status('LIVE — user approved screen sharing','rec')};
+ const offer=await pc.createOffer({offerToReceiveVideo:true,offerToReceiveAudio:true});await pc.setLocalDescription(offer);
+ await fetch('/admin/live-monitor/offer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,offer:pc.localDescription.toJSON()})});
+ status('Request sent. Waiting for user permission…');poll();
+}
+function startRecord(){
+ if(!remoteStream)return;
+ const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(x=>MediaRecorder.isTypeSupported(x))||'';
+ rec=new MediaRecorder(remoteStream,mime?{mimeType:mime}:undefined);chunks=[];rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);rec.onstop=()=>{const blob=new Blob(chunks,{type:rec.mimeType||'video/webm'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cinema-world-screen-recording-'+new Date().toISOString().replace(/[:.]/g,'-')+'.webm';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);document.getElementById('recordingInfo').textContent='Recording saved locally on the Admin device.'};rec.start(1000);recordBtn.textContent='■ Stop Recording';recordBtn.classList.add('rec');document.getElementById('recordingInfo').textContent='Recording in progress…';}
+function stopRecord(){if(rec&&rec.state!=='inactive')rec.stop();recordBtn.textContent='● Start Recording';recordBtn.classList.remove('rec')}
+async function cleanup(){stopRecord();if(sid)fetch('/api/live-monitor/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid})}).catch(()=>{});if(pc)pc.close();pc=null;sid=null;remoteStream=null;video.srcObject=null;recordBtn.disabled=true;stopBtn.disabled=true;status('No active session.')}
+recordBtn.onclick=()=>rec&&rec.state==='recording'?stopRecord():startRecord();stopBtn.onclick=cleanup;
+</script>
+{% endblock %}
