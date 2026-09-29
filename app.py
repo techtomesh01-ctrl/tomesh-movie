@@ -5083,7 +5083,7 @@ def live_monitor_stop():
 def admin():
     section = str(request.args.get("section", "dashboard")).strip().lower()
     allowed_sections = {
-        "dashboard","movies","users","payments","subscriptions","watch",
+        "dashboard","live-monitor","movies","users","payments","subscriptions","watch",
         "analytics","live","ads","notifications","reports","r2","health",
         "security","settings","search","demand","comments","earnings","withdrawals","support"
     }
