@@ -4925,8 +4925,6 @@ def admin_activity():
     )
 
 
-@app.route("/admin")
-
 def ensure_live_screen_table():
     conn = get_db()
     try:
@@ -5080,6 +5078,7 @@ def live_monitor_stop():
     return json_ok()
 
 
+@app.route("/admin")
 @admin_required
 def admin():
     section = str(request.args.get("section", "dashboard")).strip().lower()
