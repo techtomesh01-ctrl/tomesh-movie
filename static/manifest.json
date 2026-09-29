@@ -1,0 +1,12 @@
+{
+  "name":"CINEMA WORLD",
+  "short_name":"CINEMA WORLD",
+  "description":"Movies, entertainment and latest stories.",
+  "start_url":"/member-home",
+  "scope":"/",
+  "display":"standalone",
+  "background_color":"#050505",
+  "theme_color":"#050505",
+  "orientation":"any",
+  "icons":[]
+}
