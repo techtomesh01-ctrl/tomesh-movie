@@ -1,38 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ movie.title }} | CINEMA WORLD<script>
-(function(){
-  try{
-    const key="cw_recent_movies_v1";
-    const movie={
-      id:{{ movie.id|tojson }},
-      title:{{ movie.title|tojson }},
-      url:{{ url_for('movie_page', movie_id=movie.id)|tojson }},
-      poster:{{ (movie.poster_url or "")|tojson }},
-      viewedAt:Date.now()
-    };
-    let list=JSON.parse(localStorage.getItem(key)||"[]");
-    list=list.filter(x=>String(x.id)!==String(movie.id));
-    list.unshift(movie);
-    localStorage.setItem(key,JSON.stringify(list.slice(0,20)));
-  }catch(e){}
-})();
-function cwCopyMovieLink(){
-  const url=window.location.href;
-  if(navigator.clipboard){
-    navigator.clipboard.writeText(url).then(()=>alert('Movie link copied!')).catch(()=>prompt('Copy movie link:',url));
-  }else{
-    prompt('Copy movie link:',url);
-  }
-}
-function cwShareMovie(){
-  const data={title:{{ movie.title|tojson }},text:'Watch {{ movie.title|e }} on CINEMA WORLD',url:window.location.href};
-  if(navigator.share){navigator.share(data).catch(()=>{});}
-  else{cwCopyMovieLink();}
-}
-</script>
-
-{% endblock %}
+{% block title %}{{ movie.title }} | CINEMA WORLD{% endblock %}
 
 {% block content %}
 
@@ -1530,46 +1498,6 @@ function cwShareMovie(){
         </form>
         {% else %}
         <div class="tm-comment-login">Login karke movie ko rate kar sakte ho.</div>
-        {% endif %}
-    </section>
-
-    <section class="tm-comments" id="engagement" style="margin-top:18px;">
-        <div class="tm-comments-head">
-            <div>
-                <h2>❤️ Movie Actions</h2>
-                <div class="tm-comments-sub">{{ like_summary.like_count }} people like this movie.</div>
-            </div>
-        </div>
-        {% if session.get('customer_logged_in') %}
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <button type="button" class="tm-comment-submit" onclick="cwCopyMovieLink()">🔗 Copy Link</button>
-            <button type="button" class="tm-comment-submit" onclick="cwShareMovie()">📤 Share</button>
-            <form method="post" action="{{ url_for('like_movie', movie_id=movie.id) }}">
-                <button type="submit" class="tm-comment-submit" style="min-width:150px;">
-                    {% if like_summary.my_like %}❤️ Liked{% else %}♡ Like Movie{% endif %}
-                </button>
-            </form>
-            <button type="button" class="tm-comment-submit" onclick="document.getElementById('tmReportMovie').style.display='block';">
-                🚩 Report Problem
-            </button>
-        </div>
-        <form id="tmReportMovie" method="post" action="{{ url_for('report_movie', movie_id=movie.id) }}" style="display:none;margin-top:14px;padding:14px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:#0a0a0a;">
-            <select name="reason" style="width:100%;padding:11px;background:#111;color:#fff;border:1px solid #333;border-radius:8px;margin-bottom:9px;">
-                <option>Video not playing</option>
-                <option>Poor video quality</option>
-                <option>Audio problem</option>
-                <option>Wrong movie</option>
-                <option>Subtitle problem</option>
-                <option>Other</option>
-            </select>
-            <textarea name="details" maxlength="500" placeholder="Optional details..." style="width:100%;min-height:80px;box-sizing:border-box;padding:11px;background:#111;color:#fff;border:1px solid #333;border-radius:8px;resize:vertical;"></textarea>
-            <div style="display:flex;gap:8px;margin-top:9px;">
-                <button type="submit" class="tm-comment-submit">Submit Report</button>
-                <button type="button" class="tm-comment-submit" onclick="this.closest('form').style.display='none';">Cancel</button>
-            </div>
-        </form>
-        {% else %}
-        <div class="tm-comment-login">Login karke Like ya Report kar sakte ho.</div>
         {% endif %}
     </section>
 
