@@ -1501,6 +1501,22 @@
         {% endif %}
     </section>
 
+    <section class="tm-comments" id="engagement" style="margin-top:18px;">
+        <div class="tm-comments-head">
+            <div>
+                <h2>❤️ Movie Actions</h2>
+                <div class="tm-comments-sub">{{ like_summary.like_count }} likes</div>
+            </div>
+        </div>
+        {% if session.get('customer_logged_in') %}
+        <form method="post" action="{{ url_for('like_movie', movie_id=movie.id) }}" style="display:inline;">
+            <button class="tm-comment-submit" type="submit">{% if like_summary.my_like %}❤️ Liked{% else %}♡ Like Movie{% endif %}</button>
+        </form>
+        {% else %}
+        <div class="tm-comment-login">Login karke movie ko like kar sakte ho.</div>
+        {% endif %}
+    </section>
+
     <section class="tm-comments" id="comments">
         <div class="tm-comments-head">
             <div>
