@@ -5590,6 +5590,44 @@ def user_earnings():
         bank_account=bank_account,pin_set=pin_set,notifications=notifications)
 
 
+@app.route("/earnings/pin/change",methods=["POST"])
+@customer_login_required
+def change_withdrawal_pin():
+    customer_id=session.get("customer_id")
+    current_pin=str(request.form.get("current_pin","") or "").strip()
+    new_pin=str(request.form.get("new_pin","") or "").strip()
+    confirm_pin=str(request.form.get("new_pin_confirm","") or "").strip()
+
+    if not re.fullmatch(r"\d{6}", current_pin):
+        flash("Current withdrawal PIN must be 6 digits.", "error")
+        return redirect(url_for("user_earnings"))
+
+    if not re.fullmatch(r"\d{6}", new_pin) or new_pin != confirm_pin:
+        flash("New withdrawal PIN must be 6 digits and both entries must match.", "error")
+        return redirect(url_for("user_earnings"))
+
+    conn=get_db()
+    try:
+        cur=conn.cursor()
+        cur.execute("SELECT withdrawal_pin_hash FROM customer_users WHERE customer_id=%s",(customer_id,))
+        row=cur.fetchone()
+        if not row or not row[0] or not check_password_hash(row[0], current_pin):
+            flash("Current withdrawal PIN is incorrect.", "error")
+            cur.close()
+            return redirect(url_for("user_earnings"))
+        cur.execute(
+            "UPDATE customer_users SET withdrawal_pin_hash=%s, withdrawal_pin_set_at=CURRENT_TIMESTAMP WHERE customer_id=%s",
+            (generate_password_hash(new_pin), customer_id),
+        )
+        conn.commit()
+        cur.close()
+        flash("Withdrawal PIN changed successfully.", "success")
+    finally:
+        conn.close()
+
+    return redirect(url_for("user_earnings"))
+
+
 @app.route("/earnings/pin",methods=["POST"])
 @customer_login_required
 def set_withdrawal_pin():
