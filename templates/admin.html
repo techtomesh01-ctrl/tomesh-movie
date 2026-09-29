@@ -42,7 +42,7 @@
 <aside class="cw-side">
   <div class="cw-side-title">Management</div>
   <nav class="cw-nav">
-    {% for key,label,ico in [('dashboard','Dashboard','home'),('live-monitor','Live Screen Monitor','activity'),('movies','Movies & Catalog','movie'),('users','Users','users'),('payments','Payments','card'),('subscriptions','Subscriptions','cycle'),('watch','Watch Activity','play'),('analytics','Analytics','chart'),('live','Live Activity','activity'),('comments','Comments','comment'),('movie-reports','Movie Reports','report'),('earnings','Earnings','wallet'),('withdrawals','Withdrawals','wallet'),('support','Support','comment'),('ads','Ads Manager','ad'),('notifications','Notifications','bell'),('reports','Reports','report'),('r2','R2 Storage','cloud'),('health','System Health','health'),('security','Security','lock'),('settings','Settings','settings'),('search','Global Search','search'),('demand','Movie Demand','movie')] %}
+    {% for key,label,ico in [('dashboard','Dashboard','home'),('live-monitor','Live Screen Monitor','activity'),('movies','Movies & Catalog','movie'),('users','Users','users'),('payments','Payments','card'),('subscriptions','Subscriptions','cycle'),('watch','Watch Activity','play'),('analytics','Analytics','chart'),('live','Live Activity','activity'),('comments','Comments','comment'),('earnings','Earnings','wallet'),('withdrawals','Withdrawals','wallet'),('support','Support','comment'),('ads','Ads Manager','ad'),('notifications','Notifications','bell'),('reports','Reports','report'),('r2','R2 Storage','cloud'),('health','System Health','health'),('security','Security','lock'),('settings','Settings','settings'),('search','Global Search','search'),('demand','Movie Demand','movie')] %}
       <a class="{% if section==key %}active{% endif %}" href="{{ url_for('admin', section=key) }}">{{ icon(ico) }} {{ label }}</a>
     {% endfor %}
   </nav>
@@ -156,37 +156,6 @@
 {% if t.screenshot_url %}<div style="margin-top:10px"><a href="{{t.screenshot_url}}" target="_blank"><img src="{{t.screenshot_url}}" style="max-width:420px;max-height:280px;border-radius:10px;border:1px solid #333" alt="User screenshot"></a></div>{% endif %}
 {% for m in t.messages %}<div style="margin-top:9px;padding:10px;border-radius:10px;background:#15151a;border-left:3px solid {% if m.sender_type=='ADMIN' %}#e50914{% else %}#777{% endif %}"><b>{{'Admin' if m.sender_type=='ADMIN' else 'User'}}</b><div style="font-size:12px;line-height:1.5;margin-top:4px;white-space:pre-wrap">{{m.message}}</div><div class="cw-muted" style="margin-top:4px">{{m.created_at}}</div></div>{% endfor %}
 <form method="post" action="{{url_for('admin_support_reply', ticket_id=t.id)}}" style="margin-top:10px"><textarea name="message" placeholder="Reply to user..." required style="width:100%;min-height:80px;background:#09090c;border:1px solid #24242a;color:#fff;border-radius:10px;padding:10px"></textarea><div style="display:flex;gap:6px;margin-top:6px"><select name="status" style="background:#09090c;border:1px solid #24242a;color:#fff;border-radius:9px;padding:8px"><option value="IN_PROGRESS">In Progress</option><option value="RESOLVED">Resolved</option><option value="CLOSED">Closed</option><option value="OPEN">Open</option></select><button class="cw-btn red" type="submit">Send Reply</button></div></form></div>{% else %}<div class="cw-empty">No support tickets.</div>{% endfor %}
-</section>
-{% endif %}
-
-{% if section=='movie-reports' %}
-<section class="cw-card">
-  <div class="cw-card-head">
-    <div>
-      <h2>🚩 Movie Reports</h2>
-      <div class="cw-muted">Customer-submitted playback, audio, subtitle and catalog problem reports.</div>
-    </div>
-  </div>
-  <div class="cw-table-wrap">
-    <table class="cw-table">
-      <thead><tr><th>ID</th><th>Movie</th><th>User</th><th>Reason</th><th>Details</th><th>Status</th><th>Created</th></tr></thead>
-      <tbody>
-      {% for r in movie_reports_admin %}
-        <tr>
-          <td>#{{r.id}}</td>
-          <td>{{r.title}}<br><span class="cw-muted">Movie #{{r.movie_id}}</span></td>
-          <td>{{r.customer_name}}</td>
-          <td><span class="cw-badge">{{r.reason}}</span></td>
-          <td style="max-width:360px;white-space:pre-wrap;overflow-wrap:anywhere">{{r.details or '—'}}</td>
-          <td><span class="cw-badge">{{r.status}}</span></td>
-          <td>{{r.created_at}}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="7" class="cw-empty">No movie reports yet.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
 </section>
 {% endif %}
 
