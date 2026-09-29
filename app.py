@@ -4926,6 +4926,160 @@ def admin_activity():
 
 
 @app.route("/admin")
+
+def ensure_live_screen_table():
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS live_screen_sessions (
+            id UUID PRIMARY KEY,
+            customer_id TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'REQUESTED',
+            offer JSONB,
+            answer JSONB,
+            admin_candidates JSONB NOT NULL DEFAULT '[]'::jsonb,
+            user_candidates JSONB NOT NULL DEFAULT '[]'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )""")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_live_screen_customer ON live_screen_sessions(customer_id,status,created_at DESC)")
+        conn.commit()
+    finally:
+        conn.close()
+
+@app.route("/admin/live-monitor")
+@admin_required
+def admin_live_monitor():
+    ensure_live_screen_table()
+    conn = get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        cur.execute("""SELECT customer_id,full_name,email,mobile,last_login_at
+                       FROM customer_users
+                       WHERE COALESCE(is_blocked,FALSE)=FALSE
+                       ORDER BY COALESCE(last_login_at,created_at) DESC NULLS LAST LIMIT 100""")
+        users=cur.fetchall()
+    finally:
+        conn.close()
+    return render_template("admin_live_monitor.html", monitor_users=users)
+
+@app.route("/admin/live-monitor/request",methods=["POST"])
+@admin_required
+def admin_live_monitor_request():
+    ensure_live_screen_table()
+    d=request.get_json(silent=True) or {}
+    cid=str(d.get("customer_id") or "").strip()
+    if not cid: return json_error("Customer ID missing.")
+    sid=secrets.token_hex(16)
+    conn=get_db()
+    try:
+        cur=conn.cursor()
+        cur.execute("UPDATE live_screen_sessions SET status='STOPPED',updated_at=NOW() WHERE customer_id=%s AND status IN ('REQUESTED','ACTIVE')",(cid,))
+        cur.execute("INSERT INTO live_screen_sessions(id,customer_id,status) VALUES(%s,%s,'REQUESTED')",(sid,cid))
+        conn.commit()
+    finally: conn.close()
+    return json_ok(session_id=sid)
+
+@app.route("/admin/live-monitor/offer",methods=["POST"])
+@admin_required
+def admin_live_monitor_offer():
+    ensure_live_screen_table()
+    d=request.get_json(silent=True) or {}
+    sid=str(d.get("session_id") or "")
+    offer=d.get("offer")
+    if not sid or not isinstance(offer,dict): return json_error("Invalid offer.")
+    conn=get_db()
+    try:
+        cur=conn.cursor()
+        cur.execute("UPDATE live_screen_sessions SET offer=%s::jsonb,updated_at=NOW() WHERE id=%s",(json.dumps(offer),sid))
+        conn.commit()
+    finally: conn.close()
+    return json_ok()
+
+@app.route("/api/live-monitor/pending")
+@customer_login_required
+def live_monitor_pending():
+    ensure_live_screen_table()
+    cid=str(session.get("customer_id") or "")
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor()
+        cur.execute("""SELECT id,status,offer,answer,admin_candidates
+                      FROM live_screen_sessions
+                      WHERE customer_id=%s AND status IN ('REQUESTED','ACTIVE')
+                      ORDER BY created_at DESC LIMIT 1""",(cid,))
+        row=cur.fetchone()
+    finally: conn.close()
+    return json_ok(requested=bool(row), **(dict(row) if row else {}))
+
+@app.route("/api/live-monitor/answer",methods=["POST"])
+@customer_login_required
+def live_monitor_answer():
+    ensure_live_screen_table()
+    d=request.get_json(silent=True) or {}
+    sid=str(d.get("session_id") or "")
+    answer=d.get("answer")
+    cid=str(session.get("customer_id") or "")
+    if not sid or not isinstance(answer,dict): return json_error("Invalid answer.")
+    conn=get_db()
+    try:
+        cur=conn.cursor()
+        cur.execute("""UPDATE live_screen_sessions SET answer=%s::jsonb,status='ACTIVE',updated_at=NOW()
+                       WHERE id=%s AND customer_id=%s AND status='REQUESTED'""",(json.dumps(answer),sid,cid))
+        conn.commit()
+    finally: conn.close()
+    return json_ok()
+
+@app.route("/api/live-monitor/candidate",methods=["POST"])
+def live_monitor_candidate():
+    ensure_live_screen_table()
+    d=request.get_json(silent=True) or {}
+    sid=str(d.get("session_id") or "")
+    role=str(d.get("role") or "").lower()
+    candidate=d.get("candidate")
+    if role not in ("admin","user") or not sid or not isinstance(candidate,dict): return json_error("Invalid candidate.")
+    if role=="admin" and not session.get("admin_logged_in"): return json_error("Admin login required.",403)
+    if role=="user" and not session.get("customer_logged_in"): return json_error("Login required.",401)
+    conn=get_db()
+    try:
+        cur=conn.cursor()
+        column="admin_candidates" if role=="admin" else "user_candidates"
+        where="id=%s"
+        params=[json.dumps([candidate]),sid]
+        if role=="user":
+            where+=" AND customer_id=%s"; params.append(str(session.get("customer_id") or ""))
+        cur.execute(f"UPDATE live_screen_sessions SET {column}=COALESCE({column},'[]'::jsonb)||%s::jsonb,updated_at=NOW() WHERE {where}",params)
+        conn.commit()
+    finally: conn.close()
+    return json_ok()
+
+@app.route("/api/live-monitor/state")
+def live_monitor_state():
+    ensure_live_screen_table()
+    sid=str(request.args.get("session_id") or "")
+    conn=get_db(dict_rows=True)
+    try:
+        cur=conn.cursor(); cur.execute("SELECT * FROM live_screen_sessions WHERE id=%s",(sid,)); row=cur.fetchone()
+    finally: conn.close()
+    if not row: return json_error("Session not found.",404)
+    if not session.get("admin_logged_in") and str(session.get("customer_id") or "")!=str(row["customer_id"]):
+        return json_error("Not authorized.",403)
+    return json_ok(**dict(row))
+
+@app.route("/api/live-monitor/stop",methods=["POST"])
+def live_monitor_stop():
+    ensure_live_screen_table()
+    d=request.get_json(silent=True) or {}; sid=str(d.get("session_id") or "")
+    conn=get_db()
+    try:
+        cur=conn.cursor(); cur.execute("SELECT customer_id FROM live_screen_sessions WHERE id=%s",(sid,)); row=cur.fetchone()
+        if not row: return json_error("Session not found.",404)
+        if not session.get("admin_logged_in") and str(session.get("customer_id") or "")!=str(row[0]): return json_error("Not authorized.",403)
+        cur.execute("UPDATE live_screen_sessions SET status='STOPPED',updated_at=NOW() WHERE id=%s",(sid,)); conn.commit()
+    finally: conn.close()
+    return json_ok()
+
+
 @admin_required
 def admin():
     section = str(request.args.get("section", "dashboard")).strip().lower()
