@@ -1501,6 +1501,44 @@
         {% endif %}
     </section>
 
+    <section class="tm-comments" id="engagement" style="margin-top:18px;">
+        <div class="tm-comments-head">
+            <div>
+                <h2>❤️ Movie Actions</h2>
+                <div class="tm-comments-sub">{{ like_summary.like_count }} people like this movie.</div>
+            </div>
+        </div>
+        {% if session.get('customer_logged_in') %}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <form method="post" action="{{ url_for('like_movie', movie_id=movie.id) }}">
+                <button type="submit" class="tm-comment-submit" style="min-width:150px;">
+                    {% if like_summary.my_like %}❤️ Liked{% else %}♡ Like Movie{% endif %}
+                </button>
+            </form>
+            <button type="button" class="tm-comment-submit" onclick="document.getElementById('tmReportMovie').style.display='block';">
+                🚩 Report Problem
+            </button>
+        </div>
+        <form id="tmReportMovie" method="post" action="{{ url_for('report_movie', movie_id=movie.id) }}" style="display:none;margin-top:14px;padding:14px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:#0a0a0a;">
+            <select name="reason" style="width:100%;padding:11px;background:#111;color:#fff;border:1px solid #333;border-radius:8px;margin-bottom:9px;">
+                <option>Video not playing</option>
+                <option>Poor video quality</option>
+                <option>Audio problem</option>
+                <option>Wrong movie</option>
+                <option>Subtitle problem</option>
+                <option>Other</option>
+            </select>
+            <textarea name="details" maxlength="500" placeholder="Optional details..." style="width:100%;min-height:80px;box-sizing:border-box;padding:11px;background:#111;color:#fff;border:1px solid #333;border-radius:8px;resize:vertical;"></textarea>
+            <div style="display:flex;gap:8px;margin-top:9px;">
+                <button type="submit" class="tm-comment-submit">Submit Report</button>
+                <button type="button" class="tm-comment-submit" onclick="this.closest('form').style.display='none';">Cancel</button>
+            </div>
+        </form>
+        {% else %}
+        <div class="tm-comment-login">Login karke Like ya Report kar sakte ho.</div>
+        {% endif %}
+    </section>
+
     <section class="tm-comments" id="comments">
         <div class="tm-comments-head">
             <div>
