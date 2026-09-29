@@ -1436,7 +1436,17 @@ body{
         class="tm-search-empty"
         id="tmSearchEmpty"
     >
-        No movies found.
+        <div style="font-size:28px;margin-bottom:10px;">🎬</div>
+        <strong style="display:block;color:#fff;font-size:16px;margin-bottom:7px;">Movie not available yet</strong>
+        <div style="color:#888;font-size:12px;margin-bottom:14px;">Request it and CINEMA WORLD will keep the demand recorded.</div>
+        <button
+            type="button"
+            id="tmNotifyMovieBtn"
+            class="tm-btn tm-btn-red"
+            style="margin:auto;min-height:40px;"
+        >
+            🔔 Notify Me When Available
+        </button>
     </div>
 
 </section>
@@ -1489,6 +1499,14 @@ window.cwSearchMovies = function(value){
     });
     if(count) count.textContent = visible + (visible === 1 ? " movie" : " movies");
     if(empty) empty.style.display = visible === 0 ? "block" : "none";
+
+    const notifyBtn = document.getElementById("tmNotifyMovieBtn");
+    if(notifyBtn){
+        notifyBtn.dataset.searchTerm = queryRaw;
+        notifyBtn.disabled = queryRaw.length < 2 || visible !== 0;
+        notifyBtn.style.opacity = (queryRaw.length >= 2 && visible === 0) ? "1" : ".45";
+        notifyBtn.style.cursor = (queryRaw.length >= 2 && visible === 0) ? "pointer" : "not-allowed";
+    }
 
     if(queryRaw.length >= 2 && visible === 0){
         clearTimeout(window.__cwDemandTimer);
@@ -1561,6 +1579,11 @@ window.cwSearchMovies = function(value){
     const toast =
         document.getElementById(
             "tmToast"
+        );
+
+    const notifyMovieBtn =
+        document.getElementById(
+            "tmNotifyMovieBtn"
         );
 
 
@@ -1833,6 +1856,26 @@ window.cwSearchMovies = function(value){
         }
     );
 
+
+    if(notifyMovieBtn){
+        notifyMovieBtn.addEventListener("click", function(){
+            const term = String(notifyMovieBtn.dataset.searchTerm || "").trim();
+            if(term.length < 2) return;
+            notifyMovieBtn.disabled = true;
+            notifyMovieBtn.textContent = "✓ Request Saved";
+            fetch("/api/movie-search-demand", {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({search_term: term})
+            }).then(function(){
+                showToast("✓ We'll notify you when it is available");
+            }).catch(function(){
+                notifyMovieBtn.disabled = false;
+                notifyMovieBtn.textContent = "🔔 Notify Me When Available";
+                showToast("Please try again.");
+            });
+        });
+    }
 
     let activeCategory =
         "all";
