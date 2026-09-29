@@ -135,10 +135,16 @@
   {% else %}
     <form class="cw-bank" method="post" action="{{ url_for('save_withdrawal_bank') }}">
       <input class="cw-input" name="account_holder_name" placeholder="Account Holder Name" required>
-      <input class="cw-input" name="bank_name" placeholder="Bank Name" required>
       <input class="cw-input" name="account_number" inputmode="numeric" placeholder="Bank Account Number" required>
-      <input class="cw-input" name="ifsc" placeholder="IFSC Code" maxlength="11" required>
-      <button class="cw-btn red full" type="submit">Submit Bank for Verification</button>
+      <div>
+        <input class="cw-input" id="bankIfsc" name="ifsc" placeholder="IFSC Code" maxlength="11" autocomplete="off" required oninput="lookupBankByIfsc()">
+        <div id="ifscStatus" class="muted" style="margin-top:6px">IFSC डालते ही Bank Name automatic aa jayega.</div>
+      </div>
+      <div>
+        <input class="cw-input" id="bankNameDisplay" placeholder="Bank Name" readonly>
+        <input type="hidden" id="bankName" name="bank_name">
+      </div>
+      <button class="cw-btn red full" id="bankSubmitBtn" type="submit" disabled>Submit Bank for Verification</button>
     </form>
   {% endif %}
 </section>
@@ -211,7 +217,51 @@ Minimum withdrawal ₹100. Fee 5% extra hai aur user ke selected withdrawal amou
 </div></div>
 
 <script>
+let ifscLookupTimer=null;
+let ifscLookupRequest=0;
 function copyReferral(){const i=document.getElementById('refLink');if(!i)return;i.select();i.setSelectionRange(0,99999);navigator.clipboard.writeText(i.value).then(()=>alert('Referral link copied.')).catch(()=>{});}
+function lookupBankByIfsc(){
+  const input=document.getElementById('bankIfsc');
+  const display=document.getElementById('bankNameDisplay');
+  const hidden=document.getElementById('bankName');
+  const status=document.getElementById('ifscStatus');
+  const submit=document.getElementById('bankSubmitBtn');
+  if(!input||!display||!hidden||!status||!submit)return;
+  const ifsc=input.value.trim().toUpperCase();
+  input.value=ifsc;
+  display.value='';
+  hidden.value='';
+  submit.disabled=true;
+  if(ifscLookupTimer)clearTimeout(ifscLookupTimer);
+  if(!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)){
+    status.textContent='11-character valid IFSC code dijiye.';
+    return;
+  }
+  status.textContent='Bank details fetch ho rahe hain...';
+  const requestId=++ifscLookupRequest;
+  ifscLookupTimer=setTimeout(async()=>{
+    try{
+      const response=await fetch('https://ifsc.razorpay.com/'+encodeURIComponent(ifsc),{headers:{'Accept':'application/json'}});
+      if(!response.ok)throw new Error('IFSC not found');
+      const data=await response.json();
+      if(requestId!==ifscLookupRequest)return;
+      const bankName=String(data.BANK||'').trim();
+      if(!bankName)throw new Error('Bank name unavailable');
+      display.value=bankName;
+      hidden.value=bankName;
+      status.textContent='✓ Bank Name automatic add ho gaya.';
+      status.style.color='#78e08f';
+      submit.disabled=false;
+    }catch(error){
+      if(requestId!==ifscLookupRequest)return;
+      display.value='';
+      hidden.value='';
+      status.textContent='IFSC valid nahi mila. IFSC dobara check karein.';
+      status.style.color='#ff6b6b';
+      submit.disabled=true;
+    }
+  },350);
+}
 function pickAmount(n){const i=document.getElementById('withdrawAmount');i.value=n;calcFee();}
 function calcFee(){const a=parseFloat(document.getElementById('withdrawAmount').value||0);const f=a*0.05;document.getElementById('bdAmount').textContent='₹'+a.toFixed(2);document.getElementById('bdFee').textContent='₹'+f.toFixed(2);document.getElementById('bdReceive').textContent='₹'+a.toFixed(2);document.getElementById('bdTotal').textContent='₹'+(a+f).toFixed(2);}
 async function setPin(){const p=document.getElementById('pin1').value,p2=document.getElementById('pin2').value;if(!/^\d{6}$/.test(p)||p!==p2){alert('6-digit PIN dono same hona chahiye.');return;}const fd=new FormData();fd.append('pin',p);fd.append('pin_confirm',p2);const r=await fetch('{{ url_for("set_withdrawal_pin") }}',{method:'POST',body:fd});if(r.ok)location.reload();else alert('PIN set nahi hua.');}
