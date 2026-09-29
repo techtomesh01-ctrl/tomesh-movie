@@ -1472,7 +1472,8 @@ Movies • Entertainment • Stories
 <script>
 
 window.cwSearchMovies = function(value){
-    const query = String(value || "").trim().toLowerCase();
+    const queryRaw = String(value || "").trim();
+    const query = queryRaw.toLowerCase();
     const cards = document.querySelectorAll(".tm-all-movie-card");
     const empty = document.getElementById("tmSearchEmpty");
     const count = document.getElementById("tmMovieCount");
@@ -1488,6 +1489,17 @@ window.cwSearchMovies = function(value){
     });
     if(count) count.textContent = visible + (visible === 1 ? " movie" : " movies");
     if(empty) empty.style.display = visible === 0 ? "block" : "none";
+
+    if(queryRaw.length >= 2 && visible === 0){
+        clearTimeout(window.__cwDemandTimer);
+        window.__cwDemandTimer = setTimeout(function(){
+            fetch("/api/movie-search-demand", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({search_term: queryRaw})
+            }).catch(function(){});
+        }, 600);
+    }
 };
 
 (function(){
