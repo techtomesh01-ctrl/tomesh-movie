@@ -4323,10 +4323,14 @@ def get_member_movies_data():
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT m.*, CASE WHEN cml.movie_id IS NOT NULL THEN TRUE ELSE FALSE END AS in_my_list
+            SELECT m.*, CASE WHEN cml.movie_id IS NOT NULL THEN TRUE ELSE FALSE END AS in_my_list,
+                   COALESCE(ROUND(AVG(mr.rating)::numeric, 1), 0) AS average_rating,
+                   COUNT(mr.id) AS rating_count
             FROM movies m
             LEFT JOIN customer_movie_list cml
               ON cml.movie_id = m.id AND cml.customer_id = %s
+            LEFT JOIN movie_ratings mr ON mr.movie_id = m.id
+            GROUP BY m.id, cml.movie_id
             ORDER BY m.id DESC
             """,
             (customer_id,),
@@ -4343,6 +4347,8 @@ def get_member_movies_data():
             movie["poster_url"] = None
         movie["in_my_list"] = bool(movie.get("in_my_list"))
         movie["views"] = int(movie.get("views") or 0)
+        movie["average_rating"] = float(movie.get("average_rating") or 0)
+        movie["rating_count"] = int(movie.get("rating_count") or 0)
     return movies
 
 
@@ -5260,8 +5266,29 @@ def admin():
         """)
         access = cur.fetchall()
 
-        cur.execute("SELECT * FROM movies ORDER BY views DESC NULLS LAST, id DESC LIMIT 10")
+        cur.execute("""
+            SELECT m.*, COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
+                   COUNT(r.id) AS rating_count
+            FROM movies m
+            LEFT JOIN movie_ratings r ON r.movie_id = m.id
+            GROUP BY m.id
+            ORDER BY m.views DESC NULLS LAST, m.id DESC
+            LIMIT 10
+        """)
         top_movies = cur.fetchall()
+
+        cur.execute("""
+            SELECT m.id, m.title, m.category, m.poster,
+                   ROUND(AVG(r.rating)::numeric, 1) AS average_rating,
+                   COUNT(r.id) AS rating_count
+            FROM movies m
+            JOIN movie_ratings r ON r.movie_id = m.id
+            GROUP BY m.id
+            HAVING COUNT(r.id) >= 1
+            ORDER BY AVG(r.rating) DESC, COUNT(r.id) DESC, m.id DESC
+            LIMIT 10
+        """)
+        top_rated_movies = cur.fetchall()
 
         cur.execute("""
             SELECT 'payment' AS event_type, order_id AS ref, customer_id, status, amount, created_at AS event_time
@@ -5431,6 +5458,7 @@ def admin():
         search_users=search_users,
         search_payments=search_payments,
         movie_search_demands=movie_search_demands,
+        top_rated_movies=top_rated_movies,
         comments_admin=comments_admin,
         total_movies=int(stats.get("total_movies") or 0),
         total_users=total_users,
