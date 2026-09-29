@@ -3512,6 +3512,19 @@ def movie_page(movie_id):
     finally:
         ratings_conn.close()
 
+    like_summary = {"like_count": 0, "my_like": False}
+    like_conn = get_db(dict_rows=True)
+    try:
+        lc = like_conn.cursor()
+        lc.execute("SELECT COUNT(*) AS n FROM movie_likes WHERE movie_id=%s", (movie_id,))
+        like_summary["like_count"] = int((lc.fetchone() or {}).get("n") or 0)
+        if session.get("customer_logged_in"):
+            lc.execute("SELECT 1 FROM movie_likes WHERE movie_id=%s AND customer_id=%s LIMIT 1", (movie_id, str(session.get("customer_id") or "")))
+            like_summary["my_like"] = bool(lc.fetchone())
+        lc.close()
+    finally:
+        like_conn.close()
+
     comments = []
 
     comments_conn = get_db(dict_rows=True)
@@ -3547,13 +3560,41 @@ def movie_page(movie_id):
         comment_csrf=comment_csrf,
         rating_summary=rating_summary,
         my_rating=my_rating,
+        like_summary=like_summary,
         cashfree_mode=CASHFREE_JS_MODE,
     )
 
 
 # ============================================================
+# MOVIE LIKE
+# ============================================================
+
+@app.route("/movie/<int:movie_id>/like", methods=["POST"])
+def like_movie(movie_id):
+    customer_id = session.get("customer_id")
+    if not customer_id or not session.get("customer_logged_in"):
+        flash("Please login to like this movie.", "error")
+        return redirect(url_for("movie_page", movie_id=movie_id))
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM movies WHERE id=%s", (movie_id,))
+        if not cur.fetchone(): abort(404)
+        cur.execute("SELECT 1 FROM movie_likes WHERE movie_id=%s AND customer_id=%s", (movie_id, str(customer_id)))
+        if cur.fetchone():
+            cur.execute("DELETE FROM movie_likes WHERE movie_id=%s AND customer_id=%s", (movie_id, str(customer_id)))
+        else:
+            cur.execute("INSERT INTO movie_likes(movie_id,customer_id) VALUES(%s,%s) ON CONFLICT(movie_id,customer_id) DO NOTHING", (movie_id, str(customer_id)))
+        conn.commit(); cur.close()
+    finally:
+        conn.close()
+    return redirect(url_for("movie_page", movie_id=movie_id))
+
+
+# ============================================================
 # MOVIE RATINGS
 # ============================================================
+
 
 @app.route("/movie/<int:movie_id>/rating", methods=["POST"])
 def rate_movie(movie_id):
