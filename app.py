@@ -876,6 +876,27 @@ def init_db():
         """)
 
         # ----------------------------------------------------
+        # MOVIE RATINGS
+        # ----------------------------------------------------
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movie_ratings (
+                id SERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL,
+                customer_id TEXT NOT NULL,
+                rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(movie_id, customer_id),
+                FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movie_ratings_movie
+            ON movie_ratings(movie_id)
+        """)
+
+        # ----------------------------------------------------
         # MOVIE COMMENTS
         # ----------------------------------------------------
 
@@ -3440,6 +3461,29 @@ def movie_page(movie_id):
         movie.get("views") or 0
     )
 
+    rating_summary = {"average_rating": 0, "rating_count": 0}
+    my_rating = 0
+    ratings_conn = get_db(dict_rows=True)
+    try:
+        ratings_cur = ratings_conn.cursor()
+        ratings_cur.execute("""
+            SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0) AS average_rating,
+                   COUNT(*) AS rating_count
+            FROM movie_ratings
+            WHERE movie_id = %s
+        """, (movie_id,))
+        rating_summary = dict(ratings_cur.fetchone() or rating_summary)
+        if session.get("customer_logged_in"):
+            ratings_cur.execute("""
+                SELECT rating FROM movie_ratings
+                WHERE movie_id = %s AND customer_id = %s
+            """, (movie_id, str(session.get("customer_id") or "")))
+            own = ratings_cur.fetchone()
+            my_rating = int((own or {}).get("rating") or 0)
+        ratings_cur.close()
+    finally:
+        ratings_conn.close()
+
     comments = []
 
     comments_conn = get_db(dict_rows=True)
@@ -3473,8 +3517,54 @@ def movie_page(movie_id):
         access=access,
         comments=comments,
         comment_csrf=comment_csrf,
+        rating_summary=rating_summary,
+        my_rating=my_rating,
         cashfree_mode=CASHFREE_JS_MODE,
     )
+
+
+# ============================================================
+# MOVIE RATINGS
+# ============================================================
+
+@app.route("/movie/<int:movie_id>/rating", methods=["POST"])
+def rate_movie(movie_id):
+    customer_id = session.get("customer_id")
+    if not customer_id or not session.get("customer_logged_in"):
+        flash("Please login to rate this movie.", "error")
+        return redirect(url_for("movie_page", movie_id=movie_id))
+
+    try:
+        rating = int(request.form.get("rating", "0"))
+    except (TypeError, ValueError):
+        rating = 0
+    if rating < 1 or rating > 5:
+        flash("Please select a rating from 1 to 5 stars.", "error")
+        return redirect(url_for("movie_page", movie_id=movie_id))
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM movies WHERE id = %s", (movie_id,))
+        if not cur.fetchone():
+            cur.close()
+            abort(404)
+        cur.execute("""
+            INSERT INTO movie_ratings (movie_id, customer_id, rating)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (movie_id, customer_id)
+            DO UPDATE SET rating = EXCLUDED.rating, updated_at = CURRENT_TIMESTAMP
+        """, (movie_id, str(customer_id), rating))
+        conn.commit()
+        cur.close()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    flash("Your rating has been saved.", "success")
+    return redirect(url_for("movie_page", movie_id=movie_id))
 
 
 # ============================================================
