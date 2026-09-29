@@ -1335,6 +1335,14 @@ body{
     </div>
 
 
+    <section id="tmRecentlyViewed" style="display:none;margin-bottom:28px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
+            <h2 style="margin:0;font-size:21px;font-weight:950;">🕘 Recently Watched</h2>
+            <button type="button" id="tmClearRecent" style="border:1px solid #333;background:#111;color:#aaa;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:11px;">Clear</button>
+        </div>
+        <div id="tmRecentlyGrid" class="tm-movie-grid"></div>
+    </section>
+
     <section id="tmContinueWatching" style="display:none;margin-bottom:28px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
             <h2 style="margin:0;font-size:21px;font-weight:950;">Continue Watching</h2>
@@ -1513,6 +1521,33 @@ Movies • Entertainment • Stories
 ></div>
 
 <script>
+
+(function(){
+  const key="cw_recent_movies_v1";
+  const section=document.getElementById("tmRecentlyViewed");
+  const grid=document.getElementById("tmRecentlyGrid");
+  const clear=document.getElementById("tmClearRecent");
+  if(!section||!grid) return;
+  function render(){
+    let list=[];
+    try{list=JSON.parse(localStorage.getItem(key)||"[]")}catch(e){}
+    list=list.filter(x=>x&&x.id).slice(0,8);
+    if(!list.length){section.style.display="none";return}
+    section.style.display="block";
+    grid.innerHTML="";
+    list.forEach(function(m){
+      const card=document.createElement("article");
+      card.className="tm-movie-card";
+      const safeTitle=document.createElement("div"); safeTitle.textContent=m.title||"Movie";
+      const poster=m.poster ? '<img class="tm-poster" src="'+String(m.poster).replace(/"/g,'&quot;')+'" alt="">':'<div class="tm-no-poster">NO POSTER</div>';
+      card.innerHTML='<a class="tm-poster-link" href="'+String(m.url||"#")+'"><div class="tm-poster-wrap">'+poster+'<div class="tm-card-gradient"></div></div><div class="tm-card-info"><h3 class="tm-movie-title"></h3><div class="tm-movie-meta">Recently watched</div></div></a>';
+      card.querySelector(".tm-movie-title").textContent=m.title||"Movie";
+      grid.appendChild(card);
+    });
+  }
+  clear?.addEventListener("click",function(){localStorage.removeItem(key);render()});
+  render();
+})();
 
 window.cwSearchMovies = function(value){
     const queryRaw = String(value || "").trim();
