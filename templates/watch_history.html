@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="max-width:1100px;margin:40px auto;padding:20px;color:#fff;">
+  <h1 style="font-size:32px;margin-bottom:22px;">🎬 Watch History</h1>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:18px;">
+  {% for m in history %}
+    <a href="{{ url_for('movie_page', movie_id=m.movie_id) }}" style="text-decoration:none;color:#fff;background:#111;border:1px solid #222;border-radius:14px;overflow:hidden;">
+      {% if m.poster_url %}<img src="{{m.poster_url}}" style="width:100%;aspect-ratio:2/3;object-fit:cover;">{% endif %}
+      <div style="padding:12px;"><strong>{{m.title}}</strong><div style="color:#999;font-size:12px;margin-top:6px;">{% if m.completed %}✓ Watched{% else %}▶ Continue Watching{% endif %}</div></div>
+    </a>
+  {% else %}
+    <div style="color:#aaa;">No watch history yet.</div>
+  {% endfor %}
+  </div>
+</div>
+{% endblock %}
