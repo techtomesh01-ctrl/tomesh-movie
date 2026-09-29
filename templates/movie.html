@@ -1,6 +1,22 @@
 {% extends "base.html" %}
 
-{% block title %}{{ movie.title }} | CINEMA WORLD{% endblock %}
+{% block title %}{{ movie.title }} | CINEMA WORLD<script>
+function cwCopyMovieLink(){
+  const url=window.location.href;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(()=>alert('Movie link copied!')).catch(()=>prompt('Copy movie link:',url));
+  }else{
+    prompt('Copy movie link:',url);
+  }
+}
+function cwShareMovie(){
+  const data={title:{{ movie.title|tojson }},text:'Watch {{ movie.title|e }} on CINEMA WORLD',url:window.location.href};
+  if(navigator.share){navigator.share(data).catch(()=>{});}
+  else{cwCopyMovieLink();}
+}
+</script>
+
+{% endblock %}
 
 {% block content %}
 
@@ -1510,6 +1526,8 @@
         </div>
         {% if session.get('customer_logged_in') %}
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button type="button" class="tm-comment-submit" onclick="cwCopyMovieLink()">🔗 Copy Link</button>
+            <button type="button" class="tm-comment-submit" onclick="cwShareMovie()">📤 Share</button>
             <form method="post" action="{{ url_for('like_movie', movie_id=movie.id) }}">
                 <button type="submit" class="tm-comment-submit" style="min-width:150px;">
                     {% if like_summary.my_like %}❤️ Liked{% else %}♡ Like Movie{% endif %}
