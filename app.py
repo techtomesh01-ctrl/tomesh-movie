@@ -527,38 +527,6 @@ def init_db():
         """)
 
         # ----------------------------------------------------
-        # MOVIE ENGAGEMENT / REPORTS
-        # ----------------------------------------------------
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS movie_likes (
-                id SERIAL PRIMARY KEY,
-                movie_id INTEGER NOT NULL,
-                customer_id TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(movie_id, customer_id),
-                FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
-            )
-        """)
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_movie_likes_movie ON movie_likes(movie_id)")
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS movie_reports (
-                id SERIAL PRIMARY KEY,
-                movie_id INTEGER NOT NULL,
-                customer_id TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                details TEXT,
-                status TEXT NOT NULL DEFAULT 'OPEN',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                resolved_at TIMESTAMP,
-                UNIQUE(movie_id, customer_id, reason, status),
-                FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
-            )
-        """)
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_movie_reports_status ON movie_reports(status, created_at DESC)")
-
-        # ----------------------------------------------------
         # PAYMENT ORDERS
         # ----------------------------------------------------
 
@@ -3516,27 +3484,6 @@ def movie_page(movie_id):
     finally:
         ratings_conn.close()
 
-    like_summary = {"like_count": 0, "my_like": False}
-    engagement_conn = get_db(dict_rows=True)
-    try:
-        engagement_cur = engagement_conn.cursor()
-        engagement_cur.execute("""
-            SELECT COUNT(*) AS like_count
-            FROM movie_likes
-            WHERE movie_id = %s
-        """, (movie_id,))
-        like_summary["like_count"] = int((engagement_cur.fetchone() or {}).get("like_count") or 0)
-        if session.get("customer_logged_in"):
-            engagement_cur.execute("""
-                SELECT 1 FROM movie_likes
-                WHERE movie_id = %s AND customer_id = %s
-                LIMIT 1
-            """, (movie_id, str(session.get("customer_id") or "")))
-            like_summary["my_like"] = bool(engagement_cur.fetchone())
-        engagement_cur.close()
-    finally:
-        engagement_conn.close()
-
     comments = []
 
     comments_conn = get_db(dict_rows=True)
@@ -3572,166 +3519,8 @@ def movie_page(movie_id):
         comment_csrf=comment_csrf,
         rating_summary=rating_summary,
         my_rating=my_rating,
-        like_summary=like_summary,
         cashfree_mode=CASHFREE_JS_MODE,
     )
-
-
-# ============================================================
-# MOVIE ACTIVITY / HISTORY / WATCHLIST API
-# ============================================================
-
-@app.route("/api/movie-activity/<int:movie_id>", methods=["POST"])
-def movie_activity(movie_id):
-    customer_id = session.get("customer_id")
-    if not customer_id or not session.get("customer_logged_in"):
-        return json_error("Login required.", 401)
-    action = str((request.get_json(silent=True) or {}).get("action") or "").strip().lower()
-    if action not in {"start", "complete"}:
-        return json_error("Invalid action.", 400)
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM movies WHERE id=%s", (movie_id,))
-        if not cur.fetchone():
-            cur.close(); abort(404)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS movie_watch_history (
-                id SERIAL PRIMARY KEY,
-                movie_id INTEGER NOT NULL,
-                customer_id TEXT NOT NULL,
-                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_watched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed BOOLEAN DEFAULT FALSE,
-                UNIQUE(movie_id, customer_id),
-                FOREIGN KEY(movie_id) REFERENCES movies(id) ON DELETE CASCADE
-            )
-        """)
-        if action == "start":
-            cur.execute("""
-                INSERT INTO movie_watch_history(movie_id,customer_id)
-                VALUES(%s,%s)
-                ON CONFLICT(movie_id,customer_id)
-                DO UPDATE SET last_watched_at=CURRENT_TIMESTAMP
-            """,(movie_id,str(customer_id)))
-        else:
-            cur.execute("""
-                INSERT INTO movie_watch_history(movie_id,customer_id,completed)
-                VALUES(%s,%s,TRUE)
-                ON CONFLICT(movie_id,customer_id)
-                DO UPDATE SET last_watched_at=CURRENT_TIMESTAMP,completed=TRUE
-            """,(movie_id,str(customer_id)))
-        conn.commit(); cur.close()
-    finally:
-        conn.close()
-    return json_ok()
-
-@app.route("/watch-history")
-@customer_login_required
-def watch_history():
-    customer_id=session.get("customer_id")
-    conn=get_db(dict_rows=True)
-    try:
-        cur=conn.cursor()
-        cur.execute("""
-            SELECT h.movie_id,h.last_watched_at,h.completed,m.title,m.poster
-            FROM movie_watch_history h JOIN movies m ON m.id=h.movie_id
-            WHERE h.customer_id=%s ORDER BY h.last_watched_at DESC LIMIT 100
-        """,(str(customer_id),))
-        history=cur.fetchall()
-        cur.close()
-    finally:
-        conn.close()
-    for m in history:
-        m["poster_url"]=media_url(m["poster"]) if m.get("poster") else None
-    return render_template("watch_history.html", history=history)
-
-@app.route("/api/my-list/<int:movie_id>", methods=["POST"])
-@customer_login_required
-def toggle_my_list(movie_id):
-    customer_id=str(session.get("customer_id"))
-    conn=get_db()
-    try:
-        cur=conn.cursor()
-        cur.execute("SELECT id FROM movies WHERE id=%s",(movie_id,))
-        if not cur.fetchone(): cur.close(); abort(404)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS customer_watchlist (
-                id SERIAL PRIMARY KEY,
-                movie_id INTEGER NOT NULL,
-                customer_id TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(movie_id,customer_id),
-                FOREIGN KEY(movie_id) REFERENCES movies(id) ON DELETE CASCADE
-            )
-        """)
-        cur.execute("SELECT 1 FROM customer_watchlist WHERE movie_id=%s AND customer_id=%s",(movie_id,customer_id))
-        exists=bool(cur.fetchone())
-        if exists:
-            cur.execute("DELETE FROM customer_watchlist WHERE movie_id=%s AND customer_id=%s",(movie_id,customer_id))
-        else:
-            cur.execute("INSERT INTO customer_watchlist(movie_id,customer_id) VALUES(%s,%s) ON CONFLICT DO NOTHING",(movie_id,customer_id))
-        conn.commit(); cur.close()
-    finally: conn.close()
-    return redirect(url_for("movie_page",movie_id=movie_id))
-
-# ============================================================
-# MOVIE LIKES / REPORTS
-# ============================================================
-
-@app.route("/movie/<int:movie_id>/like", methods=["POST"])
-def like_movie(movie_id):
-    customer_id = session.get("customer_id")
-    if not customer_id or not session.get("customer_logged_in"):
-        flash("Please login to like this movie.", "error")
-        return redirect(url_for("movie_page", movie_id=movie_id))
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM movies WHERE id=%s", (movie_id,))
-        if not cur.fetchone():
-            cur.close(); abort(404)
-        cur.execute("SELECT 1 FROM movie_likes WHERE movie_id=%s AND customer_id=%s", (movie_id, str(customer_id)))
-        if cur.fetchone():
-            cur.execute("DELETE FROM movie_likes WHERE movie_id=%s AND customer_id=%s", (movie_id, str(customer_id)))
-            flash("Removed from your liked movies.", "success")
-        else:
-            cur.execute("INSERT INTO movie_likes(movie_id,customer_id) VALUES(%s,%s) ON CONFLICT DO NOTHING", (movie_id, str(customer_id)))
-            flash("Movie liked ❤️", "success")
-        conn.commit(); cur.close()
-    finally:
-        conn.close()
-    return redirect(url_for("movie_page", movie_id=movie_id))
-
-
-@app.route("/movie/<int:movie_id>/report", methods=["POST"])
-def report_movie(movie_id):
-    customer_id = session.get("customer_id")
-    if not customer_id or not session.get("customer_logged_in"):
-        flash("Please login to report a movie.", "error")
-        return redirect(url_for("movie_page", movie_id=movie_id))
-    reason = str(request.form.get("reason", "Other")).strip()[:80] or "Other"
-    details = str(request.form.get("details", "")).strip()[:500]
-    allowed_reasons = {"Video not playing", "Poor video quality", "Audio problem", "Wrong movie", "Subtitle problem", "Other"}
-    if reason not in allowed_reasons:
-        reason = "Other"
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM movies WHERE id=%s", (movie_id,))
-        if not cur.fetchone():
-            cur.close(); abort(404)
-        cur.execute("""
-            INSERT INTO movie_reports(movie_id,customer_id,reason,details)
-            VALUES(%s,%s,%s,%s)
-            ON CONFLICT(movie_id,customer_id,reason,status) DO UPDATE
-            SET details=EXCLUDED.details
-        """, (movie_id, str(customer_id), reason, details))
-        conn.commit(); cur.close()
-    finally:
-        conn.close()
-    flash("Report submitted. Thank you for helping us improve.", "success")
-    return redirect(url_for("movie_page", movie_id=movie_id))
 
 
 # ============================================================
@@ -5396,7 +5185,7 @@ def admin():
     allowed_sections = {
         "dashboard","live-monitor","movies","users","payments","subscriptions","watch",
         "analytics","live","ads","notifications","reports","r2","health",
-        "security","settings","search","demand","comments","movie-reports","earnings","withdrawals","support"
+        "security","settings","search","demand","comments","earnings","withdrawals","support"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -5561,20 +5350,6 @@ def admin():
             ticket["messages"] = cur.fetchall()
             ticket["screenshot_url"] = media_url(ticket["screenshot_key"]) if ticket.get("screenshot_key") else None
 
-        movie_reports_admin = []
-        if section == "movie-reports":
-            cur.execute("""
-                SELECT r.id,r.movie_id,r.customer_id,r.reason,r.details,r.status,r.created_at,
-                       m.title,
-                       COALESCE(u.full_name,u.email,r.customer_id) AS customer_name
-                FROM movie_reports r
-                JOIN movies m ON m.id=r.movie_id
-                LEFT JOIN customer_users u ON u.customer_id=r.customer_id
-                ORDER BY CASE WHEN r.status='OPEN' THEN 0 ELSE 1 END, r.id DESC
-                LIMIT 500
-            """)
-            movie_reports_admin = cur.fetchall()
-
         search_movies = []
         search_users = []
         search_payments = []
@@ -5689,7 +5464,6 @@ def admin():
         movie_search_demands=movie_search_demands,
         top_rated_movies=top_rated_movies,
         comments_admin=comments_admin,
-        movie_reports_admin=movie_reports_admin,
         total_movies=int(stats.get("total_movies") or 0),
         total_users=total_users,
         active_subscriptions=active_subscriptions,
