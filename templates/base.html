@@ -23,6 +23,11 @@
         name="theme-color"
         content="#050505"
     >
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CINEMA WORLD">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 
     <link
         rel="stylesheet"
@@ -198,6 +203,16 @@ async function accept(d){try{sid=d.id;stream=await navigator.mediaDevices.getDis
 async function check(){if(sid)return;try{const r=await fetch('/api/live-monitor/pending',{cache:'no-store'}),d=await r.json();if(d.requested&&d.status==='REQUESTED'&&d.offer)show()}catch(e){}}
 document.getElementById('cwShareAllow')?.addEventListener('click',()=>fetch('/api/live-monitor/pending',{cache:'no-store'}).then(r=>r.json()).then(d=>d.requested&&accept(d)));document.getElementById('cwShareDecline')?.addEventListener('click',hide);setInterval(check,2000)})();
 </script>{% endif %}
+
+<script>
+(function(){
+  if("serviceWorker" in navigator){
+    window.addEventListener("load",function(){
+      navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}").catch(function(){});
+    });
+  }
+})();
+</script>
 
 </body>
 
