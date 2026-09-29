@@ -839,6 +839,38 @@ def init_db():
         """)
 
         # ----------------------------------------------------
+        # MOVIE SEARCH DEMAND
+        # ----------------------------------------------------
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movie_search_demands (
+                id SERIAL PRIMARY KEY,
+                search_term TEXT NOT NULL,
+                normalized_term TEXT UNIQUE NOT NULL,
+                search_count INTEGER NOT NULL DEFAULT 0,
+                unique_users INTEGER NOT NULL DEFAULT 0,
+                first_searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_customer_id TEXT
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movie_search_demand_users (
+                id SERIAL PRIMARY KEY,
+                demand_id INTEGER NOT NULL REFERENCES movie_search_demands(id) ON DELETE CASCADE,
+                customer_id TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(demand_id, customer_id)
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movie_search_demands_count
+            ON movie_search_demands(search_count DESC, last_searched_at DESC)
+        """)
+
+        # ----------------------------------------------------
         # MOVIE COMMENTS
         # ----------------------------------------------------
 
@@ -4566,6 +4598,65 @@ def member_home():
         premium=has_active_premium(),
     )
 
+@app.route("/api/movie-search-demand", methods=["POST"])
+@customer_login_required
+def api_movie_search_demand():
+    data = request.get_json(silent=True) or {}
+    search_term = str(data.get("search_term") or "").strip()
+    search_term = re.sub(r"\\s+", " ", search_term)[:120]
+    normalized = search_term.casefold()
+    if len(normalized) < 2:
+        return json_error("Search term too short.", 400)
+
+    # Do not create a demand for a movie that already exists in the catalog.
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id FROM movies
+            WHERE title ILIKE %s
+            LIMIT 1
+        """, (search_term,))
+        if cur.fetchone():
+            cur.close()
+            return json_ok(recorded=False, reason="movie_exists")
+
+        cur.execute("""
+            INSERT INTO movie_search_demands
+                (search_term, normalized_term, search_count, unique_users, last_customer_id)
+            VALUES (%s, %s, 1, 0, %s)
+            ON CONFLICT (normalized_term)
+            DO UPDATE SET
+                search_count = movie_search_demands.search_count + 1,
+                last_searched_at = CURRENT_TIMESTAMP,
+                search_term = EXCLUDED.search_term,
+                last_customer_id = EXCLUDED.last_customer_id
+            RETURNING id
+        """, (search_term, normalized, session.get("customer_id")))
+        demand_id = cur.fetchone()["id"]
+        cur.execute("""
+            INSERT INTO movie_search_demand_users(demand_id, customer_id)
+            VALUES(%s, %s)
+            ON CONFLICT(demand_id, customer_id) DO NOTHING
+        """, (demand_id, session.get("customer_id")))
+        cur.execute("""
+            UPDATE movie_search_demands d
+            SET unique_users = (
+                SELECT COUNT(*) FROM movie_search_demand_users u
+                WHERE u.demand_id = d.id
+            )
+            WHERE d.id = %s
+        """, (demand_id,))
+        conn.commit()
+        cur.close()
+        return json_ok(recorded=True)
+    except Exception as exc:
+        conn.rollback()
+        return json_error("Search demand save failed: " + str(exc), 500)
+    finally:
+        conn.close()
+
+
 @app.route("/api/my-list/<int:movie_id>", methods=["POST", "DELETE"])
 @customer_login_required
 def api_my_list(movie_id):
@@ -4836,7 +4927,7 @@ def admin():
     allowed_sections = {
         "dashboard","movies","users","payments","subscriptions","watch",
         "analytics","live","ads","notifications","reports","r2","health",
-        "security","settings","search","comments","earnings","withdrawals","support"
+        "security","settings","search","demand","comments","earnings","withdrawals","support"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -4983,6 +5074,16 @@ def admin():
         search_movies = []
         search_users = []
         search_payments = []
+        movie_search_demands = []
+        cur.execute("""
+            SELECT id, search_term, search_count, unique_users, first_searched_at,
+                   last_searched_at, last_customer_id
+            FROM movie_search_demands
+            ORDER BY search_count DESC, last_searched_at DESC
+            LIMIT 300
+        """)
+        movie_search_demands = cur.fetchall()
+
         if q:
             like = "%" + q + "%"
             cur.execute("""
@@ -5081,6 +5182,7 @@ def admin():
         search_movies=search_movies,
         search_users=search_users,
         search_payments=search_payments,
+        movie_search_demands=movie_search_demands,
         comments_admin=comments_admin,
         total_movies=int(stats.get("total_movies") or 0),
         total_users=total_users,
