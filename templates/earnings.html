@@ -141,8 +141,53 @@
         <div id="ifscStatus" class="muted" style="margin-top:6px">IFSC डालते ही Bank Name automatic aa jayega.</div>
       </div>
       <div>
-        <input class="cw-input" id="bankNameDisplay" placeholder="Bank Name" readonly>
-        <input type="hidden" id="bankName" name="bank_name">
+        <select class="cw-input" id="bankNameDisplay" name="bank_name" required onchange="selectBankName()">
+          <option value="">Select Bank Name</option>
+          <option>State Bank of India (SBI)</option>
+          <option>HDFC Bank</option>
+          <option>ICICI Bank</option>
+          <option>Axis Bank</option>
+          <option>Punjab National Bank (PNB)</option>
+          <option>Bank of Baroda (BOB)</option>
+          <option>Bank of India (BOI)</option>
+          <option>Canara Bank</option>
+          <option>Union Bank of India</option>
+          <option>Indian Bank</option>
+          <option>Central Bank of India</option>
+          <option>Indian Overseas Bank (IOB)</option>
+          <option>Bank of Maharashtra</option>
+          <option>UCO Bank</option>
+          <option>Punjab & Sind Bank</option>
+          <option>IDBI Bank</option>
+          <option>IDFC FIRST Bank</option>
+          <option>IndusInd Bank</option>
+          <option>Federal Bank</option>
+          <option>Yes Bank</option>
+          <option>South Indian Bank</option>
+          <option>RBL Bank</option>
+          <option>Bandhan Bank</option>
+          <option>City Union Bank</option>
+          <option>DCB Bank</option>
+          <option>Dhanlaxmi Bank</option>
+          <option>Jammu & Kashmir Bank</option>
+          <option>Karnataka Bank</option>
+          <option>Tamilnad Mercantile Bank</option>
+          <option>Karur Vysya Bank</option>
+          <option>CSB Bank</option>
+          <option>AU Small Finance Bank</option>
+          <option>Equitas Small Finance Bank</option>
+          <option>ESAF Small Finance Bank</option>
+          <option>Ujjivan Small Finance Bank</option>
+          <option>Jana Small Finance Bank</option>
+          <option>Fincare Small Finance Bank</option>
+          <option>Fino Payments Bank</option>
+          <option>Airtel Payments Bank</option>
+          <option>India Post Payments Bank (IPPB)</option>
+          <option>Jio Payments Bank</option>
+          <option>Paytm Payments Bank</option>
+          <option>Chhattisgarh Gramin Bank</option>
+          <option>Other Bank</option>
+        </select>
       </div>
       <button class="cw-btn red full" id="bankSubmitBtn" type="submit" disabled>Submit Bank for Verification</button>
     </form>
@@ -220,24 +265,26 @@ Minimum withdrawal ₹100. Fee 5% extra hai aur user ke selected withdrawal amou
 let ifscLookupTimer=null;
 let ifscLookupRequest=0;
 function copyReferral(){const i=document.getElementById('refLink');if(!i)return;i.select();i.setSelectionRange(0,99999);navigator.clipboard.writeText(i.value).then(()=>alert('Referral link copied.')).catch(()=>{});}
+function selectBankName(){
+  const display=document.getElementById('bankNameDisplay');
+  if(display&&display.value) document.getElementById('ifscStatus').textContent='Bank selected. Ab IFSC code dijiye.';
+}
 function lookupBankByIfsc(){
   const input=document.getElementById('bankIfsc');
   const display=document.getElementById('bankNameDisplay');
-  const hidden=document.getElementById('bankName');
   const status=document.getElementById('ifscStatus');
   const submit=document.getElementById('bankSubmitBtn');
-  if(!input||!display||!hidden||!status||!submit)return;
+  if(!input||!display||!status||!submit)return;
   const ifsc=input.value.trim().toUpperCase();
   input.value=ifsc;
-  display.value='';
-  hidden.value='';
   submit.disabled=true;
   if(ifscLookupTimer)clearTimeout(ifscLookupTimer);
   if(!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)){
     status.textContent='11-character valid IFSC code dijiye.';
+    status.style.color='#92929c';
     return;
   }
-  status.textContent='Bank details fetch ho rahe hain...';
+  status.textContent='IFSC verify ho raha hai...';
   const requestId=++ifscLookupRequest;
   ifscLookupTimer=setTimeout(async()=>{
     try{
@@ -247,15 +294,20 @@ function lookupBankByIfsc(){
       if(requestId!==ifscLookupRequest)return;
       const bankName=String(data.BANK||'').trim();
       if(!bankName)throw new Error('Bank name unavailable');
-      display.value=bankName;
-      hidden.value=bankName;
-      status.textContent='✓ Bank Name automatic add ho gaya.';
+      let matched=false;
+      for(const option of display.options){
+        if(option.value && bankName.toLowerCase().includes(option.value.replace(/\s*\([^)]*\)/,'').toLowerCase()) || option.value.replace(/\s*\([^)]*\)/,'').toLowerCase().includes(bankName.toLowerCase())){
+          display.value=option.value; matched=true; break;
+        }
+      }
+      if(!matched){
+        const other=Array.from(display.options).find(o=>o.value==='Other Bank');
+        if(other)display.value='Other Bank';
+      }
+      status.textContent='✓ IFSC verified — Bank Name automatic selected.';
       status.style.color='#78e08f';
       submit.disabled=false;
     }catch(error){
-      if(requestId!==ifscLookupRequest)return;
-      display.value='';
-      hidden.value='';
       status.textContent='IFSC valid nahi mila. IFSC dobara check karein.';
       status.style.color='#ff6b6b';
       submit.disabled=true;
