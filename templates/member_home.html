@@ -1343,6 +1343,31 @@ body{
         <div id="tmContinueGrid" class="tm-movie-grid"></div>
     </section>
 
+    {% if top_rated_movies %}
+    <section style="margin:26px 0 18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
+            <h2 style="margin:0;font-size:21px;font-weight:950;">⭐ Top Rated</h2>
+            <span style="color:#777;font-size:11px;">Based on member ratings</span>
+        </div>
+        <div class="tm-movie-grid">
+            {% for movie in top_rated_movies %}
+            <article class="tm-movie-card tm-all-movie-card" data-movie-id="{{ movie.id }}" data-title="{{ movie.title|lower }}" data-category="{{ (movie.category or '')|lower }}">
+                <a class="tm-poster-link" href="{{ url_for('movie_page', movie_id=movie.id) }}">
+                    <div class="tm-poster-wrap">
+                        {% if movie.poster_url %}<img class="tm-poster" src="{{ movie.poster_url }}" alt="{{ movie.title }}" loading="lazy">{% else %}<div class="tm-no-poster">NO POSTER</div>{% endif %}
+                        <div class="tm-card-gradient"></div>
+                    </div>
+                    <div class="tm-card-info">
+                        <h3 class="tm-movie-title">{{ movie.title }}</h3>
+                        <div class="tm-movie-meta">{{ movie.category or "Movie" }} • ⭐ {{ movie.average_rating }}/5 ({{ movie.rating_count }})</div>
+                    </div>
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
     <div
         class="tm-movie-grid"
         id="tmMovieGrid"
