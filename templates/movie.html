@@ -1928,6 +1928,33 @@ function copyMovieLink(url){
         else if(e.key.toLowerCase()==="m") toggleMute();
     });
 
+    // Save and restore the exact playback position on this device.
+    const resumeKey = "cw_resume_movie_" + String(TM_MOVIE_ID);
+    let resumeApplied = false;
+    function saveResumePosition(){
+        try{
+            if(Number.isFinite(video.currentTime) && video.currentTime > 5 && Number.isFinite(video.duration) && video.duration > 0){
+                localStorage.setItem(resumeKey, JSON.stringify({time:video.currentTime,duration:video.duration,savedAt:Date.now()}));
+            }
+        }catch(e){}
+    }
+    function applyResumePosition(){
+        if(resumeApplied || !Number.isFinite(video.duration) || video.duration <= 0) return;
+        resumeApplied = true;
+        try{
+            const saved=JSON.parse(localStorage.getItem(resumeKey)||"null");
+            if(saved && Number.isFinite(saved.time) && saved.time>10 && saved.time<video.duration-8){
+                video.currentTime=saved.time;
+                setStatus("▶ Resume: "+formatTime(saved.time));
+            }
+        }catch(e){}
+    }
+    video.addEventListener("loadedmetadata",applyResumePosition);
+    video.addEventListener("timeupdate",saveResumePosition);
+    video.addEventListener("pause",saveResumePosition);
+    video.addEventListener("ended",function(){try{localStorage.removeItem(resumeKey);}catch(e){}});
+    window.addEventListener("beforeunload",saveResumePosition);
+
     const watchNow=$("tmWatchNow");
     if(watchNow) watchNow.addEventListener("click",()=>setTimeout(()=>video.scrollIntoView({behavior:"smooth",block:"center"}),100));
 
