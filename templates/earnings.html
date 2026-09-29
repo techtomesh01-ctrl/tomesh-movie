@@ -204,7 +204,13 @@
     <button class="cw-btn red full" type="button" onclick="setPin()">Set Withdrawal PIN</button>
   </form>
   {% else %}
-  <div class="cw-note">PIN set hai. Security ke liye PIN change karne ka option sirf verified login flow ke through handle kiya jayega.</div>
+  <form class="cw-form" method="post" action="{{ url_for('change_withdrawal_pin') }}">
+    <input class="cw-input" name="current_pin" inputmode="numeric" maxlength="6" placeholder="Current 6-digit PIN" required>
+    <input class="cw-input" name="new_pin" inputmode="numeric" maxlength="6" placeholder="New 6-digit PIN" required>
+    <input class="cw-input full" name="new_pin_confirm" inputmode="numeric" maxlength="6" placeholder="Confirm New PIN" required>
+    <button class="cw-btn red full" type="submit">Change Withdrawal PIN</button>
+  </form>
+  <div class="cw-note">PIN change ke liye current PIN required hai. Admin ko PIN kabhi visible nahi hota.</div>
   {% endif %}
 </section>
 
