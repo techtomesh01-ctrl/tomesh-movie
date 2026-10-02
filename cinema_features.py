@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import request, session, redirect, url_for, render_template, flash, jsonify
+from flask import request, session, redirect, url_for, render_template, flash, jsonify, Response
 
 # This module is imported at the very end of app.py, after Flask and DB helpers exist.
 from app import app, get_db, customer_login_required, admin_required
@@ -299,3 +299,93 @@ def cw_admin_notify():
             cur=conn.cursor(); cur.execute('INSERT INTO cw_notifications(customer_id,title,message,kind) VALUES(%s,%s,%s,%s)', (customer_id,title,message,'ADMIN')); conn.commit()
         finally: conn.close()
     return redirect(url_for('cw_admin_feature_center'))
+
+
+# ============================================================
+# ADSENSE / PUBLIC INFORMATION PAGES
+# These routes are deliberately isolated in the optional feature module so
+# the existing R2, Cashfree, OTP, login, movie and admin logic is untouched.
+# ============================================================
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
+
+
+@app.route('/privacy-policy')
+def privacy_policy():
+    return render_template('privacy_policy.html')
+
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
+
+@app.route('/disclaimer')
+def disclaimer():
+    return render_template('disclaimer.html')
+
+
+@app.route('/copyright')
+def copyright_policy():
+    return render_template('copyright.html')
+
+
+@app.route('/cookie-policy')
+def cookie_policy():
+    return render_template('cookie_policy.html')
+
+
+@app.route('/refund-policy')
+def refund_policy():
+    return render_template('refund_policy.html')
+
+
+@app.route('/content-rights')
+def content_rights():
+    return render_template('content_rights.html')
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /login\nDisallow: /logout\nDisallow: /api/\nSitemap: " + url_for('sitemap_xml', _external=True) + "\n"
+    return Response(body, mimetype='text/plain')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    urls = [
+        url_for('home', _external=True),
+        url_for('about', _external=True),
+        url_for('contact', _external=True),
+        url_for('privacy_policy', _external=True),
+        url_for('terms', _external=True),
+        url_for('disclaimer', _external=True),
+        url_for('copyright_policy', _external=True),
+        url_for('cookie_policy', _external=True),
+        url_for('refund_policy', _external=True),
+        url_for('content_rights', _external=True),
+    ]
+    conn = None
+    try:
+        conn = get_db(dict_rows=True)
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM movies ORDER BY id DESC')
+        for row in cur.fetchall():
+            urls.append(url_for('movie', movie_id=int(row['id']), _external=True))
+    except Exception as exc:
+        print('SITEMAP MOVIE QUERY WARNING:', repr(exc))
+    finally:
+        if conn is not None:
+            conn.close()
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for u in urls:
+        xml.append('<url><loc>' + u.replace('&', '&amp;') + '</loc></url>')
+    xml.append('</urlset>')
+    return Response('\n'.join(xml), mimetype='application/xml')
