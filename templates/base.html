@@ -188,6 +188,121 @@
     </main>
 
 
+<style id="cw-mobile-member-fix">
+/* CINEMA WORLD Member page - mobile responsive fix */
+@media (max-width:700px){
+  .tm-member-nav{
+    width:100%;
+    max-width:100vw;
+    overflow:hidden;
+    padding:0 12px !important;
+  }
+  .tm-nav-left{
+    min-width:0;
+    gap:8px !important;
+  }
+  .tm-logo{
+    font-size:16px !important;
+    letter-spacing:.8px !important;
+  }
+  .tm-nav-right{
+    min-width:0;
+    gap:5px !important;
+  }
+  .tm-avatar,.tm-avatar-img{
+    flex:0 0 32px;
+    width:32px !important;
+    height:32px !important;
+  }
+  .tm-logout{
+    flex:0 0 auto;
+    white-space:nowrap;
+    padding:7px 8px !important;
+  }
+  .tm-member-main,
+  .tm-section,
+  .tm-member-footer{
+    max-width:100%;
+    min-width:0;
+  }
+  .tm-section{
+    width:calc(100% - 24px) !important;
+    overflow:visible;
+  }
+  .tm-section-head{
+    min-width:0;
+  }
+  .tm-section-head h2{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .tm-category-row{
+    width:100%;
+    overflow-x:auto;
+    flex-wrap:nowrap !important;
+    padding-bottom:6px;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .tm-category-row::-webkit-scrollbar{display:none}
+  .tm-category-btn{
+    flex:0 0 auto;
+  }
+  .tm-movie-grid{
+    width:100%;
+    min-width:0;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+  .tm-movie-card{
+    min-width:0 !important;
+    width:100%;
+  }
+  .tm-poster-wrap{
+    width:100%;
+  }
+  .tm-card-info,
+  .tm-card-actions{
+    min-width:0;
+  }
+  .tm-movie-title{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+  }
+  .tm-movie-meta{
+    max-width:100%;
+  }
+  .tm-trending-row{
+    width:100%;
+    max-width:100%;
+    overflow-x:auto !important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .tm-hero{
+    width:100%;
+    max-width:100vw;
+  }
+  .tm-hero-content{
+    max-width:calc(100vw - 32px) !important;
+  }
+  body{
+    overflow-x:hidden !important;
+  }
+}
+@media (max-width:380px){
+  .tm-logo{font-size:14px !important}
+  .tm-logout{font-size:9px !important;padding:7px 6px !important}
+  .tm-avatar,.tm-avatar-img{width:29px !important;height:29px !important;flex-basis:29px}
+  .tm-movie-grid{gap:8px !important}
+  .tm-card-actions{padding-left:7px !important;padding-right:7px !important}
+  .tm-card-info{padding:7px !important}
+}
+</style>
+
     <!-- Cashfree KYC: Website Legal Name -->
     <div style="padding:14px 16px 20px;text-align:center;background:#000;color:#888;font-size:12px;border-top:1px solid #181818;">
         Legal Name: <strong style="color:#fff;">Tomesh Kumar Patel</strong>
