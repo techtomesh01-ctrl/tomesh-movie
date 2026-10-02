@@ -792,7 +792,28 @@ body{
         text-decoration:none;
         font-size:12px;
         font-weight:800;
-        padding:6px 0;
+        padding:5px 0;
+        display:inline-flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:3px;
+    }
+
+    .tm-mobile-nav-icon{
+        width:17px;
+        height:17px;
+        fill:none;
+        stroke:currentColor;
+        stroke-width:1.9;
+        stroke-linecap:round;
+        stroke-linejoin:round;
+        flex:none;
+    }
+
+    .tm-mobile-member-links a span{
+        display:block;
+        line-height:1;
     }
 
     .tm-mobile-member-links .tm-refer-link{
@@ -998,13 +1019,43 @@ body{
 
 <nav class="tm-mobile-member-links" aria-label="Member navigation">
 
-    <a href="#top">Home</a>
-    <a href="#movies">Movies</a>
-    <a href="#categories">Categories</a>
-    <a href="#my-list">My List</a>
+    <a href="#top">
+        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 10.8 12 3l9 7.8V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>
+        </svg>
+        <span>Home</span>
+    </a>
+
+    <a href="#movies">
+        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <path d="M8 5v14M16 5v14M3 9h5M16 9h5M3 15h5M16 15h5"/>
+        </svg>
+        <span>Movies</span>
+    </a>
+
+    <a href="#categories">
+        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        <span>Categories</span>
+    </a>
+
+    <a href="#my-list">
+        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-3.7L6 22z"/>
+        </svg>
+        <span>My List</span>
+    </a>
+
     <a href="{{ url_for('user_earnings') }}" class="tm-refer-link">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-3.9-5A4 4 0 0 0 16 11Zm-8 0a4 4 0 1 0-3.9-5A4 4 0 0 0 8 11Zm0 2c-2.7 0-5 1.35-6 2.78V19h12v-2.6C13 14.35 10.7 13 8 13Zm8 0c-.55 0-1.08.08-1.58.22 1.08.72 1.9 1.63 2.4 2.78V19h5v-2.6C21 14.35 18.7 13 16 13Z"/></svg>
-        Refer & Earn
+        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 11a4 4 0 1 0-3.9-5A4 4 0 0 0 16 11ZM8 11a4 4 0 1 0-3.9-5A4 4 0 0 0 8 11Zm0 2c-2.7 0-5 1.35-6 3.4V19h12v-2.6C13 14.35 10.7 13 8 13Zm8 0c-.55 0-1.08.08-1.58.22 1.08.72 1.9 1.63 2.4 2.78V19h5v-2.6C21 14.35 18.7 13 16 13Z"/>
+        </svg>
+        <span>Refer &amp; Earn</span>
     </a>
 
 </nav>
