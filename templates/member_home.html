@@ -721,7 +721,7 @@ body{
 @media(max-width:900px){
 
     .tm-nav-links{
-        display:none;
+        display:flex;
     }
 
     .tm-member-badge{
@@ -748,15 +748,67 @@ body{
 @media(max-width:650px){
 
     .tm-member-nav{
+        height:104px;
+        padding:0 12px;
+        align-items:flex-start;
+    }
+
+    .tm-nav-left{
+        width:100%;
         height:60px;
-        padding:0 4%;
+        gap:0;
     }
 
     .tm-logo{
-        font-size:18px;
+        font-size:17px;
+        letter-spacing:.8px;
+    }
+
+    .tm-nav-links{
+        position:absolute;
+        left:0;
+        right:0;
+        top:60px;
+        height:44px;
+        display:flex;
+        align-items:center;
+        gap:18px;
+        padding:0 14px;
+        overflow-x:auto;
+        overflow-y:hidden;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+        background:rgba(0,0,0,.97);
+        border-top:1px solid rgba(255,255,255,.08);
+        border-bottom:1px solid rgba(255,255,255,.10);
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
+    }
+
+    .tm-nav-links::-webkit-scrollbar{
+        display:none;
+    }
+
+    .tm-nav-links a{
+        flex:0 0 auto;
+        font-size:12px;
+        font-weight:800;
+        padding:4px 0;
+    }
+
+    .tm-refer-link{
+        gap:5px;
+    }
+
+    .tm-refer-link svg{
+        width:15px;
+        height:15px;
     }
 
     .tm-nav-right{
+        position:absolute;
+        right:12px;
+        top:13px;
         gap:6px;
     }
 
@@ -798,7 +850,12 @@ body{
     .tm-hero-content{
         width:90%;
         margin-left:5%;
-        padding-top:60px;
+        padding-top:108px;
+    }
+
+    .tm-section,
+    .tm-my-list-section{
+        scroll-margin-top:116px;
     }
 
     .tm-hero h1{
