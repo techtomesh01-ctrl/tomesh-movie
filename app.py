@@ -128,7 +128,7 @@ SUBSCRIPTION_PLAN_NAME = os.environ.get(
     "CINEMA WORLD Premium Monthly",
 ).strip() or "CINEMA WORLD Premium Monthly"
 SUBSCRIPTION_MAX_CYCLES = 120
-REFERRAL_REWARD_AMOUNT = 50.00
+REFERRAL_REWARD_AMOUNT = 25.00
 REFERRAL_PENDING_HOURS = 24
 WITHDRAWAL_MIN_AMOUNT = 100.00
 WITHDRAWAL_FEE_RATE = 0.05
@@ -688,7 +688,7 @@ def init_db():
                 payment_order_id INTEGER UNIQUE NOT NULL,
                 referrer_customer_id TEXT NOT NULL,
                 referred_customer_id TEXT NOT NULL,
-                amount NUMERIC(10,2) NOT NULL DEFAULT 50.00,
+                amount NUMERIC(10,2) NOT NULL DEFAULT 25.00,
                 status TEXT NOT NULL DEFAULT 'PENDING',
                 available_at TIMESTAMP NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -697,6 +697,9 @@ def init_db():
                 reason TEXT
             )
         """)
+
+        # Keep the default aligned with the configured referral reward.
+        cur.execute("ALTER TABLE referral_rewards ALTER COLUMN amount SET DEFAULT 25.00")
 
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_referral_rewards_referrer
