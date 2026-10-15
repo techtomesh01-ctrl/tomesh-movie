@@ -5097,25 +5097,38 @@ def admin_activity():
     )
 
 
+_LIVE_SCREEN_TABLE_READY = False
+_LIVE_SCREEN_TABLE_LOCK = threading.Lock()
+
+
 def ensure_live_screen_table():
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute("""CREATE TABLE IF NOT EXISTS live_screen_sessions (
-            id TEXT PRIMARY KEY,
-            customer_id TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'REQUESTED',
-            offer JSONB,
-            answer JSONB,
-            admin_candidates JSONB NOT NULL DEFAULT '[]'::jsonb,
-            user_candidates JSONB NOT NULL DEFAULT '[]'::jsonb,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )""")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_live_screen_customer ON live_screen_sessions(customer_id,status,created_at DESC)")
-        conn.commit()
-    finally:
-        conn.close()
+    global _LIVE_SCREEN_TABLE_READY
+    if _LIVE_SCREEN_TABLE_READY:
+        return
+
+    with _LIVE_SCREEN_TABLE_LOCK:
+        if _LIVE_SCREEN_TABLE_READY:
+            return
+
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("""CREATE TABLE IF NOT EXISTS live_screen_sessions (
+                id TEXT PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'REQUESTED',
+                offer JSONB,
+                answer JSONB,
+                admin_candidates JSONB NOT NULL DEFAULT '[]'::jsonb,
+                user_candidates JSONB NOT NULL DEFAULT '[]'::jsonb,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )""")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_live_screen_customer ON live_screen_sessions(customer_id,status,created_at DESC)")
+            conn.commit()
+            _LIVE_SCREEN_TABLE_READY = True
+        finally:
+            conn.close()
 
 @app.route("/admin/live-monitor")
 @admin_required
