@@ -1124,12 +1124,27 @@ main{max-width:560px;text-align:center;padding:38px 28px;border:1px solid #29292
     return None
 
 
+# Cache ad settings briefly so every homepage request does not open
+# three separate database queries. Admin changes appear within 30 seconds.
+_ADS_CACHE = {"value": None, "checked_at": 0.0}
+_ADS_CACHE_LOCK = threading.Lock()
+_ADS_CACHE_TTL = 30.0
+
+
 def get_ads():
-    return {
-        "top": get_setting("ad_top", ""),
-        "player": get_setting("ad_player", ""),
-        "bottom": get_setting("ad_bottom", ""),
-    }
+    now = time.monotonic()
+    with _ADS_CACHE_LOCK:
+        if (
+            _ADS_CACHE["value"] is None
+            or now - _ADS_CACHE["checked_at"] >= _ADS_CACHE_TTL
+        ):
+            _ADS_CACHE["value"] = {
+                "top": get_setting("ad_top", ""),
+                "player": get_setting("ad_player", ""),
+                "bottom": get_setting("ad_bottom", ""),
+            }
+            _ADS_CACHE["checked_at"] = now
+        return dict(_ADS_CACHE["value"])
 
 
 # ============================================================
@@ -4206,6 +4221,14 @@ def customer_set_password():
     return redirect(url_for("user_details"))
 
 
+# Avoid writing duplicate page-view rows for repeated refreshes of the same
+# page by the same signed-in customer within a short window. POST actions are
+# always logged. This reduces synchronous database writes on normal browsing.
+_CUSTOMER_ACTIVITY_RECENT = {}
+_CUSTOMER_ACTIVITY_RECENT_LOCK = threading.Lock()
+_CUSTOMER_ACTIVITY_DEDUPE_SECONDS = 30.0
+
+
 def log_customer_activity():
     if not session.get("customer_logged_in"):
         return
@@ -4221,6 +4244,22 @@ def log_customer_activity():
     customer_id = session.get("customer_id")
     if not customer_id:
         return
+
+    # Keep every POST/action log, but coalesce repeated GET page views for
+    # the same customer and path for 30 seconds.
+    if request.method == "GET":
+        now = time.monotonic()
+        key = (str(customer_id), path)
+        with _CUSTOMER_ACTIVITY_RECENT_LOCK:
+            last_logged = _CUSTOMER_ACTIVITY_RECENT.get(key, 0.0)
+            if now - last_logged < _CUSTOMER_ACTIVITY_DEDUPE_SECONDS:
+                return
+            _CUSTOMER_ACTIVITY_RECENT[key] = now
+            if len(_CUSTOMER_ACTIVITY_RECENT) > 5000:
+                cutoff = now - _CUSTOMER_ACTIVITY_DEDUPE_SECONDS
+                for old_key, timestamp in list(_CUSTOMER_ACTIVITY_RECENT.items()):
+                    if timestamp < cutoff:
+                        _CUSTOMER_ACTIVITY_RECENT.pop(old_key, None)
 
     try:
         user_agent = (request.user_agent.string or "")[:500]
