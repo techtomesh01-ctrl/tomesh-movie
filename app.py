@@ -1079,6 +1079,12 @@ def set_setting(key, value):
 # MASTER WEBSITE ON/OFF CONTROL
 # ============================================================
 
+# Cache the maintenance switch briefly to avoid a database read on every
+# public request. The persistent database value remains the source of truth.
+_WEBSITE_SWITCH_CACHE = {"value": "1", "checked_at": 0.0}
+_WEBSITE_SWITCH_CACHE_LOCK = threading.Lock()
+_WEBSITE_SWITCH_CACHE_TTL = 2.0
+
 @app.before_request
 def master_website_switch():
     # Keep the owner panel reachable so the site can always be switched back on.
@@ -1090,7 +1096,12 @@ def master_website_switch():
         return None
 
     try:
-        enabled = get_setting("website_enabled", "1")
+        now = time.monotonic()
+        with _WEBSITE_SWITCH_CACHE_LOCK:
+            if now - _WEBSITE_SWITCH_CACHE["checked_at"] >= _WEBSITE_SWITCH_CACHE_TTL:
+                _WEBSITE_SWITCH_CACHE["value"] = get_setting("website_enabled", "1")
+                _WEBSITE_SWITCH_CACHE["checked_at"] = now
+            enabled = _WEBSITE_SWITCH_CACHE["value"]
     except Exception as exc:
         # Fail open if the settings database is temporarily unavailable.
         print("WEBSITE SWITCH CHECK ERROR:", repr(exc))
@@ -5314,6 +5325,9 @@ def admin_website_control():
         set_setting("website_enabled", "1")
     else:
         abort(400)
+    with _WEBSITE_SWITCH_CACHE_LOCK:
+        _WEBSITE_SWITCH_CACHE["value"] = "0" if action == "off" else "1"
+        _WEBSITE_SWITCH_CACHE["checked_at"] = time.monotonic()
     return redirect(url_for("admin", section="website-control", saved=action))
 
 
