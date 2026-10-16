@@ -133,6 +133,17 @@ def cw_request_movie():
     _ensure_tables()
     cid = _customer_id() or None
     from_homepage = request.form.get('source') == 'homepage'
+    from_movie_page = request.form.get('source') == 'moviepage'
+    try:
+        return_movie_id = int(request.form.get('movie_id') or 0)
+    except (TypeError, ValueError):
+        return_movie_id = 0
+    def request_return_target():
+        if from_homepage:
+            return url_for('home')
+        if from_movie_page and return_movie_id > 0:
+            return url_for('movie_page', movie_id=return_movie_id)
+        return url_for('cw_request_movie')
     if request.method == 'POST':
         # Honeypot and a small per-session cooldown help reduce automated spam.
         if (request.form.get('website') or '').strip():
@@ -141,12 +152,12 @@ def cw_request_movie():
         last_submit = float(session.get('movie_request_last_submit') or 0)
         if now - last_submit < 10:
             flash('Thoda ruk kar doosri movie request bhejein.', 'error')
-            return redirect(url_for('home') if from_homepage else url_for('cw_request_movie'))
+            return redirect(request_return_target())
         title = ' '.join((request.form.get('title') or '').split())[:180]
         normalized = title.casefold()
         if len(title) < 2:
             flash('Movie name thoda clearly likho.', 'error')
-            return redirect(url_for('home') if from_homepage else url_for('cw_request_movie'))
+            return redirect(request_return_target())
         conn = get_db()
         try:
             cur = conn.cursor()
@@ -160,7 +171,7 @@ def cw_request_movie():
             conn.close()
         session['movie_request_last_submit'] = now
         flash('Movie request admin ko bhej di gayi. ❤️', 'success')
-        return redirect(url_for('home') if from_homepage else url_for('cw_request_movie'))
+        return redirect(request_return_target())
 
     conn = get_db(dict_rows=True)
     try:
