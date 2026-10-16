@@ -5708,6 +5708,7 @@ def admin():
         movies = []
         users = []
         payments = []
+        payment_summary = {"total": 0, "successful": 0, "pending": 0, "failed": 0, "successful_amount": 0}
         subscriptions = []
         access = []
         top_movies = []
@@ -5736,6 +5737,27 @@ def admin():
                 ORDER BY p.id DESC LIMIT 200
             """)
             payments = cur.fetchall()
+
+            # Read-only payment summary for the admin UI; never alters orders or access.
+            cur.execute("""
+                SELECT
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (
+                        WHERE UPPER(COALESCE(status, '')) IN ('PAID','SUCCESS','COMPLETED')
+                    ) AS successful,
+                    COUNT(*) FILTER (
+                        WHERE UPPER(COALESCE(status, '')) IN ('FAILED','CANCELLED','EXPIRED','ERROR','REJECTED')
+                    ) AS failed,
+                    COUNT(*) FILTER (
+                        WHERE UPPER(COALESCE(status, '')) NOT IN
+                            ('PAID','SUCCESS','COMPLETED','FAILED','CANCELLED','EXPIRED','ERROR','REJECTED')
+                    ) AS pending,
+                    COALESCE(SUM(amount) FILTER (
+                        WHERE UPPER(COALESCE(status, '')) IN ('PAID','SUCCESS','COMPLETED')
+                    ), 0) AS successful_amount
+                FROM payment_orders
+            """)
+            payment_summary = cur.fetchone() or payment_summary
 
         if section == "subscriptions":
             cur.execute("""
@@ -5944,6 +5966,7 @@ def admin():
         movies=movies,
         users=users,
         payments=payments,
+        payment_summary=payment_summary,
         subscriptions=subscriptions,
         access=access,
         top_movies=top_movies,
