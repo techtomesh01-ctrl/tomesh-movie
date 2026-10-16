@@ -5978,6 +5978,7 @@ def admin():
             print("ADMIN R2 LIST ERROR:", repr(exc))
 
     admin_config = {
+        "DATABASE": bool(DATABASE_URL),
         "R2_BUCKET": R2_BUCKET,
         "SECRET_KEY": bool(app.secret_key),
         "CASHFREE": bool(CASHFREE_APP_ID and CASHFREE_SECRET_KEY),
