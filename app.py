@@ -5419,21 +5419,26 @@ def admin():
         """)
         bank_accounts_admin=cur.fetchall()
 
-        cur.execute("""
-            SELECT id, customer_id, subject, status, screenshot_key, created_at, updated_at, resolved_at
-            FROM support_tickets
-            ORDER BY id DESC LIMIT 200
-        """)
-        support_admin = cur.fetchall()
-        for ticket in support_admin:
+        # Support tickets and their message history are needed only on the
+        # Support section. Loading them on every admin page caused up to 200
+        # extra database queries per request, even on the dashboard.
+        support_admin = []
+        if section == "support":
             cur.execute("""
-                SELECT id, sender_type, message, created_at
-                FROM support_messages
-                WHERE ticket_id=%s
-                ORDER BY id ASC
-            """, (ticket["id"],))
-            ticket["messages"] = cur.fetchall()
-            ticket["screenshot_url"] = media_url(ticket["screenshot_key"]) if ticket.get("screenshot_key") else None
+                SELECT id, customer_id, subject, status, screenshot_key, created_at, updated_at, resolved_at
+                FROM support_tickets
+                ORDER BY id DESC LIMIT 200
+            """)
+            support_admin = cur.fetchall()
+            for ticket in support_admin:
+                cur.execute("""
+                    SELECT id, sender_type, message, created_at
+                    FROM support_messages
+                    WHERE ticket_id=%s
+                    ORDER BY id ASC
+                """, (ticket["id"],))
+                ticket["messages"] = cur.fetchall()
+                ticket["screenshot_url"] = media_url(ticket["screenshot_key"]) if ticket.get("screenshot_key") else None
 
         search_movies = []
         search_users = []
