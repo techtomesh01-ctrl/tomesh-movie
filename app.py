@@ -2305,9 +2305,9 @@ def customer_password_login():
     try:
         cur=conn.cursor()
         if valid_email(email):
-            cur.execute("SELECT customer_id,email,mobile,password_hash FROM customer_users WHERE email=%s LIMIT 1",(email,)); rows=cur.fetchall()
+            cur.execute("SELECT customer_id,email,mobile,password_hash,is_blocked,block_reason FROM customer_users WHERE email=%s LIMIT 1",(email,)); rows=cur.fetchall()
         elif valid_mobile(mobile):
-            cur.execute("SELECT customer_id,email,mobile,password_hash FROM customer_users WHERE mobile=%s AND password_hash IS NOT NULL AND password_hash<>'' ORDER BY id ASC",(mobile,)); rows=cur.fetchall()
+            cur.execute("SELECT customer_id,email,mobile,password_hash,is_blocked,block_reason FROM customer_users WHERE mobile=%s AND password_hash IS NOT NULL AND password_hash<>'' ORDER BY id ASC",(mobile,)); rows=cur.fetchall()
         else: rows=[]
     finally: conn.close()
     matched=None
@@ -2318,6 +2318,9 @@ def customer_password_login():
     if not matched:
         flash("Invalid email/mobile or password.","error")
         return redirect(url_for("login",step="password",identifier=identifier))
+    if matched.get("is_blocked"):
+        flash("Your account has been restricted by the administrator." + ((" Reason: " + str(matched.get("block_reason"))) if matched.get("block_reason") else ""), "error")
+        return redirect(url_for("login"))
     session["customer_id"]=matched["customer_id"]; session["customer_logged_in"]=True; session["customer_email"]=matched.get("email") or ""; session["customer_mobile"]=matched.get("mobile") or ""
     conn=get_db()
     try:
