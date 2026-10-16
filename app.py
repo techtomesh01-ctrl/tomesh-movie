@@ -23,6 +23,7 @@ from botocore.client import Config
 
 from flask import (
     Flask,
+    g,
     render_template,
     request,
     redirect,
@@ -55,6 +56,28 @@ app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = True
+
+
+# Log only slow HTTP requests to help pinpoint performance bottlenecks in Render.
+@app.before_request
+def _start_request_timer():
+    g._cinema_request_started_at = time.monotonic()
+
+
+@app.after_request
+def _log_slow_request(response):
+    started = getattr(g, "_cinema_request_started_at", None)
+    if started is not None:
+        elapsed = time.monotonic() - started
+        if elapsed >= 2.0:
+            print(
+                "SLOW_REQUEST:",
+                request.method,
+                request.path,
+                "status=" + str(response.status_code),
+                "seconds=" + format(elapsed, ".2f"),
+            )
+    return response
 
 
 # ============================================================
@@ -473,6 +496,11 @@ def _get_db_pool():
                 1,
                 5,
                 DATABASE_URL,
+                connect_timeout=5,
+                keepalives=1,
+                keepalives_idle=30,
+                keepalives_interval=10,
+                keepalives_count=3,
             )
 
     return _DB_POOL
@@ -1083,7 +1111,7 @@ def set_setting(key, value):
 # public request. The persistent database value remains the source of truth.
 _WEBSITE_SWITCH_CACHE = {"value": "1", "checked_at": 0.0}
 _WEBSITE_SWITCH_CACHE_LOCK = threading.Lock()
-_WEBSITE_SWITCH_CACHE_TTL = 2.0
+_WEBSITE_SWITCH_CACHE_TTL = 15.0
 
 @app.before_request
 def master_website_switch():
