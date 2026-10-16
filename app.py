@@ -8,6 +8,8 @@ import time
 import base64
 import hashlib
 import hmac
+import traceback
+from collections import deque
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import quote
@@ -83,6 +85,41 @@ def _log_slow_request(response):
                 "status=" + str(response.status_code),
                 "seconds=" + format(elapsed, ".2f"),
             )
+    return response
+
+
+# ============================================================
+# ADMIN ERROR MONITOR
+# ============================================================
+
+# Recent failures stay in memory so the Owner panel can open even if the DB is down.
+# Entries reset when the Render process restarts.
+_CINEMA_ERROR_LOGS = deque(maxlen=200)
+_CINEMA_ERROR_LOGS_LOCK = threading.Lock()
+
+
+def _record_cinema_error(status, message, source="request", trace_text=""):
+    entry = {
+        "time": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "status": int(status or 500),
+        "method": str(getattr(request, "method", "SYSTEM"))[:12],
+        "path": str(getattr(request, "path", "unknown"))[:300],
+        "source": str(source)[:80],
+        "message": str(message or "Server error")[:2000],
+        "traceback": str(trace_text or "")[-8000:],
+    }
+    with _CINEMA_ERROR_LOGS_LOCK:
+        _CINEMA_ERROR_LOGS.appendleft(entry)
+
+
+@app.after_request
+def _capture_server_error_response(response):
+    if response.status_code >= 500:
+        _record_cinema_error(
+            response.status_code,
+            "HTTP response returned a server error (status %s)." % response.status_code,
+            source="HTTP response",
+        )
     return response
 
 
@@ -5543,6 +5580,55 @@ def admin_website_control():
     return redirect(url_for("admin", section="website-control", saved=action))
 
 
+@app.route("/admin/errors", methods=["GET", "POST"])
+@admin_required
+def admin_errors():
+    if request.method == "POST" and request.form.get("action") == "clear":
+        with _CINEMA_ERROR_LOGS_LOCK:
+            _CINEMA_ERROR_LOGS.clear()
+        flash("Visible error history cleared. This does not change website code or fix the underlying issue.", "success")
+        return redirect(url_for("admin_errors"))
+
+    with _CINEMA_ERROR_LOGS_LOCK:
+        errors = list(_CINEMA_ERROR_LOGS)
+
+    diagnostics = None
+    if request.args.get("check") == "1":
+        diagnostics = []
+        try:
+            conn = get_db()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT 1")
+                cur.fetchone()
+                cur.close()
+            finally:
+                conn.close()
+            diagnostics.append({"name": "PostgreSQL Database", "ok": True, "detail": "SELECT 1 successful."})
+        except Exception as exc:
+            detail = str(exc)[:1000]
+            diagnostics.append({"name": "PostgreSQL Database", "ok": False, "detail": detail})
+            _record_cinema_error(500, "Database diagnostic failed: " + detail, source="Admin diagnostic")
+
+        try:
+            get_r2_client().list_objects_v2(Bucket=R2_BUCKET, MaxKeys=1)
+            diagnostics.append({"name": "Cloudflare R2", "ok": True, "detail": "Bucket connection successful."})
+        except Exception as exc:
+            detail = str(exc)[:1000]
+            diagnostics.append({"name": "Cloudflare R2", "ok": False, "detail": detail})
+            _record_cinema_error(500, "R2 diagnostic failed: " + detail, source="Admin diagnostic")
+
+        with _CINEMA_ERROR_LOGS_LOCK:
+            errors = list(_CINEMA_ERROR_LOGS)
+
+    return render_template(
+        "admin_errors.html",
+        errors=errors,
+        diagnostics=diagnostics,
+        error_count=len(errors),
+    )
+
+
 @app.route("/admin")
 @admin_required
 def admin():
@@ -7618,6 +7704,11 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
+
+    original = getattr(error, "original_exception", None)
+    trace_text = "".join(traceback.format_exception(type(original), original, original.__traceback__)) if original else ""
+    _record_cinema_error(500, str(original or error), source="Flask exception", trace_text=trace_text)
+    app.logger.error("500 ERROR: %r", error, exc_info=original is not None)
 
     print(
         "500 ERROR:",
