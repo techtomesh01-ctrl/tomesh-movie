@@ -35,7 +35,7 @@
 <div class="cw-admin"><div class="cw-shell">
 <header class="cw-top">
   <div class="cw-brand"><div class="cw-logo">CW</div><div><strong>CINEMA WORLD</strong><span>OWNER CONTROL CENTER</span></div></div>
-  <div class="cw-top-actions"><a class="cw-btn" href="{{ url_for('home') }}">{{ icon('home') }} <span>Website</span></a><a class="cw-btn red" href="{{ url_for('logout') }}">Logout</a></div>
+  <div class="cw-top-actions"><a class="cw-btn" href="{{ url_for('admin', section='dashboard') }}">{{ icon('home') }} <span>Dashboard</span></a><a class="cw-btn" href="{{ url_for('home') }}">{{ icon('play') }} <span>Website</span></a><a class="cw-btn red" href="{{ url_for('logout') }}">Logout</a></div>
 </header>
 
 <div class="cw-layout">
