@@ -4226,15 +4226,10 @@ def download_movie(movie_id):
 )
 def login():
     requested_step = str(request.args.get("step", "")).strip().lower()
-    if session.get("customer_logged_in") and requested_step not in {"mobile", "otp", "password", "set_password"}:
-        last_movie_id = session.get("last_movie_id")
-        if last_movie_id:
-            try:
-                return redirect(url_for("movie_page", movie_id=int(last_movie_id)))
-            except (TypeError, ValueError):
-                session.pop("last_movie_id", None)
-        return redirect(url_for("home"))
 
+    # Always allow the explicit Sign In / Get Started route to show the login
+    # screen, even if a stale customer session flag is present. The previous
+    # redirect sent /login straight back to Home and trapped users there.
     step = requested_step
 
     # Direct /login always starts at the identifier screen. Never infer the
