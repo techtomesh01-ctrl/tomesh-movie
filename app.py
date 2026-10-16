@@ -47,6 +47,26 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
+# Format admin-facing timestamps in India Standard Time without changing stored data.
+IST = timezone(timedelta(hours=5, minutes=30))
+
+@app.template_filter("istdate")
+def _template_ist_date(value, fmt="%d %b %Y"):
+    if not value:
+        return "—"
+    try:
+        if isinstance(value, str):
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(IST).strftime(fmt)
+    except (TypeError, ValueError, AttributeError):
+        return str(value)
+
+@app.context_processor
+def _inject_cinema_clock():
+    return {"cinema_now_ist": datetime.now(timezone.utc).astimezone(IST)}
+
 app.secret_key = (
     os.environ.get("SECRET_KEY", "").strip()
     or secrets.token_hex(32)
