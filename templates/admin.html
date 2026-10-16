@@ -1,29 +1,6 @@
 {% set section = request.args.get('section', 'dashboard') %}
 {% extends "base.html" %}
-{% block title %}CINEMA WORLD | Owner Control Center
-
-
-<script>
-(function () {
-  function updateCinemaClock() {
-    try {
-      var now = new Date();
-      var dateNode = document.getElementById('cw-live-date');
-      var dayNode = document.getElementById('cw-live-day');
-      var timeNode = document.getElementById('cw-live-time');
-      var dateOpts = { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' };
-      var dayOpts = { timeZone: 'Asia/Kolkata', weekday: 'long' };
-      var timeOpts = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-      if (dateNode) dateNode.textContent = new Intl.DateTimeFormat('en-IN', dateOpts).format(now);
-      if (dayNode) dayNode.textContent = new Intl.DateTimeFormat('en-IN', dayOpts).format(now);
-      if (timeNode) timeNode.textContent = new Intl.DateTimeFormat('en-IN', timeOpts).format(now) + ' IST';
-    } catch (e) { /* Keep the server-rendered clock if Intl is unavailable. */ }
-  }
-  updateCinemaClock();
-  window.setInterval(updateCinemaClock, 1000);
-})();
-</script>
-{% endblock %}
+{% block title %}CINEMA WORLD | Owner Control Center{% endblock %}
 {% block content %}
 <style>
 :root{--cw-red:#E50914;--cw-red2:#b20710;--cw-bg:#050506;--cw-panel:#0d0d10;--cw-panel2:#121216;--cw-line:#24242a;--cw-muted:#8e8e98;--cw-text:#fff}
