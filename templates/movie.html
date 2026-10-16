@@ -1475,6 +1475,22 @@
          COMMENTS
     ===================================================== -->
 
+    <section class="tm-comments" id="requestMovie" style="margin-top:18px;border-color:rgba(229,9,20,.35);">
+        <div class="tm-comments-head">
+            <div>
+                <h2>🎬 Request Another Movie</h2>
+                <div class="tm-comments-sub">Yahin movie ka naam likho — homepage par jaane ki zaroorat nahi.</div>
+            </div>
+        </div>
+        <form method="post" action="{{ url_for('cw_request_movie') }}" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <input type="hidden" name="source" value="moviepage">
+            <input type="hidden" name="movie_id" value="{{ movie.id }}">
+            <input class="tm-comment-input" type="text" name="title" maxlength="180" minlength="2" placeholder="Kaunsi movie upload karein?" required style="min-height:48px;">
+            <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;">
+            <button class="tm-comment-submit" type="submit">Request Movie →</button>
+        </form>
+    </section>
+
     <section class="tm-comments" id="rating">
         <div class="tm-comments-head">
             <div>
