@@ -3388,7 +3388,7 @@ def cashfree_return():
 # PUBLIC MOVIE REQUEST BOX
 # ============================================================
 
-@app.route("/request-movie", methods=["POST"])
+@app.route("/request-movie-legacy", methods=["POST"])
 def request_movie():
     search_term = re.sub(r"\s+", " ", str(request.form.get("movie_name") or "").strip())[:120]
     honeypot = str(request.form.get("website") or "").strip()
@@ -7745,6 +7745,11 @@ def recover_known_r2_movies():
         conn.close()
 
 
+
+
+# Register the CINEMA WORLD feature routes after all app helpers/endpoints exist.
+# cinema_features imports the already-created app object and adds request/admin features.
+import cinema_features  # noqa: F401
 
 
 # ============================================================
