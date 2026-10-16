@@ -4525,8 +4525,22 @@ def customer_profile():
     )
 
 
+# Short per-customer cache for the member catalogue. The list is personalized
+# by saved movies and ratings, so each customer has a separate cache entry.
+_MEMBER_MOVIES_CACHE = {}
+_MEMBER_MOVIES_CACHE_LOCK = threading.Lock()
+_MEMBER_MOVIES_CACHE_TTL = 10.0
+
+
 def get_member_movies_data():
     customer_id = session.get("customer_id")
+    cache_key = str(customer_id or "")
+    now = time.monotonic()
+    with _MEMBER_MOVIES_CACHE_LOCK:
+        cached = _MEMBER_MOVIES_CACHE.get(cache_key)
+        if cached and now - cached[0] < _MEMBER_MOVIES_CACHE_TTL:
+            return [dict(movie) for movie in cached[1]]
+
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
@@ -4549,9 +4563,10 @@ def get_member_movies_data():
     finally:
         conn.close()
 
-    # This helper serves the member page, so normalize every movie row.
-    # Do not reference the admin-only "section" variable here.
+    # Normalize every row before caching the customer-specific result.
+    normalized = []
     for movie in movies:
+        movie = dict(movie)
         try:
             movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
         except Exception:
@@ -4560,7 +4575,11 @@ def get_member_movies_data():
         movie["views"] = int(movie.get("views") or 0)
         movie["average_rating"] = float(movie.get("average_rating") or 0)
         movie["rating_count"] = int(movie.get("rating_count") or 0)
-    return movies
+        normalized.append(movie)
+
+    with _MEMBER_MOVIES_CACHE_LOCK:
+        _MEMBER_MOVIES_CACHE[cache_key] = (time.monotonic(), [dict(movie) for movie in normalized])
+    return normalized
 
 def customer_has_completed_initial_payment(customer_id=None):
     customer_id=customer_id or session.get("customer_id")
