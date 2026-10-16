@@ -4464,11 +4464,12 @@ def get_member_movies_data():
     finally:
         conn.close()
 
-    for movie in movies:
-        try:
-            movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
-        except Exception:
-            movie["poster_url"] = None
+    if section == "movies":
+        for movie in movies:
+            try:
+                movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
+            except Exception:
+                movie["poster_url"] = None
         movie["in_my_list"] = bool(movie.get("in_my_list"))
         movie["views"] = int(movie.get("views") or 0)
         movie["average_rating"] = float(movie.get("average_rating") or 0)
@@ -5384,108 +5385,119 @@ def admin():
         cur.execute("SELECT COUNT(*) AS n FROM customer_bank_accounts WHERE status='PENDING'")
         pending_bank_verifications=int((cur.fetchone() or {}).get("n") or 0)
 
-        cur.execute("SELECT * FROM movies ORDER BY id DESC")
-        movies = cur.fetchall()
+        # Load each large admin dataset only on the section that uses it.
+        movies = []
+        users = []
+        payments = []
+        subscriptions = []
+        access = []
+        top_movies = []
+        top_rated_movies = []
+        live_events = []
+        referral_rewards_admin = []
+        withdrawals_admin = []
+        bank_accounts_admin = []
 
-        cur.execute("""
-            SELECT id,email,mobile,customer_id,full_name,profile_photo,created_at,last_login_at
-            FROM customer_users ORDER BY id DESC
-        """)
-        users = cur.fetchall()
+        if section == "movies":
+            cur.execute("SELECT * FROM movies ORDER BY id DESC")
+            movies = cur.fetchall()
 
-        cur.execute("""
-            SELECT
-                p.*,
-                u.full_name,
-                u.email,
-                u.mobile
-            FROM payment_orders p
-            LEFT JOIN customer_users u
-              ON u.customer_id = p.customer_id
-            ORDER BY p.id DESC
-            LIMIT 200
-        """)
-        payments = cur.fetchall()
+        if section == "users":
+            cur.execute("""
+                SELECT id,email,mobile,customer_id,full_name,profile_photo,created_at,last_login_at
+                FROM customer_users ORDER BY id DESC
+            """)
+            users = cur.fetchall()
 
-        cur.execute("""
-            SELECT customer_id,subscription_id,cf_subscription_id,status,auth_status,premium_until,updated_at
-            FROM customer_subscriptions ORDER BY updated_at DESC LIMIT 200
-        """)
-        subscriptions = cur.fetchall()
+        if section == "payments":
+            cur.execute("""
+                SELECT p.*,u.full_name,u.email,u.mobile
+                FROM payment_orders p
+                LEFT JOIN customer_users u ON u.customer_id = p.customer_id
+                ORDER BY p.id DESC LIMIT 200
+            """)
+            payments = cur.fetchall()
 
-        cur.execute("""
-            SELECT ca.customer_id,ca.movie_id,m.title,ca.watch_until,ca.download_until,ca.premium_until,
-                   u.full_name,u.email,u.mobile
-            FROM customer_access ca
-            LEFT JOIN movies m ON m.id=ca.movie_id
-            LEFT JOIN customer_users u ON u.customer_id=ca.customer_id
-            ORDER BY ca.id DESC LIMIT 200
-        """)
-        access = cur.fetchall()
+        if section == "subscriptions":
+            cur.execute("""
+                SELECT customer_id,subscription_id,cf_subscription_id,status,auth_status,premium_until,updated_at
+                FROM customer_subscriptions ORDER BY updated_at DESC LIMIT 200
+            """)
+            subscriptions = cur.fetchall()
 
-        cur.execute("""
-            SELECT m.*, COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
-                   COUNT(r.id) AS rating_count
-            FROM movies m
-            LEFT JOIN movie_ratings r ON r.movie_id = m.id
-            GROUP BY m.id
-            ORDER BY m.views DESC NULLS LAST, m.id DESC
-            LIMIT 10
-        """)
-        top_movies = cur.fetchall()
+        if section == "watch":
+            cur.execute("""
+                SELECT ca.customer_id,ca.movie_id,m.title,ca.watch_until,ca.download_until,ca.premium_until,
+                       u.full_name,u.email,u.mobile
+                FROM customer_access ca
+                LEFT JOIN movies m ON m.id=ca.movie_id
+                LEFT JOIN customer_users u ON u.customer_id=ca.customer_id
+                ORDER BY ca.id DESC LIMIT 200
+            """)
+            access = cur.fetchall()
 
-        cur.execute("""
-            SELECT m.id, m.title, m.category, m.poster,
-                   ROUND(AVG(r.rating)::numeric, 1) AS average_rating,
-                   COUNT(r.id) AS rating_count
-            FROM movies m
-            JOIN movie_ratings r ON r.movie_id = m.id
-            GROUP BY m.id
-            HAVING COUNT(r.id) >= 1
-            ORDER BY AVG(r.rating) DESC, COUNT(r.id) DESC, m.id DESC
-            LIMIT 10
-        """)
-        top_rated_movies = cur.fetchall()
+        if section == "analytics":
+            cur.execute("""
+                SELECT m.*, COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
+                       COUNT(r.id) AS rating_count
+                FROM movies m
+                LEFT JOIN movie_ratings r ON r.movie_id = m.id
+                GROUP BY m.id
+                ORDER BY m.views DESC NULLS LAST, m.id DESC LIMIT 10
+            """)
+            top_movies = cur.fetchall()
+            cur.execute("""
+                SELECT m.id, m.title, m.category, m.poster,
+                       ROUND(AVG(r.rating)::numeric, 1) AS average_rating,
+                       COUNT(r.id) AS rating_count
+                FROM movies m
+                JOIN movie_ratings r ON r.movie_id = m.id
+                GROUP BY m.id
+                HAVING COUNT(r.id) >= 1
+                ORDER BY AVG(r.rating) DESC, COUNT(r.id) DESC, m.id DESC LIMIT 10
+            """)
+            top_rated_movies = cur.fetchall()
 
-        cur.execute("""
-            SELECT 'payment' AS event_type, order_id AS ref, customer_id, status, amount, created_at AS event_time
-            FROM payment_orders
-            UNION ALL
-            SELECT 'subscription' AS event_type, subscription_id AS ref, customer_id, status, NULL AS amount, updated_at AS event_time
-            FROM customer_subscriptions
-            ORDER BY event_time DESC LIMIT 50
-        """)
-        live_events = cur.fetchall()
+        if section in {"live", "notifications"}:
+            cur.execute("""
+                SELECT 'payment' AS event_type, order_id AS ref, customer_id, status, amount, created_at AS event_time
+                FROM payment_orders
+                UNION ALL
+                SELECT 'subscription' AS event_type, subscription_id AS ref, customer_id, status, NULL AS amount, updated_at AS event_time
+                FROM customer_subscriptions
+                ORDER BY event_time DESC LIMIT 50
+            """)
+            live_events = cur.fetchall()
 
-        cur.execute("""
-            SELECT
-                rr.id, rr.amount, rr.status, rr.available_at, rr.created_at,
-                rr.referrer_customer_id, rr.referred_customer_id,
-                u.full_name AS referrer_name,
-                r.full_name AS referred_name
-            FROM referral_rewards rr
-            LEFT JOIN customer_users u ON u.customer_id=rr.referrer_customer_id
-            LEFT JOIN customer_users r ON r.customer_id=rr.referred_customer_id
-            ORDER BY rr.id DESC LIMIT 300
-        """)
-        referral_rewards_admin = cur.fetchall()
+        if section == "earnings":
+            cur.execute("""
+                SELECT rr.id, rr.amount, rr.status, rr.available_at, rr.created_at,
+                       rr.referrer_customer_id, rr.referred_customer_id,
+                       u.full_name AS referrer_name, r.full_name AS referred_name
+                FROM referral_rewards rr
+                LEFT JOIN customer_users u ON u.customer_id=rr.referrer_customer_id
+                LEFT JOIN customer_users r ON r.customer_id=rr.referred_customer_id
+                ORDER BY rr.id DESC LIMIT 300
+            """)
+            referral_rewards_admin = cur.fetchall()
 
-        cur.execute("""
-            SELECT w.*,u.full_name,u.email,u.mobile,
-                   b.account_holder_name,b.account_number,b.ifsc,b.bank_name,b.status AS bank_status
-            FROM withdrawal_requests w
-            LEFT JOIN customer_users u ON u.customer_id=w.customer_id
-            LEFT JOIN customer_bank_accounts b ON b.id=w.bank_account_id
-            ORDER BY w.id DESC LIMIT 300
-        """)
-        withdrawals_admin=cur.fetchall()
-        cur.execute("""
-            SELECT b.*,u.full_name,u.email,u.mobile
-            FROM customer_bank_accounts b
-            LEFT JOIN customer_users u ON u.customer_id=b.customer_id
-            ORDER BY b.id DESC LIMIT 300
-        """)
-        bank_accounts_admin=cur.fetchall()
+        if section == "withdrawals":
+            cur.execute("""
+                SELECT w.*,u.full_name,u.email,u.mobile,
+                       b.account_holder_name,b.account_number,b.ifsc,b.bank_name,b.status AS bank_status
+                FROM withdrawal_requests w
+                LEFT JOIN customer_users u ON u.customer_id=w.customer_id
+                LEFT JOIN customer_bank_accounts b ON b.id=w.bank_account_id
+                ORDER BY w.id DESC LIMIT 300
+            """)
+            withdrawals_admin = cur.fetchall()
+            cur.execute("""
+                SELECT b.*,u.full_name,u.email,u.mobile
+                FROM customer_bank_accounts b
+                LEFT JOIN customer_users u ON u.customer_id=b.customer_id
+                ORDER BY b.id DESC LIMIT 300
+            """)
+            bank_accounts_admin = cur.fetchall()
 
         # Support tickets and their message history are needed only on the
         # Support section. Loading them on every admin page caused up to 200
