@@ -365,6 +365,26 @@
 </section>
 {% endif %}
 
+  <script>
+  // Keep the Admin clock live in India Standard Time (IST), including payment screens.
+  (function updateCinemaLiveClock() {
+    const dateEl = document.getElementById('cw-live-date');
+    const dayEl = document.getElementById('cw-live-day');
+    const timeEl = document.getElementById('cw-live-time');
+    if (!dateEl || !dayEl || !timeEl) return;
+    const format = (options) => new Intl.DateTimeFormat('en-IN', {
+      ...options,
+      timeZone: 'Asia/Kolkata'
+    }).format(new Date());
+    const tick = () => {
+      dateEl.textContent = format({ day: '2-digit', month: 'short', year: 'numeric' });
+      dayEl.textContent = format({ weekday: 'long' });
+      timeEl.textContent = format({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) + ' IST';
+    };
+    tick();
+    window.setInterval(tick, 1000);
+  })();
+  </script>
   <div class="cw-footer">CINEMA WORLD • Owner Control Center</div>
 </main></div></div></div>
 {% endblock %}
