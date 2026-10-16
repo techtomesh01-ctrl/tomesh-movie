@@ -5371,7 +5371,7 @@ def admin():
         movies = cur.fetchall()
 
         cur.execute("""
-            SELECT id,email,mobile,customer_id,full_name,created_at,last_login_at
+            SELECT id,email,mobile,customer_id,full_name,profile_photo,created_at,last_login_at
             FROM customer_users ORDER BY id DESC
         """)
         users = cur.fetchall()
