@@ -314,11 +314,18 @@
 
 <script>
 (function(){
-  if("serviceWorker" in navigator){
-    window.addEventListener("load",function(){
-      navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}").catch(function(){});
-    });
-  }
+  if(!("serviceWorker" in navigator)) return;
+  window.addEventListener("load",function(){
+    // Version the script URL so browsers that kept the legacy offline cache
+    // fetch the navigation-safe worker instead of reusing an old script.
+    navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}?v=20261016-2", {updateViaCache:"none"})
+      .then(function(registration){
+        if(registration && typeof registration.update === "function"){
+          registration.update().catch(function(){});
+        }
+      })
+      .catch(function(){});
+  });
 })();
 </script>
 
