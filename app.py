@@ -120,7 +120,7 @@ _CINEMA_ERROR_LOGS_LOCK = threading.Lock()
 
 def _record_cinema_error(status, message, source="request", trace_text=""):
     entry = {
-        "time": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "time": datetime.now(timezone.utc).astimezone(IST).strftime("%d %b %Y · %A · %I:%M:%S %p IST"),
         "status": int(status or 500),
         "method": str(getattr(request, "method", "SYSTEM"))[:12],
         "path": str(getattr(request, "path", "unknown"))[:300],
