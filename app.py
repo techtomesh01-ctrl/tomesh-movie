@@ -5299,21 +5299,41 @@ def admin_live_monitor_offer():
     finally: conn.close()
     return json_ok()
 
+# Cache pending screen-share checks briefly so multiple open tabs do not
+# all hit PostgreSQL on every poll. A short TTL keeps new admin requests visible.
+_LIVE_PENDING_CACHE = {}
+_LIVE_PENDING_CACHE_LOCK = threading.Lock()
+_LIVE_PENDING_CACHE_TTL = 4.0
+
 @app.route("/api/live-monitor/pending")
 @customer_login_required
 def live_monitor_pending():
     ensure_live_screen_table()
-    cid=str(session.get("customer_id") or "")
-    conn=get_db(dict_rows=True)
+    cid = str(session.get("customer_id") or "")
+    now = time.monotonic()
+    with _LIVE_PENDING_CACHE_LOCK:
+        cached = _LIVE_PENDING_CACHE.get(cid)
+        if cached and now - cached[0] < _LIVE_PENDING_CACHE_TTL:
+            data = dict(cached[1])
+            return json_ok(**data)
+
+    conn = get_db(dict_rows=True)
     try:
-        cur=conn.cursor()
+        cur = conn.cursor()
         cur.execute("""SELECT id,status,offer,answer,admin_candidates
                       FROM live_screen_sessions
                       WHERE customer_id=%s AND status IN ('REQUESTED','ACTIVE')
-                      ORDER BY created_at DESC LIMIT 1""",(cid,))
-        row=cur.fetchone()
-    finally: conn.close()
-    return json_ok(requested=bool(row), **(dict(row) if row else {}))
+                      ORDER BY created_at DESC LIMIT 1""", (cid,))
+        row = cur.fetchone()
+    finally:
+        conn.close()
+
+    data = {"requested": bool(row)}
+    if row:
+        data.update(dict(row))
+    with _LIVE_PENDING_CACHE_LOCK:
+        _LIVE_PENDING_CACHE[cid] = (time.monotonic(), data)
+    return json_ok(**data)
 
 @app.route("/api/live-monitor/answer",methods=["POST"])
 @customer_login_required
