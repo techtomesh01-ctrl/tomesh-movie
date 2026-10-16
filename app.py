@@ -3392,11 +3392,22 @@ def cashfree_return():
 def request_movie():
     search_term = re.sub(r"\s+", " ", str(request.form.get("movie_name") or "").strip())[:120]
     honeypot = str(request.form.get("website") or "").strip()
+    from_movie_page = request.form.get("source") == "moviepage"
+    try:
+        return_movie_id = int(request.form.get("movie_id") or 0)
+    except (TypeError, ValueError):
+        return_movie_id = 0
+
+    def request_return_target():
+        if from_movie_page and return_movie_id > 0:
+            return url_for("movie_page", movie_id=return_movie_id) + "#requestMovie"
+        return url_for("home") + "#tmMovieRequest"
+
     if honeypot:
-        return redirect(url_for("home") + "#tmMovieRequest")
+        return redirect(request_return_target())
     if len(search_term) < 2:
         flash("Movie ka naam kam se kam 2 characters ka likho.", "error")
-        return redirect(url_for("home") + "#tmMovieRequest")
+        return redirect(request_return_target())
 
     normalized = search_term.casefold()
     conn = get_db(dict_rows=True)
@@ -3410,7 +3421,7 @@ def request_movie():
             conn.rollback()
             cur.close()
             flash("Ye movie CINEMA WORLD par pehle se available hai.", "error")
-            return redirect(url_for("home") + "#tmMovieRequest")
+            return redirect(request_return_target())
 
         cur.execute("""
             INSERT INTO movie_search_demands
@@ -3432,8 +3443,7 @@ def request_movie():
         flash("Request abhi save nahi ho payi. Thodi der baad dobara try karo.", "error")
     finally:
         conn.close()
-    return redirect(url_for("home") + "#tmMovieRequest")
-
+    return redirect(request_return_target())
 
 # HOME
 # ============================================================
