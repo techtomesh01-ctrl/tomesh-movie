@@ -3414,7 +3414,7 @@ def home():
     return render_template(
         "index.html",
         movies=movies,
-        ads=get_ads(),
+        ads=get_ads() if section == "ads" else [],
         q=q,
         category=category,
     )
@@ -5524,14 +5524,15 @@ def admin():
         search_users = []
         search_payments = []
         movie_search_demands = []
-        cur.execute("""
-            SELECT id, search_term, search_count, unique_users, first_searched_at,
-                   last_searched_at, last_customer_id
-            FROM movie_search_demands
-            ORDER BY search_count DESC, last_searched_at DESC
-            LIMIT 300
-        """)
-        movie_search_demands = cur.fetchall()
+        if section == "demand":
+            cur.execute("""
+                SELECT id, search_term, search_count, unique_users, first_searched_at,
+                       last_searched_at, last_customer_id
+                FROM movie_search_demands
+                ORDER BY search_count DESC, last_searched_at DESC
+                LIMIT 300
+            """)
+            movie_search_demands = cur.fetchall()
 
         if q:
             like = "%" + q + "%"
