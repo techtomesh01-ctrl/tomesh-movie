@@ -51,8 +51,8 @@
 <aside class="cw-side">
   <div class="cw-side-title">Management</div>
   <nav class="cw-nav">
-    {% for key,label,ico in [('dashboard','Dashboard','home'),('live-monitor','Live Screen Monitor','activity'),('movies','Movies & Catalog','movie'),('users','Users','users'),('payments','Payments','card'),('subscriptions','Subscriptions','cycle'),('watch','Watch Activity','play'),('analytics','Analytics','chart'),('live','Live Activity','activity'),('comments','Comments','comment'),('earnings','Earnings','wallet'),('withdrawals','Withdrawals','wallet'),('support','Support','comment'),('ads','Ads Manager','ad'),('notifications','Notifications','bell'),('reports','Reports','report'),('r2','R2 Storage','cloud'),('health','System Health','health'),('error-center','Error Center','activity'),('security','Security','lock'),('website-control','Website Control','settings'),('settings','Settings','settings'),('search','Global Search','search'),('demand','Movie Demand','movie')] %}
-      <a class="{% if section==key %}active{% endif %}" href="{{ url_for('admin_errors') if key=='error-center' else url_for('admin', section=key) }}"><span class="cw-nav-icon" aria-hidden="true">{% if key=='dashboard' %}🏠{% elif key=='live-monitor' %}🎬{% elif key=='movies' %}🎞️{% elif key=='users' %}👥{% elif key=='payments' %}💳{% elif key=='subscriptions' %}👑{% elif key=='watch' %}▶️{% elif key=='analytics' %}📊{% elif key=='live' %}🔴{% elif key=='comments' %}💬{% elif key=='earnings' %}💰{% elif key=='withdrawals' %}🏦{% elif key=='support' %}🛟{% elif key=='ads' %}📢{% elif key=='notifications' %}🔔{% elif key=='reports' %}📄{% elif key=='r2' %}☁️{% elif key=='health' %}🩺{% elif key=='error-center' %}🚨{% elif key=='security' %}🔐{% elif key=='website-control' %}🎛️{% elif key=='settings' %}⚙️{% elif key=='search' %}🔎{% elif key=='demand' %}🔥{% else %}📌{% endif %}</span><span class="cw-nav-label">{{ label }}</span></a>
+    {% for key,label,ico in [('dashboard','Dashboard','home'),('live-monitor','Live Screen Monitor','activity'),('movies','Movies & Catalog','movie'),('users','Users','users'),('payments','Payments','card'),('subscriptions','Subscriptions','cycle'),('watch','Watch Activity','play'),('analytics','Analytics','chart'),('live','Live Activity','activity'),('comments','Comments','comment'),('earnings','Earnings','wallet'),('withdrawals','Withdrawals','wallet'),('support','Support','comment'),('ads','Ads Manager','ad'),('notifications','Notifications','bell'),('reports','Reports','report'),('r2','R2 Storage','cloud'),('health','System Health','health'),('error-center','Error Center','activity'),('security','Security','lock'),('help','Hindi Help Center','help'),('website-control','Website Control','settings'),('settings','Settings','settings'),('search','Global Search','search'),('demand','Movie Demand','movie')] %}
+      <a class="{% if section==key %}active{% endif %}" href="{{ url_for('admin_errors') if key=='error-center' else url_for('admin', section=key) }}"><span class="cw-nav-icon" aria-hidden="true">{% if key=='dashboard' %}🏠{% elif key=='live-monitor' %}🎬{% elif key=='movies' %}🎞️{% elif key=='users' %}👥{% elif key=='payments' %}💳{% elif key=='subscriptions' %}👑{% elif key=='watch' %}▶️{% elif key=='analytics' %}📊{% elif key=='live' %}🔴{% elif key=='comments' %}💬{% elif key=='earnings' %}💰{% elif key=='withdrawals' %}🏦{% elif key=='support' %}🛟{% elif key=='ads' %}📢{% elif key=='notifications' %}🔔{% elif key=='reports' %}📄{% elif key=='r2' %}☁️{% elif key=='health' %}🩺{% elif key=='error-center' %}🚨{% elif key=='security' %}🔐{% elif key=='help' %}📘{% elif key=='website-control' %}🎛️{% elif key=='settings' %}⚙️{% elif key=='search' %}🔎{% elif key=='demand' %}🔥{% else %}📌{% endif %}</span><span class="cw-nav-label">{{ label }}</span></a>
     {% endfor %}
   </nav>
 </aside>
@@ -281,6 +281,31 @@
   </div>
 </section>
 {% endif %}</div></div></div>{% if q %}<h3>Movies</h3><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Title</th><th>Category</th><th>Views</th></tr></thead><tbody>{% for m in search_movies %}<tr><td>{{m.id}}</td><td>{{m.title}}</td><td>{{m.category or '—'}}</td><td>{{m.views or 0}}</td></tr>{% else %}<tr><td colspan="4" class="cw-empty">No movie match.</td></tr>{% endfor %}</tbody></table></div><h3 style="margin-top:20px">Users</h3><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Mobile</th><th>Customer ID</th></tr></thead><tbody>{% for u in search_users %}<tr><td>{{u.id}}</td><td>{{u.full_name or '—'}}</td><td>{{u.email or '—'}}</td><td>{{u.mobile or '—'}}</td><td>{{u.customer_id}}</td></tr>{% else %}<tr><td colspan="5" class="cw-empty">No user match.</td></tr>{% endfor %}</tbody></table></div><h3 style="margin-top:20px">Payments</h3><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead><tbody>{% for p in search_payments %}<tr><td>{{p.order_id}}</td><td>{{p.customer_id}}</td><td>{{p.payment_type}}</td><td>₹{{p.amount}}</td><td>{{p.status}}</td></tr>{% else %}<tr><td colspan="5" class="cw-empty">No payment match.</td></tr>{% endfor %}</tbody></table></div>{% endif %}</section>{% endif %}
+
+{% if section=='help' %}
+<section class="cw-card">
+  <div class="cw-card-head"><div><h2>📘 Hindi Help Center</h2><div class="cw-muted">Admin ke sections ka kaam, safe checks aur problem aane par agla step.</div></div></div>
+  <div class="cw-section-note">Rule: pehle problem ko check karein. Bina backup ya exact error samjhe database records, payment status, login settings ya R2 files ko manually change/delete na karein.</div>
+  <div class="cw-status-list">
+    <div class="cw-status"><b>🏠 Dashboard</b><span>Website ke main numbers aur overview dekhein. Agar counts achanak galat lagen to database health check karein.</span></div>
+    <div class="cw-status"><b>🎞️ Movies & Catalog</b><span>Movie details aur catalog manage karein. Video/poster URL ko delete ya replace karne se pehle title aur movie ID verify karein.</span></div>
+    <div class="cw-status"><b>👥 Users</b><span>User details dekhein. Kisi user ko block karne se pehle account identity aur request confirm karein.</span></div>
+    <div class="cw-status"><b>💳 Payments / 👑 Subscriptions</b><span>Order status ko Cashfree ke actual record se match karein. Sirf admin panel mein dikhne wali entry ke basis par payment ko manually paid mark na karein.</span></div>
+    <div class="cw-status"><b>☁️ R2 Storage</b><span>Storage objects aur connectivity check karein. Live movie files ko bina verify kiye delete na karein.</span></div>
+    <div class="cw-status"><b>🩺 System Health</b><span>Database, R2 aur app ke health endpoints kholkar test karein. FAIL aane par neeche Error Center bhi dekhein.</span></div>
+    <div class="cw-status"><b>🚨 Error Center</b><span>Recent error kholein aur technical traceback padhein. Exact error, URL path aur waqt note karein; traceback mein private data ho sakta hai, use public jagah share na karein.</span></div>
+    <div class="cw-status"><b>🔐 Security</b><span>Secret values aur admin password ko chat, screenshot ya public repository mein share na karein. Production secrets Render Environment mein rakhein.</span></div>
+    <div class="cw-status"><b>🎛️ Website Control</b><span>WEBSITE OFF public pages ko maintenance mode mein daal sakta hai. Is control ko sirf zaroorat par use karein; wapas ON karna na bhoolein.</span></div>
+    <div class="cw-status"><b>📄 Reports</b><span>CSV reports mein customer-related information ho sakti hai. Downloaded files ko private aur secure rakhein.</span></div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+    <a class="cw-btn red" href="{{url_for('admin_errors')}}">🚨 Error Center खोलें</a>
+    <a class="cw-btn" href="{{url_for('admin',section='health')}}">🩺 System Health खोलें</a>
+    <a class="cw-btn" href="{{url_for('db_health')}}">Database Check</a>
+    <a class="cw-btn" href="{{url_for('r2_health')}}">R2 Check</a>
+  </div>
+</section>
+{% endif %}
 
   <div class="cw-footer">CINEMA WORLD • Owner Control Center</div>
 </main></div></div></div>
