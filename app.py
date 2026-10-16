@@ -114,10 +114,12 @@ def _record_cinema_error(status, message, source="request", trace_text=""):
 
 @app.after_request
 def _capture_server_error_response(response):
-    if response.status_code >= 500:
+    # Capture server failures and common actionable HTTP errors, but skip 404s
+    # because routine scans and mistyped URLs can otherwise flood the log.
+    if response.status_code >= 500 or response.status_code in (400, 401, 403, 408, 413, 429):
         _record_cinema_error(
             response.status_code,
-            "HTTP response returned a server error (status %s)." % response.status_code,
+            "HTTP response returned an error (status %s)." % response.status_code,
             source="HTTP response",
         )
     return response
