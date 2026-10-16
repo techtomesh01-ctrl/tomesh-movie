@@ -56,12 +56,18 @@ app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = True
+# Keep customer login active across browser restarts; logout clears the session.
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)
 
 
 # Log only slow HTTP requests to help pinpoint performance bottlenecks in Render.
 @app.before_request
 def _start_request_timer():
     g._cinema_request_started_at = time.monotonic()
+    # Refresh a persistent customer session on each visit so closing the browser
+    # does not immediately send the customer back to the login page.
+    if session.get("customer_logged_in"):
+        session.permanent = True
 
 
 @app.after_request
@@ -3444,6 +3450,16 @@ def home():
     q = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
 
+    # Reopen the last movie for signed-in customers instead of sending them
+    # back to the homepage. Search URLs still work normally.
+    if session.get("customer_logged_in") and not q and not category:
+        last_movie_id = session.get("last_movie_id")
+        if last_movie_id:
+            try:
+                return redirect(url_for("movie_page", movie_id=int(last_movie_id)))
+            except (TypeError, ValueError):
+                session.pop("last_movie_id", None)
+
     movies = None
     if not q and not category:
         now = time.monotonic()
@@ -3559,6 +3575,11 @@ def shared_movie(movie_id):
     "/movie/<int:movie_id>"
 )
 def movie_page(movie_id):
+
+    # Remember the last movie so the customer can continue there on the next visit.
+    if session.get("customer_logged_in"):
+        session["last_movie_id"] = int(movie_id)
+        session.permanent = True
 
     # Movie pages are private. A shared URL may point to this page, but
     # visitors must log in before the movie page is shown.
