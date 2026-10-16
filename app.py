@@ -5316,11 +5316,38 @@ def admin_report_csv(report_name):
     writer = csv.writer(output)
     if rows:
         headers = list(rows[0].keys())
+        # Payment exports keep the original database timestamps and add easy-to-read
+        # India Standard Time date/day/time columns for both order creation and payment.
+        payment_time_columns = []
+        if report_name == "payments":
+            payment_time_columns = [
+                "created_date_ist", "created_day_ist", "created_time_ist",
+                "paid_date_ist", "paid_day_ist", "paid_time_ist",
+            ]
+            headers = headers + [name for name in payment_time_columns if name not in headers]
         writer.writerow(headers)
         for row in rows:
-            writer.writerow([row.get(h) for h in headers])
+            values = [row.get(h) for h in headers if h not in payment_time_columns]
+            if report_name == "payments":
+                created_at = row.get("created_at")
+                paid_at = row.get("paid_at")
+                values.extend([
+                    _template_ist_date(created_at, "%d %b %Y") if created_at else "—",
+                    _template_ist_date(created_at, "%A") if created_at else "—",
+                    _template_ist_date(created_at, "%I:%M:%S %p") + " IST" if created_at else "—",
+                    _template_ist_date(paid_at, "%d %b %Y") if paid_at else "—",
+                    _template_ist_date(paid_at, "%A") if paid_at else "—",
+                    _template_ist_date(paid_at, "%I:%M:%S %p") + " IST" if paid_at else "—",
+                ])
+            writer.writerow(values)
     else:
-        writer.writerow([report_name])
+        headers = [report_name]
+        if report_name == "payments":
+            headers += [
+                "created_date_ist", "created_day_ist", "created_time_ist",
+                "paid_date_ist", "paid_day_ist", "paid_time_ist",
+            ]
+        writer.writerow(headers)
 
     response = Response(output.getvalue(), mimetype="text/csv; charset=utf-8")
     response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
