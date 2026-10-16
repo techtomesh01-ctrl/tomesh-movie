@@ -498,7 +498,6 @@
     bottom:0;
 
     padding:32px 14px 14px;
-
     color:#ddd;
 
     font-size:12px;
@@ -682,25 +681,113 @@
         );
 }
 
+.tm-premium{
+    position:relative;
+    isolation:isolate;
+    overflow:hidden;
+    padding:19px 18px;
+    border:1px solid rgba(255,226,145,.9);
+    border-radius:16px;
+    color:#fff9e8;
+    background:
+        radial-gradient(circle at 12% 0%,rgba(255,226,145,.24),transparent 36%),
+        linear-gradient(112deg,#171006 0%,#5b3b08 24%,#bd8a1d 52%,#704707 78%,#1c1205 100%);
+    box-shadow:0 12px 30px rgba(0,0,0,.38),0 0 0 1px rgba(255,206,90,.12),0 0 28px rgba(219,166,48,.18);
+}
+
+.tm-premium::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:-1;
+    background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.16) 42%,transparent 62%);
+    transform:translateX(-110%);
+    transition:transform .65s ease;
+}
+
+.tm-premium:hover::before{
+    transform:translateX(110%);
+}
+
+.tm-premium:hover{
+    transform:translateY(-3px);
+    filter:brightness(1.08);
+    box-shadow:0 16px 36px rgba(0,0,0,.45),0 0 34px rgba(219,166,48,.28);
+}
+
 .tm-premium-wrap{
     display:flex;
     align-items:center;
     justify-content:space-between;
+    gap:14px;
+}
 
-    gap:10px;
+.tm-premium-left{
+    display:flex;
+    align-items:center;
+    gap:13px;
+    min-width:0;
+}
+
+.tm-premium-crown{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 48px;
+    width:48px;
+    height:48px;
+    border-radius:14px;
+    color:#ffe5a0;
+    background:linear-gradient(145deg,rgba(255,239,184,.22),rgba(31,19,3,.55));
+    border:1px solid rgba(255,231,166,.42);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 5px 16px rgba(0,0,0,.18);
+    font-size:25px;
+}
+
+.tm-premium-copy{
+    min-width:0;
+}
+
+.tm-premium-kicker{
+    margin-bottom:5px;
+    color:#ffe6a1;
+    font-size:9px;
+    font-weight:950;
+    letter-spacing:1.5px;
+}
+
+.tm-premium .tm-pay-title{
+    color:#fffdf5;
+    font-size:17px;
+    letter-spacing:.1px;
+}
+
+.tm-premium small{
+    color:#fff0c7;
+    font-size:12px;
 }
 
 .tm-premium-tag{
-    padding:5px 8px;
-
+    flex-shrink:0;
+    padding:7px 10px;
     border-radius:999px;
-
-    color:#fff1ad;
-
-    background:rgba(255,255,255,.12);
-
+    color:#2b1a02;
+    background:linear-gradient(135deg,#fff0b5,#f4c75d);
+    border:1px solid rgba(255,250,221,.85);
+    box-shadow:0 3px 12px rgba(0,0,0,.18);
     font-size:9px;
-    font-weight:900;
+    font-weight:1000;
+    letter-spacing:.4px;
+}
+
+@media(max-width:480px){
+    .tm-premium{padding:15px 12px;}
+    .tm-premium-wrap{align-items:flex-start;gap:9px;}
+    .tm-premium-left{gap:9px;}
+    .tm-premium-crown{flex-basis:40px;width:40px;height:40px;font-size:21px;border-radius:12px;}
+    .tm-premium .tm-pay-title{font-size:15px;}
+    .tm-premium small{font-size:11px;}
+    .tm-premium-tag{padding:6px 7px;font-size:8px;}
 }
 
 .tm-payment-note{
@@ -998,7 +1085,6 @@
     .tm-lock h2{
         font-size:25px;
     }
-
     .tm-title{
         font-size:30px;
         letter-spacing:-.8px;
@@ -1426,26 +1512,24 @@
             type="button"
             class="tm-pay-btn tm-premium"
             onclick="startPayment('premium')"
+            aria-label="Get CINEMA WORLD Premium for ₹199"
         >
 
             <div class="tm-premium-wrap">
 
-                <div>
-
-                    <div class="tm-pay-title">
-                        <span>
-                            👑 ₹199 Premium
-                        </span>
+                <div class="tm-premium-left">
+                    <div class="tm-premium-crown" aria-hidden="true">👑</div>
+                    <div class="tm-premium-copy">
+                        <div class="tm-premium-kicker">CINEMA WORLD MEMBERSHIP</div>
+                        <div class="tm-pay-title">
+                            <span>₹199 Premium</span>
+                        </div>
+                        <small>365 days · Watch + Download access</small>
                     </div>
-
-                    <small>
-                        ₹199 — 365 days watch + download on CINEMA WORLD
-                    </small>
-
                 </div>
 
                 <div class="tm-premium-tag">
-                    BEST VALUE
+                    ✦ BEST VALUE
                 </div>
 
             </div>
@@ -1497,8 +1581,7 @@
                 <h2>⭐ Movie Rating</h2>
                 <div class="tm-comments-sub">Automatic rating based on customer votes.</div>
             </div>
-            <div class="tm-comment-time">{{ rating_summary.average_rating }}/5 • {{ rating_summary.rating_count }} ratings</div>
-        </div>
+            <div class="tm-comment-time">{{ rating_summary.average_rating }}/5 • {{ rating_summary.rating_count }} ratings</div>        </div>
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 0;">
             <div style="font-size:34px;font-weight:800;">{{ rating_summary.average_rating }}/5</div>
             <div style="color:#ffc400;font-size:24px;letter-spacing:2px;">
@@ -1997,8 +2080,7 @@ function copyMovieLink(url){
         }catch(e){}
     }
     function applyResumePosition(){
-        if(resumeApplied || !Number.isFinite(video.duration) || video.duration <= 0) return;
-        resumeApplied = true;
+        if(resumeApplied || !Number.isFinite(video.duration) || video.duration <= 0) return;        resumeApplied = true;
         try{
             const saved=JSON.parse(localStorage.getItem(resumeKey)||"null");
             if(saved && Number.isFinite(saved.time) && saved.time>10 && saved.time<video.duration-8){
