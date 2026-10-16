@@ -5788,7 +5788,7 @@ def admin():
 
         if section == "subscriptions":
             cur.execute("""
-                SELECT customer_id,subscription_id,cf_subscription_id,status,auth_status,premium_until,updated_at
+                SELECT customer_id,subscription_id,cf_subscription_id,status,auth_status,premium_until,created_at,updated_at
                 FROM customer_subscriptions ORDER BY updated_at DESC LIMIT 200
             """)
             subscriptions = cur.fetchall()
