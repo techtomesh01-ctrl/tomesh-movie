@@ -55,6 +55,19 @@
   </div>
 
 {% if section=='dashboard' %}
+  <section class="cw-card" style="padding:14px 16px">
+    <div class="cw-card-head" style="margin-bottom:10px"><div><h2>Quick Controls</h2><div class="cw-muted">Roz ke kaam ek click mein — poori website yahin se manage karein.</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px">
+      <a class="cw-btn red" style="justify-content:center;min-height:44px" href="{{ url_for('admin_add') }}">＋ Add / Upload Movie</a>
+      <a class="cw-btn" style="justify-content:center;min-height:44px" href="{{ url_for('admin',section='website-control') }}">⚙ Website ON / OFF</a>
+      <a class="cw-btn" style="justify-content:center;min-height:44px" href="{{ url_for('admin',section='users') }}">♙ Manage Users</a>
+      <a class="cw-btn" style="justify-content:center;min-height:44px" href="{{ url_for('admin',section='payments') }}">₹ Payments</a>
+      <a class="cw-btn" style="justify-content:center;min-height:44px" href="{{ url_for('admin',section='support') }}">✉ Customer Support</a>
+      <a class="cw-btn" style="justify-content:center;min-height:44px" href="{{ url_for('admin',section='health') }}">✓ System Health</a>
+      <a class="cw-btn" style="justify-content:center;min-height:44px" href="{{ url_for('admin',section='r2') }}">☁ R2 Storage</a>
+      <a class="cw-btn" style="justify-content:center;min-height:44px" href="{{ url_for('home') }}" target="_blank" rel="noopener">↗ Preview Website</a>
+    </div>
+  </section>
   <div class="cw-stats cw-card">
     <div class="cw-stat"><div class="ico">{{ icon('movie') }}</div><b>{{ total_movies or 0 }}</b><span>Total Movies</span></div>
     <div class="cw-stat"><div class="ico">{{ icon('users') }}</div><b>{{ total_users or 0 }}</b><span>Registered Users</span></div>
