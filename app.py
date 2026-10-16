@@ -5677,7 +5677,7 @@ def admin():
     section = str(request.args.get("section", "dashboard")).strip().lower()
     allowed_sections = {
         "dashboard","live-monitor","movies","users","payments","subscriptions","watch",
-        "analytics","live","ads","notifications","reports","r2","health",
+        "analytics","live","ads","adsense","notifications","reports","r2","health",
         "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","help"
     }
     if section not in allowed_sections:
