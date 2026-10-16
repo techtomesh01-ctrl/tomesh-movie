@@ -3519,15 +3519,8 @@ def home():
     q = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
 
-    # Reopen the last movie for signed-in customers instead of sending them
-    # back to the homepage. Search URLs still work normally.
-    if session.get("customer_logged_in") and not q and not category:
-        last_movie_id = session.get("last_movie_id")
-        if last_movie_id:
-            try:
-                return redirect(url_for("movie_page", movie_id=int(last_movie_id)))
-            except (TypeError, ValueError):
-                session.pop("last_movie_id", None)
+    # Always show the homepage at /. Opening a movie directly remains supported
+    # through /movie/<movie_id>; do not redirect homepage visitors to last_movie_id.
 
     movies = None
     if not q and not category:
