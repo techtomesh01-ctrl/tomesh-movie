@@ -422,8 +422,8 @@
           && (!wantedStatus || row.dataset.paymentStatus === wantedStatus)
           && (!start || (row.dataset.paymentCreated || '') >= start)
           && (!end || (row.dataset.paymentCreated || '') <= end)
-          && (!paidFrom || (row.dataset.paymentPaid || '') >= paidFrom.value)
-          && (!paidTo || (row.dataset.paymentPaid || '') <= paidTo.value);
+          && (!paidFrom || !paidFrom.value || (row.dataset.paymentPaid || '') >= paidFrom.value)
+          && (!paidTo || !paidTo.value || (row.dataset.paymentPaid || '') <= paidTo.value);
         row.hidden = !matches;
         if (matches) shown++;
       });
