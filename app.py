@@ -1075,6 +1075,44 @@ def set_setting(key, value):
         conn.close()
 
 
+# ============================================================
+# MASTER WEBSITE ON/OFF CONTROL
+# ============================================================
+
+@app.before_request
+def master_website_switch():
+    # Keep the owner panel reachable so the site can always be switched back on.
+    if request.path.startswith("/admin") or request.path.startswith("/static/"):
+        return None
+
+    # Payment webhooks must continue processing even while the public site is down.
+    if request.path.startswith("/webhooks/") or request.endpoint in {"health_check"}:
+        return None
+
+    try:
+        enabled = get_setting("website_enabled", "1")
+    except Exception as exc:
+        # Fail open if the settings database is temporarily unavailable.
+        print("WEBSITE SWITCH CHECK ERROR:", repr(exc))
+        return None
+
+    if str(enabled).strip().lower() in {"0", "false", "off", "no"}:
+        page = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CINEMA WORLD — Maintenance</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#fff;font-family:Arial,Helvetica,sans-serif;padding:24px}
+main{max-width:560px;text-align:center;padding:38px 28px;border:1px solid #29292f;border-radius:20px;background:linear-gradient(145deg,#141418,#09090c);box-shadow:0 24px 80px #0008}
+.logo{font-size:14px;font-weight:900;letter-spacing:2px;color:#ff3340}h1{font-size:30px;margin:18px 0 10px}p{color:#b5b5bf;line-height:1.65;margin:0}
+</style></head><body><main><div class="logo">CINEMA WORLD</div>
+<h1>We’ll be back soon</h1><p>Website par abhi maintenance chal raha hai. Kripya kuch der baad dobara visit karein.</p>
+</main></body></html>"""
+        return Response(page, status=503, content_type="text/html; charset=utf-8")
+
+    return None
+
+
 def get_ads():
     return {
         "top": get_setting("ad_top", ""),
@@ -5263,6 +5301,19 @@ def live_monitor_stop():
     return json_ok()
 
 
+@app.route("/admin/website-control", methods=["POST"])
+@admin_required
+def admin_website_control():
+    action = str(request.form.get("action", "")).strip().lower()
+    if action == "off":
+        set_setting("website_enabled", "0")
+    elif action == "on":
+        set_setting("website_enabled", "1")
+    else:
+        abort(400)
+    return redirect(url_for("admin", section="website-control", saved=action))
+
+
 @app.route("/admin")
 @admin_required
 def admin():
@@ -5270,7 +5321,7 @@ def admin():
     allowed_sections = {
         "dashboard","live-monitor","movies","users","payments","subscriptions","watch",
         "analytics","live","ads","notifications","reports","r2","health",
-        "security","settings","search","demand","comments","earnings","withdrawals","support"
+        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -5571,6 +5622,7 @@ def admin():
         pending_bank_verifications=pending_bank_verifications,
         total_referral_rewards=total_referral_rewards,
         pending_withdrawals_total=pending_withdrawals_total,
+        website_enabled=(str(get_setting("website_enabled", "1")).strip().lower() not in {"0", "false", "off", "no"}),
     )
 
 
