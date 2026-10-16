@@ -5638,7 +5638,7 @@ def admin():
     allowed_sections = {
         "dashboard","live-monitor","movies","users","payments","subscriptions","watch",
         "analytics","live","ads","notifications","reports","r2","health",
-        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control"
+        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","help"
     }
     if section not in allowed_sections:
         section = "dashboard"
