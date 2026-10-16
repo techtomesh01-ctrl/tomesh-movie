@@ -40,6 +40,46 @@
 .cw-clock{display:flex;flex-direction:column;gap:3px;min-width:190px;padding:9px 12px;border:1px solid #3a2226;border-radius:12px;background:linear-gradient(135deg,#19090b,#0d0d10);font-variant-numeric:tabular-nums}.cw-clock strong{font-size:13px;color:#fff}.cw-clock span{font-size:11px;color:#ff9ba0}.cw-clock small{font-size:10px;color:#8e8e98}@media(max-width:700px){.cw-clock{min-width:0;flex:1}.cw-top{flex-wrap:wrap}.cw-top-actions{width:100%}}
 @media(max-width:1100px){.cw-layout{grid-template-columns:1fr}.cw-side{position:static}.cw-nav{display:grid;grid-template-columns:repeat(4,1fr)}.cw-side-title{display:none}.cw-stats{grid-template-columns:repeat(3,1fr)}.cw-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.cw-top{align-items:flex-start}.cw-brand strong{font-size:19px}.cw-layout{gap:10px}.cw-nav{grid-template-columns:repeat(2,1fr)}.cw-hero{display:block}.cw-search{margin-top:12px}.cw-search input{width:100%}.cw-stats{grid-template-columns:repeat(2,1fr)}.cw-grid{grid-template-columns:repeat(2,1fr)}.cw-form-grid,.cw-status-list,.cw-report-grid{grid-template-columns:1fr}.cw-card{padding:14px}.cw-module{min-height:115px}.cw-top-actions .cw-btn span{display:none}}
+
+/* CINEMA WORLD unified premium command-center skin */
+.cw-admin{background:radial-gradient(ellipse at 0% 0%,rgba(31,75,45,.28),transparent 34%),radial-gradient(ellipse at 100% 0%,rgba(229,9,20,.12),transparent 28%),#09090b}
+.cw-shell{max-width:1540px}
+.cw-top{padding-bottom:18px}
+.cw-side{background:linear-gradient(180deg,#21191b,#111114 72%);border-color:#34282b;box-shadow:0 20px 60px rgba(0,0,0,.32)}
+.cw-side-title{color:#b7a5a8}
+.cw-nav a{border:1px solid transparent;transition:background .16s,border-color .16s,transform .16s}
+.cw-nav a:hover{background:#272025;border-color:#3c2d32;transform:translateX(1px)}
+.cw-nav a.active{background:linear-gradient(100deg,rgba(229,9,20,.2),rgba(229,9,20,.04));border-color:#54232a;box-shadow:inset 3px 0 0 var(--cw-red)}
+.cw-nav .cw-nav-icon{background:#292226;border-color:#413238}
+.cw-nav a.active .cw-nav-icon{background:#4a1015;border-color:#84202a}
+.cw-card{background:linear-gradient(145deg,rgba(25,25,28,.98),rgba(13,13,16,.98));border-color:#2b2b30;box-shadow:0 15px 42px rgba(0,0,0,.22)}
+.cw-stat,.cw-status,.cw-report{background:linear-gradient(145deg,#1b1b1f,#111114);border-color:#2a2a30}
+.cw-stat{transition:border-color .18s,transform .18s}
+.cw-stat:hover{border-color:#513138;transform:translateY(-1px)}
+.cw-module{background:linear-gradient(145deg,#1b1b20,#101013);border-color:#2b2b31;box-shadow:0 8px 22px rgba(0,0,0,.12)}
+.cw-module:hover{border-color:#6a3038;box-shadow:0 12px 28px rgba(0,0,0,.22)}
+.cw-module .micon{background:#292126;border:1px solid #403038}
+.cw-hero h1{letter-spacing:-.7px}
+.cw-search input,.cw-field input,.cw-field textarea{background:#111115;border-color:#303038}
+.cw-btn{transition:background .16s,border-color .16s,transform .16s}
+.cw-btn:active{transform:translateY(1px)}
+.cw-btn.red{box-shadow:0 6px 18px rgba(229,9,20,.12)}
+.cw-table th{background:#151519;position:sticky;top:0;z-index:1}
+.cw-table td{line-height:1.5}
+.cw-table tbody tr:hover{background:rgba(255,255,255,.025)}
+.cw-clock{box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 8px 24px rgba(0,0,0,.15)}
+/* Payment timeline: clearly distinguish order creation from confirmed payment */
+.cw-admin:has(.cw-table) .cw-table td{overflow-wrap:anywhere}
+.cw-table td .cw-muted{line-height:1.7}
+.cw-badge.green{background:#0d2419;border-color:#20563a}
+.cw-badge.red{background:#2b0c10;border-color:#76202a}
+@media(max-width:700px){
+ .cw-admin{padding:10px 8px 40px}
+ .cw-top{gap:10px}
+ .cw-side{border-radius:14px;padding:8px}
+ .cw-card{border-radius:14px}
+ .cw-table th{position:static}
+}
 </style>
 
 {% macro icon(name) %}
