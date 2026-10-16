@@ -19,7 +19,7 @@
 @media(max-width:700px){.cw-top{align-items:flex-start}.cw-brand strong{font-size:19px}.cw-layout{gap:10px}.cw-nav{grid-template-columns:repeat(2,1fr)}.cw-hero{display:block}.cw-search{margin-top:12px}.cw-search input{width:100%}.cw-stats{grid-template-columns:repeat(2,1fr)}.cw-grid{grid-template-columns:repeat(2,1fr)}.cw-form-grid,.cw-status-list,.cw-report-grid{grid-template-columns:1fr}.cw-card{padding:14px}.cw-module{min-height:115px}.cw-top-actions .cw-btn span{display:none}}
 
 /* CINEMA WORLD unified premium command-center skin */
-.cw-admin{background:radial-gradient(ellipse at 0% 0%,rgba(31,75,45,.28),transparent 34%),radial-gradient(ellipse at 100% 0%,rgba(229,9,20,.12),transparent 28%),#09090b}
+.cw-admin{background:radial-gradient(ellipse at 0% 0%,rgba(229,9,20,.13),transparent 34%),radial-gradient(ellipse at 100% 0%,rgba(229,9,20,.12),transparent 28%),#09090b}
 .cw-shell{max-width:1540px}
 .cw-top{padding-bottom:18px}
 .cw-side{background:linear-gradient(180deg,#21191b,#111114 72%);border-color:#34282b;box-shadow:0 20px 60px rgba(0,0,0,.32)}
@@ -85,7 +85,7 @@
 <div class="cw-admin"><div class="cw-shell">
 <header class="cw-top">
   <div class="cw-brand"><div class="cw-logo">CW</div><div><strong>CINEMA WORLD</strong><span>OWNER CONTROL CENTER</span></div></div>
-  <div class="cw-clock" aria-label="Current date in India"><strong>{{ cinema_now_ist.strftime('%A') }}</strong><span>{{ cinema_now_ist.strftime('%d %B %Y') }}</span><small>INDIA STANDARD TIME · DATE ONLY</small></div>
+  <div class="cw-clock" aria-label="Live date and time in India"><strong id="cw-head-day">{{ cinema_now_ist.strftime('%A') }}</strong><span id="cw-head-date">{{ cinema_now_ist.strftime('%d %B %Y') }}</span><small>LIVE IST · <span id="cw-head-time">{{ cinema_now_ist.strftime('%I:%M:%S %p') }}</span></small></div>
   <div class="cw-top-actions"><a class="cw-btn" href="{{ url_for('admin', section='dashboard') }}">{{ icon('home') }} <span>Dashboard</span></a><a class="cw-btn" href="{{ url_for('home') }}">{{ icon('play') }} <span>Website</span></a><a class="cw-btn red" href="{{ url_for('logout') }}">Logout</a></div>
 </header>
 
@@ -377,15 +377,23 @@
     const dateEl = document.getElementById('cw-live-date');
     const dayEl = document.getElementById('cw-live-day');
     const timeEl = document.getElementById('cw-live-time');
-    if (!dateEl || !dayEl || !timeEl) return;
+    const headDate = document.getElementById('cw-head-date');
+    const headDay = document.getElementById('cw-head-day');
+    const headTime = document.getElementById('cw-head-time');
     const format = (options) => new Intl.DateTimeFormat('en-IN', {
       ...options,
       timeZone: 'Asia/Kolkata'
     }).format(new Date());
     const tick = () => {
-      dateEl.textContent = format({ day: '2-digit', month: 'short', year: 'numeric' });
-      dayEl.textContent = format({ weekday: 'long' });
-      timeEl.textContent = format({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) + ' IST';
+      const dateText = format({ day: '2-digit', month: 'short', year: 'numeric' });
+      const dayText = format({ weekday: 'long' });
+      const timeText = format({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      if (dateEl) dateEl.textContent = dateText;
+      if (dayEl) dayEl.textContent = dayText;
+      if (timeEl) timeEl.textContent = timeText + ' IST';
+      if (headDate) headDate.textContent = format({ day: '2-digit', month: 'long', year: 'numeric' });
+      if (headDay) headDay.textContent = dayText;
+      if (headTime) headTime.textContent = timeText;
     };
     tick();
     window.setInterval(tick, 1000);
