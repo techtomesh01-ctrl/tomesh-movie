@@ -3414,7 +3414,7 @@ def home():
     return render_template(
         "index.html",
         movies=movies,
-        ads=get_ads() if section == "ads" else [],
+        ads=get_ads(),
         q=q,
         category=category,
     )
