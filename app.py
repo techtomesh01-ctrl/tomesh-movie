@@ -3384,7 +3384,7 @@ def cashfree_return():
 
 @app.route("/request-movie", methods=["POST"])
 def request_movie():
-    search_term = re.sub(r"\\s+", " ", str(request.form.get("movie_name") or "").strip())[:120]
+    search_term = re.sub(r"\s+", " ", str(request.form.get("movie_name") or "").strip())[:120]
     honeypot = str(request.form.get("website") or "").strip()
     if honeypot:
         return redirect(url_for("home") + "#tmMovieRequest")
