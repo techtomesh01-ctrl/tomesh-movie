@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 from flask import request, session, redirect, url_for, render_template, flash, jsonify, Response
 
 # This module is imported at the very end of app.py, after Flask and DB helpers exist.
@@ -128,16 +129,24 @@ def cw_report(movie_id):
 
 
 @app.route('/request-movie', methods=['GET','POST'])
-@customer_login_required
 def cw_request_movie():
     _ensure_tables()
-    cid = _customer_id()
+    cid = _customer_id() or None
+    from_homepage = request.form.get('source') == 'homepage'
     if request.method == 'POST':
+        # Honeypot and a small per-session cooldown help reduce automated spam.
+        if (request.form.get('website') or '').strip():
+            return redirect(url_for('home'))
+        now = time.time()
+        last_submit = float(session.get('movie_request_last_submit') or 0)
+        if now - last_submit < 10:
+            flash('Thoda ruk kar doosri movie request bhejein.', 'error')
+            return redirect(url_for('home') if from_homepage else url_for('cw_request_movie'))
         title = ' '.join((request.form.get('title') or '').split())[:180]
         normalized = title.casefold()
         if len(title) < 2:
             flash('Movie name thoda clearly likho.', 'error')
-            return redirect(url_for('cw_request_movie'))
+            return redirect(url_for('home') if from_homepage else url_for('cw_request_movie'))
         conn = get_db()
         try:
             cur = conn.cursor()
@@ -149,8 +158,9 @@ def cw_request_movie():
             conn.commit()
         finally:
             conn.close()
-        flash('Movie demand admin ko bhej di gayi. ❤️', 'success')
-        return redirect(url_for('cw_request_movie'))
+        session['movie_request_last_submit'] = now
+        flash('Movie request admin ko bhej di gayi. ❤️', 'success')
+        return redirect(url_for('home') if from_homepage else url_for('cw_request_movie'))
 
     conn = get_db(dict_rows=True)
     try:
