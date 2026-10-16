@@ -1533,6 +1533,70 @@
     .tm-lock h2{font-size:clamp(23px,7vw,30px);}
 }
 
+
+/* ₹1 WATCH — compact luxury red pass, separate from annual Premium */
+.tm-pay-btn.tm-watch-premium{
+    position:relative;
+    isolation:isolate;
+    overflow:hidden;
+    min-height:104px;
+    padding:18px;
+    border:1px solid rgba(255,105,118,.48);
+    border-radius:17px;
+    color:#fff;
+    background:
+        radial-gradient(circle at 0% 0%,rgba(255,60,78,.24),transparent 52%),
+        linear-gradient(115deg,#26080d 0%,#7e101b 48%,#30090f 100%);
+    box-shadow:0 12px 28px rgba(0,0,0,.35),0 0 24px rgba(229,9,20,.10),inset 0 1px 0 rgba(255,255,255,.08);
+    transition:transform .2s,border-color .2s,box-shadow .2s,filter .2s;
+}
+.tm-pay-btn.tm-watch-premium::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:-1;
+    pointer-events:none;
+    background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.13) 44%,transparent 64%);
+    transform:translateX(-115%);
+    transition:transform .65s ease;
+}
+.tm-pay-btn.tm-watch-premium:hover::before{transform:translateX(115%);}
+.tm-pay-btn.tm-watch-premium:hover{
+    transform:translateY(-3px);
+    border-color:rgba(255,135,145,.78);
+    box-shadow:0 17px 35px rgba(0,0,0,.42),0 0 30px rgba(229,9,20,.19);
+}
+.tm-watch-premium-wrap{display:flex;align-items:center;gap:13px;position:relative;}
+.tm-watch-premium-icon{
+    display:flex;align-items:center;justify-content:center;flex:0 0 45px;
+    width:45px;height:45px;border-radius:14px;
+    color:#fff;background:linear-gradient(145deg,#ff4052,#a90013);
+    border:1px solid rgba(255,190,195,.48);
+    box-shadow:0 5px 17px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.22);
+    font-size:17px;
+}
+.tm-watch-premium-copy{min-width:0;flex:1;}
+.tm-watch-premium-kicker{
+    margin-bottom:5px;color:#ffb9bf;font-size:9px;font-weight:950;
+    letter-spacing:1.6px;line-height:1.2;
+}
+.tm-watch-premium .tm-pay-title{font-size:18px;letter-spacing:-.3px;}
+.tm-watch-premium small{color:#f0cdd0;font-size:11px;}
+.tm-watch-premium-arrow{font-size:18px;color:#ffdadd;}
+.tm-watch-premium-tag{
+    flex:0 0 auto;padding:6px 8px;border-radius:8px;
+    color:#ffe5e7;background:rgba(0,0,0,.25);
+    border:1px solid rgba(255,180,188,.25);
+    font-size:10px;font-weight:950;letter-spacing:.5px;
+}
+@media(max-width:700px){
+    .tm-pay-btn.tm-watch-premium{min-height:92px;padding:15px;}
+    .tm-watch-premium-icon{flex-basis:40px;width:40px;height:40px;border-radius:12px;}
+    .tm-watch-premium .tm-pay-title{font-size:17px;}
+}
+@media(prefers-reduced-motion:reduce){
+    .tm-pay-btn.tm-watch-premium,.tm-pay-btn.tm-watch-premium::before{transition:none!important;}
+}
 </style>
 
 
@@ -1853,18 +1917,23 @@
 
             <button
                 type="button"
-                class="tm-pay-btn"
+                class="tm-pay-btn tm-watch-premium"
                 onclick="startPayment('watch')"
+                aria-label="Unlock 24 hours movie watch access for ₹1"
             >
 
-                <div class="tm-pay-title">
-                    <span>₹1 Watch</span>
-                    <span>▶</span>
+                <div class="tm-watch-premium-wrap">
+                    <div class="tm-watch-premium-icon" aria-hidden="true">▶</div>
+                    <div class="tm-watch-premium-copy">
+                        <div class="tm-watch-premium-kicker">QUICK WATCH PASS</div>
+                        <div class="tm-pay-title">
+                            <span>₹1 Watch</span>
+                            <span class="tm-watch-premium-arrow">↗</span>
+                        </div>
+                        <small>24 hours movie watch access</small>
+                    </div>
+                    <div class="tm-watch-premium-tag">24H</div>
                 </div>
-
-                <small>
-                    24 hours movie watch access
-                </small>
 
             </button>
 
@@ -1998,70 +2067,3 @@
         {% else %}
         <div class="tm-comment-login">Login karke movie ko rate kar sakte ho.</div>
         {% endif %}
-    </section>
-
-    <section class="tm-comments" id="engagement" style="margin-top:18px;">
-        <div class="tm-comments-head">
-            <div>
-                <h2>❤️ Movie Actions</h2>
-                <div class="tm-comments-sub">{{ like_summary.like_count }} likes</div>
-            </div>
-        </div>
-        {% if session.get('customer_logged_in') %}
-        <form method="post" action="{{ url_for('like_movie', movie_id=movie.id) }}" style="display:inline;">
-            <button class="tm-comment-submit" type="submit">{% if like_summary.my_like %}❤️ Liked{% else %}♡ Like Movie{% endif %}</button>
-        </form>
-        {% else %}
-        <div class="tm-comment-login">Login karke movie ko like kar sakte ho.</div>
-        {% endif %}
-    </section>
-
-    <section class="tm-comments" id="comments">
-        <div class="tm-comments-head">
-            <div>
-                <h2>💬 Comments</h2>
-                <div class="tm-comments-sub">Share your thoughts about this movie.</div>
-            </div>
-            <div class="tm-comment-time">{{ comments|length }} comments</div>
-        </div>
-
-        {% if session.get('customer_logged_in') %}
-        <form class="tm-comment-form" method="post" action="{{ url_for('add_movie_comment', movie_id=movie.id) }}">
-            <input type="hidden" name="comment_csrf" value="{{ comment_csrf }}">
-            <textarea
-                class="tm-comment-input"
-                name="comment"
-                maxlength="500"
-                placeholder="Write a comment... (max 500 characters)"
-                required
-            ></textarea>
-            <button class="tm-comment-submit" type="submit">Post Comment</button>
-        </form>
-        {% else %}
-        <div class="tm-comment-login">
-            Login karke comment kar sakte ho.
-            <a href="{{ url_for('login', next=url_for('movie_page', movie_id=movie.id)) }}">Sign In</a>
-        </div>
-        {% endif %}
-
-        <div class="tm-comment-list">
-            {% for c in comments %}
-            <article class="tm-comment">
-                <div class="tm-comment-top">
-                    <div class="tm-comment-name">{{ c.display_name }}</div>
-                    <div class="tm-comment-time">{{ c.created_at }}</div>
-                </div>
-                <div class="tm-comment-text">{{ c.comment }}</div>
-            </article>
-            {% else %}
-            <div class="tm-no-comments">Abhi koi comment nahi hai. Pehla comment aap karo.</div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <div class="tm-foot-note">
-        CINEMA WORLD पर केवल अपनी या properly licensed content ही publish करें।
-    </div>
-
-</div>
-
