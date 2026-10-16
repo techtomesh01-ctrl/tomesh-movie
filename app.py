@@ -3378,6 +3378,57 @@ def cashfree_return():
 
 
 # ============================================================
+# ============================================================
+# PUBLIC MOVIE REQUEST BOX
+# ============================================================
+
+@app.route("/request-movie", methods=["POST"])
+def request_movie():
+    search_term = re.sub(r"\\s+", " ", str(request.form.get("movie_name") or "").strip())[:120]
+    honeypot = str(request.form.get("website") or "").strip()
+    if honeypot:
+        return redirect(url_for("home") + "#tmMovieRequest")
+    if len(search_term) < 2:
+        flash("Movie ka naam kam se kam 2 characters ka likho.", "error")
+        return redirect(url_for("home") + "#tmMovieRequest")
+
+    normalized = search_term.casefold()
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM movies WHERE LOWER(title) = LOWER(%s) LIMIT 1",
+            (search_term,)
+        )
+        if cur.fetchone():
+            conn.rollback()
+            cur.close()
+            flash("Ye movie CINEMA WORLD par pehle se available hai.", "error")
+            return redirect(url_for("home") + "#tmMovieRequest")
+
+        cur.execute("""
+            INSERT INTO movie_search_demands
+                (search_term, normalized_term, search_count, unique_users, last_customer_id)
+            VALUES (%s, %s, 1, 0, NULL)
+            ON CONFLICT (normalized_term)
+            DO UPDATE SET
+                search_count = movie_search_demands.search_count + 1,
+                last_searched_at = CURRENT_TIMESTAMP,
+                search_term = EXCLUDED.search_term,
+                last_customer_id = NULL
+            RETURNING id
+        """, (search_term, normalized))
+        conn.commit()
+        cur.close()
+        flash("Movie request bhej diya! CINEMA WORLD team ise review karegi.", "success")
+    except Exception:
+        conn.rollback()
+        flash("Request abhi save nahi ho payi. Thodi der baad dobara try karo.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("home") + "#tmMovieRequest")
+
+
 # HOME
 # ============================================================
 
