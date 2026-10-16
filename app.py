@@ -3381,66 +3381,84 @@ def cashfree_return():
 # HOME
 # ============================================================
 
+# Cache the public homepage movie list briefly to avoid repeated DB reads
+# during refreshes. Search and category results remain live and uncached.
+_HOME_MOVIES_CACHE = {"at": 0.0, "movies": []}
+_HOME_MOVIES_CACHE_LOCK = threading.Lock()
+_HOME_MOVIES_CACHE_TTL = 10.0
+
+
 @app.route("/")
 def home():
     q = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
 
-    conn = get_db(dict_rows=True)
+    movies = None
+    if not q and not category:
+        now = time.monotonic()
+        with _HOME_MOVIES_CACHE_LOCK:
+            if now - _HOME_MOVIES_CACHE["at"] < _HOME_MOVIES_CACHE_TTL:
+                movies = [dict(movie) for movie in _HOME_MOVIES_CACHE["movies"]]
 
-    try:
-        cur = conn.cursor()
+    if movies is None:
+        conn = get_db(dict_rows=True)
+        try:
+            cur = conn.cursor()
 
-        if q:
-            cur.execute(
-                """
-                SELECT *
-                FROM movies
-                WHERE
-                    title ILIKE %s
-                    OR category ILIKE %s
-                    OR description ILIKE %s
-                ORDER BY id DESC
-                """,
-                (
-                    f"%{q}%",
-                    f"%{q}%",
-                    f"%{q}%",
+            if q:
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM movies
+                    WHERE
+                        title ILIKE %s
+                        OR category ILIKE %s
+                        OR description ILIKE %s
+                    ORDER BY id DESC
+                    """,
+                    (
+                        f"%{q}%",
+                        f"%{q}%",
+                        f"%{q}%",
+                    )
                 )
-            )
 
-        elif category:
-            cur.execute(
-                """
-                SELECT *
-                FROM movies
-                WHERE category ILIKE %s
-                ORDER BY id DESC
-                """,
-                (
-                    f"%{category}%",
+            elif category:
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM movies
+                    WHERE category ILIKE %s
+                    ORDER BY id DESC
+                    """,
+                    (
+                        f"%{category}%",
+                    )
                 )
-            )
 
-        else:
-            cur.execute(
-                """
-                SELECT *
-                FROM movies
-                ORDER BY
-                    CASE
-                        WHEN trending_position IS NULL THEN 999999
-                        ELSE trending_position
-                    END ASC,
-                    id DESC
-                """
-            )
+            else:
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM movies
+                    ORDER BY
+                        CASE
+                            WHEN trending_position IS NULL THEN 999999
+                            ELSE trending_position
+                        END ASC,
+                        id DESC
+                    """
+                )
 
-        movies = cur.fetchall()
-        cur.close()
+            movies = [dict(movie) for movie in cur.fetchall()]
+            cur.close()
+        finally:
+            conn.close()
 
-    finally:
-        conn.close()
+        if not q and not category:
+            with _HOME_MOVIES_CACHE_LOCK:
+                _HOME_MOVIES_CACHE["at"] = time.monotonic()
+                _HOME_MOVIES_CACHE["movies"] = [dict(movie) for movie in movies]
 
     for movie in movies:
         poster_key = movie.get("poster")
