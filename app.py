@@ -4464,18 +4464,18 @@ def get_member_movies_data():
     finally:
         conn.close()
 
-    if section == "movies":
-        for movie in movies:
-            try:
-                movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
-            except Exception:
-                movie["poster_url"] = None
+    # This helper serves the member page, so normalize every movie row.
+    # Do not reference the admin-only "section" variable here.
+    for movie in movies:
+        try:
+            movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
+        except Exception:
+            movie["poster_url"] = None
         movie["in_my_list"] = bool(movie.get("in_my_list"))
         movie["views"] = int(movie.get("views") or 0)
         movie["average_rating"] = float(movie.get("average_rating") or 0)
         movie["rating_count"] = int(movie.get("rating_count") or 0)
     return movies
-
 
 def customer_has_completed_initial_payment(customer_id=None):
     customer_id=customer_id or session.get("customer_id")
