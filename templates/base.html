@@ -314,7 +314,7 @@
 
 <script>
 (function(){
-  if("serviceWorker"  if("serviceWorker" in navigator){
+  if("serviceWorker" in navigator){
     window.addEventListener("load",function(){
       navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}").catch(function(){});
     });
