@@ -497,8 +497,7 @@
     right:0;
     bottom:0;
 
-    padding:32px 14px 14px;
-    color:#ddd;
+    padding:32px 14px 14px;    color:#ddd;
 
     font-size:12px;
     font-weight:850;
@@ -780,13 +779,132 @@
     letter-spacing:.4px;
 }
 
+/* Premium card: cinematic black, signature red and luxury gold */
+.tm-premium{
+    position:relative;
+    isolation:isolate;
+    overflow:hidden;
+    padding:20px;
+    border:1px solid rgba(255,220,132,.88);
+    border-radius:18px;
+    color:#fffaf0;
+    background:
+        radial-gradient(ellipse at 0% 0%,rgba(255,205,90,.22),transparent 42%),
+        radial-gradient(ellipse at 100% 100%,rgba(229,9,20,.23),transparent 44%),
+        linear-gradient(118deg,#090909 0%,#211706 30%,#6e4a0b 62%,#160c08 100%);
+    box-shadow:0 14px 34px rgba(0,0,0,.42),0 0 0 1px rgba(255,211,99,.10),0 0 30px rgba(214,157,37,.17);
+    transition:transform .25s ease,box-shadow .25s ease,filter .25s ease;
+}
+
+.tm-premium::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:-1;
+    pointer-events:none;
+    background:linear-gradient(112deg,transparent 15%,rgba(255,255,255,.12) 43%,transparent 60%);
+    transform:translateX(-125%);
+    transition:transform .7s ease;
+}
+
+.tm-premium::after{
+    content:"";
+    position:absolute;
+    inset:5px;
+    z-index:-1;
+    border:1px solid rgba(255,226,157,.13);
+    border-radius:13px;
+    pointer-events:none;
+}
+
+.tm-premium:hover::before,
+.tm-premium:focus-visible::before{transform:translateX(125%);}
+
+.tm-premium:hover{
+    transform:translateY(-3px);
+    filter:brightness(1.08);
+    box-shadow:0 18px 42px rgba(0,0,0,.48),0 0 34px rgba(229,9,20,.14),0 0 30px rgba(219,169,52,.2);
+}
+
+.tm-premium:focus-visible{
+    outline:3px solid #ffe6a1;
+    outline-offset:3px;
+}
+
+.tm-premium-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+}
+
+.tm-premium-left{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    min-width:0;
+}
+
+.tm-premium-crown{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 52px;
+    width:52px;
+    height:52px;
+    border-radius:16px;
+    color:#ffe7a4;
+    background:linear-gradient(145deg,rgba(255,229,156,.2),rgba(9,9,9,.7));
+    border:1px solid rgba(255,228,160,.46);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 7px 18px rgba(0,0,0,.26);
+    font-size:27px;
+}
+
+.tm-premium-copy{min-width:0;}
+
+.tm-premium-kicker{
+    margin-bottom:5px;
+    color:#ffe4a0;
+    font-size:9px;
+    font-weight:950;
+    letter-spacing:1.7px;
+    text-transform:uppercase;
+}
+
+.tm-premium .tm-pay-title{
+    color:#fffdf6;
+    font-size:19px;
+    font-weight:1000;
+    letter-spacing:.1px;
+}
+
+.tm-premium small{
+    color:#f8e9c8;
+    font-size:12px;
+}
+
+.tm-premium-tag{
+    flex-shrink:0;
+    padding:8px 11px;
+    border-radius:999px;
+    color:#281900;
+    background:linear-gradient(135deg,#fff5cc 0%,#f8d777 48%,#dba331 100%);
+    border:1px solid rgba(255,250,222,.9);
+    box-shadow:0 4px 14px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.8);
+    font-size:9px;
+    font-weight:1000;
+    letter-spacing:.5px;
+    white-space:nowrap;
+}
+
 @media(max-width:480px){
-    .tm-premium{padding:15px 12px;}
-    .tm-premium-wrap{align-items:flex-start;gap:9px;}
+    .tm-premium{padding:15px 12px;border-radius:15px;}
+    .tm-premium-wrap{align-items:center;gap:8px;}
     .tm-premium-left{gap:9px;}
-    .tm-premium-crown{flex-basis:40px;width:40px;height:40px;font-size:21px;border-radius:12px;}
+    .tm-premium-crown{flex-basis:42px;width:42px;height:42px;font-size:22px;border-radius:12px;}
     .tm-premium .tm-pay-title{font-size:15px;}
-    .tm-premium small{font-size:11px;}
+    .tm-premium small{font-size:10px;}
+    .tm-premium-kicker{font-size:8px;letter-spacing:1px;}
     .tm-premium-tag{padding:6px 7px;font-size:8px;}
 }
 
@@ -997,8 +1115,7 @@
     }
 }
 
-/* =========================================================
-   FOOT NOTE
+/* =========================================================   FOOT NOTE
 ========================================================= */
 
 .tm-foot-note{
@@ -1497,8 +1614,7 @@
         {% if access.share %}
         <button type="button" class="tm-pay-btn" onclick="shareMovie()">
             <div class="tm-pay-title"><span>🔗 Share Movie</span><span>↗</span></div>
-            <small>Share link is active for this movie</small>
-        </button>
+            <small>Share link is active for this movie</small>        </button>
         {% else %}
         <button type="button" class="tm-pay-btn" onclick="startPayment('share')">
             <div class="tm-pay-title"><span>🔗 ₹49 Share</span><span>↗</span></div>
@@ -1997,8 +2113,7 @@ function copyMovieLink(url){
         if(document.fullscreenElement){ document.exitFullscreen().catch(()=>{}); return; }
         if(player.requestFullscreen) player.requestFullscreen().catch(()=>{});
         else if(player.webkitRequestFullscreen) player.webkitRequestFullscreen();
-    }
-    function setError(msg){
+    }    function setError(msg){
         setBuffering(false); player.classList.add("error-state");
         if(errorText) errorText.textContent=msg||"Video load nahi ho paya.";
         setStatus("Video error — Retry दबाएँ",true);
