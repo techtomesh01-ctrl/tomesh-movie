@@ -3976,7 +3976,7 @@ def creator_upload():
     try:
         cur = conn.cursor()
         cur.execute("""
-            SELECT cs.id,cs.title,cs.content_type,cs.status,cs.admin_note,cs.created_at,cs.movie_id,
+            SELECT cs.id,cs.title,cs.content_type,cs.category,cs.description,cs.status,cs.admin_note,cs.created_at,cs.movie_id,
                    COALESCE((SELECT m.views FROM movies m WHERE m.id=cs.movie_id),0) AS views,
                    COALESCE((SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=cs.movie_id),0) AS likes
             FROM creator_submissions cs WHERE cs.customer_id=%s
