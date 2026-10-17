@@ -4161,8 +4161,11 @@ def admin_creator_studio():
     try:
         cur = conn.cursor()
         cur.execute("""
-            SELECT id,customer_id,title,content_type,category,description,poster,video,status,admin_note,created_at
-            FROM creator_submissions WHERE status='PENDING' ORDER BY created_at ASC
+            SELECT cs.id,cs.customer_id,cs.title,cs.content_type,cs.category,cs.description,cs.poster,cs.video,cs.status,cs.admin_note,cs.created_at,
+                   cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile
+            FROM creator_submissions cs
+            LEFT JOIN customer_users cu ON cu.customer_id=cs.customer_id
+            WHERE cs.status='PENDING' ORDER BY cs.created_at ASC
         """)
         pending = [dict(row) for row in cur.fetchall()]
         for item in pending:
@@ -4173,12 +4176,24 @@ def admin_creator_studio():
                 item["video_url"] = None
                 item["poster_url"] = None
         cur.execute("""
-            SELECT cs.id,cs.customer_id,cs.title,cs.content_type,cs.status,cs.admin_note,cs.created_at,
-                   cs.reviewed_at,cs.movie_id,COALESCE(m.views,0) AS views
-            FROM creator_submissions cs LEFT JOIN movies m ON m.id=cs.movie_id
-            WHERE cs.status <> 'PENDING' ORDER BY cs.id DESC LIMIT 100
+            SELECT cs.id,cs.customer_id,cs.title,cs.content_type,cs.category,cs.description,cs.poster,cs.video,
+                   cs.status,cs.admin_note,cs.created_at,cs.reviewed_at,cs.movie_id,
+                   cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile,
+                   COALESCE(m.views,0) AS views,
+                   COALESCE((SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=cs.movie_id),0) AS likes
+            FROM creator_submissions cs
+            LEFT JOIN movies m ON m.id=cs.movie_id
+            LEFT JOIN customer_users cu ON cu.customer_id=cs.customer_id
+            WHERE cs.status <> 'PENDING' ORDER BY cs.id DESC LIMIT 200
         """)
         reviewed = [dict(row) for row in cur.fetchall()]
+        for item in reviewed:
+            try:
+                item["video_url"] = media_url(item.get("video")) if item.get("video") else None
+                item["poster_url"] = media_url(item.get("poster")) if item.get("poster") else None
+            except Exception:
+                item["video_url"] = None
+                item["poster_url"] = None
         cur.execute("""
             SELECT id,customer_id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,reviewed_at,paid_at,
                    bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified,bank_verified_at
