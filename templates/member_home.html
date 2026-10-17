@@ -1008,7 +1008,16 @@ body{
 
         <a href="#my-list">My List</a>
 
-        <a href="{{ url_for('user_earnings') }}" class="tm-refer-link">
+        <a href="{{ url_for('dramas_page') }}">Dramas</a>
+
+        <a href="{{ url_for('creator_upload') }}">Creator Studio</a>
+
+        <a href="{{ url_for('creator_upload') }}">
+        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v18H4zM8 7h8M8 11h8M8 15h5"/></svg>
+        <span>Creator Studio</span>
+    </a>
+
+    <a href="{{ url_for('user_earnings') }}" class="tm-refer-link">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-3.9-5A4 4 0 0 0 16 11Zm-8 0a4 4 0 1 0-3.9-5A4 4 0 0 0 8 11Zm0 2c-2.7 0-5 1.35-6 3.4V19h12v-2.6C13 14.35 10.7 13 8 13Zm8 0c-.55 0-1.08.08-1.58.22 1.08.72 1.9 1.63 2.4 2.78V19h5v-2.6c-1-2.05-3.25-3.4-5.82-3.4Z"/></svg>
             Refer & Earn
         </a>
@@ -1049,6 +1058,11 @@ body{
             <path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-3.7L6 22z"/>
         </svg>
         <span>My List</span>
+    </a>
+
+    <a href="{{ url_for('dramas_page') }}">
+        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 4v16M16 4v16M4 9h4M16 9h4M4 15h4M16 15h4"/></svg>
+        <span>Dramas</span>
     </a>
 
     <a href="{{ url_for('user_earnings') }}" class="tm-refer-link">

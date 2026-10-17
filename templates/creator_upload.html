@@ -25,7 +25,7 @@
       <div class="tm-title">🎬 Creator Studio — Upload</div>
       <div class="tm-sub">Upload your Movie or Drama for Admin review. Content stays pending until approved.</div>
     </div>
-    <a class="tm-back" href="{{ url_for('home') }}">← Admin Dashboard</a>
+    <a class="tm-back" href="{{ url_for('member_home') }}">← Back to Movies</a>
   </div>
 
   <div class="tm-card">
@@ -63,14 +63,35 @@
       </div>
       {% endfor %}
     {% else %}<p class="tm-hint">No payout requests yet.</p>{% endif %}
-    <h3>My submissions</h3>
+    <h3>My uploads &amp; performance</h3>
+    {% set summary = namespace(total=0,published=0,pending=0,views=0,likes=0) %}
+    {% for entry in submissions %}
+      {% set summary.total = summary.total + 1 %}
+      {% if entry.status == 'APPROVED' %}{% set summary.published = summary.published + 1 %}{% endif %}
+      {% if entry.status == 'PENDING' %}{% set summary.pending = summary.pending + 1 %}{% endif %}
+      {% set summary.views = summary.views + (entry.views or 0) %}
+      {% set summary.likes = summary.likes + (entry.likes or 0) %}
+    {% endfor %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:12px 0 18px">
+      <div class="tm-stat"><b>{{ summary.total }}</b><span>Total uploads</span></div>
+      <div class="tm-stat"><b>{{ summary.published }}</b><span>Published</span></div>
+      <div class="tm-stat"><b>{{ summary.pending }}</b><span>Pending review</span></div>
+      <div class="tm-stat"><b>{{ summary.views }}</b><span>Total views</span></div>
+      <div class="tm-stat"><b>{{ summary.likes }}</b><span>Total likes</span></div>
+    </div>
     {% if submissions %}
       {% for item in submissions %}
         <div style="padding:12px 0;border-top:1px solid #333">
           <strong>{{ item.title }}</strong>
           <span style="display:inline-block;margin-left:8px;border:1px solid #444;border-radius:20px;padding:4px 8px;font-size:11px">{{ item.content_type }} · {{ item.status }}</span>
-          <div class="tm-hint">Submitted {{ item.created_at }}{% if item.admin_note %} · Admin note: {{ item.admin_note }}{% endif %}</div>
-          {% if item.movie_id %}<a href="{{ url_for('movie_page', movie_id=item.movie_id) }}" style="color:#f87171">View published title</a>{% endif %}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <span class="tm-badge">👁 Views: {{ item.views or 0 }}</span>
+            <span class="tm-badge">♥ Likes: {{ item.likes or 0 }}</span>
+            {% if item.category %}<span class="tm-badge">Category: {{ item.category }}</span>{% endif %}
+          </div>
+          {% if item.description %}<div class="tm-hint" style="margin-top:8px;white-space:pre-wrap">Description: {{ item.description }}</div>{% endif %}
+          <div class="tm-hint">Submitted {{ item.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% if item.admin_note %} · Admin note: {{ item.admin_note }}{% endif %}</div>
+          {% if item.movie_id %}<a href="{{ url_for('movie_page', movie_id=item.movie_id) }}" style="color:#f87171">View published title →</a>{% endif %}
         </div>
       {% endfor %}
     {% else %}<p class="tm-hint">You haven't submitted any content yet.</p>{% endif %}

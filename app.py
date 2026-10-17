@@ -3976,9 +3976,11 @@ def creator_upload():
     try:
         cur = conn.cursor()
         cur.execute("""
-            SELECT id,title,content_type,status,admin_note,created_at,movie_id
-            FROM creator_submissions WHERE customer_id=%s
-            ORDER BY id DESC LIMIT 100
+            SELECT cs.id,cs.title,cs.content_type,cs.category,cs.description,cs.status,cs.admin_note,cs.created_at,cs.movie_id,
+                   COALESCE((SELECT m.views FROM movies m WHERE m.id=cs.movie_id),0) AS views,
+                   COALESCE((SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=cs.movie_id),0) AS likes
+            FROM creator_submissions cs WHERE cs.customer_id=%s
+            ORDER BY cs.id DESC LIMIT 100
         """, (str(session.get("customer_id") or ""),))
         submissions = [dict(row) for row in cur.fetchall()]
         customer_id = str(session.get("customer_id") or "")
