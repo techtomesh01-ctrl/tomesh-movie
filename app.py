@@ -5722,43 +5722,43 @@ def admin_user_restriction(user_id):
 @app.route("/admin/users")
 @admin_required
 def admin_users():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="users"))
 
 
 @app.route("/admin/payments")
 @admin_required
 def admin_payments():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="payments"))
 
 
 @app.route("/admin/subscriptions")
 @admin_required
 def admin_subscriptions():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="subscriptions"))
 
 
 @app.route("/admin/watch-activity")
 @admin_required
 def admin_watch_activity():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="watch"))
 
 
 @app.route("/admin/analytics")
 @admin_required
 def admin_analytics():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="analytics"))
 
 
 @app.route("/admin/live-activity")
 @admin_required
 def admin_live_activity():
-    return redirect(url_for("admin_activity"))
+    return redirect(url_for("admin", section="live"))
 
 
 @app.route("/admin/notifications")
 @admin_required
 def admin_notifications():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="notifications"))
 
 
 @app.route("/admin/report-csv/<report_name>")
@@ -5860,37 +5860,37 @@ def admin_report_csv(report_name):
 @app.route("/admin/reports")
 @admin_required
 def admin_reports():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="reports"))
 
 
 @app.route("/admin/r2")
 @admin_required
 def admin_r2():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="r2"))
 
 
 @app.route("/admin/system-health")
 @admin_required
 def admin_system_health():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="health"))
 
 
 @app.route("/admin/security")
 @admin_required
 def admin_security():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="security"))
 
 
 @app.route("/admin/settings")
 @admin_required
 def admin_settings():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="settings"))
 
 
 @app.route("/admin/search")
 @admin_required
 def admin_search():
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin", section="search"))
 # ============================================================
 # ADMIN
 # ============================================================
