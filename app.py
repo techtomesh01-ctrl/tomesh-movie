@@ -1444,6 +1444,21 @@ def admin_required(view_func):
 
     return wrapper
 
+def creator_customer_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if not session.get("customer_logged_in"):
+            return redirect(url_for("login"))
+        customer_id = session.get("customer_id")
+        if customer_is_blocked(customer_id):
+            session.clear()
+            flash("Your account has been restricted by the administrator.", "error")
+            return redirect(url_for("login"))
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+
 def r2_upload_required(view_func):
     @wraps(view_func)
     def wrapper(*args, **kwargs):
@@ -3933,7 +3948,7 @@ def movie_page(movie_id):
 # ============================================================
 
 @app.route("/creator/upload", methods=["GET", "POST"])
-@customer_login_required
+@creator_customer_required
 def creator_upload():
     if request.method == "POST":
         flash("Upload form submit nahi hua. Please form ko dobara submit karein.", "error")
@@ -3960,7 +3975,7 @@ def creator_upload():
 
 
 @app.route("/api/creator/submission/save", methods=["POST"])
-@customer_login_required
+@creator_customer_required
 def api_creator_submission_save():
     data = request.get_json(silent=True) or {}
     title = str(data.get("title") or "").strip()
