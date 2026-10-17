@@ -1444,6 +1444,27 @@ def admin_required(view_func):
 
     return wrapper
 
+def r2_upload_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if not session.get("admin_logged_in") and not session.get("customer_logged_in"):
+            return json_error("Please login before uploading.", 401)
+        if session.get("customer_logged_in") and customer_is_blocked(session.get("customer_id")):
+            session.clear()
+            return json_error("Account restricted.", 403)
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+def enforce_r2_upload_key(key):
+    # Customer sessions may only upload into isolated pending-content prefixes.
+    if session.get("admin_logged_in"):
+        return
+    if not session.get("customer_logged_in"):
+        raise ValueError("Login required.")
+    if not (key.startswith("videos/creator-pending/") or key.startswith("posters/creator-pending/")):
+        raise ValueError("Creator uploads must use the pending-content folder.")
+
 
 # ============================================================
 # CUSTOMER ID
@@ -7107,7 +7128,7 @@ def admin_delete_movie(movie_id):
     "/api/r2/multipart/create",
     methods=["POST"],
 )
-@admin_required
+@r2_upload_required
 def r2_multipart_create():
 
     try:
@@ -7122,6 +7143,7 @@ def r2_multipart_create():
         key = validate_r2_key(
             data.get("key")
         )
+        enforce_r2_upload_key(key)
 
         content_type = (
             data.get("content_type")
@@ -7164,7 +7186,7 @@ def r2_multipart_create():
     "/api/r2/multipart/urls",
     methods=["POST"],
 )
-@admin_required
+@r2_upload_required
 def r2_multipart_urls():
 
     try:
@@ -7274,7 +7296,7 @@ def r2_multipart_urls():
     "/api/r2/multipart/complete",
     methods=["POST"],
 )
-@admin_required
+@r2_upload_required
 def r2_multipart_complete():
 
     try:
@@ -7394,7 +7416,7 @@ def r2_multipart_complete():
     "/api/r2/multipart/abort",
     methods=["POST"],
 )
-@admin_required
+@r2_upload_required
 def r2_multipart_abort():
 
     try:
