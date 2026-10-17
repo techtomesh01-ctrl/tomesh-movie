@@ -72,15 +72,30 @@
 @media(max-width:420px){.tm-add-wrap{padding-left:9px;padding-right:9px}.tm-head{padding:18px 15px}.tm-title{font-size:23px}.tm-back{padding:10px 11px;font-size:12px}.tm-card{padding:15px}.tm-upload-item{grid-template-columns:68px minmax(0,1fr)}.tm-upload-poster{width:68px;height:98px}.tm-stat{padding:12px}}
 
 
-/* YouTube Studio-inspired creator navigation and content management */
-.cw-studio-nav{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:9px;margin:0 0 18px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(14,14,19,.94);position:sticky;top:8px;z-index:20;backdrop-filter:blur(16px)}
-.cw-studio-nav a{display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:11px;color:#c7c7d1;text-decoration:none;font-size:13px;font-weight:800;transition:background .18s,color .18s}
-.cw-studio-nav a span{font-size:16px}.cw-studio-nav a:hover,.cw-studio-nav a:focus{background:rgba(229,9,20,.14);color:#fff}.cw-studio-nav a.active{background:#e50914;color:#fff;box-shadow:0 5px 18px rgba(229,9,20,.2)}
+/* YouTube Studio-inspired full dashboard shell: persistent left sidebar + workspace */
+.tm-add{max-width:1420px;display:grid;grid-template-columns:228px minmax(0,1fr);column-gap:22px;row-gap:0;align-items:start}
+.tm-head{grid-column:1/-1;grid-row:1}
+.cw-studio-nav{grid-column:1;grid-row:2 / span 2;position:sticky;top:14px;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:12px;margin:0;border:1px solid rgba(255,255,255,.1);border-radius:19px;background:linear-gradient(180deg,rgba(19,19,25,.98),rgba(9,9,13,.98));box-shadow:0 16px 45px rgba(0,0,0,.25);backdrop-filter:blur(16px);min-width:0}
+.cw-studio-brand{display:flex;align-items:center;gap:10px;padding:9px 10px 17px;margin-bottom:7px;border-bottom:1px solid rgba(255,255,255,.09);font-size:13px;font-weight:950;letter-spacing:.5px}
+.cw-studio-brand b{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:linear-gradient(135deg,#f43f5e,#b91c1c);color:#fff;font-size:14px;box-shadow:0 5px 18px rgba(229,9,20,.25)}
+.cw-studio-brand small{display:block;margin-top:3px;color:#9999a8;font-size:10px;font-weight:700;letter-spacing:1.1px}
+.cw-studio-nav a{display:flex;align-items:center;gap:12px;padding:12px 13px;border-radius:11px;color:#b9b9c5;text-decoration:none;font-size:13px;font-weight:800;transition:background .18s,color .18s,border-color .18s;border:1px solid transparent}
+.cw-studio-nav a span{display:inline-grid;place-items:center;width:22px;font-size:17px;flex:0 0 22px}
+.cw-studio-nav a:hover,.cw-studio-nav a:focus{background:rgba(229,9,20,.12);color:#fff}
+.cw-studio-nav a.active{background:linear-gradient(100deg,rgba(229,9,20,.22),rgba(229,9,20,.07));border-color:rgba(229,9,20,.27);color:#fff;box-shadow:inset 3px 0 #e50914}
+#studio-overview{grid-column:2;grid-row:2;min-width:0}
+#movieForm{grid-column:2;grid-row:3;min-width:0}
+#studio-overview>h2{font-size:clamp(23px,2.5vw,30px);margin-bottom:22px}
+#studio-overview>div[style*="display:flex"]{gap:12px!important}
+#studio-overview>div[style*="display:flex"]>div{flex:1;min-width:145px;padding:15px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.025)}
+#studio-overview>div[style*="display:flex"] strong{display:block;margin-top:5px;font-size:clamp(22px,2.5vw,29px)!important;letter-spacing:-.5px}
+#studio-overview h3{scroll-margin-top:20px}
 .cw-content-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
 .cw-content-tools input,.cw-content-tools select{min-height:42px;border:1px solid #373741;border-radius:11px;background:#09090d;color:#f7f7fb;padding:10px 12px;font:inherit;font-size:13px;outline:none}
 .cw-content-tools input{flex:1;min-width:190px}.cw-content-tools select{min-width:175px}.cw-content-tools input:focus,.cw-content-tools select:focus{border-color:#e50914;box-shadow:0 0 0 3px rgba(229,9,20,.12)}
 #cwContentCount{font-size:12px;color:#a4a4b2;font-weight:700;white-space:nowrap}.cw-content-item[hidden]{display:none!important}
-@media(max-width:560px){.cw-studio-nav{position:static;gap:4px}.cw-studio-nav a{flex:1;justify-content:center;padding:10px 7px;font-size:11px}.cw-studio-nav a span{display:none}.cw-content-tools input,.cw-content-tools select{width:100%;min-width:0}}
+@media(max-width:850px){.tm-add{display:block;max-width:760px}.cw-studio-nav{position:static;display:flex;flex-direction:row;flex-wrap:wrap;margin:0 0 18px}.cw-studio-brand{width:100%;padding-bottom:12px}.cw-studio-nav a{flex:1;justify-content:center;min-width:105px}.tm-head{margin-bottom:16px}}
+@media(max-width:560px){.cw-studio-nav{gap:4px;padding:8px}.cw-studio-nav a{flex:1;justify-content:center;padding:10px 7px;font-size:11px;min-width:calc(50% - 8px)}.cw-studio-nav a span{display:none}.cw-content-tools input,.cw-content-tools select{width:100%;min-width:0}#studio-overview>div[style*="display:flex"]>div{min-width:110px;padding:12px}.tm-add-wrap{padding-left:9px;padding-right:9px}}
 
 </style>
 
@@ -95,10 +110,12 @@
   </div>
 
   <nav class="cw-studio-nav" aria-label="Creator Studio sections">
+    <div class="cw-studio-brand"><b>CW</b><div>CINEMA WORLD<small>CREATOR STUDIO</small></div></div>
     <a href="#studio-overview" class="active"><span>▦</span> Dashboard</a>
     <a href="#studio-content"><span>▶</span> Content</a>
-    <a href="#movieForm"><span>＋</span> Upload</a>
-    <a href="#studio-earnings"><span>₹</span> Earnings</a>
+    <a href="#movieForm"><span>＋</span> Upload video</a>
+    <a href="#studio-earnings"><span>₹</span> Earnings &amp; payouts</a>
+    <a href="#studio-analytics"><span>▥</span> Analytics</a>
   </nav>
 
   <div class="tm-card" id="studio-overview">
@@ -183,7 +200,7 @@
       {% set summary.views = summary.views + (entry.views or 0) %}
       {% set summary.likes = summary.likes + (entry.likes or 0) %}
     {% endfor %}
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:12px 0 18px">
+    <div id="studio-analytics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:12px 0 18px;scroll-margin-top:20px">
       <div class="tm-stat"><b>{{ summary.total }}</b><span>Total uploads</span></div>
       <div class="tm-stat"><b>{{ summary.published }}</b><span>Published</span></div>
       <div class="tm-stat"><b>{{ summary.pending }}</b><span>Pending review</span></div>
