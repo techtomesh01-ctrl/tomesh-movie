@@ -2574,9 +2574,8 @@ def customer_password_login():
         cur=conn.cursor(); cur.execute("UPDATE customer_users SET last_login_at=NOW() WHERE customer_id=%s",(matched["customer_id"],)); conn.commit()
     finally: conn.close()
     if not customer_has_completed_initial_payment(matched["customer_id"]): return redirect(url_for("user_details"))
-    # After login, show the public Home page first; the signed-in session
-    # remains active so the member can open Member Home without logging in again.
-    return redirect(url_for("home"))
+    # Existing paid/authorized members should land directly on Member Home.
+    return redirect(url_for("member_home"))
 
 
 @app.route(
@@ -2988,12 +2987,11 @@ def verify_otp():
         "success",
     )
 
-    # Show Home after successful login. The session stays signed in, and
-    # the Home header offers a Member Page link for one-click navigation.
+    # Existing paid/authorized members should land directly on Member Home.
     customer_id = session.get("customer_id")
     if customer_has_completed_initial_payment(customer_id):
         return redirect(
-            url_for("home")
+            url_for("member_home")
         )
 
     return redirect(
