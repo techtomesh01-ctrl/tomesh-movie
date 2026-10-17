@@ -3971,7 +3971,9 @@ def creator_upload():
         cur.close()
     finally:
         conn.close()
-    return render_template("creator_upload.html", submissions=submissions, earnings=earnings)
+    return render_template("creator_upload.html", submissions=submissions, earnings=earnings,
+        movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
+        drama_rate=get_setting("creator_drama_rate_per_1000", "30"))
 
 
 @app.route("/api/creator/submission/save", methods=["POST"])
