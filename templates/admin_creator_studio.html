@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Creator Studio | CINEMA WORLD{% endblock %}
+{% block content %}
+<style>
+.cs{min-height:100vh;background:#070707;color:#fff;padding:30px 5% 70px}.cs-wrap{max-width:1200px;margin:auto}.cs h1{font-size:clamp(28px,4vw,42px);margin:0}.cs-muted{color:#aaa}.cs-card{background:#111;border:1px solid #292929;border-radius:15px;padding:20px;margin:20px 0}.cs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px}.cs input,.cs textarea{width:100%;box-sizing:border-box;background:#080808;color:#fff;border:1px solid #444;border-radius:9px;padding:11px;margin:7px 0 12px}.cs button,.cs .cs-link{display:inline-block;border:0;border-radius:9px;padding:10px 14px;background:#e50914;color:#fff;font-weight:800;text-decoration:none;cursor:pointer}.cs .secondary{background:#242424}.cs .reject{background:#555}.cs .tag{display:inline-block;padding:5px 9px;border:1px solid #444;border-radius:20px;color:#ddd;font-size:12px}.cs .meta{color:#999;font-size:12px}.cs .description{white-space:pre-wrap;color:#ccc;overflow-wrap:anywhere}.cs .empty{padding:25px;border:1px dashed #444;border-radius:12px;color:#aaa}.cs h2{margin-top:0}
+</style>
+<div class="cs"><div class="cs-wrap">
+  <a class="cs-link secondary" href="{{ url_for('admin', section='dashboard') }}">← Admin Dashboard</a>
+  <h1 style="margin-top:22px">🎬 Creator Studio</h1>
+  <p class="cs-muted">Review creator uploads before publishing, and set separate earning rates.</p>
+  <div class="cs-card">
+    <h2>Creator earning rates</h2>
+    <p class="cs-muted">Rates are paid as an earning accrual per 1,000 qualified logged-in unique views. This does not automatically transfer money to a bank account.</p>
+    <form method="post">
+      <label>Movies rate (₹ per 1,000 views)</label>
+      <input type="number" name="movie_rate" min="0" max="1000000" step="0.01" required value="{{ movie_rate }}">
+      <label>Dramas rate (₹ per 1,000 views)</label>
+      <input type="number" name="drama_rate" min="0" max="1000000" step="0.01" required value="{{ drama_rate }}">
+      <button type="submit">Save earning rates</button>
+    </form>
+  </div>
+  <h2>Pending approval ({{ pending|length }})</h2>
+  {% if pending %}
+  <div class="cs-grid">
+    {% for item in pending %}
+    <div class="cs-card">
+      <span class="tag">{{ 'Movie' if item.content_type == 'MOVIE' else 'Drama' }}</span>
+      <h2 style="margin:12px 0 6px">{{ item.title }}</h2>
+      <div class="meta">Submission #{{ item.id }} · Creator {{ item.customer_id }} · {{ item.created_at }}</div>
+      <p class="cs-muted">{{ item.category or 'Uncategorised' }}</p>
+      <div class="description">{{ item.description or 'No description provided.' }}</div>
+      {% if item.poster %}<p><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.poster }}">Open poster</a></p>{% endif %}
+      <p><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.video }}">Preview uploaded video</a></p>
+      <form method="post" action="{{ url_for('admin_review_creator_submission', submission_id=item.id, action='approve') }}">
+        <label>Admin note (optional)</label><textarea name="admin_note" rows="2" placeholder="Approval note"></textarea>
+        <button type="submit">Approve and publish</button>
+      </form>
+      <form method="post" action="{{ url_for('admin_review_creator_submission', submission_id=item.id, action='reject') }}">
+        <label>Reason if rejected</label><textarea name="admin_note" rows="2" placeholder="Reason shown to creator"></textarea>
+        <button class="reject" type="submit">Reject submission</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}<div class="cs-empty">No pending creator uploads.</div>{% endif %}
+  <div class="cs-card">
+    <h2>Recently reviewed</h2>
+    {% if reviewed %}
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr><th align="left">Title</th><th align="left">Type</th><th align="left">Creator</th><th align="left">Status</th><th align="left">Views</th><th align="left">Note</th></tr></thead>
+      <tbody>{% for item in reviewed %}<tr style="border-top:1px solid #333"><td style="padding:10px 5px">{{ item.title }}</td><td>{{ item.content_type }}</td><td>{{ item.customer_id }}</td><td>{{ item.status }}</td><td>{{ item.views or 0 }}</td><td>{{ item.admin_note or '—' }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="cs-muted">Nothing reviewed yet.</p>{% endif %}
+  </div>
+</div></div>
+{% endblock %}
