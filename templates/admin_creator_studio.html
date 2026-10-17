@@ -29,8 +29,8 @@
       <div class="meta">Submission #{{ item.id }} · Creator {{ item.customer_id }} · {{ item.created_at }}</div>
       <p class="cs-muted">{{ item.category or 'Uncategorised' }}</p>
       <div class="description">{{ item.description or 'No description provided.' }}</div>
-      {% if item.poster %}<p><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.poster }}">Open poster</a></p>{% endif %}
-      <p><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.video }}">Preview uploaded video</a></p>
+      {% if item.poster %}<p><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.poster_url }}">Open poster</a></p>{% endif %}
+      <p><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.video_url }}">Preview uploaded video</a></p>
       <form method="post" action="{{ url_for('admin_review_creator_submission', submission_id=item.id, action='approve') }}">
         <label>Admin note (optional)</label><textarea name="admin_note" rows="2" placeholder="Approval note"></textarea>
         <button type="submit">Approve and publish</button>
