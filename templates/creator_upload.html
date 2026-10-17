@@ -25,7 +25,7 @@
       <div class="tm-title">🎬 Creator Studio — Upload</div>
       <div class="tm-sub">Upload your Movie or Drama for Admin review. Content stays pending until approved.</div>
     </div>
-    <a class="tm-back" href="{{ url_for('admin') }}">← Admin Dashboard</a>
+    <a class="tm-back" href="{{ url_for('home') }}">← Admin Dashboard</a>
   </div>
 
   <div class="tm-card">
@@ -34,6 +34,7 @@
       <div><div style="font-size:12px;color:#999">Accrued earnings</div><strong style="font-size:24px">₹{{ '%.2f'|format(earnings.total or 0) }}</strong></div>
       <div><div style="font-size:12px;color:#999">Qualified views</div><strong style="font-size:24px">{{ earnings.valid_views or 0 }}</strong></div>
     </div>
+    <p class="tm-hint">Current rate: Movies ₹{{ movie_rate }} / 1,000 qualified views · Dramas ₹{{ drama_rate }} / 1,000 qualified views.</p>
     <p class="tm-hint">A qualified view is counted once per logged-in viewer per title per day. Earnings are accruals, not automatic bank payouts.</p>
     <h3>My submissions</h3>
     {% if submissions %}
