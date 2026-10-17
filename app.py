@@ -3758,33 +3758,6 @@ def movie_page(movie_id):
             (movie_id,),
         )
 
-        # Creator earnings count at most one logged-in non-owner view per
-        # movie per calendar day. Ordinary movie views and payment access
-        # behavior remain unchanged.
-        creator_id = str(movie.get("creator_customer_id") or "")
-        viewer_id = str(session.get("customer_id") or "")
-        if creator_id and viewer_id and viewer_id != creator_id and session.get("customer_logged_in"):
-            cur.execute("""
-                INSERT INTO creator_view_events(movie_id,customer_id,view_date)
-                VALUES(%s,%s,CURRENT_DATE)
-                ON CONFLICT(movie_id,customer_id,view_date) DO NOTHING
-            """, (movie_id, viewer_id))
-            if cur.rowcount:
-                rate_key = "creator_drama_rate_per_1000" if str(movie.get("content_type") or "MOVIE").upper() == "DRAMA" else "creator_movie_rate_per_1000"
-                cur.execute("SELECT value FROM settings WHERE key=%s", (rate_key,))
-                rate_row = cur.fetchone()
-                try:
-                    rate = max(0.0, float((rate_row or {}).get("value") or 0))
-                except (TypeError, ValueError):
-                    rate = 0.0
-                cur.execute("""
-                    INSERT INTO creator_earnings(customer_id,movie_id,view_date,valid_views,amount)
-                    VALUES(%s,%s,CURRENT_DATE,1,%s)
-                    ON CONFLICT(customer_id,movie_id,view_date)
-                    DO UPDATE SET valid_views=creator_earnings.valid_views+1,
-                                  amount=creator_earnings.amount+EXCLUDED.amount
-                """, (creator_id, movie_id, round(rate / 1000.0, 4)))
-
         conn.commit()
         cur.close()
 
@@ -3794,6 +3767,40 @@ def movie_page(movie_id):
     access = access_for_movie(
         movie_id
     )
+
+    # Only accrue creator earnings when the logged-in viewer has watch access.
+    creator_id = str(movie.get("creator_customer_id") or "")
+    viewer_id = str(session.get("customer_id") or "")
+    if access.get("watch") and creator_id and viewer_id and viewer_id != creator_id and session.get("customer_logged_in"):
+        earnings_conn = get_db(dict_rows=True)
+        try:
+            earnings_cur = earnings_conn.cursor()
+            earnings_cur.execute("""
+                INSERT INTO creator_view_events(movie_id,customer_id,view_date)
+                VALUES(%s,%s,CURRENT_DATE)
+                ON CONFLICT(movie_id,customer_id,view_date) DO NOTHING
+            """, (movie_id, viewer_id))
+            if earnings_cur.rowcount:
+                rate_key = "creator_drama_rate_per_1000" if str(movie.get("content_type") or "MOVIE").upper() == "DRAMA" else "creator_movie_rate_per_1000"
+                earnings_cur.execute("SELECT value FROM settings WHERE key=%s", (rate_key,))
+                rate_row = earnings_cur.fetchone()
+                try:
+                    rate = max(0.0, float((rate_row or {}).get("value") or 0))
+                except (TypeError, ValueError):
+                    rate = 0.0
+                earnings_cur.execute("""
+                    INSERT INTO creator_earnings(customer_id,movie_id,view_date,valid_views,amount)
+                    VALUES(%s,%s,CURRENT_DATE,1,%s)
+                    ON CONFLICT(customer_id,movie_id,view_date)
+                    DO UPDATE SET valid_views=creator_earnings.valid_views+1,
+                                  amount=creator_earnings.amount+EXCLUDED.amount
+                """, (creator_id, movie_id, round(rate / 1000.0, 4)))
+            earnings_conn.commit()
+        except Exception as exc:
+            earnings_conn.rollback()
+            print("CREATOR EARNINGS ERROR:", repr(exc))
+        finally:
+            earnings_conn.close()
 
     video_key = movie.get(
         "video"
