@@ -35,8 +35,16 @@
         <input class="tm-input" id="title" name="title" maxlength="250" required placeholder="e.g. Vishwanath & Sons">
       </div>
       <div>
+        <label class="tm-label">Content Section *</label>
+        <select class="tm-select" id="content_type" name="content_type" required>
+          <option value="MOVIE">Movies</option>
+          <option value="DRAMA">Dramas</option>
+        </select>
+        <div class="tm-hint">Choose the section where this title will appear.</div>
+      </div>
+      <div>
         <label class="tm-label">Category / Genre</label>
-        <input class="tm-input" id="category" name="category" maxlength="120" placeholder="Drama / Family">
+        <input class="tm-input" id="category" name="category" maxlength="120" placeholder="Action / Family / Romance">
       </div>
       <div class="tm-full">
         <label class="tm-label">Description</label>
@@ -245,7 +253,7 @@
       if(poster){stage.textContent='Starting direct R2 poster upload...'; posterKey=await uploadFile(poster,'posters/',add);}
       if(cancelled) throw new Error('Upload cancelled.');
       stage.textContent='Saving movie in PostgreSQL...';
-      const saved=await json('/api/movie/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title.value.trim(),category:category.value.trim(),description:description.value.trim(),video_key:videoKey,poster_key:posterKey})});
+      const saved=await json('/api/movie/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title.value.trim(),category:category.value.trim(),description:description.value.trim(),content_type:document.getElementById('content_type').value,video_key:videoKey,poster_key:posterKey})});
       updateProgress(total,total); stage.textContent='Movie saved successfully.'; setMsg('✅ Movie upload + database save successful. Movie ID: '+saved.movie_id,'ok');
       setTimeout(()=>{window.location.href='/admin';},1200);
     }catch(err){
