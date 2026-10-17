@@ -4043,6 +4043,13 @@ def admin_creator_studio():
             FROM creator_submissions WHERE status='PENDING' ORDER BY created_at ASC
         """)
         pending = [dict(row) for row in cur.fetchall()]
+        for item in pending:
+            try:
+                item["video_url"] = media_url(item.get("video")) if item.get("video") else None
+                item["poster_url"] = media_url(item.get("poster")) if item.get("poster") else None
+            except Exception:
+                item["video_url"] = None
+                item["poster_url"] = None
         cur.execute("""
             SELECT cs.id,cs.customer_id,cs.title,cs.content_type,cs.status,cs.admin_note,cs.created_at,
                    cs.reviewed_at,cs.movie_id,COALESCE(m.views,0) AS views
