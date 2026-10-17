@@ -16,7 +16,9 @@
       <input type="number" name="movie_rate" min="0" max="1000000" step="0.01" required value="{{ movie_rate }}">
       <label>Dramas rate (₹ per 1,000 views)</label>
       <input type="number" name="drama_rate" min="0" max="1000000" step="0.01" required value="{{ drama_rate }}">
-      <button type="submit">Save earning rates</button>
+      <label>Minimum payout request (₹)</label>
+      <input type="number" name="min_payout" min="1" max="1000000" step="1" required value="{{ min_payout }}">
+      <button type="submit">Save monetization settings</button>
     </form>
   </div>
   <h2>Pending approval ({{ pending|length }})</h2>
@@ -43,6 +45,33 @@
     {% endfor %}
   </div>
   {% else %}<div class="cs-empty">No pending creator uploads.</div>{% endif %}
+  <h2>Creator payout requests</h2>
+  <div class="cs-card">
+    {% if payout_requests %}
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr><th align="left">ID / Creator</th><th align="left">Amount</th><th align="left">Method / Details</th><th align="left">Status</th><th align="left">Actions</th></tr></thead>
+      <tbody>
+      {% for payout in payout_requests %}
+      <tr style="border-top:1px solid #333;vertical-align:top">
+        <td style="padding:12px 5px">#{{ payout.id }}<br>{{ payout.customer_id }}<br><span class="meta">{{ payout.created_at }}</span></td>
+        <td style="padding:12px 5px">₹{{ '%.2f'|format(payout.amount) }}</td>
+        <td style="padding:12px 5px">{{ payout.payout_method }}<br><span style="overflow-wrap:anywhere">{{ payout.payout_details }}</span></td>
+        <td style="padding:12px 5px">{{ payout.status }}{% if payout.transaction_ref %}<br><span class="meta">Ref: {{ payout.transaction_ref }}</span>{% endif %}</td>
+        <td style="padding:12px 5px;min-width:230px">
+          {% if payout.status == 'PENDING' %}
+          <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='approve') }}"><input name="admin_note" placeholder="Optional note"><button type="submit">Approve</button></form>
+          <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='reject') }}"><input name="admin_note" placeholder="Reason (optional)"><button class="reject" type="submit">Reject</button></form>
+          {% elif payout.status == 'APPROVED' %}
+          <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='paid') }}"><input name="transaction_ref" required placeholder="UPI/bank transaction reference"><input name="admin_note" placeholder="Optional note"><button type="submit">Mark as paid</button></form>
+          <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='reject') }}"><input name="admin_note" placeholder="Reason (optional)"><button class="reject" type="submit">Reject</button></form>
+          {% else %}<span class="meta">{{ payout.admin_note or 'No note' }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="cs-muted">No payout requests yet.</p>{% endif %}
+  </div>
   <div class="cs-card">
     <h2>Recently reviewed</h2>
     {% if reviewed %}
