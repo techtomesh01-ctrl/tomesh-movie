@@ -3990,7 +3990,7 @@ def creator_upload():
                    COALESCE((SELECT m.views FROM movies m WHERE m.id=cs.movie_id),0) AS views,
                    COALESCE((SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=cs.movie_id),0) AS likes
             FROM creator_submissions cs WHERE cs.customer_id=%s
-            ORDER BY cs.id DESC LIMIT 100
+            ORDER BY cs.id DESC
         """, (str(session.get("customer_id") or ""),))
         submissions = [dict(row) for row in cur.fetchall()]
         for item in submissions:
@@ -4191,7 +4191,7 @@ def admin_creator_studio():
             FROM creator_submissions cs
             LEFT JOIN movies m ON m.id=cs.movie_id
             LEFT JOIN customer_users cu ON cu.customer_id=cs.customer_id
-            WHERE cs.status <> 'PENDING' ORDER BY cs.id DESC LIMIT 200
+            WHERE cs.status <> 'PENDING' ORDER BY cs.id DESC
         """)
         reviewed = [dict(row) for row in cur.fetchall()]
         for item in reviewed:
@@ -4202,11 +4202,12 @@ def admin_creator_studio():
                 item["video_url"] = None
                 item["poster_url"] = None
         cur.execute("""
-            SELECT id,customer_id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,reviewed_at,paid_at,
-                   bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified,bank_verified_at
-            FROM creator_payout_requests ORDER BY
-              CASE status WHEN 'PENDING' THEN 0 WHEN 'APPROVED' THEN 1 ELSE 2 END,
-              id DESC LIMIT 200
+            SELECT p.id,p.customer_id,p.amount,p.payout_method,p.payout_details,p.status,p.admin_note,p.transaction_ref,p.created_at,p.reviewed_at,p.paid_at,
+                   p.bank_account_holder,p.bank_name,p.bank_account_number,p.bank_ifsc,p.bank_branch,p.bank_verified,p.bank_verified_at,
+                   cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile
+            FROM creator_payout_requests p
+            LEFT JOIN customer_users cu ON cu.customer_id=p.customer_id
+            ORDER BY CASE p.status WHEN 'PENDING' THEN 0 WHEN 'APPROVED' THEN 1 ELSE 2 END, p.id DESC
         """)
         payout_requests = [dict(row) for row in cur.fetchall()]
         cur.close()
