@@ -614,6 +614,19 @@ def init_db():
             ALTER TABLE movies
             ADD COLUMN IF NOT EXISTS trending_position INTEGER
         """)
+        # Existing records remain in the Movies catalogue by default.
+        cur.execute("""
+            ALTER TABLE movies
+            ADD COLUMN IF NOT EXISTS content_type TEXT NOT NULL DEFAULT 'MOVIE'
+        """)
+        cur.execute("""
+            UPDATE movies SET content_type='MOVIE'
+            WHERE content_type IS NULL OR UPPER(content_type) NOT IN ('MOVIE','DRAMA')
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movies_content_type_created
+            ON movies(content_type, id DESC)
+        """)
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS settings (
@@ -3540,45 +3553,29 @@ def home():
             if q:
                 cur.execute(
                     """
-                    SELECT *
-                    FROM movies
-                    WHERE
-                        title ILIKE %s
-                        OR category ILIKE %s
-                        OR description ILIKE %s
+                    SELECT * FROM movies
+                    WHERE UPPER(COALESCE(content_type,'MOVIE'))='MOVIE'
+                      AND (title ILIKE %s OR category ILIKE %s OR description ILIKE %s)
                     ORDER BY id DESC
                     """,
-                    (
-                        f"%{q}%",
-                        f"%{q}%",
-                        f"%{q}%",
-                    )
+                    (f"%{q}%", f"%{q}%", f"%{q}%")
                 )
-
             elif category:
                 cur.execute(
                     """
-                    SELECT *
-                    FROM movies
-                    WHERE category ILIKE %s
+                    SELECT * FROM movies
+                    WHERE UPPER(COALESCE(content_type,'MOVIE'))='MOVIE'
+                      AND category ILIKE %s
                     ORDER BY id DESC
                     """,
-                    (
-                        f"%{category}%",
-                    )
+                    (f"%{category}%",)
                 )
-
             else:
                 cur.execute(
                     """
-                    SELECT *
-                    FROM movies
-                    ORDER BY
-                        CASE
-                            WHEN trending_position IS NULL THEN 999999
-                            ELSE trending_position
-                        END ASC,
-                        id DESC
+                    SELECT * FROM movies
+                    WHERE UPPER(COALESCE(content_type,'MOVIE'))='MOVIE'
+                    ORDER BY CASE WHEN trending_position IS NULL THEN 999999 ELSE trending_position END ASC, id DESC
                     """
                 )
 
@@ -3823,6 +3820,33 @@ def movie_page(movie_id):
         like_summary=like_summary,
         cashfree_mode=CASHFREE_JS_MODE,
     )
+
+
+
+# ============================================================
+# DRAMAS CATALOGUE (separate from Movies)
+# ============================================================
+
+@app.route("/dramas")
+def dramas_page():
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT * FROM movies
+            WHERE UPPER(COALESCE(content_type,'MOVIE'))='DRAMA'
+            ORDER BY id DESC
+        """)
+        dramas = [dict(row) for row in cur.fetchall()]
+        cur.close()
+    finally:
+        conn.close()
+    for drama in dramas:
+        try:
+            drama["poster_url"] = media_url(drama.get("poster")) if drama.get("poster") else None
+        except Exception:
+            drama["poster_url"] = None
+    return render_template("dramas.html", dramas=dramas)
 
 
 # ============================================================
@@ -7403,6 +7427,9 @@ def api_movie_save():
             data.get("poster")
             or data.get("poster_key")
         )
+        content_type = str(data.get("content_type", "MOVIE") or "MOVIE").strip().upper()
+        if content_type not in {"MOVIE", "DRAMA"}:
+            return json_error("Invalid content section.")
 
         if not title:
             return json_error(
@@ -7484,9 +7511,10 @@ def api_movie_save():
                     category,
                     description,
                     poster,
-                    video
+                    video,
+                    content_type
                 )
-                VALUES(%s,%s,%s,%s,%s)
+                VALUES(%s,%s,%s,%s,%s,%s)
                 RETURNING id
                 """,
                 (
@@ -7495,6 +7523,7 @@ def api_movie_save():
                     description,
                     poster_key,
                     video_key,
+                    content_type,
                 ),
             )
 
