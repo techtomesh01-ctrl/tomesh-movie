@@ -1008,6 +1008,8 @@ body{
 
         <a href="#my-list">My List</a>
 
+        <a href="{{ url_for('dramas_page') }}">Dramas</a>
+
         <a href="{{ url_for('creator_upload') }}">Creator Studio</a>
 
         <a href="{{ url_for('creator_upload') }}">
@@ -1056,6 +1058,11 @@ body{
             <path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-3.7L6 22z"/>
         </svg>
         <span>My List</span>
+    </a>
+
+    <a href="{{ url_for('dramas_page') }}">
+        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 4v16M16 4v16M4 9h4M16 9h4M4 15h4M16 15h4"/></svg>
+        <span>Dramas</span>
     </a>
 
     <a href="{{ url_for('user_earnings') }}" class="tm-refer-link">
