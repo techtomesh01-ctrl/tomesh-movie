@@ -614,6 +614,19 @@ def init_db():
             ALTER TABLE movies
             ADD COLUMN IF NOT EXISTS trending_position INTEGER
         """)
+        # Existing records remain in the Movies catalogue by default.
+        cur.execute("""
+            ALTER TABLE movies
+            ADD COLUMN IF NOT EXISTS content_type TEXT NOT NULL DEFAULT 'MOVIE'
+        """)
+        cur.execute("""
+            UPDATE movies SET content_type='MOVIE'
+            WHERE content_type IS NULL OR UPPER(content_type) NOT IN ('MOVIE','DRAMA')
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movies_content_type_created
+            ON movies(content_type, id DESC)
+        """)
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS settings (
@@ -621,6 +634,55 @@ def init_db():
                 value TEXT
             )
         """)
+        cur.execute("""
+            ALTER TABLE movies ADD COLUMN IF NOT EXISTS creator_customer_id TEXT
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_submissions (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                content_type TEXT NOT NULL CHECK (content_type IN ('MOVIE','DRAMA')),
+                category TEXT,
+                description TEXT,
+                poster TEXT,
+                video TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING',
+                admin_note TEXT,
+                movie_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_creator_submissions_status_created
+            ON creator_submissions(status, created_at DESC)
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_view_events (
+                id SERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+                customer_id TEXT NOT NULL,
+                view_date DATE NOT NULL DEFAULT CURRENT_DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(movie_id, customer_id, view_date)
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_earnings (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                movie_id INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+                view_date DATE NOT NULL,
+                valid_views INTEGER NOT NULL DEFAULT 0,
+                amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(customer_id, movie_id, view_date)
+            )
+        """)
+        cur.execute("INSERT INTO settings(key,value) VALUES('creator_movie_rate_per_1000','50') ON CONFLICT(key) DO NOTHING")
+        cur.execute("INSERT INTO settings(key,value) VALUES('creator_drama_rate_per_1000','30') ON CONFLICT(key) DO NOTHING")
+
 
         # ----------------------------------------------------
         # MOVIE ENGAGEMENT
@@ -1381,6 +1443,42 @@ def admin_required(view_func):
         )
 
     return wrapper
+
+def creator_customer_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if not session.get("customer_logged_in"):
+            return redirect(url_for("login"))
+        customer_id = session.get("customer_id")
+        if customer_is_blocked(customer_id):
+            session.clear()
+            flash("Your account has been restricted by the administrator.", "error")
+            return redirect(url_for("login"))
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+
+def r2_upload_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if not session.get("admin_logged_in") and not session.get("customer_logged_in"):
+            return json_error("Please login before uploading.", 401)
+        if session.get("customer_logged_in") and customer_is_blocked(session.get("customer_id")):
+            session.clear()
+            return json_error("Account restricted.", 403)
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+def enforce_r2_upload_key(key):
+    # Customer sessions may only upload into isolated pending-content prefixes.
+    if session.get("admin_logged_in"):
+        return
+    if not session.get("customer_logged_in"):
+        raise ValueError("Login required.")
+    if not (key.startswith("videos/creator-pending/") or key.startswith("posters/creator-pending/")):
+        raise ValueError("Creator uploads must use the pending-content folder.")
 
 
 # ============================================================
@@ -3540,45 +3638,29 @@ def home():
             if q:
                 cur.execute(
                     """
-                    SELECT *
-                    FROM movies
-                    WHERE
-                        title ILIKE %s
-                        OR category ILIKE %s
-                        OR description ILIKE %s
+                    SELECT * FROM movies
+                    WHERE UPPER(COALESCE(content_type,'MOVIE'))='MOVIE'
+                      AND (title ILIKE %s OR category ILIKE %s OR description ILIKE %s)
                     ORDER BY id DESC
                     """,
-                    (
-                        f"%{q}%",
-                        f"%{q}%",
-                        f"%{q}%",
-                    )
+                    (f"%{q}%", f"%{q}%", f"%{q}%")
                 )
-
             elif category:
                 cur.execute(
                     """
-                    SELECT *
-                    FROM movies
-                    WHERE category ILIKE %s
+                    SELECT * FROM movies
+                    WHERE UPPER(COALESCE(content_type,'MOVIE'))='MOVIE'
+                      AND category ILIKE %s
                     ORDER BY id DESC
                     """,
-                    (
-                        f"%{category}%",
-                    )
+                    (f"%{category}%",)
                 )
-
             else:
                 cur.execute(
                     """
-                    SELECT *
-                    FROM movies
-                    ORDER BY
-                        CASE
-                            WHEN trending_position IS NULL THEN 999999
-                            ELSE trending_position
-                        END ASC,
-                        id DESC
+                    SELECT * FROM movies
+                    WHERE UPPER(COALESCE(content_type,'MOVIE'))='MOVIE'
+                    ORDER BY CASE WHEN trending_position IS NULL THEN 999999 ELSE trending_position END ASC, id DESC
                     """
                 )
 
@@ -3700,6 +3782,40 @@ def movie_page(movie_id):
     access = access_for_movie(
         movie_id
     )
+
+    # Only accrue creator earnings when the logged-in viewer has watch access.
+    creator_id = str(movie.get("creator_customer_id") or "")
+    viewer_id = str(session.get("customer_id") or "")
+    if access.get("watch") and creator_id and viewer_id and viewer_id != creator_id and session.get("customer_logged_in"):
+        earnings_conn = get_db(dict_rows=True)
+        try:
+            earnings_cur = earnings_conn.cursor()
+            earnings_cur.execute("""
+                INSERT INTO creator_view_events(movie_id,customer_id,view_date)
+                VALUES(%s,%s,CURRENT_DATE)
+                ON CONFLICT(movie_id,customer_id,view_date) DO NOTHING
+            """, (movie_id, viewer_id))
+            if earnings_cur.rowcount:
+                rate_key = "creator_drama_rate_per_1000" if str(movie.get("content_type") or "MOVIE").upper() == "DRAMA" else "creator_movie_rate_per_1000"
+                earnings_cur.execute("SELECT value FROM settings WHERE key=%s", (rate_key,))
+                rate_row = earnings_cur.fetchone()
+                try:
+                    rate = max(0.0, float((rate_row or {}).get("value") or 0))
+                except (TypeError, ValueError):
+                    rate = 0.0
+                earnings_cur.execute("""
+                    INSERT INTO creator_earnings(customer_id,movie_id,view_date,valid_views,amount)
+                    VALUES(%s,%s,CURRENT_DATE,1,%s)
+                    ON CONFLICT(customer_id,movie_id,view_date)
+                    DO UPDATE SET valid_views=creator_earnings.valid_views+1,
+                                  amount=creator_earnings.amount+EXCLUDED.amount
+                """, (creator_id, movie_id, round(rate / 1000.0, 4)))
+            earnings_conn.commit()
+        except Exception as exc:
+            earnings_conn.rollback()
+            print("CREATOR EARNINGS ERROR:", repr(exc))
+        finally:
+            earnings_conn.close()
 
     video_key = movie.get(
         "video"
@@ -3823,6 +3939,201 @@ def movie_page(movie_id):
         like_summary=like_summary,
         cashfree_mode=CASHFREE_JS_MODE,
     )
+
+
+
+
+# ============================================================
+# CREATOR UPLOADS, MODERATION AND VIEW-BASED EARNINGS
+# ============================================================
+
+@app.route("/creator/upload", methods=["GET", "POST"])
+@creator_customer_required
+def creator_upload():
+    if request.method == "POST":
+        flash("Upload form submit nahi hua. Please form ko dobara submit karein.", "error")
+        return redirect(url_for("creator_upload"))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id,title,content_type,status,admin_note,created_at,movie_id
+            FROM creator_submissions WHERE customer_id=%s
+            ORDER BY id DESC LIMIT 100
+        """, (str(session.get("customer_id") or ""),))
+        submissions = [dict(row) for row in cur.fetchall()]
+        cur.execute("""
+            SELECT COALESCE(SUM(amount),0) AS total,
+                   COALESCE(SUM(valid_views),0) AS valid_views
+            FROM creator_earnings WHERE customer_id=%s
+        """, (str(session.get("customer_id") or ""),))
+        earnings = dict(cur.fetchone() or {})
+        cur.close()
+    finally:
+        conn.close()
+    return render_template("creator_upload.html", submissions=submissions, earnings=earnings,
+        movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
+        drama_rate=get_setting("creator_drama_rate_per_1000", "30"))
+
+
+@app.route("/api/creator/submission/save", methods=["POST"])
+@creator_customer_required
+def api_creator_submission_save():
+    data = request.get_json(silent=True) or {}
+    title = str(data.get("title") or "").strip()
+    category = str(data.get("category") or "").strip()
+    description = str(data.get("description") or "").strip()
+    content_type = str(data.get("content_type") or "MOVIE").strip().upper()
+    video_key = str(data.get("video_key") or "").strip()
+    poster_key = str(data.get("poster_key") or "").strip()
+    if not title:
+        return json_error("Title required.")
+    if content_type not in {"MOVIE", "DRAMA"}:
+        return json_error("Choose Movies or Dramas.")
+    if not video_key.startswith("videos/creator-pending/"):
+        return json_error("Invalid creator video key.")
+    if poster_key and not poster_key.startswith("posters/creator-pending/"):
+        return json_error("Invalid creator poster key.")
+    try:
+        video_head = r2_head(validate_r2_key(video_key))
+        if int(video_head.get("ContentLength") or 0) <= 0:
+            return json_error("Uploaded video is empty.")
+        if int(video_head.get("ContentLength") or 0) > MAX_VIDEO_SIZE:
+            return json_error("Video exceeds 4 GB.")
+        if poster_key and int(r2_head(validate_r2_key(poster_key)).get("ContentLength") or 0) <= 0:
+            return json_error("Poster is empty.")
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO creator_submissions
+                (customer_id,title,content_type,category,description,poster,video,status)
+                VALUES(%s,%s,%s,%s,%s,%s,'PENDING')
+                RETURNING id
+            """, (str(session.get("customer_id") or ""),title,content_type,category,description,poster_key or None,video_key))
+            submission_id = cur.fetchone()[0]
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+        return json_ok(message="Upload submitted for Admin approval.", submission_id=submission_id)
+    except Exception as exc:
+        print("CREATOR SUBMISSION SAVE ERROR:", repr(exc))
+        return json_error("Submission could not be saved.", 500)
+
+
+@app.route("/admin/creator-studio", methods=["GET", "POST"])
+@admin_required
+def admin_creator_studio():
+    if request.method == "POST":
+        try:
+            movie_rate = max(0.0, min(float(request.form.get("movie_rate", "50")), 1000000.0))
+            drama_rate = max(0.0, min(float(request.form.get("drama_rate", "30")), 1000000.0))
+            set_setting("creator_movie_rate_per_1000", str(movie_rate))
+            set_setting("creator_drama_rate_per_1000", str(drama_rate))
+            flash("Creator earning rates saved.", "success")
+        except Exception:
+            flash("Rates valid number mein enter karein.", "error")
+        return redirect(url_for("admin_creator_studio"))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id,customer_id,title,content_type,category,description,poster,video,status,admin_note,created_at
+            FROM creator_submissions WHERE status='PENDING' ORDER BY created_at ASC
+        """)
+        pending = [dict(row) for row in cur.fetchall()]
+        for item in pending:
+            try:
+                item["video_url"] = media_url(item.get("video")) if item.get("video") else None
+                item["poster_url"] = media_url(item.get("poster")) if item.get("poster") else None
+            except Exception:
+                item["video_url"] = None
+                item["poster_url"] = None
+        cur.execute("""
+            SELECT cs.id,cs.customer_id,cs.title,cs.content_type,cs.status,cs.admin_note,cs.created_at,
+                   cs.reviewed_at,cs.movie_id,COALESCE(m.views,0) AS views
+            FROM creator_submissions cs LEFT JOIN movies m ON m.id=cs.movie_id
+            WHERE cs.status <> 'PENDING' ORDER BY cs.id DESC LIMIT 100
+        """)
+        reviewed = [dict(row) for row in cur.fetchall()]
+        cur.close()
+    finally:
+        conn.close()
+    return render_template("admin_creator_studio.html", pending=pending, reviewed=reviewed,
+        movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
+        drama_rate=get_setting("creator_drama_rate_per_1000", "30"))
+
+
+@app.route("/admin/creator-submission/<int:submission_id>/<action>", methods=["POST"])
+@admin_required
+def admin_review_creator_submission(submission_id, action):
+    if action not in {"approve", "reject"}:
+        abort(400)
+    note = str(request.form.get("admin_note") or "").strip()[:1000]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM creator_submissions WHERE id=%s FOR UPDATE", (submission_id,))
+        sub = cur.fetchone()
+        if not sub:
+            conn.rollback()
+            abort(404)
+        if str(sub.get("status") or "").upper() != "PENDING":
+            conn.rollback()
+            flash("This submission was already reviewed.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        if action == "approve":
+            cur.execute("""
+                INSERT INTO movies(title,category,description,poster,video,content_type,creator_customer_id)
+                VALUES(%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            """, (sub["title"],sub.get("category"),sub.get("description"),sub.get("poster"),sub["video"],sub["content_type"],sub["customer_id"]))
+            movie_id = cur.fetchone()["id"]
+            cur.execute("""
+                UPDATE creator_submissions SET status='APPROVED',admin_note=%s,movie_id=%s,reviewed_at=NOW()
+                WHERE id=%s
+            """, (note,movie_id,submission_id))
+            flash("Approved. Content is now listed in its selected section.", "success")
+        else:
+            cur.execute("""
+                UPDATE creator_submissions SET status='REJECTED',admin_note=%s,reviewed_at=NOW()
+                WHERE id=%s
+            """, (note,submission_id))
+            flash("Creator submission rejected.", "success")
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        print("CREATOR REVIEW ERROR:", repr(exc))
+        flash("Could not review submission. Check server logs.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
+
+
+# ============================================================
+# DRAMAS CATALOGUE (separate from Movies)
+# ============================================================
+
+@app.route("/dramas")
+def dramas_page():
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT * FROM movies
+            WHERE UPPER(COALESCE(content_type,'MOVIE'))='DRAMA'
+            ORDER BY id DESC
+        """)
+        dramas = [dict(row) for row in cur.fetchall()]
+        cur.close()
+    finally:
+        conn.close()
+    for drama in dramas:
+        try:
+            drama["poster_url"] = media_url(drama.get("poster")) if drama.get("poster") else None
+        except Exception:
+            drama["poster_url"] = None
+    return render_template("dramas.html", dramas=dramas)
 
 
 # ============================================================
@@ -7034,7 +7345,7 @@ def admin_delete_movie(movie_id):
     "/api/r2/multipart/create",
     methods=["POST"],
 )
-@admin_required
+@r2_upload_required
 def r2_multipart_create():
 
     try:
@@ -7049,6 +7360,7 @@ def r2_multipart_create():
         key = validate_r2_key(
             data.get("key")
         )
+        enforce_r2_upload_key(key)
 
         content_type = (
             data.get("content_type")
@@ -7091,7 +7403,7 @@ def r2_multipart_create():
     "/api/r2/multipart/urls",
     methods=["POST"],
 )
-@admin_required
+@r2_upload_required
 def r2_multipart_urls():
 
     try:
@@ -7201,7 +7513,7 @@ def r2_multipart_urls():
     "/api/r2/multipart/complete",
     methods=["POST"],
 )
-@admin_required
+@r2_upload_required
 def r2_multipart_complete():
 
     try:
@@ -7321,7 +7633,7 @@ def r2_multipart_complete():
     "/api/r2/multipart/abort",
     methods=["POST"],
 )
-@admin_required
+@r2_upload_required
 def r2_multipart_abort():
 
     try:
@@ -7403,6 +7715,9 @@ def api_movie_save():
             data.get("poster")
             or data.get("poster_key")
         )
+        content_type = str(data.get("content_type", "MOVIE") or "MOVIE").strip().upper()
+        if content_type not in {"MOVIE", "DRAMA"}:
+            return json_error("Invalid content section.")
 
         if not title:
             return json_error(
@@ -7484,9 +7799,10 @@ def api_movie_save():
                     category,
                     description,
                     poster,
-                    video
+                    video,
+                    content_type
                 )
-                VALUES(%s,%s,%s,%s,%s)
+                VALUES(%s,%s,%s,%s,%s,%s)
                 RETURNING id
                 """,
                 (
@@ -7495,6 +7811,7 @@ def api_movie_save():
                     description,
                     poster_key,
                     video_key,
+                    content_type,
                 ),
             )
 
