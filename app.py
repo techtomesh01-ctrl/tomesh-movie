@@ -680,6 +680,7 @@ def init_db():
                 UNIQUE(customer_id, movie_id, view_date)
             )
         """)
+        cur.execute("ALTER TABLE creator_earnings ALTER COLUMN amount TYPE NUMERIC(14,4)")
         cur.execute("INSERT INTO settings(key,value) VALUES('creator_movie_rate_per_1000','50') ON CONFLICT(key) DO NOTHING")
         cur.execute("INSERT INTO settings(key,value) VALUES('creator_drama_rate_per_1000','30') ON CONFLICT(key) DO NOTHING")
         cur.execute("""
@@ -4034,6 +4035,8 @@ def creator_payout_request():
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
+        # Lock the creator's account row so concurrent requests cannot reserve the same balance.
+        cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s FOR UPDATE", (customer_id,))
         cur.execute("SELECT COALESCE(SUM(amount),0) AS total FROM creator_earnings WHERE customer_id=%s", (customer_id,))
         earned = float((cur.fetchone() or {}).get("total") or 0)
         cur.execute("""
