@@ -3601,12 +3601,19 @@ def home():
         except Exception:
             movie["poster_url"] = None
 
+    hero_image_key = get_setting("home_hero_image_key", "")
+    try:
+        hero_image_url = media_url(hero_image_key) if hero_image_key else ""
+    except Exception:
+        hero_image_url = ""
+
     return render_template(
         "index.html",
         movies=movies,
         ads=get_ads(),
         q=q,
         category=category,
+        hero_image_url=hero_image_url,
     )
 
 
@@ -5676,7 +5683,7 @@ def admin_errors():
 def admin():
     section = str(request.args.get("section", "dashboard")).strip().lower()
     allowed_sections = {
-        "dashboard","live-monitor","movies","users","payments","subscriptions","watch",
+        "dashboard","live-monitor","movies","users","payments","subscriptions","watch","home-photos",
         "analytics","live","ads","adsense","notifications","reports","r2","health",
         "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","help"
     }
@@ -5980,6 +5987,12 @@ def admin():
         "MESSAGE_CENTRAL": bool(MESSAGE_CENTRAL_CUSTOMER_ID and MESSAGE_CENTRAL_AUTH_TOKEN),
     }
 
+    home_hero_image_key = get_setting("home_hero_image_key", "")
+    try:
+        home_hero_image_url = media_url(home_hero_image_key) if home_hero_image_key else ""
+    except Exception:
+        home_hero_image_url = ""
+
     return render_template(
         "admin.html",
         section=section,
@@ -6016,7 +6029,54 @@ def admin():
         total_referral_rewards=total_referral_rewards,
         pending_withdrawals_total=pending_withdrawals_total,
         website_enabled=(str(get_setting("website_enabled", "1")).strip().lower() not in {"0", "false", "off", "no"}),
+        home_hero_image_url=home_hero_image_url,
     )
+
+
+# ============================================================
+# ADMIN HOME PAGE PHOTO MANAGER
+# ============================================================
+
+@app.route("/admin/home-photos", methods=["POST"])
+@admin_required
+def admin_home_photos():
+    image_file = request.files.get("hero_image")
+    if not image_file or not image_file.filename:
+        flash("Pehle Home Page ki photo select karein.", "error")
+        return redirect(url_for("admin", section="home-photos"))
+
+    ext = get_extension(image_file.filename)
+    if ext not in ALLOWED_POSTERS:
+        flash("Sirf JPG, JPEG, PNG ya WEBP photo upload karein.", "error")
+        return redirect(url_for("admin", section="home-photos"))
+
+    image_data = image_file.read(MAX_POSTER_SIZE + 1)
+    if not image_data:
+        flash("Selected photo khaali hai.", "error")
+        return redirect(url_for("admin", section="home-photos"))
+    if len(image_data) > MAX_POSTER_SIZE:
+        flash("Home Page photo maximum 25 MB ki ho sakti hai.", "error")
+        return redirect(url_for("admin", section="home-photos"))
+
+    key = "home/hero-" + secrets.token_hex(16) + "." + ext
+    try:
+        get_r2_client().upload_fileobj(
+            BytesIO(image_data),
+            R2_BUCKET,
+            key,
+            ExtraArgs={
+                "ContentType": content_type_for_key(key),
+                "CacheControl": "public, max-age=86400",
+            },
+        )
+        # Keep the previous R2 object as a backup; only the active setting changes.
+        set_setting("home_hero_image_key", key)
+        flash("Home Page photo publish ho gayi. Website refresh karke dekhein.", "success")
+    except Exception as exc:
+        print("HOME PHOTO UPLOAD ERROR:", repr(exc))
+        flash("Photo publish nahi hui. R2 connection aur settings check karein.", "error")
+
+    return redirect(url_for("admin", section="home-photos"))
 
 
 # ============================================================
