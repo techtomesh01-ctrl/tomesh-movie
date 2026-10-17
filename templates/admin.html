@@ -93,18 +93,60 @@
 <aside class="cw-side">
   <div class="cw-side-title">Management</div>
   <nav class="cw-nav">
-    {% for key,label,ico in [('dashboard','Dashboard','home'),('live-monitor','Live Screen Monitor','activity'),('movies','Movies & Catalog','movie'),('users','Users','users'),('payments','Payments','card'),('subscriptions','Subscriptions','cycle'),('watch','Watch Activity','play'),('analytics','Analytics','chart'),('live','Live Activity','activity'),('comments','Comments','comment'),('earnings','Earnings','wallet'),('withdrawals','Withdrawals','wallet'),('support','Support','comment'),('ads','Ads Manager','ad'),('adsense','AdSense Review','ad'),('notifications','Notifications','bell'),('reports','Reports','report'),('r2','R2 Storage','cloud'),('health','System Health','health'),('error-center','Error Center','activity'),('security','Security','lock'),('help','Hindi Help Center','help'),('website-control','Website Control','settings'),('settings','Settings','settings'),('search','Global Search','search'),('demand','Movie Demand','movie')] %}
-      <a class="{% if (key=='error-center' and request.path==url_for('admin_errors')) or (key!='error-center' and section==key) %}active{% endif %}" href="{{ url_for('admin_errors') if key=='error-center' else url_for('admin', section=key) }}"><span class="cw-nav-icon" aria-hidden="true">{% if key=='dashboard' %}🏠{% elif key=='live-monitor' %}🎬{% elif key=='movies' %}🎞️{% elif key=='users' %}👥{% elif key=='payments' %}💳{% elif key=='subscriptions' %}👑{% elif key=='watch' %}▶️{% elif key=='analytics' %}📊{% elif key=='live' %}🔴{% elif key=='comments' %}💬{% elif key=='earnings' %}💰{% elif key=='withdrawals' %}🏦{% elif key=='support' %}🛟{% elif key=='ads' %}📢{% elif key=='adsense' %}🧾{% elif key=='notifications' %}🔔{% elif key=='reports' %}📄{% elif key=='r2' %}☁️{% elif key=='health' %}🩺{% elif key=='error-center' %}🚨{% elif key=='security' %}🔐{% elif key=='help' %}📘{% elif key=='website-control' %}🎛️{% elif key=='settings' %}⚙️{% elif key=='search' %}🔎{% elif key=='demand' %}🔥{% else %}📌{% endif %}</span><span class="cw-nav-label">{{ label }}</span></a>
+    {% for key,label,ico in [('dashboard','Dashboard','home'),('home-photos','Home Page Photos','image'),('live-monitor','Live Screen Monitor','activity'),('movies','Movies & Catalog','movie'),('users','Users','users'),('payments','Payments','card'),('subscriptions','Subscriptions','cycle'),('watch','Watch Activity','play'),('analytics','Analytics','chart'),('live','Live Activity','activity'),('comments','Comments','comment'),('earnings','Earnings','wallet'),('withdrawals','Withdrawals','wallet'),('support','Support','comment'),('ads','Ads Manager','ad'),('adsense','AdSense Review','ad'),('notifications','Notifications','bell'),('reports','Reports','report'),('r2','R2 Storage','cloud'),('health','System Health','health'),('error-center','Error Center','activity'),('security','Security','lock'),('help','Hindi Help Center','help'),('website-control','Website Control','settings'),('settings','Settings','settings'),('search','Global Search','search'),('demand','Movie Demand','movie')] %}
+      <a class="{% if (key=='error-center' and request.path==url_for('admin_errors')) or (key!='error-center' and section==key) %}active{% endif %}" href="{{ url_for('admin_errors') if key=='error-center' else url_for('admin', section=key) }}"><span class="cw-nav-icon" aria-hidden="true">{% if key=='dashboard' %}🏠{% elif key=='home-photos' %}🖼️{% elif key=='live-monitor' %}🎬{% elif key=='movies' %}🎞️{% elif key=='users' %}👥{% elif key=='payments' %}💳{% elif key=='subscriptions' %}👑{% elif key=='watch' %}▶️{% elif key=='analytics' %}📊{% elif key=='live' %}🔴{% elif key=='comments' %}💬{% elif key=='earnings' %}💰{% elif key=='withdrawals' %}🏦{% elif key=='support' %}🛟{% elif key=='ads' %}📢{% elif key=='adsense' %}🧾{% elif key=='notifications' %}🔔{% elif key=='reports' %}📄{% elif key=='r2' %}☁️{% elif key=='health' %}🩺{% elif key=='error-center' %}🚨{% elif key=='security' %}🔐{% elif key=='help' %}📘{% elif key=='website-control' %}🎛️{% elif key=='settings' %}⚙️{% elif key=='search' %}🔎{% elif key=='demand' %}🔥{% else %}📌{% endif %}</span><span class="cw-nav-label">{{ label }}</span></a>
     {% endfor %}
   </nav>
 </aside>
 
 <main class="cw-main">
   <div class="cw-hero">
-    <div><div class="cw-kicker">{% if section=='dashboard' %}Owner Access{% else %}{{ section|replace('-', ' ')|title }}{% endif %}</div><h1>{% if section=='dashboard' %}Command Center{% elif section=='live-monitor' %}Live Screen Monitor{% elif section=='movies' %}Manage Movies & Catalog{% elif section=='users' %}Manage CINEMA WORLD Users{% elif section=='payments' %}Monitor Payments & Transactions{% elif section=='subscriptions' %}Manage Premium Subscriptions{% elif section=='watch' %}Review Watch & Access Activity{% elif section=='analytics' %}Track CINEMA WORLD Performance{% elif section=='live' %}Monitor Live Activity{% elif section=='comments' %}Moderate Movie Comments{% elif section=='earnings' %}Referral Earnings{% elif section=='withdrawals' %}Withdrawal Requests{% elif section=='support' %}Customer Support{% elif section=='ads' %}Manage Advertising Placements{% elif section=='adsense' %}AdSense Review & Rejection Checklist{% elif section=='notifications' %}Review Notifications{% elif section=='reports' %}Export CINEMA WORLD Reports{% elif section=='r2' %}Monitor R2 Storage{% elif section=='health' %}Check System Health{% elif section=='security' %}Manage Owner Security{% elif section=='website-control' %}Master Website ON/OFF{% elif section=='settings' %}Review Website Settings{% elif section=='search' %}Search CINEMA WORLD Data{% elif section=='demand' %}Movie Search Demand{% else %}Admin Control Center{% endif %}</h1><p>{% if section=='dashboard' %}CINEMA WORLD • Owner Control Center • Sensitive keys are never shown in the Admin UI.{% else %}Owner control center • Sensitive keys are never displayed.{% endif %}</p></div>
+    <div><div class="cw-kicker">{% if section=='dashboard' %}Owner Access{% else %}{{ section|replace('-', ' ')|title }}{% endif %}</div><h1>{% if section=='dashboard' %}Command Center{% elif section=='home-photos' %}Home Page Photo Manager{% elif section=='live-monitor' %}Live Screen Monitor{% elif section=='movies' %}Manage Movies & Catalog{% elif section=='users' %}Manage CINEMA WORLD Users{% elif section=='payments' %}Monitor Payments & Transactions{% elif section=='subscriptions' %}Manage Premium Subscriptions{% elif section=='watch' %}Review Watch & Access Activity{% elif section=='analytics' %}Track CINEMA WORLD Performance{% elif section=='live' %}Monitor Live Activity{% elif section=='comments' %}Moderate Movie Comments{% elif section=='earnings' %}Referral Earnings{% elif section=='withdrawals' %}Withdrawal Requests{% elif section=='support' %}Customer Support{% elif section=='ads' %}Manage Advertising Placements{% elif section=='adsense' %}AdSense Review & Rejection Checklist{% elif section=='notifications' %}Review Notifications{% elif section=='reports' %}Export CINEMA WORLD Reports{% elif section=='r2' %}Monitor R2 Storage{% elif section=='health' %}Check System Health{% elif section=='security' %}Manage Owner Security{% elif section=='website-control' %}Master Website ON/OFF{% elif section=='settings' %}Review Website Settings{% elif section=='search' %}Search CINEMA WORLD Data{% elif section=='demand' %}Movie Search Demand{% else %}Admin Control Center{% endif %}</h1><p>{% if section=='dashboard' %}CINEMA WORLD • Owner Control Center • Sensitive keys are never shown in the Admin UI.{% else %}Owner control center • Sensitive keys are never displayed.{% endif %}</p></div>
     <form class="cw-search" action="{{ url_for('admin') }}" method="get"><input name="q" value="{{ q or '' }}" placeholder="Search movies, users, orders..."><button class="cw-btn red" type="submit">{{ icon('search') }} Search</button></form>
   </div>
   <div class="cw-muted" style="margin:-8px 0 16px;padding:10px 13px;border:1px solid #292930;border-radius:10px;background:#101014;display:flex;gap:8px;flex-wrap:wrap;align-items:center">🗓️ Date: <b id="cw-live-date">{{ cinema_now_ist.strftime('%d %b %Y') }}</b> · Day: <b id="cw-live-day">{{ cinema_now_ist.strftime('%A') }}</b> · Time: <b id="cw-live-time">{{ cinema_now_ist.strftime('%I:%M:%S %p') }} IST</b> <span style="color:#8d8d98">· Live India Standard Time</span></div>
+
+{% if section=='home-photos' %}
+<section class="cw-card">
+  <div class="cw-card-head">
+    <div><h2>🖼️ Home Page Banner Photo</h2><div class="cw-muted">Yahan se homepage ki badi background photo kabhi bhi badlein. Publish karne par nayi photo live homepage par use hogi.</div></div>
+    <a class="cw-btn" href="{{ url_for('home') }}" target="_blank" rel="noopener">↗ Preview Website</a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;align-items:start">
+    <div>
+      <div style="font-size:12px;color:#aaa;margin-bottom:8px;font-weight:800">CURRENT / PREVIEW</div>
+      <div style="overflow:hidden;border:1px solid #34343b;border-radius:14px;background:#09090c;aspect-ratio:16/9">
+        <img id="cw-home-photo-preview" src="{{ home_hero_image_url or 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1400&q=85' }}" alt="Home page banner preview" style="width:100%;height:100%;object-fit:cover;display:block">
+      </div>
+      <div class="cw-muted" style="margin-top:8px">Recommended: landscape photo (16:9). JPG, PNG, WEBP. Maximum 25 MB.</div>
+    </div>
+    <form method="post" action="{{ url_for('admin_home_photos') }}" enctype="multipart/form-data" style="padding:16px;border:1px solid #303038;border-radius:14px;background:#101014">
+      <label for="cw-home-photo-file" style="display:block;font-size:13px;font-weight:900;margin-bottom:9px">Choose a new photo</label>
+      <input id="cw-home-photo-file" type="file" name="hero_image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required style="display:block;width:100%;padding:12px;border:1px dashed #484850;border-radius:10px;background:#09090c;color:#fff">
+      <div id="cw-home-photo-name" class="cw-muted" style="margin-top:9px;overflow-wrap:anywhere">No new photo selected.</div>
+      <button class="cw-btn red" type="submit" style="margin-top:18px;width:100%;justify-content:center;min-height:45px">✓ Publish Home Photo</button>
+      <div class="cw-muted" style="margin-top:10px;line-height:1.6">The existing image stays saved in R2 as a backup. Publishing only changes which image the homepage uses; movie posters and videos are not changed.</div>
+    </form>
+  </div>
+</section>
+<script>
+(function(){
+ const input=document.getElementById('cw-home-photo-file');
+ const preview=document.getElementById('cw-home-photo-preview');
+ const name=document.getElementById('cw-home-photo-name');
+ if(!input||!preview||!name)return;
+ let objectUrl='';
+ input.addEventListener('change',function(){
+   const file=input.files&&input.files[0];
+   if(!file){name.textContent='No new photo selected.';return;}
+   name.textContent=file.name+' · '+(file.size/1024/1024).toFixed(2)+' MB';
+   if(objectUrl)URL.revokeObjectURL(objectUrl);
+   objectUrl=URL.createObjectURL(file);
+   preview.src=objectUrl;
+ });
+})();
+</script>
+{% endif %}
 
 {% if section=='dashboard' %}
   <section class="cw-card" style="padding:14px 16px">
