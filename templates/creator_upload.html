@@ -35,7 +35,34 @@
       <div><div style="font-size:12px;color:#999">Qualified views</div><strong style="font-size:24px">{{ earnings.valid_views or 0 }}</strong></div>
     </div>
     <p class="tm-hint">Current rate: Movies ₹{{ movie_rate }} / 1,000 qualified views · Dramas ₹{{ drama_rate }} / 1,000 qualified views.</p>
-    <p class="tm-hint">A qualified view is counted once per logged-in viewer per title per day. Earnings are accruals, not automatic bank payouts.</p>
+    <p class="tm-hint">A qualified view is counted once per logged-in viewer per title per day. Your available balance can be requested for manual payout.</p>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin:14px 0">
+      <div><div style="font-size:12px;color:#999">Available balance</div><strong style="font-size:24px;color:#86efac">₹{{ '%.2f'|format(earnings.available or 0) }}</strong></div>
+      <div><div style="font-size:12px;color:#999">Minimum payout</div><strong style="font-size:24px">₹{{ min_payout }}</strong></div>
+    </div>
+    {% if earnings.available >= (min_payout|float) %}
+    <form method="post" action="{{ url_for('creator_payout_request') }}" style="padding:15px;border:1px solid #333;border-radius:12px;margin:12px 0">
+      <h3 style="margin-top:0">Request payout</h3>
+      <label class="tm-label">Amount (₹)</label>
+      <input class="tm-input" type="number" name="amount" min="{{ min_payout }}" max="{{ '%.2f'|format(earnings.available) }}" step="0.01" value="{{ '%.2f'|format(earnings.available) }}" required>
+      <label class="tm-label">Payment method</label>
+      <select class="tm-select" name="payout_method" required><option value="UPI">UPI</option><option value="BANK">Bank transfer</option></select>
+      <label class="tm-label">UPI ID or bank transfer details</label>
+      <input class="tm-input" name="payout_details" maxlength="250" required placeholder="Enter UPI ID (e.g. name@bank) or bank details">
+      <p class="tm-hint">Only submit details needed to pay you. Admin will review and transfer funds manually.</p>
+      <button class="tm-btn" type="submit">Submit payout request</button>
+    </form>
+    {% else %}<p class="tm-hint">You can request payout after your available balance reaches ₹{{ min_payout }}.</p>{% endif %}
+    <h3>Payout history</h3>
+    {% if payouts %}
+      {% for payout in payouts %}
+      <div style="padding:12px 0;border-top:1px solid #333">
+        <strong>₹{{ '%.2f'|format(payout.amount) }} · {{ payout.status }}</strong>
+        <div class="tm-hint">{{ payout.payout_method }} · Requested {{ payout.created_at }}{% if payout.transaction_ref %} · Transaction ref: {{ payout.transaction_ref }}{% endif %}</div>
+        {% if payout.admin_note %}<div class="tm-hint">Admin note: {{ payout.admin_note }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    {% else %}<p class="tm-hint">No payout requests yet.</p>{% endif %}
     <h3>My submissions</h3>
     {% if submissions %}
       {% for item in submissions %}
