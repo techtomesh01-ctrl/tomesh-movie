@@ -4,7 +4,7 @@
 
 {% block content %}
 <style>
-.tm-add-wrap{min-height:100vh;padding:28px 18px 70px;background:radial-gradient(circle at 10% 0%,rgba(145,65,220,.22),transparent 30%),radial-gradient(circle at 90% 10%,rgba(220,35,60,.16),transparent 28%),#07070a;color:#fff}
+.tm-add-wrap{min-height:100vh;padding:28px 18px 70px;background:radial-gradient(ellipse at 10% 0%,rgba(185,28,28,.26),transparent 32%),radial-gradient(ellipse at 90% 5%,rgba(220,38,38,.16),transparent 28%),#060608;color:#fff}.tm-add .tm-card{background:linear-gradient(145deg,rgba(24,24,29,.97),rgba(10,10,13,.99));border-color:#303038;box-shadow:0 18px 55px rgba(0,0,0,.32)}.tm-title{font-size:clamp(26px,3.5vw,36px);letter-spacing:-.6px}.tm-head{padding:22px;border:1px solid #3a292c;border-radius:20px;background:linear-gradient(115deg,rgba(127,29,29,.34),rgba(20,20,25,.92) 60%,rgba(30,10,15,.7));margin-bottom:20px}.tm-back{border-color:#4a3033;background:#171114}.tm-input:focus,.tm-select:focus,.tm-textarea:focus{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.12)}.tm-stat{background:linear-gradient(145deg,#19191f,#0b0b0e);border-color:#34343d}.tm-stat b{font-size:22px;color:#fff}.tm-stat span{font-size:12px}.tm-upload-item{display:grid;grid-template-columns:100px minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid #303038}.tm-upload-poster{width:100px;height:135px;object-fit:cover;border-radius:11px;background:#09090c;border:1px solid #303038}.tm-upload-title{font-size:17px;font-weight:900}.tm-upload-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.tm-upload-link{display:inline-flex;align-items:center;border:1px solid #383840;border-radius:9px;padding:7px 10px;color:#fecaca;text-decoration:none;font-size:12px;font-weight:800;background:#151015}.tm-status{display:inline-flex;border:1px solid #493033;border-radius:999px;padding:5px 9px;color:#fecaca;background:rgba(127,29,29,.18);font-size:11px;font-weight:800}
 .tm-add{max-width:1100px;margin:0 auto}
 .tm-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:22px;flex-wrap:wrap}
 .tm-title{font-size:30px;font-weight:900;letter-spacing:.5px}.tm-sub{color:#aaa;margin-top:5px}
@@ -109,9 +109,11 @@
     </div>
     {% if submissions %}
       {% for item in submissions %}
-        <div style="padding:12px 0;border-top:1px solid #333">
-          <strong>{{ item.title }}</strong>
-          <span style="display:inline-block;margin-left:8px;border:1px solid #444;border-radius:20px;padding:4px 8px;font-size:11px">{{ item.content_type }} · {{ item.status }}</span>
+        <div class="tm-upload-item">
+          {% if item.poster_url %}<img class="tm-upload-poster" src="{{ item.poster_url }}" alt="Poster for {{ item.title }}" loading="lazy">{% else %}<div class="tm-upload-poster" style="display:grid;place-items:center;color:#777">No poster</div>{% endif %}
+          <div>
+          <div class="tm-upload-title">{{ item.title }}</div>
+          <span class="tm-status">{{ item.content_type }} · {{ item.status }}</span>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <span class="tm-badge">👁 Views: {{ item.views or 0 }}</span>
             <span class="tm-badge">♥ Likes: {{ item.likes or 0 }}</span>
@@ -119,7 +121,12 @@
           </div>
           {% if item.description %}<div class="tm-hint" style="margin-top:8px;white-space:pre-wrap">Description: {{ item.description }}</div>{% endif %}
           <div class="tm-hint">Submitted {{ item.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% if item.admin_note %} · Admin note: {{ item.admin_note }}{% endif %}</div>
-          {% if item.movie_id %}<a href="{{ url_for('movie_page', movie_id=item.movie_id) }}" style="color:#f87171">View published title →</a>{% endif %}
+          <div class="tm-upload-actions">
+            {% if item.video_url %}<a class="tm-upload-link" href="{{ item.video_url }}" target="_blank" rel="noopener">Preview uploaded video ↗</a>{% endif %}
+            {% if item.poster_url %}<a class="tm-upload-link" href="{{ item.poster_url }}" target="_blank" rel="noopener">Open poster ↗</a>{% endif %}
+            {% if item.movie_id %}<a class="tm-upload-link" href="{{ url_for('movie_page', movie_id=item.movie_id) }}">View published title →</a>{% endif %}
+          </div>
+          </div>
         </div>
       {% endfor %}
     {% else %}<p class="tm-hint">You haven't submitted any content yet.</p>{% endif %}
