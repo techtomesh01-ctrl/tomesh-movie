@@ -4176,7 +4176,7 @@ def admin_creator_studio():
         """)
         reviewed = [dict(row) for row in cur.fetchall()]
         cur.execute("""
-            SELECT id,customer_id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,
+            SELECT id,customer_id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,reviewed_at,paid_at,
                    bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified,bank_verified_at
             FROM creator_payout_requests ORDER BY
               CASE status WHEN 'PENDING' THEN 0 WHEN 'APPROVED' THEN 1 ELSE 2 END,
