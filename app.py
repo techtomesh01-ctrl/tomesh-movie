@@ -4114,9 +4114,11 @@ def admin_creator_studio():
         try:
             movie_rate = max(0.0, min(float(request.form.get("movie_rate", "50")), 1000000.0))
             drama_rate = max(0.0, min(float(request.form.get("drama_rate", "30")), 1000000.0))
+            min_payout = max(1.0, min(float(request.form.get("min_payout", "100")), 1000000.0))
             set_setting("creator_movie_rate_per_1000", str(movie_rate))
             set_setting("creator_drama_rate_per_1000", str(drama_rate))
-            flash("Creator earning rates saved.", "success")
+            set_setting("creator_min_payout", str(min_payout))
+            flash("Creator rates and minimum payout saved.", "success")
         except Exception:
             flash("Rates valid number mein enter karein.", "error")
         return redirect(url_for("admin_creator_studio"))
