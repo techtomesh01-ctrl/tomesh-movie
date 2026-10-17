@@ -698,6 +698,14 @@ def init_db():
                 paid_at TIMESTAMP
             )
         """)
+        # Add structured bank fields safely for existing deployments.
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_account_holder TEXT")
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_name TEXT")
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_account_number TEXT")
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_ifsc TEXT")
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_branch TEXT")
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_verified BOOLEAN NOT NULL DEFAULT FALSE")
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_verified_at TIMESTAMP")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_creator_payout_requests_status ON creator_payout_requests(status, created_at DESC)")
         cur.execute("INSERT INTO settings(key,value) VALUES('creator_min_payout','100') ON CONFLICT(key) DO NOTHING")
 
@@ -3999,7 +4007,8 @@ def creator_upload():
         total_earned = float(earnings.get("total") or 0)
         earnings["available"] = max(0.0, round(total_earned - reserved, 2))
         cur.execute("""
-            SELECT id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,paid_at
+            SELECT id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,paid_at,
+                   bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified,bank_verified_at
             FROM creator_payout_requests WHERE customer_id=%s ORDER BY id DESC LIMIT 50
         """, (customer_id,))
         payouts = [dict(row) for row in cur.fetchall()]
@@ -4024,6 +4033,11 @@ def creator_payout_request():
         return redirect(url_for("creator_upload"))
     method = str(request.form.get("payout_method") or "UPI").upper()
     details = str(request.form.get("payout_details") or "").strip()
+    bank_holder = str(request.form.get("bank_account_holder") or "").strip()[:120]
+    bank_name = str(request.form.get("bank_name") or "").strip()[:120]
+    bank_account = "".join(ch for ch in str(request.form.get("bank_account_number") or "") if ch.isdigit())
+    bank_ifsc = str(request.form.get("bank_ifsc") or "").strip().upper()
+    bank_branch = str(request.form.get("bank_branch") or "").strip()[:120]
     min_payout = max(0.0, float(get_setting("creator_min_payout", "100") or 100))
     if amount <= 0 or amount < min_payout:
         flash("Minimum payout request is ₹%.2f." % min_payout, "error")
@@ -4031,9 +4045,16 @@ def creator_payout_request():
     if method not in {"UPI", "BANK"}:
         flash("Choose UPI or Bank Transfer.", "error")
         return redirect(url_for("creator_upload"))
-    if not details or len(details) > 250:
-        flash("Enter valid UPI ID or bank transfer details.", "error")
-        return redirect(url_for("creator_upload"))
+    if method == "UPI":
+        if not details or len(details) > 250 or "@" not in details:
+            flash("Enter a valid UPI ID, for example name@bank.", "error")
+            return redirect(url_for("creator_upload"))
+    else:
+        import re
+        if not bank_holder or not bank_name or not (6 <= len(bank_account) <= 18) or not re.fullmatch(r"[A-Z]{4}0[A-Z0-9]{6}", bank_ifsc):
+            flash("Enter account holder, bank name, valid account number (6–18 digits) and IFSC (e.g. SBIN0001234).", "error")
+            return redirect(url_for("creator_upload"))
+        details = "Bank account submitted for admin verification."
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
@@ -4052,9 +4073,16 @@ def creator_payout_request():
             flash("Requested amount ₹%.2f is more than your available balance ₹%.2f." % (amount, available), "error")
             return redirect(url_for("creator_upload"))
         cur.execute("""
-            INSERT INTO creator_payout_requests(customer_id,amount,payout_method,payout_details)
-            VALUES(%s,%s,%s,%s)
-        """, (customer_id, amount, method, details))
+            INSERT INTO creator_payout_requests(
+                customer_id,amount,payout_method,payout_details,
+                bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified
+            ) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,FALSE)
+        """, (customer_id, amount, method, details,
+              bank_holder if method == "BANK" else None,
+              bank_name if method == "BANK" else None,
+              bank_account if method == "BANK" else None,
+              bank_ifsc if method == "BANK" else None,
+              bank_branch if method == "BANK" else None))
         conn.commit()
         flash("Payout request submitted. Admin will review and pay manually.", "success")
     except Exception as exc:
@@ -4150,7 +4178,8 @@ def admin_creator_studio():
         """)
         reviewed = [dict(row) for row in cur.fetchall()]
         cur.execute("""
-            SELECT id,customer_id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at
+            SELECT id,customer_id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,reviewed_at,paid_at,
+                   bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified,bank_verified_at
             FROM creator_payout_requests ORDER BY
               CASE status WHEN 'PENDING' THEN 0 WHEN 'APPROVED' THEN 1 ELSE 2 END,
               id DESC LIMIT 200
@@ -4169,7 +4198,7 @@ def admin_creator_studio():
 @app.route("/admin/creator-payout/<int:payout_id>/<action>", methods=["POST"])
 @admin_required
 def admin_creator_payout_action(payout_id, action):
-    if action not in {"approve", "reject", "paid"}:
+    if action not in {"approve", "reject", "paid", "verify-bank"}:
         abort(400)
     note = str(request.form.get("admin_note") or "").strip()[:1000]
     reference = str(request.form.get("transaction_ref") or "").strip()[:250]
@@ -4182,13 +4211,29 @@ def admin_creator_payout_action(payout_id, action):
             conn.rollback()
             abort(404)
         status = str(payout.get("status") or "").upper()
-        if action == "approve" and status == "PENDING":
+        method = str(payout.get("payout_method") or "").upper()
+        if action == "verify-bank" and method == "BANK" and status == "PENDING":
+            if not (payout.get("bank_account_number") and payout.get("bank_account_holder") and payout.get("bank_name") and payout.get("bank_ifsc")):
+                conn.rollback()
+                flash("Bank details are incomplete. Ask the creator to update them.", "error")
+                return redirect(url_for("admin_creator_studio"))
+            cur.execute("UPDATE creator_payout_requests SET bank_verified=TRUE,bank_verified_at=NOW(),admin_note=%s WHERE id=%s", (note,payout_id))
+            flash("Bank details marked verified. You can now approve this payout.", "success")
+        elif action == "approve" and status == "PENDING":
+            if method == "BANK" and not payout.get("bank_verified"):
+                conn.rollback()
+                flash("Verify the bank details first, then approve the payout.", "error")
+                return redirect(url_for("admin_creator_studio"))
             cur.execute("UPDATE creator_payout_requests SET status='APPROVED',admin_note=%s,reviewed_at=NOW() WHERE id=%s", (note,payout_id))
             flash("Payout request approved. Send the money manually, then mark it paid.", "success")
         elif action == "reject" and status in {"PENDING","APPROVED"}:
             cur.execute("UPDATE creator_payout_requests SET status='REJECTED',admin_note=%s,reviewed_at=NOW() WHERE id=%s", (note,payout_id))
             flash("Payout request rejected. Its balance is available again.", "success")
         elif action == "paid" and status == "APPROVED":
+            if method == "BANK" and not payout.get("bank_verified"):
+                conn.rollback()
+                flash("Bank details must be verified before payment.", "error")
+                return redirect(url_for("admin_creator_studio"))
             if not reference:
                 conn.rollback()
                 flash("Enter UPI/bank transaction reference before marking paid.", "error")

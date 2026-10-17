@@ -28,7 +28,7 @@
     <div class="cs-card">
       <span class="tag">{{ 'Movie' if item.content_type == 'MOVIE' else 'Drama' }}</span>
       <h2 style="margin:12px 0 6px">{{ item.title }}</h2>
-      <div class="meta">Submission #{{ item.id }} · Creator {{ item.customer_id }} · {{ item.created_at }}</div>
+      <div class="meta">Submission #{{ item.id }} · Creator {{ item.customer_id }} · Submitted {{ item.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</div>
       <p class="cs-muted">{{ item.category or 'Uncategorised' }}</p>
       <div class="description">{{ item.description or 'No description provided.' }}</div>
       {% if item.poster %}<p><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.poster_url }}">Open poster</a></p>{% endif %}
@@ -53,13 +53,33 @@
       <tbody>
       {% for payout in payout_requests %}
       <tr style="border-top:1px solid #333;vertical-align:top">
-        <td style="padding:12px 5px">#{{ payout.id }}<br>{{ payout.customer_id }}<br><span class="meta">{{ payout.created_at }}</span></td>
+        <td style="padding:12px 5px">#{{ payout.id }}<br>{{ payout.customer_id }}<br><span class="meta">Requested: {{ payout.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% if payout.bank_verified_at %}<br><span class="meta">Bank verified: {{ payout.bank_verified_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}{% if payout.reviewed_at %}<br><span class="meta">Reviewed: {{ payout.reviewed_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}{% if payout.paid_at %}<br><span class="meta">Paid: {{ payout.paid_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}</td>
         <td style="padding:12px 5px">₹{{ '%.2f'|format(payout.amount) }}</td>
-        <td style="padding:12px 5px">{{ payout.payout_method }}<br><span style="overflow-wrap:anywhere">{{ payout.payout_details }}</span></td>
+        <td style="padding:12px 5px">
+          {{ payout.payout_method }}
+          {% if payout.payout_method == 'BANK' %}
+            <div class="meta" style="margin:6px 0">Bank: {{ payout.bank_name or 'Legacy details' }} · IFSC: {{ payout.bank_ifsc or '—' }}</div>
+            <details style="margin-top:6px"><summary style="cursor:pointer;color:#fca5a5;font-weight:700">View full bank details</summary>
+              <div style="margin-top:8px;padding:10px;background:#111;border-radius:8px;overflow-wrap:anywhere">
+                <div>Account holder: {{ payout.bank_account_holder or '—' }}</div>
+                <div>Bank name: {{ payout.bank_name or '—' }}</div>
+                <div style="font-weight:800;font-size:16px">Account number: {{ payout.bank_account_number or payout.payout_details }}</div>
+                <div>IFSC: {{ payout.bank_ifsc or '—' }}</div>
+                <div>Branch: {{ payout.bank_branch or '—' }}</div>
+              </div>
+            </details>
+            <div class="meta" style="margin-top:6px">Verification: {{ 'VERIFIED' if payout.bank_verified else 'NOT VERIFIED' }}</div>
+          {% else %}
+            <div style="overflow-wrap:anywhere">{{ payout.payout_details }}</div>
+          {% endif %}
+        </td>
         <td style="padding:12px 5px">{{ payout.status }}{% if payout.transaction_ref %}<br><span class="meta">Ref: {{ payout.transaction_ref }}</span>{% endif %}</td>
         <td style="padding:12px 5px;min-width:230px">
           {% if payout.status == 'PENDING' %}
-          <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='approve') }}"><input name="admin_note" placeholder="Optional note"><button type="submit">Approve</button></form>
+          {% if payout.payout_method == 'BANK' and not payout.bank_verified %}
+          <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='verify-bank') }}"><input name="admin_note" placeholder="Verification note (optional)"><button type="submit">Verify bank details</button></form>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='approve') }}"><input name="admin_note" placeholder="Optional note"><button type="submit" {% if payout.payout_method == 'BANK' and not payout.bank_verified %}disabled title="Verify bank details first"{% endif %}>Approve</button></form>
           <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='reject') }}"><input name="admin_note" placeholder="Reason (optional)"><button class="reject" type="submit">Reject</button></form>
           {% elif payout.status == 'APPROVED' %}
           <form method="post" action="{{ url_for('admin_creator_payout_action', payout_id=payout.id, action='paid') }}"><input name="transaction_ref" required placeholder="UPI/bank transaction reference"><input name="admin_note" placeholder="Optional note"><button type="submit">Mark as paid</button></form>
