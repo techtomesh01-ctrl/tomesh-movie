@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}CINEMA WORLD | Dramas{% endblock %}
+{% block content %}
+<style>
+.cw-drama-page{min-height:100vh;background:#070707;color:#fff;padding:36px 5% 70px}
+.cw-drama-head{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:18px 0 26px}
+.cw-drama-head h1{font-size:clamp(30px,4vw,46px);margin:0;font-weight:950}
+.cw-drama-head p{color:#aaa;margin:9px 0 0}
+.cw-drama-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:18px}
+.cw-drama-card{display:block;min-width:0;color:#fff;text-decoration:none}
+.cw-drama-poster{aspect-ratio:2/3;background:#151515;border:1px solid #282828;border-radius:12px;overflow:hidden;display:grid;place-items:center;color:#aaa;font-weight:800;text-align:center;padding:12px}
+.cw-drama-poster img{width:100%;height:100%;object-fit:cover}
+.cw-drama-title{font-weight:800;margin:10px 2px 0;overflow-wrap:anywhere}
+.cw-drama-empty{grid-column:1/-1;padding:40px 20px;border:1px solid #252525;background:#111;border-radius:14px;color:#aaa;text-align:center}
+.cw-drama-back{color:#fff;text-decoration:none;border:1px solid #333;border-radius:10px;padding:10px 14px;background:#121212}
+</style>
+<div class="cw-drama-page">
+  <div class="cw-drama-head"><div><h1>🎭 Dramas</h1><p>Explore drama stories on CINEMA WORLD.</p></div><a class="cw-drama-back" href="{{ url_for('home') }}">← Back to Home</a></div>
+  <div class="cw-drama-grid">
+    {% for drama in dramas %}
+      <a class="cw-drama-card" href="{{ url_for('movie_page', movie_id=drama.id) }}">
+        <div class="cw-drama-poster">{% if drama.poster_url %}<img src="{{ drama.poster_url }}" alt="{{ drama.title }}" loading="lazy">{% else %}{{ drama.title }}{% endif %}</div>
+        <div class="cw-drama-title">{{ drama.title }}</div>
+      </a>
+    {% else %}<div class="cw-drama-empty">Abhi koi drama available nahi hai. Admin se upload hone ke baad yahan dikhega.</div>{% endfor %}
+  </div>
+</div>
+{% endblock %}
