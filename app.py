@@ -3806,9 +3806,12 @@ def movie_page(movie_id):
     finally:
         conn.close()
 
-    access = access_for_movie(
-        movie_id
-    )
+    # Admin Preview Mode: verified admin sessions can inspect any published
+    # movie without changing or granting customer payment access.
+    if session.get("admin_logged_in"):
+        access = {"watch": True, "download": False, "premium": False, "share": False}
+    else:
+        access = access_for_movie(movie_id)
 
     # Only accrue creator earnings when the logged-in viewer has watch access.
     creator_id = str(movie.get("creator_customer_id") or "")
@@ -3865,15 +3868,16 @@ def movie_page(movie_id):
     # --------------------------------------------------------
 
     if video_key and access["watch"]:
-
-        movie["video_url"] = url_for(
-            "stream_movie",
-            movie_id=movie_id,
-            access_token=make_stream_token(movie_id),
-        )
-
+        if session.get("admin_logged_in"):
+            # The stream route independently checks the admin session.
+            movie["video_url"] = url_for("stream_movie", movie_id=movie_id)
+        else:
+            movie["video_url"] = url_for(
+                "stream_movie",
+                movie_id=movie_id,
+                access_token=make_stream_token(movie_id),
+            )
     else:
-
         movie["video_url"] = None
 
     if poster_key:
