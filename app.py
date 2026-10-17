@@ -634,6 +634,55 @@ def init_db():
                 value TEXT
             )
         """)
+        cur.execute("""
+            ALTER TABLE movies ADD COLUMN IF NOT EXISTS creator_customer_id TEXT
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_submissions (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                content_type TEXT NOT NULL CHECK (content_type IN ('MOVIE','DRAMA')),
+                category TEXT,
+                description TEXT,
+                poster TEXT,
+                video TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING',
+                admin_note TEXT,
+                movie_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_creator_submissions_status_created
+            ON creator_submissions(status, created_at DESC)
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_view_events (
+                id SERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+                customer_id TEXT NOT NULL,
+                view_date DATE NOT NULL DEFAULT CURRENT_DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(movie_id, customer_id, view_date)
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_earnings (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                movie_id INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+                view_date DATE NOT NULL,
+                valid_views INTEGER NOT NULL DEFAULT 0,
+                amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(customer_id, movie_id, view_date)
+            )
+        """)
+        cur.execute("INSERT INTO settings(key,value) VALUES('creator_movie_rate_per_1000','50') ON CONFLICT(key) DO NOTHING")
+        cur.execute("INSERT INTO settings(key,value) VALUES('creator_drama_rate_per_1000','30') ON CONFLICT(key) DO NOTHING")
+
 
         # ----------------------------------------------------
         # MOVIE ENGAGEMENT
