@@ -426,17 +426,37 @@
   async function putPart(url, blob, onBytes, key, uploadId, partNumber){
     for(let attempt=1;attempt<=RETRIES;attempt++){
       if(cancelled) throw new Error('Upload cancelled.');
+      let xhr=null;
+      let attemptLoaded=0;
       try{
-        const controller=new AbortController(); activeUploads.push(controller);
-        const r=await fetch(url,{method:'PUT',body:blob,signal:controller.signal});
-        activeUploads=activeUploads.filter(x=>x!==controller);
-        if(!r.ok) throw new Error('Part upload HTTP '+r.status);
-        const etag=r.headers.get('ETag') || r.headers.get('etag');
-        if(!etag) throw new Error('ETag header not available. R2 CORS must expose ETag.');
-        onBytes(blob.size);
+        const etag=await new Promise((resolve,reject)=>{
+          xhr=new XMLHttpRequest();
+          activeUploads.push(xhr);
+          xhr.open('PUT',url,true);
+          xhr.upload.onprogress=(event)=>{
+            if(event.lengthComputable){
+              const loaded=Math.min(blob.size,event.loaded);
+              const delta=loaded-attemptLoaded;
+              attemptLoaded=loaded;
+              if(delta) onBytes(delta);
+            }
+          };
+          xhr.onload=()=>{
+            if(xhr.status<200||xhr.status>=300) return reject(new Error('Part upload HTTP '+xhr.status));
+            const tag=xhr.getResponseHeader('ETag')||xhr.getResponseHeader('etag');
+            if(!tag) return reject(new Error('ETag header not available. R2 CORS must expose ETag.'));
+            if(attemptLoaded<blob.size){onBytes(blob.size-attemptLoaded);attemptLoaded=blob.size;}
+            resolve(tag);
+          };
+          xhr.onerror=()=>reject(new Error('Network error while uploading part.'));
+          xhr.onabort=()=>reject(new Error('Upload cancelled.'));
+          xhr.send(blob);
+        });
+        activeUploads=activeUploads.filter(x=>x!==xhr);
         return etag;
       }catch(e){
-        activeUploads=[];
+        activeUploads=activeUploads.filter(x=>x!==xhr);
+        if(attemptLoaded){onBytes(-attemptLoaded);attemptLoaded=0;}
         if(cancelled) throw new Error('Upload cancelled.');
         if(attempt===RETRIES) throw e;
         stage.textContent='Retrying failed part ('+attempt+'/'+RETRIES+')...';
@@ -505,7 +525,7 @@
     progress.classList.add('show'); saveBtn.disabled=true; cancelBtn.disabled=false;
     updateProgress(0,video.size+(poster?poster.size:0));
     let totalDone=0; const total=video.size+(poster?poster.size:0);
-    const add=(n)=>{totalDone+=n;updateProgress(totalDone,total)};
+    const add=(n)=>{totalDone=Math.max(0,Math.min(total,totalDone+n));updateProgress(totalDone,total)};
     try{
       stage.textContent='Starting direct R2 video upload...';
       const videoKey=await uploadFile(video,'videos/creator-pending/',add);
