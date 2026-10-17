@@ -15,7 +15,7 @@
 .cw-drama-back{color:#fff;text-decoration:none;border:1px solid #333;border-radius:10px;padding:10px 14px;background:#121212}
 </style>
 <div class="cw-drama-page">
-  <div class="cw-drama-head"><div><h1>🎭 Dramas</h1><p>Explore drama stories on CINEMA WORLD.</p></div><a class="cw-drama-back" href="{{ url_for('home') }}">← Back to Home</a></div>
+  <div class="cw-drama-head"><div><h1>🎭 Dramas</h1><p>Explore drama stories on CINEMA WORLD.</p></div>{% if session.get("customer_logged_in") %}<a class="cw-drama-back" href="{{ url_for('member_home') }}">← Back to Movies</a>{% else %}<a class="cw-drama-back" href="{{ url_for('home') }}">← Back to Home</a>{% endif %}</div>
   <div class="cw-drama-grid">
     {% for drama in dramas %}
       <a class="cw-drama-card" href="{{ url_for('movie_page', movie_id=drama.id) }}">
