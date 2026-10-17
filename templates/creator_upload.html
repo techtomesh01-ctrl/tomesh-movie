@@ -46,11 +46,39 @@
       <label class="tm-label">Amount (₹)</label>
       <input class="tm-input" type="number" name="amount" min="{{ min_payout }}" max="{{ '%.2f'|format(earnings.available) }}" step="0.01" value="{{ '%.2f'|format(earnings.available) }}" required>
       <label class="tm-label">Payment method</label>
-      <select class="tm-select" name="payout_method" required><option value="UPI">UPI</option><option value="BANK">Bank transfer</option></select>
-      <label class="tm-label">UPI ID or bank transfer details</label>
-      <input class="tm-input" name="payout_details" maxlength="250" required placeholder="Enter UPI ID (e.g. name@bank) or bank details">
-      <p class="tm-hint">Only submit details needed to pay you. Admin will review and transfer funds manually.</p>
+      <select class="tm-select" id="payoutMethod" name="payout_method" required><option value="UPI">UPI</option><option value="BANK">Bank transfer</option></select>
+      <div id="upiFields">
+        <label class="tm-label">UPI ID</label>
+        <input class="tm-input" name="payout_details" maxlength="250" placeholder="e.g. name@bank">
+      </div>
+      <div id="bankFields" style="display:none;border:1px solid #444;border-radius:10px;padding:12px;margin-top:10px">
+        <p class="tm-hint">Bank details admin ko verify karne ke liye dikhengi. Account number sirf admin panel mein detail kholne par dikhega.</p>
+        <label class="tm-label">Account holder name</label><input class="tm-input" name="bank_account_holder" maxlength="120" autocomplete="name">
+        <label class="tm-label">Bank name</label><input class="tm-input" name="bank_name" maxlength="120" placeholder="e.g. State Bank of India">
+        <label class="tm-label">Account number</label><input class="tm-input" name="bank_account_number" inputmode="numeric" pattern="[0-9]{6,18}" maxlength="18" autocomplete="off">
+        <label class="tm-label">IFSC code</label><input class="tm-input" name="bank_ifsc" maxlength="11" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" placeholder="e.g. SBIN0001234" autocapitalize="characters">
+        <label class="tm-label">Branch (optional)</label><input class="tm-input" name="bank_branch" maxlength="120">
+      </div>
+      <p class="tm-hint">Admin details verify karke payout approve karega. Payment manual hoga; bank details sirf apne account ki bharein.</p>
       <button class="tm-btn" type="submit">Submit payout request</button>
+      <script>
+      (function(){
+        const method=document.getElementById('payoutMethod');
+        const upi=document.getElementById('upiFields');
+        const bank=document.getElementById('bankFields');
+        const form=method.closest('form');
+        function toggle(){
+          const isBank=method.value==='BANK';
+          upi.style.display=isBank?'none':'block';
+          bank.style.display=isBank?'block':'none';
+          form.querySelector('[name="payout_details"]').required=!isBank;
+          ['bank_account_holder','bank_name','bank_account_number','bank_ifsc'].forEach(function(n){
+            form.querySelector('[name="'+n+'"]').required=isBank;
+          });
+        }
+        method.addEventListener('change',toggle);toggle();
+      })();
+      </script>
     </form>
     {% else %}<p class="tm-hint">You can request payout after your available balance reaches ₹{{ min_payout }}.</p>{% endif %}
     <h3>Payout history</h3>
@@ -58,7 +86,7 @@
       {% for payout in payouts %}
       <div style="padding:12px 0;border-top:1px solid #333">
         <strong>₹{{ '%.2f'|format(payout.amount) }} · {{ payout.status }}</strong>
-        <div class="tm-hint">{{ payout.payout_method }} · Requested {{ payout.created_at }}{% if payout.transaction_ref %} · Transaction ref: {{ payout.transaction_ref }}{% endif %}</div>
+        <div class="tm-hint">{{ payout.payout_method }} · Requested {{ payout.created_at }}{% if payout.payout_method == 'BANK' %} · Bank verification: {{ 'Verified' if payout.bank_verified else 'Pending admin verification' }}{% endif %}{% if payout.transaction_ref %} · Transaction ref: {{ payout.transaction_ref }}{% endif %}</div>
         {% if payout.admin_note %}<div class="tm-hint">Admin note: {{ payout.admin_note }}</div>{% endif %}
       </div>
       {% endfor %}
