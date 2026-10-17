@@ -97,6 +97,62 @@
 @media(max-width:850px){.tm-add{display:block;max-width:760px}.cw-studio-nav{position:static;display:flex;flex-direction:row;flex-wrap:wrap;margin:0 0 18px}.cw-studio-brand{width:100%;padding-bottom:12px}.cw-studio-nav a{flex:1;justify-content:center;min-width:105px}.tm-head{margin-bottom:16px}}
 @media(max-width:560px){.cw-studio-nav{gap:4px;padding:8px}.cw-studio-nav a{flex:1;justify-content:center;padding:10px 7px;font-size:11px;min-width:calc(50% - 8px)}.cw-studio-nav a span{display:none}.cw-content-tools input,.cw-content-tools select{width:100%;min-width:0}#studio-overview>div[style*="display:flex"]>div{min-width:110px;padding:12px}.tm-add-wrap{padding-left:9px;padding-right:9px}}
 
+
+/* Final visual pass: clean YouTube Studio-inspired workspace, not a generic neon landing page */
+.tm-add-wrap{background:#f1f2f4!important;color:#202124!important;padding:22px 22px 60px!important;isolation:isolate}
+.tm-add-wrap:before{display:none!important}
+.tm-add{max-width:1500px!important;grid-template-columns:238px minmax(0,1fr)!important;column-gap:20px!important;row-gap:0!important}
+.tm-head{background:#fff!important;border:1px solid #e1e3e6!important;border-radius:16px!important;box-shadow:0 2px 7px rgba(0,0,0,.04)!important;padding:23px 26px!important;margin-bottom:18px!important}
+.tm-head:after{content:"CREATOR"!important;color:rgba(229,9,20,.045)!important;font-size:clamp(54px,8vw,100px)!important;letter-spacing:-5px!important}
+.tm-title{background:none!important;color:#202124!important;-webkit-text-fill-color:#202124!important;font-size:clamp(25px,3vw,34px)!important;font-weight:850!important;letter-spacing:-.8px!important}
+.tm-sub{color:#666b73!important}
+.tm-back{background:#fff!important;color:#202124!important;border:1px solid #dadce0!important;border-radius:999px!important}
+.tm-back:hover{background:#f7f7f7!important;border-color:#e50914!important}
+.cw-studio-nav{background:#fff!important;border:1px solid #e1e3e6!important;border-radius:16px!important;box-shadow:0 2px 7px rgba(0,0,0,.035)!important;padding:12px!important;gap:5px!important}
+.cw-studio-brand{color:#202124!important;border-bottom:1px solid #eceef0!important;padding:8px 8px 17px!important}
+.cw-studio-brand small{color:#777d85!important}
+.cw-studio-nav a{color:#4e535a!important;border-radius:9px!important;padding:12px 11px!important;font-size:13px!important}
+.cw-studio-nav a span{color:#666b73!important}
+.cw-studio-nav a:hover{background:#f5f5f5!important;color:#202124!important}
+.cw-studio-nav a.active{background:#fdebed!important;color:#b31420!important;border-color:#f9d0d3!important;box-shadow:inset 3px 0 #e50914!important}
+.cw-studio-nav a.active span{color:#b31420!important}
+.tm-card{background:#fff!important;color:#202124!important;border:1px solid #e1e3e6!important;border-radius:16px!important;box-shadow:0 2px 7px rgba(0,0,0,.035)!important;padding:24px!important}
+.tm-card h2,.tm-card h3{color:#202124!important}
+.tm-hint{color:#747982!important}
+.tm-label{color:#454a52!important}
+.tm-input,.tm-select,.tm-textarea{background:#fff!important;color:#202124!important;border:1px solid #c9cdd2!important;border-radius:10px!important}
+.tm-input:focus,.tm-select:focus,.tm-textarea:focus{border-color:#d71920!important;box-shadow:0 0 0 3px rgba(229,9,20,.1)!important;background:#fff!important}
+.tm-file{background:#fafafa!important;border-color:#b8bdc4!important}
+.tm-file:hover,.tm-file:focus-within{background:#fff8f8!important;border-color:#d71920!important}
+.tm-stat{background:#fff!important;border:1px solid #e1e3e6!important;border-radius:12px!important;box-shadow:none!important}
+.tm-stat b{color:#202124!important}
+.tm-stat span{color:#777d85!important}
+.tm-stat:hover{transform:translateY(-1px)!important;border-color:#f0b7bb!important}
+.tm-badge{background:#f5f6f7!important;color:#555b63!important;border-color:#e2e5e8!important}
+.tm-upload-item{border-top:1px solid #eceef0!important}
+.tm-upload-poster{border-color:#e1e3e6!important;box-shadow:none!important}
+.tm-upload-title{color:#202124!important}
+.tm-status{background:#fff4e5!important;border-color:#f5d8a8!important;color:#8a4b08!important}
+.tm-upload-link{background:#fff!important;color:#b31420!important;border-color:#dadce0!important}
+.tm-upload-link:hover{background:#fff6f6!important;border-color:#e50914!important}
+.tm-btn{border-radius:999px!important}
+.tm-save{background:#e50914!important;box-shadow:none!important;color:#fff!important}
+.tm-save:hover:not(:disabled){background:#bd0811!important}
+.tm-cancel{background:#fff!important;color:#34383e!important;border:1px solid #dadce0!important}
+#progress{background:#fafafa!important;border-color:#f3c5c8!important}
+.tm-bar{background:#e6e8eb!important}
+.tm-fill{background:#e50914!important;box-shadow:none!important}
+#studio-overview>div[style*="display:flex"]>div{background:#fafafa!important;border-color:#eceef0!important}
+#studio-overview>div[style*="display:flex"] strong{color:#202124!important}
+#studio-overview>div[style*="display:flex"] strong[style*="86efac"]{color:#16803d!important}
+#studio-overview form[action*="creator_payout_request"]{background:#fafafa!important;border-color:#e1e3e6!important}
+#studio-overview form[action*="creator_payout_request"] .tm-btn{background:#188038!important;color:#fff!important}
+#studio-earnings{border-top:1px solid #eceef0!important;padding-top:20px!important}
+.cw-content-tools input,.cw-content-tools select{background:#fff!important;color:#202124!important;border-color:#c9cdd2!important;border-radius:10px!important}
+#cwContentCount{color:#747982!important}
+@media(max-width:850px){.tm-add{display:block!important}.cw-studio-nav{display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;margin-bottom:16px!important}.cw-studio-brand{width:100%!important}.cw-studio-nav a{min-width:105px!important}.tm-head{margin-bottom:16px!important}}
+@media(max-width:560px){.tm-add-wrap{padding:12px 9px 40px!important}.tm-head{padding:18px!important}.tm-card{padding:16px!important}.cw-studio-nav a{min-width:calc(50% - 8px)!important}}
+
 </style>
 
 <div class="tm-add-wrap">
