@@ -4211,7 +4211,7 @@ def admin_creator_payout_action(payout_id, action):
         status = str(payout.get("status") or "").upper()
         method = str(payout.get("payout_method") or "").upper()
         if action == "verify-bank" and method == "BANK" and status == "PENDING":
-            if not (payout.get("bank_account_number") and payout.get("bank_account_holder") and payout.get("bank_name") and payout.get("bank_ifsc")) and not payout.get("payout_details"):
+            if not (payout.get("bank_account_number") and payout.get("bank_account_holder") and payout.get("bank_name") and payout.get("bank_ifsc")):
                 conn.rollback()
                 flash("Bank details are incomplete. Ask the creator to update them.", "error")
                 return redirect(url_for("admin_creator_studio"))
