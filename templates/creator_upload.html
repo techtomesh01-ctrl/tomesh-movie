@@ -71,6 +71,17 @@
 @media(max-width:760px){.tm-add-wrap{padding:18px 12px 48px}.tm-head{padding:22px 19px;border-radius:19px;align-items:flex-start}.tm-head:after{right:10px;opacity:.65}.tm-title{font-size:26px;max-width:100%}.tm-card{border-radius:18px;padding:18px}.tm-stats{grid-template-columns:1fr 1fr}.tm-upload-item{grid-template-columns:78px minmax(0,1fr);gap:12px}.tm-upload-poster{width:78px;height:112px}.tm-upload-title{font-size:16px}.tm-upload-actions{gap:7px}.tm-upload-link{font-size:11px;padding:8px 9px}}
 @media(max-width:420px){.tm-add-wrap{padding-left:9px;padding-right:9px}.tm-head{padding:18px 15px}.tm-title{font-size:23px}.tm-back{padding:10px 11px;font-size:12px}.tm-card{padding:15px}.tm-upload-item{grid-template-columns:68px minmax(0,1fr)}.tm-upload-poster{width:68px;height:98px}.tm-stat{padding:12px}}
 
+
+/* YouTube Studio-inspired creator navigation and content management */
+.cw-studio-nav{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:9px;margin:0 0 18px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(14,14,19,.94);position:sticky;top:8px;z-index:20;backdrop-filter:blur(16px)}
+.cw-studio-nav a{display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:11px;color:#c7c7d1;text-decoration:none;font-size:13px;font-weight:800;transition:background .18s,color .18s}
+.cw-studio-nav a span{font-size:16px}.cw-studio-nav a:hover,.cw-studio-nav a:focus{background:rgba(229,9,20,.14);color:#fff}.cw-studio-nav a.active{background:#e50914;color:#fff;box-shadow:0 5px 18px rgba(229,9,20,.2)}
+.cw-content-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.cw-content-tools input,.cw-content-tools select{min-height:42px;border:1px solid #373741;border-radius:11px;background:#09090d;color:#f7f7fb;padding:10px 12px;font:inherit;font-size:13px;outline:none}
+.cw-content-tools input{flex:1;min-width:190px}.cw-content-tools select{min-width:175px}.cw-content-tools input:focus,.cw-content-tools select:focus{border-color:#e50914;box-shadow:0 0 0 3px rgba(229,9,20,.12)}
+#cwContentCount{font-size:12px;color:#a4a4b2;font-weight:700;white-space:nowrap}.cw-content-item[hidden]{display:none!important}
+@media(max-width:560px){.cw-studio-nav{position:static;gap:4px}.cw-studio-nav a{flex:1;justify-content:center;padding:10px 7px;font-size:11px}.cw-studio-nav a span{display:none}.cw-content-tools input,.cw-content-tools select{width:100%;min-width:0}}
+
 </style>
 
 <div class="tm-add-wrap">
@@ -83,7 +94,14 @@
     <a class="tm-back" href="{{ url_for('member_home') }}">← Back to Movies</a>
   </div>
 
-  <div class="tm-card">
+  <nav class="cw-studio-nav" aria-label="Creator Studio sections">
+    <a href="#studio-overview" class="active"><span>▦</span> Dashboard</a>
+    <a href="#studio-content"><span>▶</span> Content</a>
+    <a href="#movieForm"><span>＋</span> Upload</a>
+    <a href="#studio-earnings"><span>₹</span> Earnings</a>
+  </nav>
+
+  <div class="tm-card" id="studio-overview">
     <h2 style="margin-top:0">My Creator Earnings</h2>
     <div style="display:flex;gap:20px;flex-wrap:wrap;color:#ddd">
       <div><div style="font-size:12px;color:#999">Accrued earnings</div><strong style="font-size:24px">₹{{ '%.2f'|format(earnings.total or 0) }}</strong></div>
@@ -136,7 +154,7 @@
       </script>
     </form>
     {% else %}<p class="tm-hint">You can request payout after your available balance reaches ₹{{ min_payout }}.</p>{% endif %}
-    <h3>Payout history</h3>
+    <h3 id="studio-earnings">Payout history</h3>
     {% if payouts %}
       {% for payout in payouts %}
       <div style="padding:12px 0;border-top:1px solid #333">
@@ -146,7 +164,17 @@
       </div>
       {% endfor %}
     {% else %}<p class="tm-hint">No payout requests yet.</p>{% endif %}
-    <h3>My uploads &amp; performance</h3>
+    <h3 id="studio-content">My content &amp; performance</h3>
+    <div class="cw-content-tools">
+      <input type="search" id="cwContentSearch" placeholder="Search your titles..." aria-label="Search uploaded content">
+      <select id="cwStatusFilter" aria-label="Filter uploads by status">
+        <option value="ALL">All content</option>
+        <option value="PENDING">Pending review</option>
+        <option value="APPROVED">Approved / published</option>
+        <option value="REJECTED">Rejected</option>
+      </select>
+      <span id="cwContentCount" aria-live="polite"></span>
+    </div>
     {% set summary = namespace(total=0,published=0,pending=0,views=0,likes=0) %}
     {% for entry in submissions %}
       {% set summary.total = summary.total + 1 %}
@@ -164,7 +192,7 @@
     </div>
     {% if submissions %}
       {% for item in submissions %}
-        <div class="tm-upload-item">
+        <div class="tm-upload-item cw-content-item" data-title="{{ item.title|lower|e }}" data-status="{{ item.status|upper|e }}">
           {% if item.poster_url %}<img class="tm-upload-poster" src="{{ item.poster_url }}" alt="Poster for {{ item.title }}" loading="lazy">{% else %}<div class="tm-upload-poster" style="display:grid;place-items:center;color:#777">No poster</div>{% endif %}
           <div>
           <div class="tm-upload-title">{{ item.title }}</div>
@@ -420,6 +448,34 @@
       stage.textContent=cancelled?'Upload cancelled.':'Upload failed.';
     }finally{saveBtn.disabled=false;cancelBtn.disabled=true;}
   });
+})();
+</script>
+<script>
+(() => {
+  const navLinks = Array.from(document.querySelectorAll('.cw-studio-nav a'));
+  navLinks.forEach(link => link.addEventListener('click', () => {
+    navLinks.forEach(item => item.classList.toggle('active', item === link));
+  }));
+  const search = document.getElementById('cwContentSearch');
+  const filter = document.getElementById('cwStatusFilter');
+  const items = Array.from(document.querySelectorAll('.cw-content-item'));
+  const count = document.getElementById('cwContentCount');
+  function filterContent() {
+    const query = (search.value || '').trim().toLowerCase();
+    const status = filter.value;
+    let visible = 0;
+    items.forEach(item => {
+      const matchesText = (item.dataset.title || '').includes(query);
+      const matchesStatus = status === 'ALL' || item.dataset.status === status;
+      const show = matchesText && matchesStatus;
+      item.hidden = !show;
+      if (show) visible++;
+    });
+    count.textContent = visible + ' of ' + items.length + ' titles';
+  }
+  search.addEventListener('input', filterContent);
+  filter.addEventListener('change', filterContent);
+  filterContent();
 })();
 </script>
 {% endblock %}
