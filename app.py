@@ -471,6 +471,9 @@ def validate_r2_key(key):
     if key.startswith(POSTER_PREFIX):
         return key
 
+    if key.startswith("home/"):
+        return key
+
     if key.startswith("support/"):
         return key
 
