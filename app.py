@@ -680,8 +680,27 @@ def init_db():
                 UNIQUE(customer_id, movie_id, view_date)
             )
         """)
+        cur.execute("ALTER TABLE creator_earnings ALTER COLUMN amount TYPE NUMERIC(14,4)")
         cur.execute("INSERT INTO settings(key,value) VALUES('creator_movie_rate_per_1000','50') ON CONFLICT(key) DO NOTHING")
         cur.execute("INSERT INTO settings(key,value) VALUES('creator_drama_rate_per_1000','30') ON CONFLICT(key) DO NOTHING")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_payout_requests (
+                id SERIAL PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+                payout_method TEXT NOT NULL CHECK (payout_method IN ('UPI','BANK')),
+                payout_details TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','PAID','REJECTED')),
+                admin_note TEXT,
+                transaction_ref TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP,
+                paid_at TIMESTAMP
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_creator_payout_requests_status ON creator_payout_requests(status, created_at DESC)")
+        cur.execute("INSERT INTO settings(key,value) VALUES('creator_min_payout','100') ON CONFLICT(key) DO NOTHING")
+
 
 
         # ----------------------------------------------------
@@ -3962,18 +3981,87 @@ def creator_upload():
             ORDER BY id DESC LIMIT 100
         """, (str(session.get("customer_id") or ""),))
         submissions = [dict(row) for row in cur.fetchall()]
+        customer_id = str(session.get("customer_id") or "")
         cur.execute("""
             SELECT COALESCE(SUM(amount),0) AS total,
                    COALESCE(SUM(valid_views),0) AS valid_views
             FROM creator_earnings WHERE customer_id=%s
-        """, (str(session.get("customer_id") or ""),))
+        """, (customer_id,))
         earnings = dict(cur.fetchone() or {})
+        cur.execute("""
+            SELECT COALESCE(SUM(amount),0) AS reserved
+            FROM creator_payout_requests
+            WHERE customer_id=%s AND status IN ('PENDING','APPROVED','PAID')
+        """, (customer_id,))
+        reserved = float((cur.fetchone() or {}).get("reserved") or 0)
+        total_earned = float(earnings.get("total") or 0)
+        earnings["available"] = max(0.0, round(total_earned - reserved, 2))
+        cur.execute("""
+            SELECT id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,paid_at
+            FROM creator_payout_requests WHERE customer_id=%s ORDER BY id DESC LIMIT 50
+        """, (customer_id,))
+        payouts = [dict(row) for row in cur.fetchall()]
         cur.close()
     finally:
         conn.close()
-    return render_template("creator_upload.html", submissions=submissions, earnings=earnings,
+    return render_template("creator_upload.html", submissions=submissions, earnings=earnings, payouts=payouts,
         movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
-        drama_rate=get_setting("creator_drama_rate_per_1000", "30"))
+        drama_rate=get_setting("creator_drama_rate_per_1000", "30"),
+        min_payout=get_setting("creator_min_payout", "100"))
+
+
+
+@app.route("/creator/payout-request", methods=["POST"])
+@creator_customer_required
+def creator_payout_request():
+    customer_id = str(session.get("customer_id") or "")
+    try:
+        amount = round(float(request.form.get("amount") or 0), 2)
+    except (TypeError, ValueError):
+        flash("Enter a valid payout amount.", "error")
+        return redirect(url_for("creator_upload"))
+    method = str(request.form.get("payout_method") or "UPI").upper()
+    details = str(request.form.get("payout_details") or "").strip()
+    min_payout = max(0.0, float(get_setting("creator_min_payout", "100") or 100))
+    if amount <= 0 or amount < min_payout:
+        flash("Minimum payout request is ₹%.2f." % min_payout, "error")
+        return redirect(url_for("creator_upload"))
+    if method not in {"UPI", "BANK"}:
+        flash("Choose UPI or Bank Transfer.", "error")
+        return redirect(url_for("creator_upload"))
+    if not details or len(details) > 250:
+        flash("Enter valid UPI ID or bank transfer details.", "error")
+        return redirect(url_for("creator_upload"))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        # Lock the creator's account row so concurrent requests cannot reserve the same balance.
+        cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s FOR UPDATE", (customer_id,))
+        cur.execute("SELECT COALESCE(SUM(amount),0) AS total FROM creator_earnings WHERE customer_id=%s", (customer_id,))
+        earned = float((cur.fetchone() or {}).get("total") or 0)
+        cur.execute("""
+            SELECT COALESCE(SUM(amount),0) AS reserved FROM creator_payout_requests
+            WHERE customer_id=%s AND status IN ('PENDING','APPROVED','PAID')
+        """, (customer_id,))
+        reserved = float((cur.fetchone() or {}).get("reserved") or 0)
+        available = max(0.0, round(earned - reserved, 2))
+        if amount > available:
+            conn.rollback()
+            flash("Requested amount ₹%.2f is more than your available balance ₹%.2f." % (amount, available), "error")
+            return redirect(url_for("creator_upload"))
+        cur.execute("""
+            INSERT INTO creator_payout_requests(customer_id,amount,payout_method,payout_details)
+            VALUES(%s,%s,%s,%s)
+        """, (customer_id, amount, method, details))
+        conn.commit()
+        flash("Payout request submitted. Admin will review and pay manually.", "success")
+    except Exception as exc:
+        conn.rollback()
+        print("CREATOR PAYOUT REQUEST ERROR:", repr(exc))
+        flash("Payout request could not be submitted.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("creator_upload"))
 
 
 @app.route("/api/creator/submission/save", methods=["POST"])
@@ -4029,9 +4117,11 @@ def admin_creator_studio():
         try:
             movie_rate = max(0.0, min(float(request.form.get("movie_rate", "50")), 1000000.0))
             drama_rate = max(0.0, min(float(request.form.get("drama_rate", "30")), 1000000.0))
+            min_payout = max(1.0, min(float(request.form.get("min_payout", "100")), 1000000.0))
             set_setting("creator_movie_rate_per_1000", str(movie_rate))
             set_setting("creator_drama_rate_per_1000", str(drama_rate))
-            flash("Creator earning rates saved.", "success")
+            set_setting("creator_min_payout", str(min_payout))
+            flash("Creator rates and minimum payout saved.", "success")
         except Exception:
             flash("Rates valid number mein enter karein.", "error")
         return redirect(url_for("admin_creator_studio"))
@@ -4057,12 +4147,64 @@ def admin_creator_studio():
             WHERE cs.status <> 'PENDING' ORDER BY cs.id DESC LIMIT 100
         """)
         reviewed = [dict(row) for row in cur.fetchall()]
+        cur.execute("""
+            SELECT id,customer_id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at
+            FROM creator_payout_requests ORDER BY
+              CASE status WHEN 'PENDING' THEN 0 WHEN 'APPROVED' THEN 1 ELSE 2 END,
+              id DESC LIMIT 200
+        """)
+        payout_requests = [dict(row) for row in cur.fetchall()]
         cur.close()
     finally:
         conn.close()
-    return render_template("admin_creator_studio.html", pending=pending, reviewed=reviewed,
+    return render_template("admin_creator_studio.html", pending=pending, reviewed=reviewed, payout_requests=payout_requests,
         movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
-        drama_rate=get_setting("creator_drama_rate_per_1000", "30"))
+        drama_rate=get_setting("creator_drama_rate_per_1000", "30"),
+        min_payout=get_setting("creator_min_payout", "100"))
+
+
+
+@app.route("/admin/creator-payout/<int:payout_id>/<action>", methods=["POST"])
+@admin_required
+def admin_creator_payout_action(payout_id, action):
+    if action not in {"approve", "reject", "paid"}:
+        abort(400)
+    note = str(request.form.get("admin_note") or "").strip()[:1000]
+    reference = str(request.form.get("transaction_ref") or "").strip()[:250]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM creator_payout_requests WHERE id=%s FOR UPDATE", (payout_id,))
+        payout = cur.fetchone()
+        if not payout:
+            conn.rollback()
+            abort(404)
+        status = str(payout.get("status") or "").upper()
+        if action == "approve" and status == "PENDING":
+            cur.execute("UPDATE creator_payout_requests SET status='APPROVED',admin_note=%s,reviewed_at=NOW() WHERE id=%s", (note,payout_id))
+            flash("Payout request approved. Send the money manually, then mark it paid.", "success")
+        elif action == "reject" and status in {"PENDING","APPROVED"}:
+            cur.execute("UPDATE creator_payout_requests SET status='REJECTED',admin_note=%s,reviewed_at=NOW() WHERE id=%s", (note,payout_id))
+            flash("Payout request rejected. Its balance is available again.", "success")
+        elif action == "paid" and status == "APPROVED":
+            if not reference:
+                conn.rollback()
+                flash("Enter UPI/bank transaction reference before marking paid.", "error")
+                return redirect(url_for("admin_creator_studio"))
+            cur.execute("UPDATE creator_payout_requests SET status='PAID',transaction_ref=%s,admin_note=%s,paid_at=NOW() WHERE id=%s", (reference,note,payout_id))
+            flash("Payout marked as paid and transaction reference saved.", "success")
+        else:
+            conn.rollback()
+            flash("Invalid payout status transition.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        print("ADMIN CREATOR PAYOUT ERROR:", repr(exc))
+        flash("Could not update payout. Check server logs.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
 
 
 @app.route("/admin/creator-submission/<int:submission_id>/<action>", methods=["POST"])
