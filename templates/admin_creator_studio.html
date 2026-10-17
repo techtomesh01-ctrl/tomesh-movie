@@ -61,7 +61,7 @@
       <tbody>
       {% for payout in payout_requests %}
       <tr style="border-top:1px solid #333;vertical-align:top">
-        <td style="padding:12px 5px">#{{ payout.id }}<br>{{ payout.customer_id }}<br><span class="meta">Requested: {{ payout.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% if payout.bank_verified_at %}<br><span class="meta">Bank verified: {{ payout.bank_verified_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}{% if payout.reviewed_at %}<br><span class="meta">Reviewed: {{ payout.reviewed_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}{% if payout.paid_at %}<br><span class="meta">Paid: {{ payout.paid_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}</td>
+        <td style="padding:12px 5px">#{{ payout.id }}<br>{{ payout.customer_id }}<br><span class="meta">{{ payout.creator_name or 'Name not provided' }}<br>{{ payout.creator_email or 'Email unavailable' }}<br>{{ payout.creator_mobile or 'Mobile not provided' }}<br>Requested: {{ payout.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% if payout.bank_verified_at %}<br><span class="meta">Bank verified: {{ payout.bank_verified_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}{% if payout.reviewed_at %}<br><span class="meta">Reviewed: {{ payout.reviewed_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}{% if payout.paid_at %}<br><span class="meta">Paid: {{ payout.paid_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</span>{% endif %}</td>
         <td style="padding:12px 5px">₹{{ '%.2f'|format(payout.amount) }}</td>
         <td style="padding:12px 5px">
           {{ payout.payout_method }}
