@@ -3809,7 +3809,7 @@ def movie_page(movie_id):
     # Admin Preview Mode: verified admin sessions can inspect any published
     # movie without changing or granting customer payment access.
     if session.get("admin_logged_in"):
-        access = {"watch": True, "download": True, "premium": True, "share": True}
+        access = {"watch": True, "download": False, "premium": False, "share": False}
     else:
         access = access_for_movie(movie_id)
 
