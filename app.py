@@ -3893,6 +3893,165 @@ def movie_page(movie_id):
 
 
 
+
+# ============================================================
+# CREATOR UPLOADS, MODERATION AND VIEW-BASED EARNINGS
+# ============================================================
+
+@app.route("/creator/upload", methods=["GET", "POST"])
+@customer_login_required
+def creator_upload():
+    if request.method == "POST":
+        flash("Upload form submit nahi hua. Please form ko dobara submit karein.", "error")
+        return redirect(url_for("creator_upload"))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id,title,content_type,status,admin_note,created_at,movie_id
+            FROM creator_submissions WHERE customer_id=%s
+            ORDER BY id DESC LIMIT 100
+        """, (str(session.get("customer_id") or ""),))
+        submissions = [dict(row) for row in cur.fetchall()]
+        cur.execute("""
+            SELECT COALESCE(SUM(amount),0) AS total,
+                   COALESCE(SUM(valid_views),0) AS valid_views
+            FROM creator_earnings WHERE customer_id=%s
+        """, (str(session.get("customer_id") or ""),))
+        earnings = dict(cur.fetchone() or {})
+        cur.close()
+    finally:
+        conn.close()
+    return render_template("creator_upload.html", submissions=submissions, earnings=earnings)
+
+
+@app.route("/api/creator/submission/save", methods=["POST"])
+@customer_login_required
+def api_creator_submission_save():
+    data = request.get_json(silent=True) or {}
+    title = str(data.get("title") or "").strip()
+    category = str(data.get("category") or "").strip()
+    description = str(data.get("description") or "").strip()
+    content_type = str(data.get("content_type") or "MOVIE").strip().upper()
+    video_key = str(data.get("video_key") or "").strip()
+    poster_key = str(data.get("poster_key") or "").strip()
+    if not title:
+        return json_error("Title required.")
+    if content_type not in {"MOVIE", "DRAMA"}:
+        return json_error("Choose Movies or Dramas.")
+    if not video_key.startswith("videos/creator-pending/"):
+        return json_error("Invalid creator video key.")
+    if poster_key and not poster_key.startswith("posters/creator-pending/"):
+        return json_error("Invalid creator poster key.")
+    try:
+        video_head = r2_head(validate_r2_key(video_key))
+        if int(video_head.get("ContentLength") or 0) <= 0:
+            return json_error("Uploaded video is empty.")
+        if int(video_head.get("ContentLength") or 0) > MAX_VIDEO_SIZE:
+            return json_error("Video exceeds 4 GB.")
+        if poster_key and int(r2_head(validate_r2_key(poster_key)).get("ContentLength") or 0) <= 0:
+            return json_error("Poster is empty.")
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO creator_submissions
+                (customer_id,title,content_type,category,description,poster,video,status)
+                VALUES(%s,%s,%s,%s,%s,%s,'PENDING')
+                RETURNING id
+            """, (str(session.get("customer_id") or ""),title,content_type,category,description,poster_key or None,video_key))
+            submission_id = cur.fetchone()[0]
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+        return json_ok(message="Upload submitted for Admin approval.", submission_id=submission_id)
+    except Exception as exc:
+        print("CREATOR SUBMISSION SAVE ERROR:", repr(exc))
+        return json_error("Submission could not be saved.", 500)
+
+
+@app.route("/admin/creator-studio", methods=["GET", "POST"])
+@admin_required
+def admin_creator_studio():
+    if request.method == "POST":
+        try:
+            movie_rate = max(0.0, min(float(request.form.get("movie_rate", "50")), 1000000.0))
+            drama_rate = max(0.0, min(float(request.form.get("drama_rate", "30")), 1000000.0))
+            set_setting("creator_movie_rate_per_1000", str(movie_rate))
+            set_setting("creator_drama_rate_per_1000", str(drama_rate))
+            flash("Creator earning rates saved.", "success")
+        except Exception:
+            flash("Rates valid number mein enter karein.", "error")
+        return redirect(url_for("admin_creator_studio"))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id,customer_id,title,content_type,category,description,poster,video,status,admin_note,created_at
+            FROM creator_submissions WHERE status='PENDING' ORDER BY created_at ASC
+        """)
+        pending = [dict(row) for row in cur.fetchall()]
+        cur.execute("""
+            SELECT cs.id,cs.customer_id,cs.title,cs.content_type,cs.status,cs.admin_note,cs.created_at,
+                   cs.reviewed_at,cs.movie_id,COALESCE(m.views,0) AS views
+            FROM creator_submissions cs LEFT JOIN movies m ON m.id=cs.movie_id
+            WHERE cs.status <> 'PENDING' ORDER BY cs.id DESC LIMIT 100
+        """)
+        reviewed = [dict(row) for row in cur.fetchall()]
+        cur.close()
+    finally:
+        conn.close()
+    return render_template("admin_creator_studio.html", pending=pending, reviewed=reviewed,
+        movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
+        drama_rate=get_setting("creator_drama_rate_per_1000", "30"))
+
+
+@app.route("/admin/creator-submission/<int:submission_id>/<action>", methods=["POST"])
+@admin_required
+def admin_review_creator_submission(submission_id, action):
+    if action not in {"approve", "reject"}:
+        abort(400)
+    note = str(request.form.get("admin_note") or "").strip()[:1000]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM creator_submissions WHERE id=%s FOR UPDATE", (submission_id,))
+        sub = cur.fetchone()
+        if not sub:
+            conn.rollback()
+            abort(404)
+        if str(sub.get("status") or "").upper() != "PENDING":
+            conn.rollback()
+            flash("This submission was already reviewed.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        if action == "approve":
+            cur.execute("""
+                INSERT INTO movies(title,category,description,poster,video,content_type,creator_customer_id)
+                VALUES(%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            """, (sub["title"],sub.get("category"),sub.get("description"),sub.get("poster"),sub["video"],sub["content_type"],sub["customer_id"]))
+            movie_id = cur.fetchone()["id"]
+            cur.execute("""
+                UPDATE creator_submissions SET status='APPROVED',admin_note=%s,movie_id=%s,reviewed_at=NOW()
+                WHERE id=%s
+            """, (note,movie_id,submission_id))
+            flash("Approved. Content is now listed in its selected section.", "success")
+        else:
+            cur.execute("""
+                UPDATE creator_submissions SET status='REJECTED',admin_note=%s,reviewed_at=NOW()
+                WHERE id=%s
+            """, (note,submission_id))
+            flash("Creator submission rejected.", "success")
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        print("CREATOR REVIEW ERROR:", repr(exc))
+        flash("Could not review submission. Check server logs.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
+
+
 # ============================================================
 # DRAMAS CATALOGUE (separate from Movies)
 # ============================================================
