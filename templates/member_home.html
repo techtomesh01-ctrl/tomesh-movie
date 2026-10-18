@@ -1013,6 +1013,118 @@ body{
     opacity:1;
     transform:translateX(-50%) translateY(0);
 }
+
+/* Premium member header refinement */
+.tm-member-nav{
+    height:72px;
+    padding:0 clamp(16px,3.2vw,52px);
+    background:rgba(7,7,8,.94);
+    border-bottom:1px solid rgba(255,255,255,.09);
+    box-shadow:0 10px 35px rgba(0,0,0,.24);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+}
+.tm-nav-left{gap:clamp(20px,2.4vw,38px);min-width:0}
+.tm-logo{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:20px;
+    letter-spacing:1.2px;
+    line-height:1;
+}
+.tm-logo span{color:#ff2633}
+.tm-nav-links{gap:clamp(12px,1.5vw,23px)}
+.tm-nav-links a{
+    color:#c7c7cb;
+    font-size:13px;
+    font-weight:650;
+    white-space:nowrap;
+    transition:color .18s ease;
+}
+.tm-nav-links a:hover{color:#fff}
+.tm-nav-links .tm-refer-link{
+    color:#f2c96d!important;
+    font-size:12px;
+}
+.tm-nav-right{gap:10px}
+.tm-search{
+    width:clamp(150px,17vw,220px);
+    height:40px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.13);
+    background:rgba(255,255,255,.055);
+    transition:border-color .2s,background .2s;
+}
+.tm-search:focus{
+    border-color:rgba(229,9,20,.75);
+    background:rgba(255,255,255,.08);
+}
+.tm-profile-link{
+    flex:0 0 42px;
+    width:42px;height:42px;
+    border-radius:13px;
+    border:1px solid rgba(255,255,255,.14);
+    background:#18181b;
+    box-shadow:none;
+}
+.tm-profile-link:hover{transform:none;border-color:#e50914;background:#211214}
+.tm-profile-link .tm-avatar{width:32px;height:32px;border-radius:9px}
+.tm-avatar-img{display:block}
+.tm-logout{
+    padding:10px 14px;
+    border:1px solid rgba(255,255,255,.13);
+    border-radius:11px;
+    background:rgba(255,255,255,.045);
+    font-size:12px;
+    letter-spacing:.1px;
+}
+.tm-logout:hover{background:#e50914;color:#fff;border-color:#e50914}
+.tm-mobile-member-links{display:none}
+@media(max-width:1150px) and (min-width:651px){
+    .tm-member-nav{padding:0 18px}
+    .tm-nav-left{gap:18px}
+    .tm-nav-links{gap:12px}
+    .tm-nav-links a{font-size:12px}
+    .tm-search{width:145px}
+}
+@media(max-width:650px){
+    .tm-member-nav{
+        height:108px;
+        padding:0 14px;
+        background:rgba(5,5,6,.97);
+        border-bottom:1px solid rgba(255,255,255,.1);
+        box-shadow:0 8px 28px rgba(0,0,0,.3);
+    }
+    .tm-nav-left{height:60px}
+    .tm-logo{font-size:17px;letter-spacing:.7px}
+    .tm-nav-right{right:14px;top:12px;gap:7px}
+    .tm-profile-link{width:36px;height:36px;flex-basis:36px;border-radius:11px}
+    .tm-profile-link .tm-avatar{width:27px;height:27px;border-radius:8px}
+    .tm-logout{padding:8px 10px;border-radius:9px;font-size:11px}
+    .tm-mobile-member-links{
+        top:60px;
+        height:48px;
+        gap:0;
+        justify-content:flex-start;
+        padding:0 10px;
+        background:rgba(10,10,11,.99);
+        border-top:1px solid rgba(255,255,255,.055);
+        border-bottom:0;
+    }
+    .tm-mobile-member-links a{
+        min-width:64px;
+        padding:6px 9px;
+        color:#bdbdc2!important;
+        font-size:10px;
+        font-weight:700;
+        gap:3px;
+    }
+    .tm-mobile-member-links a:active,
+    .tm-mobile-member-links a:hover{color:#fff!important}
+    .tm-mobile-member-links .tm-refer-link{color:#f2c96d!important}
+}
+
 </style>
 
 <!-- ================= NAVBAR ================= -->
