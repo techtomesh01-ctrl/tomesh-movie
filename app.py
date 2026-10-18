@@ -9160,6 +9160,10 @@ except Exception as exc:
     )
 
 
+# Register the owner-only, read-only operations monitor after all app routes exist.
+from admin_operations import register_admin_operations
+register_admin_operations(app)
+
 # ============================================================
 # RUN
 # ============================================================
