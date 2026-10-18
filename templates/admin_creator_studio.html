@@ -122,6 +122,20 @@
         <div style="display:flex;gap:7px;flex-wrap:wrap;margin:10px 0"><span class="tag">{{ item.content_type }}</span><span class="tag">{{ item.status }}</span><span class="tag">👁 {{ item.views or 0 }} views</span><span class="tag">♥ {{ item.likes or 0 }} likes</span></div>
         <h3 style="margin:8px 0">{{ item.title }}</h3>
         <div class="meta">Submission #{{ item.id }} · Movie ID: {{ item.movie_id or 'Not published' }}<br>Creator ID: {{ item.customer_id }}<br>{{ item.creator_name or 'Name not provided' }} · {{ item.creator_email or 'Email unavailable' }} · {{ item.creator_mobile or 'Mobile not provided' }}<br>Submitted: {{ item.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% if item.reviewed_at %}<br>Reviewed: {{ item.reviewed_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% endif %}{% if item.reviewed_by %}<br>Reviewed by: {{ item.reviewed_by }}{% endif %}</div>
+        {% if audit_by_submission.get(item.id) %}
+        <details class="cs-card" style="margin:10px 0;padding:12px">
+          <summary style="cursor:pointer;font-weight:800">Decision audit history ({{ audit_by_submission.get(item.id)|length }} event(s))</summary>
+          {% for audit in audit_by_submission.get(item.id, []) %}
+          <div style="border-top:1px solid #333;padding:10px 0;margin-top:8px">
+            <div><strong>{{ audit.action }}</strong> · {{ audit.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}</div>
+            <div class="meta">Reviewer: {{ audit.actor_id or 'Unknown' }} · Rights check: {{ 'Recorded' if audit.rights_verified else 'Not recorded' }} · Quality check: {{ 'Recorded' if audit.quality_checked else 'Not recorded' }}</div>
+            {% if audit.rights_evidence %}<div class="meta" style="overflow-wrap:anywhere">Evidence/reference: {{ audit.rights_evidence }}</div>{% endif %}
+            {% if audit.note %}<div class="meta">Note: {{ audit.note }}</div>{% endif %}
+          </div>
+          {% endfor %}
+          <p class="meta">Audit history records actions and reviewer-entered details; it does not independently authenticate licensing documents.</p>
+        </details>
+        {% endif %}
         {% if item.status == 'APPROVED' %}
         <div class="cs-card" style="margin:10px 0;padding:12px;border-color:#365344">
           <strong>Recorded publishing checks</strong>
