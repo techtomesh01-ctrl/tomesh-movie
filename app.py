@@ -4222,6 +4222,15 @@ def admin_creator_studio():
                 item["video_url"] = None
                 item["poster_url"] = None
         cur.execute("""
+            SELECT submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence,created_at
+            FROM creator_submission_audit
+            ORDER BY created_at DESC
+        """)
+        audit_by_submission = {}
+        for audit_row in cur.fetchall():
+            audit = dict(audit_row)
+            audit_by_submission.setdefault(audit["submission_id"], []).append(audit)
+        cur.execute("""
             SELECT p.id,p.customer_id,p.amount,p.payout_method,p.payout_details,p.status,p.admin_note,p.transaction_ref,p.created_at,p.reviewed_at,p.paid_at,
                    p.bank_account_holder,p.bank_name,p.bank_account_number,p.bank_ifsc,p.bank_branch,p.bank_verified,p.bank_verified_at,
                    cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile
@@ -4234,6 +4243,7 @@ def admin_creator_studio():
     finally:
         conn.close()
     return render_template("admin_creator_studio.html", pending=pending, reviewed=reviewed, payout_requests=payout_requests,
+        audit_by_submission=audit_by_submission,
         movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
         drama_rate=get_setting("creator_drama_rate_per_1000", "30"),
         min_payout=get_setting("creator_min_payout", "100"))
@@ -4334,24 +4344,24 @@ def admin_review_creator_submission(submission_id, action):
                 SET status='APPROVED',admin_note=%s,movie_id=%s,reviewed_at=NOW(),
                     rights_verified=TRUE,quality_checked=TRUE,rights_evidence=%s,reviewed_by=%s
                 WHERE id=%s
-            """, (note,movie_id,rights_evidence,str(session.get("admin_user") or session.get("admin_username") or "admin"),submission_id))
+            """, (note,movie_id,rights_evidence,str(session.get("admin_user") or ADMIN_USER or "admin"),submission_id))
             cur.execute("""
                 INSERT INTO creator_submission_audit
                     (submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence)
                 VALUES(%s,%s,'APPROVED',%s,TRUE,TRUE,%s)
-            """, (submission_id,str(session.get("admin_user") or session.get("admin_username") or "admin"),note,rights_evidence))
+            """, (submission_id,str(session.get("admin_user") or ADMIN_USER or "admin"),note,rights_evidence))
             flash("Approved after recording rights and quality checks. Content is now listed in its selected section.", "success")
         else:
             cur.execute("""
                 UPDATE creator_submissions SET status='REJECTED',admin_note=%s,reviewed_at=NOW(),
                     reviewed_by=%s
                 WHERE id=%s
-            """, (note,str(session.get("admin_user") or session.get("admin_username") or "admin"),submission_id))
+            """, (note,str(session.get("admin_user") or ADMIN_USER or "admin"),submission_id))
             cur.execute("""
                 INSERT INTO creator_submission_audit
                     (submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence)
                 VALUES(%s,%s,'REJECTED',%s,FALSE,FALSE,NULL)
-            """, (submission_id,str(session.get("admin_user") or session.get("admin_username") or "admin"),note))
+            """, (submission_id,str(session.get("admin_user") or ADMIN_USER or "admin"),note))
             flash("Creator submission rejected and decision recorded.", "success")
         conn.commit()
     except Exception as exc:
@@ -4923,6 +4933,7 @@ def admin_login():
                 _ADMIN_LOGIN_GUARD.pop(client_key, None)
             session.clear()
             session["admin_logged_in"] = True
+            session["admin_user"] = username
             return redirect(url_for("admin"))
 
         with _ADMIN_LOGIN_GUARD_LOCK:
