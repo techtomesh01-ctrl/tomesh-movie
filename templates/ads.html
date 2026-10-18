@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}CINEMA WORLD | Ads Settings{% endblock %}
+{% block content %}
+<style>
+.cw-ads{min-height:100vh;background:#050505;color:#fff;padding:34px 16px 70px;font-family:Arial,Helvetica,sans-serif}
+.cw-ads-wrap{max-width:980px;margin:0 auto}
+.cw-ads-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+.cw-ads-title{font-size:clamp(24px,4vw,34px);font-weight:900;margin:0}
+.cw-ads-title span{color:#e50914}
+.cw-ads-link{display:inline-block;padding:10px 14px;border:1px solid #34343b;border-radius:10px;color:#fff;text-decoration:none;font-size:13px;font-weight:700}
+.cw-ads-card{background:#101014;border:1px solid #292930;border-radius:16px;padding:clamp(16px,3vw,26px);margin-bottom:16px}
+.cw-ads-card h2{font-size:17px;margin:0 0 8px}
+.cw-ads-card p{color:#aaaab4;font-size:13px;line-height:1.6;margin:0 0 12px}
+.cw-ads-card label{display:block;font-size:13px;font-weight:800;margin:14px 0 8px}
+.cw-ads-card textarea{display:block;width:100%;min-height:120px;resize:vertical;background:#08080b;color:#fff;border:1px solid #383840;border-radius:10px;padding:12px;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+.cw-ads-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.cw-ads-save{background:#e50914;color:#fff;border:0;border-radius:10px;padding:13px 18px;font-weight:900;cursor:pointer}
+.cw-ads-note{color:#aaaab4;font-size:12px;line-height:1.6;margin-top:14px}
+</style>
+<section class="cw-ads">
+  <div class="cw-ads-wrap">
+    <header class="cw-ads-head">
+      <h1 class="cw-ads-title">CINEMA <span>WORLD</span> · Ads Settings</h1>
+      <a class="cw-ads-link" href="{{ url_for('admin') }}">← Back to Admin</a>
+    </header>
+    <form method="post" action="{{ url_for('admin_ads') }}">
+      <section class="cw-ads-card">
+        <h2>Top placement</h2>
+        <p>Ad code displayed in the top placement. Paste only code from a provider you trust.</p>
+        <label for="ad_top">Top ad code</label>
+        <textarea id="ad_top" name="ad_top" spellcheck="false">{{ ads.get('top', '') }}</textarea>
+      </section>
+      <section class="cw-ads-card">
+        <h2>Player placement</h2>
+        <p>Ad code intended for the video player placement.</p>
+        <label for="ad_player">Player ad code</label>
+        <textarea id="ad_player" name="ad_player" spellcheck="false">{{ ads.get('player', '') }}</textarea>
+      </section>
+      <section class="cw-ads-card">
+        <h2>Bottom placement</h2>
+        <p>Ad code displayed in the bottom placement.</p>
+        <label for="ad_bottom">Bottom ad code</label>
+        <textarea id="ad_bottom" name="ad_bottom" spellcheck="false">{{ ads.get('bottom', '') }}</textarea>
+      </section>
+      <div class="cw-ads-actions">
+        <button class="cw-ads-save" type="submit">Save Ads Settings</button>
+        <a class="cw-ads-link" href="{{ url_for('admin') }}">Cancel</a>
+      </div>
+      <p class="cw-ads-note">For safety, add ad code only from your verified advertising provider. Saving these settings updates the existing CINEMA WORLD ad configuration.</p>
+    </form>
+  </div>
+</section>
+{% endblock %}
