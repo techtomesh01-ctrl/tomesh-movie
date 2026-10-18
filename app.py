@@ -4085,6 +4085,7 @@ def movie_page(movie_id):
         movie=movie,
         ads=get_ads(),
         access=access,
+        view_events_admin=view_events_admin,
         comments=comments,
         comment_csrf=comment_csrf,
         rating_summary=rating_summary,
@@ -6565,7 +6566,7 @@ def admin():
     allowed_sections = {
         "dashboard","live-monitor","movies","users","payments","subscriptions","watch","home-photos",
         "analytics","live","ads","adsense","notifications","reports","r2","health",
-        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","website-editor","help","followers"
+        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","website-editor","help","followers","engagement"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -6622,6 +6623,7 @@ def admin():
         payment_summary = {"total": 0, "successful": 0, "pending": 0, "failed": 0, "successful_amount": 0}
         subscriptions = []
         access = []
+        view_events_admin = []
         top_movies = []
         top_rated_movies = []
         live_events = []
@@ -6733,6 +6735,17 @@ def admin():
                 ORDER BY ca.id DESC LIMIT 200
             """)
             access = cur.fetchall()
+            cur.execute("""
+                SELECT v.id, v.movie_id, m.title AS movie_title, v.customer_id,
+                       COALESCE(u.full_name, u.email, v.customer_id) AS customer_name,
+                       u.email, u.mobile, v.viewed_at
+                FROM movie_view_events v
+                LEFT JOIN movies m ON m.id=v.movie_id
+                LEFT JOIN customer_users u ON u.customer_id=v.customer_id
+                ORDER BY v.viewed_at DESC, v.id DESC
+                LIMIT 500
+            """)
+            view_events_admin = cur.fetchall()
 
         admin_action_audit = []
         if section == "security":
