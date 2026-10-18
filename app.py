@@ -3728,7 +3728,7 @@ def public_information_page():
 
 @app.route("/robots.txt")
 def robots_txt():
-    body = "User-agent: *\\nAllow: /\\nDisallow: /admin\\nDisallow: /login\\nDisallow: /logout\\nSitemap: https://tomesh-movie.onrender.com/sitemap.xml\\n"
+    body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /login\nDisallow: /logout\nSitemap: https://tomesh-movie.onrender.com/sitemap.xml\n"
     return Response(body, mimetype="text/plain")
 
 
