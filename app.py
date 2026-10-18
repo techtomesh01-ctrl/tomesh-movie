@@ -6386,6 +6386,44 @@ def admin_website_control():
     return redirect(url_for("admin", section="website-control", saved=action))
 
 
+@app.route("/admin/website-editor", methods=["POST"])
+@admin_required
+def admin_website_editor():
+    # Safe content editor: edits approved text fields only, never executable code.
+    fields = {
+        "hero_title_en": ("Hero heading (English)", 120),
+        "hero_title_hi": ("Hero heading (Hindi)", 180),
+        "hero_desc_en": ("Hero description (English)", 400),
+        "hero_desc_hi": ("Hero description (Hindi)", 500),
+        "hero_price_en": ("Pricing line (English)", 180),
+        "hero_price_hi": ("Pricing line (Hindi)", 220),
+        "hero_ready_en": ("Call-to-action prompt (English)", 220),
+        "hero_ready_hi": ("Call-to-action prompt (Hindi)", 260),
+        "hero_button": ("Main button label", 60),
+        "trending_title": ("Trending section title", 100),
+        "trending_subtitle": ("Trending section subtitle", 160),
+        "request_title": ("Movie request title", 120),
+        "request_desc": ("Movie request description", 400),
+        "footer_question": ("Footer contact line", 240),
+    }
+    for key, (label, limit) in fields.items():
+        value = str(request.form.get(key, "")).strip()
+        if not value:
+            flash(label + " cannot be empty; no changes saved.", "error")
+            return redirect(url_for("admin", section="website-editor"))
+        if len(value) > limit:
+            flash(label + " is too long (maximum " + str(limit) + " characters).", "error")
+            return redirect(url_for("admin", section="website-editor"))
+    try:
+        for key in fields:
+            set_setting("site_" + key, str(request.form.get(key, "")).strip())
+        flash("Website content saved. Refresh the homepage to see the changes.", "success")
+    except Exception as exc:
+        print("ADMIN WEBSITE EDITOR ERROR:", repr(exc))
+        flash("Website content could not be saved. Check database connection.", "error")
+    return redirect(url_for("admin", section="website-editor"))
+
+
 @app.route("/admin/errors", methods=["GET", "POST"])
 @admin_required
 def admin_errors():
@@ -6442,7 +6480,7 @@ def admin():
     allowed_sections = {
         "dashboard","live-monitor","movies","users","payments","subscriptions","watch","home-photos",
         "analytics","live","ads","adsense","notifications","reports","r2","health",
-        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","help","followers"
+        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","website-editor","help","followers"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -6856,6 +6894,22 @@ def admin():
         pending_withdrawals_total=pending_withdrawals_total,
         website_enabled=(str(get_setting("website_enabled", "1")).strip().lower() not in {"0", "false", "off", "no"}),
         home_hero_image_url=home_hero_image_url,
+        site_editor_values={
+            "hero_title_en": get_setting("site_hero_title_en", "Unlimited movies, shows, and more"),
+            "hero_title_hi": get_setting("site_hero_title_hi", "अनलिमिटेड मूवीज़, शो और बहुत कुछ"),
+            "hero_desc_en": get_setting("site_hero_desc_en", "Watch movies and entertainment in one cinematic place. Discover stories you'll want to watch again and again."),
+            "hero_desc_hi": get_setting("site_hero_desc_hi", "एक सिनेमैटिक जगह पर मूवीज़ और एंटरटेनमेंट देखें। ऐसी कहानियाँ खोजें जिन्हें आप बार-बार देखना चाहेंगे।"),
+            "hero_price_en": get_setting("site_hero_price_en", "Starts at ₹1. Watch from ₹1. Cancel at any time."),
+            "hero_price_hi": get_setting("site_hero_price_hi", "₹1 से शुरू। कभी भी कैंसल करें।"),
+            "hero_ready_en": get_setting("site_hero_ready_en", "Ready to watch? Enter your email to create or restart your membership."),
+            "hero_ready_hi": get_setting("site_hero_ready_hi", "देखने के लिए तैयार हैं? अपनी membership शुरू या फिर से शुरू करने के लिए ईमेल डालें।"),
+            "hero_button": get_setting("site_hero_button", "Get Started →"),
+            "trending_title": get_setting("site_trending_title", "Trending Now"),
+            "trending_subtitle": get_setting("site_trending_subtitle", "Popular on CINEMA WORLD"),
+            "request_title": get_setting("site_request_title", "Request a Movie 🎬"),
+            "request_desc": get_setting("site_request_desc", "Jo movie CINEMA WORLD par dekhna chahte ho, uska naam yahan likho. Hum popular requests review karenge."),
+            "footer_question": get_setting("site_footer_question", "Questions? Contact us through CINEMA WORLD support."),
+        },
         pending_creator_uploads=pending_creator_uploads,
         admin_action_audit=admin_action_audit,
     )
