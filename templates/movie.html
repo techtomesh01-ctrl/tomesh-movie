@@ -2068,4 +2068,155 @@
         <div class="tm-comment-login">Login karke movie ko rate kar sakte ho.</div>
         {% endif %}
 
+
+
+<script>
+/* =========================================================
+   CINEMA WORLD PRO VIDEO PLAYER
+========================================================= */
+(function(){
+    const player=document.getElementById("tmPlayer");
+    const video=document.getElementById("tmVideo");
+    if(!player||!video) return;
+
+    const $=id=>document.getElementById(id);
+    const centerPlay=$("tmCenterPlay"), playBtn=$("tmPlay"), back10=$("tmBack10"), forward10=$("tmForward10");
+    const muteBtn=$("tmMute"), mobileMuteBtn=$("tmMobileMute"), volume=$("tmVolume"), fullscreenBtn=$("tmFullscreen");
+    const pipBtn=$("tmPip"), time=$("tmTime"), progressWrap=$("tmProgressWrap"), progressValue=$("tmProgressValue");
+    const progressDot=$("tmProgressDot"), buffered=$("tmBuffered"), settings=$("tmSettings"), settingsBtn=$("tmSettingsBtn");
+    const errorLayer=$("tmPlayerError"), errorText=$("tmPlayerErrorText"), retryBtn=$("tmRetry"), status=$("tmVideoStatus");
+    let hideTimer=null, loadTimer=null;
+
+    function formatTime(sec){
+        if(!Number.isFinite(sec)||sec<0) return "0:00";
+        sec=Math.floor(sec); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+        return h>0 ? h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0") : m+":"+String(s).padStart(2,"0");
+    }
+    function setStatus(msg,err=false){ if(!status) return; status.textContent=msg||""; status.style.display=msg?"block":"none"; status.classList.toggle("tm-error",!!err); }
+    function setBuffering(on){ player.classList.toggle("buffering",on); if(on) player.classList.remove("ready"); else player.classList.add("ready"); }
+    function updateTime(){ if(time) time.textContent=formatTime(video.currentTime)+" / "+formatTime(video.duration); }
+    function updateProgress(){
+        if(!Number.isFinite(video.duration)||video.duration<=0) return;
+        const pct=Math.max(0,Math.min(100,(video.currentTime/video.duration)*100));
+        progressValue.style.width=pct+"%"; progressDot.style.left=pct+"%";
+    }
+    function updateBuffered(){
+        if(!buffered) return;
+        try{
+            if(video.buffered.length&&Number.isFinite(video.duration)&&video.duration>0){
+                const end=video.buffered.end(video.buffered.length-1);
+                buffered.style.width=Math.min(100,(end/video.duration)*100)+"%";
+            } else buffered.style.width="0%";
+        }catch(e){buffered.style.width="0%";}
+    }
+    function updatePlayIcon(){
+        const icon=video.paused?"▶":"❚❚";
+        if(playBtn) playBtn.textContent=icon;
+        if(centerPlay){ centerPlay.textContent="▶"; centerPlay.style.opacity=video.paused?"1":"0"; }
+    }
+    function showControls(){
+        player.classList.add("active"); clearTimeout(hideTimer);
+        if(!video.paused){ hideTimer=setTimeout(()=>{ if(!settings.classList.contains("open")) player.classList.remove("active"); },3000); }
+    }
+    function togglePlay(){
+        if(video.paused){
+            video.play().catch(()=>{ setError("Browser ne video play ko block kar diya."); });
+        }else video.pause();
+        showControls();
+    }
+    function toggleMute(){ video.muted=!video.muted; updateVolumeIcon(); showControls(); }
+    function updateVolumeIcon(){
+        const icon=video.muted||video.volume===0?"🔇":(video.volume<.5?"🔉":"🔊");
+        if(muteBtn) muteBtn.textContent=icon; if(mobileMuteBtn) mobileMuteBtn.textContent=icon;
+    }
+    function setVolume(v){ video.volume=Number(v); video.muted=video.volume===0; updateVolumeIcon(); showControls(); }
+    function seek(delta){ video.currentTime=Math.max(0,Math.min(video.duration||Infinity,video.currentTime+delta)); showControls(); }
+    function seekAt(clientX){
+        if(!Number.isFinite(video.duration)||video.duration<=0) return;
+        const r=progressWrap.getBoundingClientRect(); const ratio=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+        video.currentTime=ratio*video.duration;
+    }
+    function toggleFullscreen(){
+        if(document.fullscreenElement){ document.exitFullscreen().catch(()=>{}); return; }
+        if(player.requestFullscreen) player.requestFullscreen().catch(()=>{});
+        else if(player.webkitRequestFullscreen) player.webkitRequestFullscreen();
+    }
+    function setError(msg){
+        setBuffering(false); player.classList.add("error-state");
+        if(errorText) errorText.textContent=msg||"Video load nahi ho paya.";
+        setStatus("Video error — Retry दबाएँ",true);
+    }
+    function clearError(){ player.classList.remove("error-state"); setStatus(""); }
+    function retry(){
+        clearError(); setBuffering(true);
+        video.load();
+        video.play().catch(()=>{});
+    }
+
+    centerPlay.addEventListener("click",togglePlay);
+    playBtn.addEventListener("click",togglePlay);
+    video.addEventListener("click",togglePlay);
+    back10.addEventListener("click",()=>seek(-10));
+    forward10.addEventListener("click",()=>seek(10));
+    muteBtn.addEventListener("click",toggleMute);
+    mobileMuteBtn.addEventListener("click",toggleMute);
+    volume.addEventListener("input",()=>setVolume(volume.value));
+    fullscreenBtn.addEventListener("click",()=>{toggleFullscreen();showControls();});
+    retryBtn.addEventListener("click",retry);
+    progressWrap.addEventListener("click",e=>{seekAt(e.clientX);showControls();});
+    progressWrap.addEventListener("pointerdown",e=>{seekAt(e.clientX);showControls();});
+
+    if(pipBtn){
+        pipBtn.addEventListener("click",async()=>{
+            try{
+                if(document.pictureInPictureElement) await document.exitPictureInPicture();
+                else if(document.pictureInPictureEnabled) await video.requestPictureInPicture();
+            }catch(e){}
+            showControls();
+        });
+    }
+    settingsBtn.addEventListener("click",e=>{e.stopPropagation();settings.classList.toggle("open");showControls();});
+    document.addEventListener("click",e=>{if(!settings.contains(e.target))settings.classList.remove("open");});
+    document.querySelectorAll(".tm-speed-btn").forEach(btn=>btn.addEventListener("click",()=>{
+        video.playbackRate=Number(btn.dataset.speed);
+        document.querySelectorAll(".tm-speed-btn").forEach(x=>x.classList.remove("active"));
+        btn.classList.add("active"); settings.classList.remove("open"); showControls();
+    }));
+
+    ["mousemove","touchstart","pointerdown"].forEach(ev=>player.addEventListener(ev,showControls,{passive:true}));
+    player.addEventListener("mouseleave",()=>{if(!video.paused){clearTimeout(hideTimer);hideTimer=setTimeout(()=>{if(!settings.classList.contains("open"))player.classList.remove("active");},1200);}});
+
+    video.addEventListener("loadstart",()=>{clearTimeout(loadTimer);clearError();setBuffering(true);setStatus("Video loading...");loadTimer=setTimeout(()=>{if(video.readyState<3)setStatus("Video load hone me thoda time lag raha hai...");},5000);});
+    video.addEventListener("loadedmetadata",()=>{clearTimeout(loadTimer);setBuffering(false);updateTime();setStatus("");});
+    video.addEventListener("loadeddata",()=>{setBuffering(false);setStatus("");});
+    video.addEventListener("canplay",()=>{setBuffering(false);setStatus("");});
+    video.addEventListener("playing",()=>{setBuffering(false);clearError();updatePlayIcon();showControls();});
+    video.addEventListener("pause",()=>{updatePlayIcon();showControls();});
+    video.addEventListener("timeupdate",()=>{updateTime();updateProgress();});
+    video.addEventListener("progress",updateBuffered);
+    video.addEventListener("waiting",()=>{setBuffering(true);setStatus("Buffering...");});
+    video.addEventListener("stalled",()=>{setStatus("Network slow hai — video continue karne ki koshish ho rahi hai...");});
+    video.addEventListener("ended",()=>{player.classList.add("active");updatePlayIcon();});
+    video.addEventListener("error",()=>{
+        const code=video.error&&video.error.code;
+        const msg=code===2?"Network connection problem. Retry karke dekho.":code===3?"Video decoding problem. Browser format ko decode nahi kar pa raha.":code===4?"Video format/source browser me supported nahi hai.":"Video source load nahi ho paya.";
+        setError(msg);
+    });
+
+    document.addEventListener("keydown",e=>{
+        const tag=document.activeElement?.tagName||""; if(["INPUT","TEXTAREA","BUTTON"].includes(tag)) return;
+        if(e.code==="Space"){e.preventDefault();togglePlay();}
+        else if(e.key==="ArrowLeft") seek(-5);
+        else if(e.key==="ArrowRight") seek(5);
+        else if(e.key.toLowerCase()==="f") toggleFullscreen();
+        else if(e.key.toLowerCase()==="m") toggleMute();
+    });
+
+    const watchNow=$("tmWatchNow");
+    if(watchNow) watchNow.addEventListener("click",()=>setTimeout(()=>video.scrollIntoView({behavior:"smooth",block:"center"}),100));
+
+    video.volume=1; volume.value=1; updateVolumeIcon(); updateTime(); updatePlayIcon();
+})();
+</script>
+
 {% endblock %}
