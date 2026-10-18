@@ -198,6 +198,18 @@
             margin-right:5px;
         }
 
+        .login-note{
+            margin:-12px 0 22px;
+            text-align:center;
+            color:#d6d6d6;
+            font-size:12px;
+            line-height:1.6;
+        }
+
+        .login-note strong{
+            color:#ffc107;
+        }
+
         .flash{
             padding:13px 14px;
             margin-bottom:20px;
@@ -411,7 +423,7 @@
     </div>
 
     <div class="logo">
-        TOMESH <span>MOVIES</span>
+        CINEMA <span>WORLD</span>
     </div>
 
     <div class="subtitle">
@@ -421,6 +433,8 @@
     <div class="secure-badge">
         <span>●</span> SECURE ADMINISTRATOR ACCESS
     </div>
+
+    <p class="login-note"><strong>Gmail ID ya OTP ki zaroorat nahi.</strong><br>Sirf admin username aur password se login karein.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
