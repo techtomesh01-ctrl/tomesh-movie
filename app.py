@@ -4170,7 +4170,7 @@ def admin_creator_studio():
                    cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile
             FROM creator_submissions cs
             LEFT JOIN customer_users cu ON cu.customer_id=cs.customer_id
-            WHERE cs.status='PENDING' ORDER BY cs.created_at ASC
+            WHERE UPPER(COALESCE(cs.status,''))='PENDING' ORDER BY cs.created_at ASC
         """)
         pending = [dict(row) for row in cur.fetchall()]
         for item in pending:
