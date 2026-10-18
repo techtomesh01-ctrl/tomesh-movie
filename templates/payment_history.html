@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}CINEMA WORLD | Payment History{% endblock %}
+{% block content %}
+<style>
+.cw-payments{min-height:100vh;padding:100px 5% 70px;background:radial-gradient(circle at 10% 0%,rgba(229,9,20,.16),transparent 34%),#050505;color:#fff;font-family:Arial,Helvetica,sans-serif}
+.cw-payments-wrap{max-width:1100px;margin:0 auto}
+.cw-payments-back{display:inline-flex;gap:8px;align-items:center;color:#aaa;text-decoration:none;font-size:13px;font-weight:800;margin-bottom:20px}
+.cw-payments-back:hover{color:#fff}
+.cw-payments h1{font-size:clamp(28px,4vw,42px);margin:0 0 8px;font-weight:950}
+.cw-payments-lead{color:#999;margin:0 0 26px;font-size:14px;line-height:1.6}
+.cw-payments-card{border:1px solid rgba(255,255,255,.1);border-radius:15px;background:#111;padding:18px;overflow:hidden}
+.cw-payments-table{width:100%;border-collapse:collapse;font-size:13px}
+.cw-payments-table th{text-align:left;color:#999;font-size:11px;letter-spacing:.7px;text-transform:uppercase;padding:13px 10px;border-bottom:1px solid #303030}
+.cw-payments-table td{padding:15px 10px;border-bottom:1px solid #252525;color:#eee;vertical-align:top}
+.cw-payments-table tr:last-child td{border-bottom:0}
+.cw-payments-status{display:inline-block;padding:5px 8px;border-radius:20px;background:#222;color:#ddd;font-size:10px;font-weight:900}
+.cw-payments-status.paid{background:rgba(26,165,91,.14);color:#6ee7a4}
+.cw-payments-empty{text-align:center;padding:42px 12px;color:#aaa}
+.cw-payments-empty strong{display:block;color:#fff;font-size:18px;margin-bottom:8px}
+.cw-payments-btn{display:inline-flex;margin-top:14px;padding:11px 16px;border-radius:8px;background:#e50914;color:#fff;text-decoration:none;font-weight:900;font-size:12px}
+@media(max-width:650px){.cw-payments{padding:90px 4% 50px}.cw-payments-card{padding:8px;overflow-x:auto}.cw-payments-table{min-width:620px}.cw-payments-table th,.cw-payments-table td{padding:12px 8px}}
+</style>
+<section class="cw-payments">
+ <div class="cw-payments-wrap">
+  <a class="cw-payments-back" href="{{ url_for('member_home') }}">← Back to CINEMA WORLD</a>
+  <h1>Payments &amp; Transactions</h1>
+  <p class="cw-payments-lead">Your recent payment records. Only transactions linked to your signed-in account are shown here.</p>
+  <div class="cw-payments-card">
+  {% if payments %}
+   <table class="cw-payments-table">
+    <thead><tr><th>Order ID</th><th>Type</th><th>Amount</th><th>Status</th><th>Created</th><th>Paid at</th></tr></thead>
+    <tbody>
+    {% for payment in payments %}
+     <tr>
+      <td>{{ payment.order_id or "—" }}</td>
+      <td>{{ (payment.payment_type or "Payment")|replace("_"," ")|title }}{% if payment.movie_id %}<div style="color:#888;font-size:11px;margin-top:4px">Movie ID: {{ payment.movie_id }}</div>{% endif %}</td>
+      <td>₹{{ "%.2f"|format(payment.amount or 0) }}</td>
+      <td><span class="cw-payments-status {% if (payment.status or "")|upper == "PAID" %}paid{% endif %}">{{ (payment.status or "Unknown")|replace("_"," ")|title }}</span></td>
+      <td>{% if payment.created_at %}{{ payment.created_at.strftime("%d %b %Y, %I:%M %p") if payment.created_at.strftime is defined else payment.created_at }}{% else %}—{% endif %}</td>
+      <td>{% if payment.paid_at %}{{ payment.paid_at.strftime("%d %b %Y, %I:%M %p") if payment.paid_at.strftime is defined else payment.paid_at }}{% else %}—{% endif %}</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  {% else %}
+   <div class="cw-payments-empty"><strong>No payment records yet</strong>Once you make a payment, records linked to your account will appear here.<br><a class="cw-payments-btn" href="{{ url_for('membership_checkout') }}">View Membership</a></div>
+  {% endif %}
+  </div>
+ </div>
+</section>
+{% endblock %}
