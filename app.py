@@ -6148,7 +6148,7 @@ def admin_report_csv(report_name):
     import csv
     import io
 
-    allowed = {"subscriptions", "payments", "users", "movies", "access", "referrals", "withdrawals"}
+    allowed = {"subscriptions", "payments", "users", "movies", "access", "referrals", "withdrawals", "movie-views", "engagement"}
     report_name = str(report_name or "").strip().lower()
     if report_name not in allowed:
         return Response("Unknown report.", status=404)
@@ -6182,6 +6182,28 @@ def admin_report_csv(report_name):
         "withdrawals": (
             "SELECT * FROM withdrawal_requests ORDER BY id DESC",
             "withdrawals.csv",
+        ),
+        "movie-views": (
+            "SELECT v.id, v.movie_id, COALESCE(m.title, 'Deleted movie') AS movie_title, "
+            "v.customer_id, COALESCE(u.full_name, u.email, v.customer_id) AS customer_name, "
+            "u.email, u.mobile, v.viewed_at FROM movie_view_events v "
+            "LEFT JOIN movies m ON m.id=v.movie_id "
+            "LEFT JOIN customer_users u ON u.customer_id=v.customer_id "
+            "ORDER BY v.viewed_at DESC, v.id DESC",
+            "individual_movie_views.csv",
+        ),
+        "engagement": (
+            "SELECT 'LIKE' AS record_type, l.id, l.movie_id, COALESCE(m.title, 'Deleted movie') AS movie_title, "
+            "l.customer_id, COALESCE(u.full_name, u.email, l.customer_id) AS customer_name, "
+            "NULL::integer AS rating, l.created_at AS event_at FROM movie_likes l "
+            "LEFT JOIN movies m ON m.id=l.movie_id LEFT JOIN customer_users u ON u.customer_id=l.customer_id "
+            "UNION ALL "
+            "SELECT 'RATING' AS record_type, r.id, r.movie_id, COALESCE(m.title, 'Deleted movie') AS movie_title, "
+            "r.customer_id, COALESCE(u.full_name, u.email, r.customer_id) AS customer_name, "
+            "r.rating, r.updated_at AS event_at FROM movie_ratings r "
+            "LEFT JOIN movies m ON m.id=r.movie_id LEFT JOIN customer_users u ON u.customer_id=r.customer_id "
+            "ORDER BY event_at DESC",
+            "movie_engagement.csv",
         ),
     }
 
