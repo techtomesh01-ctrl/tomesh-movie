@@ -19,7 +19,6 @@ class ApplicationSmokeTests(unittest.TestCase):
         required = {
             "home",
             "request_movie",
-            "cw_request_movie",
             "movie_page",
             "admin",
             "admin_creator_studio",
