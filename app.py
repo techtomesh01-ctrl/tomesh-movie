@@ -3863,16 +3863,18 @@ def movie_page(movie_id):
             cur.close()
             abort(404)
 
-        cur.execute(
-            """
-            UPDATE movies
-            SET views = COALESCE(views,0) + 1
-            WHERE id = %s
-            """,
-            (movie_id,),
-        )
-
-        conn.commit()
+        # Only real customer visits count as views. Admin previews are
+        # excluded from public movie counters and analytics.
+        if not session.get("admin_logged_in"):
+            cur.execute(
+                """
+                UPDATE movies
+                SET views = COALESCE(views,0) + 1
+                WHERE id = %s
+                """,
+                (movie_id,),
+            )
+            conn.commit()
         cur.close()
 
     finally:
@@ -4835,16 +4837,15 @@ def stream_movie(movie_id):
 )
 def download_movie(movie_id):
 
-    access = access_for_movie(
-        movie_id
-    )
-
-    if not access["download"]:
-
-        return Response(
-            "Download payment required.",
-            status=403,
-        )
+    # Admin can download/preview content without purchasing customer access.
+    # Customer download entitlement checks remain unchanged.
+    if not session.get("admin_logged_in"):
+        access = access_for_movie(movie_id)
+        if not access["download"]:
+            return Response(
+                "Download payment required.",
+                status=403,
+            )
 
     conn = get_db(
         dict_rows=True
@@ -5905,7 +5906,7 @@ def api_my_list(movie_id):
 def admin_user_restriction(user_id):
     action = str(request.form.get("action", "block")).strip().lower()
     reason = str(request.form.get("reason", "")).strip()[:500]
-    if action not in {"block", "unblock", "revoke_premium"}:
+    if action not in {"block", "unblock", "revoke_premium", "grant_premium"}:
         abort(400)
 
     conn = get_db()
@@ -5927,6 +5928,27 @@ def admin_user_restriction(user_id):
             cur.execute("UPDATE customer_access SET premium_until=CURRENT_TIMESTAMP WHERE customer_id=%s AND premium_until IS NOT NULL", (customer_id,))
             cur.execute("UPDATE customer_subscriptions SET status='CANCELLED', premium_until=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE customer_id=%s", (customer_id,))
             flash("Premium access revoked.", "success")
+        elif action == "grant_premium":
+            premium_until = datetime.now() + timedelta(days=PREMIUM_DAYS)
+            cur.execute(
+                """
+                UPDATE customer_access
+                SET premium_until=%s
+                WHERE customer_id=%s AND movie_id IS NULL
+                  AND premium_until IS NOT NULL
+                """,
+                (premium_until, customer_id),
+            )
+            if cur.rowcount == 0:
+                cur.execute(
+                    """
+                    INSERT INTO customer_access
+                    (customer_id,movie_id,watch_until,download_until,premium_until,share_until)
+                    VALUES(%s,NULL,NULL,NULL,%s,NULL)
+                    """,
+                    (customer_id, premium_until),
+                )
+            flash("Premium access granted for 365 days.", "success")
         else:
             cur.execute("UPDATE customer_users SET is_blocked=TRUE, block_reason=%s WHERE id=%s", (reason or "Restricted by Admin", user_id))
             flash("User blocked.", "success")
@@ -5936,7 +5958,7 @@ def admin_user_restriction(user_id):
             VALUES(%s,%s,'customer_user',%s,%s)
         """, (
             str(session.get("admin_user") or ADMIN_USER or "admin"),
-            {"block": "USER_BLOCKED", "unblock": "USER_UNBLOCKED", "revoke_premium": "PREMIUM_REVOKED"}.get(action, "USER_BLOCKED"),
+            {"block": "USER_BLOCKED", "unblock": "USER_UNBLOCKED", "revoke_premium": "PREMIUM_REVOKED", "grant_premium": "PREMIUM_GRANTED"}.get(action, "USER_BLOCKED"),
             str(user_id),
             reason or None,
         ))
@@ -6508,7 +6530,8 @@ def admin():
 
         if section == "users":
             cur.execute("""
-                SELECT id,email,mobile,customer_id,full_name,profile_photo,created_at,last_login_at
+                SELECT id,email,mobile,customer_id,full_name,profile_photo,created_at,last_login_at,
+                       COALESCE(is_blocked,FALSE) AS is_blocked, block_reason
                 FROM customer_users ORDER BY id DESC
             """)
             users = cur.fetchall()
