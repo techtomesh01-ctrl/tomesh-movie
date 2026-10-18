@@ -96,6 +96,14 @@
 .cw-table th,.cw-table td{padding:11px 8px;border-bottom:1px solid #222;text-align:left;white-space:nowrap}
 .cw-table th{color:#aaa;font-size:10px;text-transform:uppercase}
 .cw-muted{color:#777;font-size:12px}
+.cw-creator-panel{display:flex;align-items:center;justify-content:space-between;gap:22px;margin-bottom:18px;background:radial-gradient(ellipse at 0% 0%,rgba(229,9,20,.14),transparent 60%),#101010}
+.cw-creator-copy{min-width:0}
+.cw-creator-kicker{color:#ff6670;font-size:10px;font-weight:900;letter-spacing:1.8px;margin-bottom:8px}
+.cw-creator-copy .cw-section-title{margin-bottom:8px}
+.cw-creator-copy p{max-width:590px;margin:0;color:#999;font-size:12px;line-height:1.7}
+.cw-creator-link{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:44px;padding:0 17px;border-radius:8px;background:#e50914;color:#fff;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap;transition:background .2s,transform .2s}
+.cw-creator-link:hover{background:#ff1c27;transform:translateY(-1px)}
+@media(max-width:520px){.cw-creator-panel{align-items:stretch;flex-direction:column;gap:14px}.cw-creator-link{width:100%;box-sizing:border-box}}
 .cw-flash{margin:0 auto 18px;width:min(1200px,100%);padding:12px;border-radius:8px;background:#111;border:1px solid #333;text-align:center;font-size:12px}
 @media(max-width:800px){
     .cw-profile{padding:78px 14px 45px}
@@ -176,6 +184,15 @@
                 </div>
                 <a class="cw-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="{{ url_for('public_customer_profile', customer_id=session.get('customer_id')) }}">View My Public Profile →</a>
                 <div class="cw-muted" style="margin-top:9px">Your public profile shows your name, photo and follower counts. Email and mobile remain private.</div>
+            </div>
+
+            <div class="cw-panel cw-creator-panel">
+                <div class="cw-creator-copy">
+                    <div class="cw-creator-kicker">CINEMA WORLD STUDIO</div>
+                    <h2 class="cw-section-title">🎬 Creator Studio</h2>
+                    <p>Apni original movie ya drama upload karein. Admin review aur approval ke baad hi content website par publish hoga.</p>
+                </div>
+                <a class="cw-creator-link" href="{{ url_for('creator_upload') }}">Open Creator Studio <span aria-hidden="true">→</span></a>
             </div>
 
             <div class="cw-panel">
