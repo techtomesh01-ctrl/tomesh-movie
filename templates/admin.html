@@ -435,7 +435,7 @@
 
 {% if section=='website-editor' %}
 <section class="cw-card">
-  <div class="cw-card-head"><div><h2>Website Content Editor</h2><div class="cw-muted">Yahan se homepage ke text aur headings badlein. Save karne par changes database mein rahenge.</div></div><a class="cw-btn" href="{{ url_for('home') }}" target="_blank" rel="noopener">Preview Website ↗</a></div>
+  <div class="cw-card-head"><div><h2>Website Content Editor</h2><div class="cw-muted">Homepage ke text ke saath shared site announcement aur Member Community section bhi yahan se edit karein. Changes database mein save honge.</div></div><a class="cw-btn" href="{{ url_for('home') }}" target="_blank" rel="noopener">Preview Website ↗</a></div>
   <div class="cw-alert">Safe editor: text, headings aur button label edit hote hain. Is panel se Python/HTML code, payment logic ya secret keys edit nahi kiye ja sakte.</div>
   <form method="post" action="{{ url_for('admin_website_editor') }}">
     <div class="cw-form-grid">
@@ -453,6 +453,9 @@
       <div class="cw-field"><label>Movie Request Heading</label><input name="request_title" maxlength="120" required value="{{ site_editor_values.request_title }}"></div>
       <div class="cw-field"><label>Movie Request Description</label><textarea name="request_desc" maxlength="400" required>{{ site_editor_values.request_desc }}</textarea></div>
       <div class="cw-field"><label>Footer Contact Line</label><input name="footer_question" maxlength="240" required value="{{ site_editor_values.footer_question }}"></div>
+      <div class="cw-field"><label>Site-wide Announcement (blank hides it)</label><input name="global_announcement" maxlength="240" value="{{ site_editor_values.global_announcement }}"><small class="cw-muted">Shows across pages using the shared site layout.</small></div>
+      <div class="cw-field"><label>Member Community Heading</label><input name="community_title" maxlength="100" required value="{{ site_editor_values.community_title }}"></div>
+      <div class="cw-field"><label>Member Community Description</label><textarea name="community_desc" maxlength="240" required>{{ site_editor_values.community_desc }}</textarea></div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button class="cw-btn red" type="submit" onclick="return confirm('Save these website text changes?')">Save Website Changes</button><a class="cw-btn" href="{{ url_for('home') }}" target="_blank" rel="noopener">Open Live Homepage</a></div>
   </form>
