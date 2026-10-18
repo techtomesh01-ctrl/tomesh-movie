@@ -3760,6 +3760,11 @@ _HOME_MOVIES_CACHE_TTL = 10.0
 
 @app.route("/")
 def home():
+    # Keep signed-in customers in the Member area instead of sending them
+    # back to the public homepage after login or when they revisit "/".
+    if session.get("customer_logged_in"):
+        return redirect(url_for("member_home"))
+
     q = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
 
@@ -4960,11 +4965,13 @@ def download_movie(movie_id):
     methods=["GET"],
 )
 def login():
+    # A customer who is already signed in should return to their Member area,
+    # not see the login form again. Member Home handles any required activation.
+    if session.get("customer_logged_in"):
+        return redirect(url_for("member_home"))
+
     requested_step = str(request.args.get("step", "")).strip().lower()
 
-    # Always allow the explicit Sign In / Get Started route to show the login
-    # screen, even if a stale customer session flag is present. The previous
-    # redirect sent /login straight back to Home and trapped users there.
     step = requested_step
 
     # Direct /login always starts at the identifier screen. Never infer the
