@@ -634,6 +634,22 @@ def init_db():
                 value TEXT
             )
         """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS admin_action_audit (
+                id BIGSERIAL PRIMARY KEY,
+                actor_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                target_type TEXT,
+                target_id TEXT,
+                reason TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_admin_action_audit_created
+            ON admin_action_audit(created_at DESC)
+        """)
         cur.execute("""
             ALTER TABLE movies ADD COLUMN IF NOT EXISTS creator_customer_id TEXT
         """)
@@ -5783,6 +5799,15 @@ def admin_user_restriction(user_id):
             cur.execute("UPDATE customer_users SET is_blocked=TRUE, block_reason=%s WHERE id=%s", (reason or "Restricted by Admin", user_id))
             flash("User blocked.", "success")
 
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,%s,'customer_user',%s,%s)
+        """, (
+            str(session.get("admin_user") or ADMIN_USER or "admin"),
+            {"block": "USER_BLOCKED", "unblock": "USER_UNBLOCKED", "revoke_premium": "PREMIUM_REVOKED"}.get(action, "USER_BLOCKED"),
+            str(user_id),
+            reason or None,
+        ))
         conn.commit()
         cur.close()
     finally:
@@ -6386,6 +6411,16 @@ def admin():
             """)
             access = cur.fetchall()
 
+        admin_action_audit = []
+        if section == "security":
+            cur.execute("""
+                SELECT actor_id,action,target_type,target_id,reason,created_at
+                FROM admin_action_audit
+                ORDER BY created_at DESC, id DESC
+                LIMIT 100
+            """)
+            admin_action_audit = cur.fetchall()
+
         if section == "analytics":
             cur.execute("""
                 SELECT m.*, COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating,
@@ -6631,6 +6666,7 @@ def admin():
         website_enabled=(str(get_setting("website_enabled", "1")).strip().lower() not in {"0", "false", "off", "no"}),
         home_hero_image_url=home_hero_image_url,
         pending_creator_uploads=pending_creator_uploads,
+        admin_action_audit=admin_action_audit,
     )
 
 
