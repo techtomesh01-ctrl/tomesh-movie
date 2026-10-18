@@ -883,6 +883,27 @@ def init_db():
             WHERE referral_code IS NOT NULL
         """)
 
+        # Public member profiles and follow graph. A user can follow another
+        # account once; self-follows are prevented by the database constraint.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customer_follows (
+                id BIGSERIAL PRIMARY KEY,
+                follower_customer_id TEXT NOT NULL,
+                followed_customer_id TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT customer_follows_pair_unique UNIQUE (follower_customer_id, followed_customer_id),
+                CONSTRAINT customer_follows_no_self CHECK (follower_customer_id <> followed_customer_id)
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_follows_followed
+            ON customer_follows(followed_customer_id, created_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_follows_follower
+            ON customer_follows(follower_customer_id, created_at DESC)
+        """)
+
         cur.execute("""
             UPDATE customer_users
             SET referral_code = 'CW' || UPPER(SUBSTRING(MD5(customer_id || RANDOM()::text) FROM 1 FOR 10))
@@ -5254,15 +5275,106 @@ def customer_profile():
         premium_until and premium_until > datetime.now()
     )
 
+    follow_counts = {"followers": 0, "following": 0}
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE followed_customer_id=%s", (customer_id,))
+        follow_counts["followers"] = int((cur.fetchone() or {}).get("n") or 0)
+        cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE follower_customer_id=%s", (customer_id,))
+        follow_counts["following"] = int((cur.fetchone() or {}).get("n") or 0)
+        cur.close()
+    finally:
+        conn.close()
+
     return render_template(
         "profile.html",
         profile=profile,
+        follower_count=follow_counts["followers"],
+        following_count=follow_counts["following"],
         my_list_count=my_list_count,
         paid_count=paid_count,
         payments=payments,
         premium_until=premium_until,
         premium_active=premium_active,
     )
+
+
+@app.route("/u/<customer_id>", methods=["GET"])
+def public_customer_profile(customer_id):
+    """Public-facing member profile; private contact details are never exposed."""
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT customer_id, full_name, profile_photo, created_at
+            FROM customer_users WHERE customer_id=%s AND COALESCE(is_blocked,FALSE)=FALSE
+            LIMIT 1
+        """, (customer_id,))
+        public_profile = cur.fetchone()
+        if not public_profile:
+            abort(404)
+        cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE followed_customer_id=%s", (customer_id,))
+        follower_count = int((cur.fetchone() or {}).get("n") or 0)
+        cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE follower_customer_id=%s", (customer_id,))
+        following_count = int((cur.fetchone() or {}).get("n") or 0)
+        viewer_id = session.get("customer_id") if session.get("customer_logged_in") else None
+        is_following = False
+        if viewer_id and viewer_id != customer_id:
+            cur.execute("""
+                SELECT 1 FROM customer_follows
+                WHERE follower_customer_id=%s AND followed_customer_id=%s LIMIT 1
+            """, (viewer_id, customer_id))
+            is_following = cur.fetchone() is not None
+        cur.close()
+    finally:
+        conn.close()
+    return render_template(
+        "public_profile.html",
+        public_profile=public_profile,
+        follower_count=follower_count,
+        following_count=following_count,
+        viewer_id=viewer_id,
+        is_following=is_following,
+    )
+
+
+@app.route("/u/<customer_id>/follow", methods=["POST"])
+@customer_login_required
+def toggle_customer_follow(customer_id):
+    viewer_id = session.get("customer_id")
+    if not viewer_id or viewer_id == customer_id:
+        flash("You cannot follow your own profile.", "error")
+        return redirect(url_for("public_customer_profile", customer_id=customer_id))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s AND COALESCE(is_blocked,FALSE)=FALSE LIMIT 1", (customer_id,))
+        target = cur.fetchone()
+        if not target:
+            abort(404)
+        cur.execute("""
+            SELECT 1 FROM customer_follows
+            WHERE follower_customer_id=%s AND followed_customer_id=%s LIMIT 1
+        """, (viewer_id, customer_id))
+        exists = cur.fetchone() is not None
+        if exists:
+            cur.execute("""
+                DELETE FROM customer_follows
+                WHERE follower_customer_id=%s AND followed_customer_id=%s
+            """, (viewer_id, customer_id))
+            flash("You unfollowed this member.", "success")
+        else:
+            cur.execute("""
+                INSERT INTO customer_follows(follower_customer_id, followed_customer_id)
+                VALUES(%s,%s) ON CONFLICT (follower_customer_id, followed_customer_id) DO NOTHING
+            """, (viewer_id, customer_id))
+            flash("You are now following this member.", "success")
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+    return redirect(url_for("public_customer_profile", customer_id=customer_id))
 
 
 # Short per-customer cache for the member catalogue. The list is personalized
@@ -6290,7 +6402,7 @@ def admin():
     allowed_sections = {
         "dashboard","live-monitor","movies","users","payments","subscriptions","watch","home-photos",
         "analytics","live","ads","adsense","notifications","reports","r2","health",
-        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","help"
+        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","help","followers"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -6353,6 +6465,24 @@ def admin():
         referral_rewards_admin = []
         withdrawals_admin = []
         bank_accounts_admin = []
+        followers_admin = []
+        follower_totals = {"profiles": 0, "follows": 0}
+
+        if section == "followers":
+            cur.execute("""
+                SELECT u.id, u.customer_id, u.full_name, u.email, u.mobile,
+                       u.profile_photo, u.created_at, u.last_login_at,
+                       (SELECT COUNT(*) FROM customer_follows f WHERE f.followed_customer_id=u.customer_id) AS followers_count,
+                       (SELECT COUNT(*) FROM customer_follows f WHERE f.follower_customer_id=u.customer_id) AS following_count
+                FROM customer_users u
+                ORDER BY followers_count DESC, u.id DESC
+                LIMIT 500
+            """)
+            followers_admin = cur.fetchall()
+            cur.execute("SELECT COUNT(*) AS profiles FROM customer_users")
+            follower_totals["profiles"] = int((cur.fetchone() or {}).get("profiles") or 0)
+            cur.execute("SELECT COUNT(*) AS follows FROM customer_follows")
+            follower_totals["follows"] = int((cur.fetchone() or {}).get("follows") or 0)
 
         if section == "movies":
             cur.execute("SELECT * FROM movies ORDER BY id DESC")
@@ -6677,6 +6807,8 @@ def admin():
         withdrawals_admin=withdrawals_admin,
         bank_accounts_admin=bank_accounts_admin,
         support_admin=support_admin,
+        followers_admin=followers_admin,
+        follower_totals=follower_totals,
         withdrawal_financials=withdrawal_financials,
         pending_bank_verifications=pending_bank_verifications,
         total_referral_rewards=total_referral_rewards,
