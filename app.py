@@ -1023,6 +1023,13 @@ def init_db():
         cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP""")
         cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT""")
         cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS idempotency_key TEXT""")
+        # Snapshot beneficiary details on each request so a later bank change never
+        # rewrites the payout destination shown in the historical withdrawal record.
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_account_holder TEXT""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_account_number TEXT""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_ifsc TEXT""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_name TEXT""")
+        cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_status_at_request TEXT""")
         cur.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_withdrawal_idempotency ON withdrawal_requests(idempotency_key) WHERE idempotency_key IS NOT NULL""")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS wallet_ledger (
@@ -6982,7 +6989,11 @@ def admin():
         if section == "withdrawals":
             cur.execute("""
                 SELECT w.*,u.full_name,u.email,u.mobile,
-                       b.account_holder_name,b.account_number,b.ifsc,b.bank_name,b.status AS bank_status
+                       COALESCE(w.bank_account_holder,b.account_holder_name) AS account_holder_name,
+                       COALESCE(w.bank_account_number,b.account_number) AS account_number,
+                       COALESCE(w.bank_ifsc,b.ifsc) AS ifsc,
+                       COALESCE(w.bank_name,b.bank_name) AS bank_name,
+                       COALESCE(w.bank_status_at_request,b.status) AS bank_status
                 FROM withdrawal_requests w
                 LEFT JOIN customer_users u ON u.customer_id=w.customer_id
                 LEFT JOIN customer_bank_accounts b ON b.id=w.bank_account_id
@@ -7456,9 +7467,14 @@ def request_earnings_withdrawal():
         if total_debit>available+0.001:
             conn.rollback(); flash(f"Insufficient available balance. ₹{total_debit:.2f} total debit ke liye balance chahiye.","error"); return redirect(url_for("user_earnings"))
         key="cw-withdraw-"+secrets.token_hex(16)
-        cur.execute("""INSERT INTO withdrawal_requests(customer_id,amount,payout_method,payout_details,status,bank_account_id,withdrawal_fee,net_amount,total_debit,idempotency_key)
-                       VALUES(%s,%s,'BANK',%s,'PENDING',%s,%s,%s,%s,%s)""",
-                    (customer_id,amount,"BANK:"+str(bank["id"]),bank["id"],fee,amount,total_debit,key))
+        cur.execute("""INSERT INTO withdrawal_requests(
+                           customer_id,amount,payout_method,payout_details,status,bank_account_id,
+                           withdrawal_fee,net_amount,total_debit,idempotency_key,
+                           bank_account_holder,bank_account_number,bank_ifsc,bank_name,bank_status_at_request
+                       )
+                       VALUES(%s,%s,'BANK',%s,'PENDING',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (customer_id,amount,"BANK:"+str(bank["id"]),bank["id"],fee,amount,total_debit,key,
+                     bank["account_holder_name"],bank["account_number"],bank["ifsc"],bank["bank_name"],bank["status"]))
         cur.execute("""INSERT INTO wallet_ledger(customer_id,entry_type,direction,amount,reference_type,reference_id,description)
                        VALUES(%s,'WITHDRAWAL_RESERVED','DEBIT',%s,'WITHDRAWAL',%s,%s)""",
                     (customer_id,total_debit,key,f"Withdrawal ₹{amount:.2f} reserved; fee ₹{fee:.2f}"))
@@ -7657,7 +7673,12 @@ def admin_process_withdrawal(withdrawal_id):
     conn=get_db(dict_rows=True)
     try:
         cur=conn.cursor()
-        cur.execute("""SELECT w.*,b.account_holder_name,b.account_number,b.ifsc,b.bank_name,b.status AS bank_status
+        cur.execute("""SELECT w.*,
+                              COALESCE(w.bank_account_holder,b.account_holder_name) AS account_holder_name,
+                              COALESCE(w.bank_account_number,b.account_number) AS account_number,
+                              COALESCE(w.bank_ifsc,b.ifsc) AS ifsc,
+                              COALESCE(w.bank_name,b.bank_name) AS bank_name,
+                              COALESCE(w.bank_status_at_request,b.status) AS bank_status
                        FROM withdrawal_requests w LEFT JOIN customer_bank_accounts b ON b.id=w.bank_account_id
                        WHERE w.id=%s FOR UPDATE""",(withdrawal_id,))
         row=cur.fetchone()
