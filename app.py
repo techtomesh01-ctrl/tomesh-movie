@@ -1291,31 +1291,48 @@ def init_db():
 # SETTINGS
 # ============================================================
 
+# Cache settings to prevent homepage/editor reads from opening a database
+# connection for every individual setting. set_setting updates this cache at once.
+_SETTINGS_CACHE = {}
+_SETTINGS_CACHE_LOCK = threading.Lock()
+_SETTINGS_CACHE_TTL = 10.0
+
+
+def get_settings_many(keys):
+    keys = list(dict.fromkeys(str(key) for key in keys))
+    if not keys:
+        return {}
+    now = time.monotonic()
+    missing = []
+    result = {}
+    with _SETTINGS_CACHE_LOCK:
+        for key in keys:
+            cached = _SETTINGS_CACHE.get(key)
+            if cached and now - cached[0] < _SETTINGS_CACHE_TTL:
+                result[key] = cached[1]
+            else:
+                missing.append(key)
+    if missing:
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT key, value FROM settings WHERE key = ANY(%s)", (missing,))
+            fetched = {str(row[0]): (row[1] or "") for row in cur.fetchall()}
+            cur.close()
+        finally:
+            conn.close()
+        with _SETTINGS_CACHE_LOCK:
+            now = time.monotonic()
+            for key in missing:
+                value = fetched.get(key, "")
+                _SETTINGS_CACHE[key] = (now, value)
+                result[key] = value
+    return result
+
+
 def get_setting(key, default=""):
-    conn = get_db()
-
-    try:
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT value
-            FROM settings
-            WHERE key = %s
-            """,
-            (key,),
-        )
-
-        row = cur.fetchone()
-        cur.close()
-
-        if not row:
-            return default
-
-        return row[0] or default
-
-    finally:
-        conn.close()
+    value = get_settings_many([key]).get(str(key), "")
+    return value or default
 
 
 def set_setting(key, value):
@@ -1339,6 +1356,9 @@ def set_setting(key, value):
 
     finally:
         conn.close()
+
+    with _SETTINGS_CACHE_LOCK:
+        _SETTINGS_CACHE[str(key)] = (time.monotonic(), str(value or ""))
 
 
 # ============================================================
@@ -1404,10 +1424,11 @@ def get_ads():
             _ADS_CACHE["value"] is None
             or now - _ADS_CACHE["checked_at"] >= _ADS_CACHE_TTL
         ):
+            settings = get_settings_many(["ad_top", "ad_player", "ad_bottom"])
             _ADS_CACHE["value"] = {
-                "top": get_setting("ad_top", ""),
-                "player": get_setting("ad_player", ""),
-                "bottom": get_setting("ad_bottom", ""),
+                "top": settings.get("ad_top", ""),
+                "player": settings.get("ad_player", ""),
+                "bottom": settings.get("ad_bottom", ""),
             }
             _ADS_CACHE["checked_at"] = now
         return dict(_ADS_CACHE["value"])
@@ -3808,7 +3829,26 @@ def home():
         except Exception:
             movie["poster_url"] = None
 
-    hero_image_key = get_setting("home_hero_image_key", "")
+    home_setting_defaults = {
+        "home_hero_image_key": "",
+        "site_hero_title_en": "Unlimited movies, shows, and more",
+        "site_hero_title_hi": "अनलिमिटेड मूवीज़, शो और बहुत कुछ",
+        "site_hero_desc_en": "Watch movies and entertainment in one cinematic place. Discover stories you'll want to watch again and again.",
+        "site_hero_desc_hi": "एक सिनेमैटिक जगह पर मूवीज़ और एंटरटेनमेंट देखें। ऐसी कहानियाँ खोजें जिन्हें आप बार-बार देखना चाहेंगे।",
+        "site_hero_price_en": "Starts at ₹1. Watch from ₹1. Cancel at any time.",
+        "site_hero_price_hi": "₹1 से शुरू। कभी भी कैंसल करें।",
+        "site_hero_ready_en": "Ready to watch? Enter your email to create or restart your membership.",
+        "site_hero_ready_hi": "देखने के लिए तैयार हैं? अपनी membership शुरू या फिर से शुरू करने के लिए ईमेल डालें।",
+        "site_hero_button": "Get Started →",
+        "site_trending_title": "Trending Now",
+        "site_trending_subtitle": "Popular on CINEMA WORLD",
+        "site_request_title": "Request a Movie 🎬",
+        "site_request_desc": "Jo movie CINEMA WORLD par dekhna chahte ho, uska naam yahan likho. Hum popular requests review karenge.",
+        "site_footer_question": "Questions? Contact us through CINEMA WORLD support.",
+        "ad_top": "", "ad_player": "", "ad_bottom": "",
+    }
+    home_settings = get_settings_many(list(home_setting_defaults))
+    hero_image_key = home_settings.get("home_hero_image_key", "")
     try:
         hero_image_url = media_url(hero_image_key) if hero_image_key else ""
     except Exception:
@@ -3817,25 +3857,18 @@ def home():
     return render_template(
         "index.html",
         movies=movies,
-        ads=get_ads(),
+        ads={
+            "top": home_settings.get("ad_top", ""),
+            "player": home_settings.get("ad_player", ""),
+            "bottom": home_settings.get("ad_bottom", ""),
+        },
         q=q,
         category=category,
         hero_image_url=hero_image_url,
         site_editor_values={
-            "hero_title_en": get_setting("site_hero_title_en", "Unlimited movies, shows, and more"),
-            "hero_title_hi": get_setting("site_hero_title_hi", "अनलिमिटेड मूवीज़, शो और बहुत कुछ"),
-            "hero_desc_en": get_setting("site_hero_desc_en", "Watch movies and entertainment in one cinematic place. Discover stories you'll want to watch again and again."),
-            "hero_desc_hi": get_setting("site_hero_desc_hi", "एक सिनेमैटिक जगह पर मूवीज़ और एंटरटेनमेंट देखें। ऐसी कहानियाँ खोजें जिन्हें आप बार-बार देखना चाहेंगे।"),
-            "hero_price_en": get_setting("site_hero_price_en", "Starts at ₹1. Watch from ₹1. Cancel at any time."),
-            "hero_price_hi": get_setting("site_hero_price_hi", "₹1 से शुरू। कभी भी कैंसल करें।"),
-            "hero_ready_en": get_setting("site_hero_ready_en", "Ready to watch? Enter your email to create or restart your membership."),
-            "hero_ready_hi": get_setting("site_hero_ready_hi", "देखने के लिए तैयार हैं? अपनी membership शुरू या फिर से शुरू करने के लिए ईमेल डालें।"),
-            "hero_button": get_setting("site_hero_button", "Get Started →"),
-            "trending_title": get_setting("site_trending_title", "Trending Now"),
-            "trending_subtitle": get_setting("site_trending_subtitle", "Popular on CINEMA WORLD"),
-            "request_title": get_setting("site_request_title", "Request a Movie 🎬"),
-            "request_desc": get_setting("site_request_desc", "Jo movie CINEMA WORLD par dekhna chahte ho, uska naam yahan likho. Hum popular requests review karenge."),
-            "footer_question": get_setting("site_footer_question", "Questions? Contact us through CINEMA WORLD support."),
+            key.removeprefix("site_"): home_settings.get(key) or default
+            for key, default in home_setting_defaults.items()
+            if key.startswith("site_")
         },
     )
 
