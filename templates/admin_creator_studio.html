@@ -44,8 +44,15 @@
         <div>{% if item.video_url %}<video controls preload="metadata" src="{{ item.video_url }}">Your browser does not support video preview.</video><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.video_url }}">Open video separately ↗</a>{% endif %}{% if item.poster_url %}<p><a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.poster_url }}">Open poster ↗</a></p>{% endif %}</div>
       </div>
       <form method="post" action="{{ url_for('admin_review_creator_submission', submission_id=item.id, action='approve') }}">
+        <div class="cs-card" style="margin:12px 0;padding:14px;border-color:#704044">
+          <strong>Mandatory pre-publish checks</strong>
+          <label style="display:flex;gap:9px;align-items:flex-start;margin-top:12px"><input type="checkbox" name="rights_verified" value="yes" required style="width:auto;margin:3px 0 0"> I checked the submitter's rights/license evidence for this title.</label>
+          <label style="display:flex;gap:9px;align-items:flex-start;margin-top:10px"><input type="checkbox" name="quality_checked" value="yes" required style="width:auto;margin:3px 0 0"> I reviewed the video/poster and checked title, category and basic playback.</label>
+          <label>Rights evidence / license reference (required)</label>
+          <textarea name="rights_evidence" rows="3" minlength="12" maxlength="2000" required placeholder="Record the license/document reference and what was checked. Do not publish if rights are unclear."></textarea>
+        </div>
         <label>Admin note (optional)</label><textarea name="admin_note" rows="2" placeholder="Approval note"></textarea>
-        <button type="submit">Approve and publish</button>
+        <button type="submit">Complete checks & approve/publish</button>
       </form>
       <form method="post" action="{{ url_for('admin_review_creator_submission', submission_id=item.id, action='reject') }}">
         <label>Reason if rejected</label><textarea name="admin_note" rows="2" placeholder="Reason shown to creator"></textarea>
