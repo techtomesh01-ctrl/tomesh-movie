@@ -6418,6 +6418,7 @@ def admin():
         search_users = []
         search_payments = []
         movie_search_demands = []
+        cw_movie_requests = []
         if section == "demand":
             cur.execute("""
                 SELECT id, search_term, search_count, unique_users, first_searched_at,
@@ -6427,6 +6428,22 @@ def admin():
                 LIMIT 300
             """)
             movie_search_demands = cur.fetchall()
+
+            # The homepage and movie-page request forms write to cw_movie_requests.
+            # Keep these explicit requests visible alongside search-based demand.
+            cur.execute("""
+                SELECT r.id, r.customer_id, r.requested_title, r.normalized_title,
+                       r.votes, r.status, r.created_at, r.updated_at,
+                       u.full_name, u.email, u.mobile,
+                       (SELECT COUNT(*)
+                          FROM cw_movie_requests r2
+                         WHERE r2.normalized_title = r.normalized_title) AS total_requesters
+                FROM cw_movie_requests r
+                LEFT JOIN customer_users u ON u.customer_id = r.customer_id
+                ORDER BY r.updated_at DESC, r.id DESC
+                LIMIT 500
+            """)
+            cw_movie_requests = cur.fetchall()
 
         if q:
             like = "%" + q + "%"
