@@ -336,7 +336,22 @@
 {% for t in support_admin %}<div style="border:1px solid #292930;border-radius:14px;padding:15px;margin-bottom:12px;background:#0c0c10"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>#{{t.id}} — {{t.subject}}</b><div class="cw-muted">{{t.customer_id}} • {% if t.created_at %}{{t.created_at|istdate('%d %b %Y')}} · {{t.created_at|istdate('%A')}} · {{t.created_at|istdate('%I:%M:%S %p')}} IST{% else %}time unavailable{% endif %}</div></div><span class="cw-badge">{{t.status}}</span></div>
 {% if t.screenshot_url %}<div style="margin-top:10px"><a href="{{t.screenshot_url}}" target="_blank"><img src="{{t.screenshot_url}}" style="max-width:420px;max-height:280px;border-radius:10px;border:1px solid #333" alt="User screenshot"></a></div>{% endif %}
 {% for m in t.messages %}<div style="margin-top:9px;padding:10px;border-radius:10px;background:#15151a;border-left:3px solid {% if m.sender_type=='ADMIN' %}#e50914{% else %}#777{% endif %}"><b>{{'Admin' if m.sender_type=='ADMIN' else 'User'}}</b><div style="font-size:12px;line-height:1.5;margin-top:4px;white-space:pre-wrap">{{m.message}}</div><div class="cw-muted" style="margin-top:4px">{% if m.created_at %}{{m.created_at|istdate('%d %b %Y')}} · {{m.created_at|istdate('%A')}} · {{m.created_at|istdate('%I:%M:%S %p')}} IST{% else %}time unavailable{% endif %}</div></div>{% endfor %}
-<form method="post" action="{{url_for('admin_support_reply', ticket_id=t.id)}}" style="margin-top:10px"><textarea name="message" placeholder="Reply to user..." required style="width:100%;min-height:80px;background:#09090c;border:1px solid #24242a;color:#fff;border-radius:10px;padding:10px"></textarea><div style="display:flex;gap:6px;margin-top:6px"><select name="status" style="background:#09090c;border:1px solid #24242a;color:#fff;border-radius:9px;padding:8px"><option value="IN_PROGRESS">In Progress</option><option value="RESOLVED">Resolved</option><option value="CLOSED">Closed</option><option value="OPEN">Open</option></select><button class="cw-btn red" type="submit">Send Reply</button></div></form></div>{% else %}<div class="cw-empty">No support tickets.</div>{% endfor %}
+<form method="post" action="{{url_for('admin_support_reply', ticket_id=t.id)}}" class="cw-support-reply-form" style="margin-top:10px">
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
+<label for="cw-quick-reply-{{t.id}}" class="cw-muted" style="font-size:12px">Quick reply (select to auto-fill):</label>
+<select id="cw-quick-reply-{{t.id}}" class="cw-support-quick-reply" style="flex:1;min-width:220px;background:#09090c;border:1px solid #383842;color:#fff;border-radius:9px;padding:10px">
+<option value="">— Select a ready-made reply —</option>
+<option value="Namaste! CINEMA WORLD Support se sampark karne ke liye dhanyavaad. Hum aapki samasya dekh rahe hain. Kripya thoda samay dein; hum yahin update denge.">General: We are checking</option>
+<option value="Namaste! Movie play nahi ho rahi, iske liye khed hai. Kripya movie ka naam aur agar koi error dikh raha hai to uska screenshot bhej dein. Hum jaanch karke update denge.">Movie not playing</option>
+<option value="Namaste! Payment status verify karne ke liye dhanyavaad. Kripya payment ka samay, amount aur transaction/order ID share karein. Kripya card/UPI PIN ya OTP share na karein.">Payment issue</option>
+<option value="Namaste! Login/OTP mein dikkat ke liye khed hai. Kripya registered email check karein, Spam/Junk folder bhi dekhein aur kuch der baad OTP dobara mangayein. Samasya rahe to screenshot bhejein.">Login / OTP issue</option>
+<option value="Namaste! Aapki movie upload request mil gayi hai. Admin review poora hone par status update kiya jayega. Kripya tab tak dobara wahi file upload na karein.">Movie upload review</option>
+<option value="Namaste! Aapki request ke liye dhanyavaad. Kripya apni samasya ke steps, movie/title ka naam aur error ka screenshot bhej dein, taaki hum sahi jaanch kar sakein.">Need more details</option>
+<option value="Namaste! Aapki samasya ki jaanch kar li gayi hai aur ticket ko resolved mark kiya ja raha hai. Agar dikkat abhi bhi aa rahi ho, to isi ticket par reply karein. CINEMA WORLD Support ko sampark karne ke liye dhanyavaad.">Resolved / closing</option>
+<option value="Hello! Thank you for contacting CINEMA WORLD Support. We are reviewing your request and will update you here. Please do not share your password, OTP, or payment PIN.">English: General reply</option>
+</select></div>
+<textarea name="message" placeholder="Select a quick reply above or type your own..." required style="width:100%;min-height:80px;background:#09090c;border:1px solid #24242a;color:#fff;border-radius:10px;padding:10px"></textarea>
+<div style="display:flex;gap:6px;margin-top:6px"><select name="status" style="background:#09090c;border:1px solid #24242a;color:#fff;border-radius:9px;padding:8px"><option value="IN_PROGRESS">In Progress</option><option value="RESOLVED">Resolved</option><option value="CLOSED">Closed</option><option value="OPEN">Open</option></select><button class="cw-btn red" type="submit">Send Reply</button></div></form></div>{% else %}<div class="cw-empty">No support tickets.</div>{% endfor %}
 </section>
 {% endif %}
 
@@ -626,4 +641,16 @@
   </script>
   <div class="cw-footer">CINEMA WORLD • Owner Control Center</div>
 </main></div></div></div>
+<script>
+document.addEventListener('change', function(event) {
+  const select = event.target.closest('.cw-support-quick-reply');
+  if (!select) return;
+  const form = select.closest('form');
+  const textarea = form && form.querySelector('textarea[name="message"]');
+  if (textarea && select.value) {
+    textarea.value = select.value;
+    textarea.focus();
+  }
+});
+</script>
 {% endblock %}
