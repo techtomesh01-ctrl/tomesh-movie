@@ -634,6 +634,22 @@ def init_db():
                 value TEXT
             )
         """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS admin_action_audit (
+                id BIGSERIAL PRIMARY KEY,
+                actor_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                target_type TEXT,
+                target_id TEXT,
+                reason TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_admin_action_audit_created
+            ON admin_action_audit(created_at DESC)
+        """)
         cur.execute("""
             ALTER TABLE movies ADD COLUMN IF NOT EXISTS creator_customer_id TEXT
         """)
@@ -653,6 +669,27 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 reviewed_at TIMESTAMP
             )
+        """)
+        cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS rights_verified BOOLEAN NOT NULL DEFAULT FALSE")
+        cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS quality_checked BOOLEAN NOT NULL DEFAULT FALSE")
+        cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS rights_evidence TEXT")
+        cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS reviewed_by TEXT")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_submission_audit (
+                id BIGSERIAL PRIMARY KEY,
+                submission_id INTEGER NOT NULL,
+                actor_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                note TEXT,
+                rights_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                quality_checked BOOLEAN NOT NULL DEFAULT FALSE,
+                rights_evidence TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_creator_submission_audit_submission
+            ON creator_submission_audit(submission_id, created_at DESC)
         """)
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_creator_submissions_status_created
@@ -844,6 +881,27 @@ def init_db():
             CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_users_referral_code
             ON customer_users(referral_code)
             WHERE referral_code IS NOT NULL
+        """)
+
+        # Public member profiles and follow graph. A user can follow another
+        # account once; self-follows are prevented by the database constraint.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customer_follows (
+                id BIGSERIAL PRIMARY KEY,
+                follower_customer_id TEXT NOT NULL,
+                followed_customer_id TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT customer_follows_pair_unique UNIQUE (follower_customer_id, followed_customer_id),
+                CONSTRAINT customer_follows_no_self CHECK (follower_customer_id <> followed_customer_id)
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_follows_followed
+            ON customer_follows(followed_customer_id, created_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_follows_follower
+            ON customer_follows(follower_customer_id, created_at DESC)
         """)
 
         cur.execute("""
@@ -4170,7 +4228,7 @@ def admin_creator_studio():
                    cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile
             FROM creator_submissions cs
             LEFT JOIN customer_users cu ON cu.customer_id=cs.customer_id
-            WHERE cs.status='PENDING' ORDER BY cs.created_at ASC
+            WHERE UPPER(COALESCE(cs.status,''))='PENDING' ORDER BY cs.created_at ASC
         """)
         pending = [dict(row) for row in cur.fetchall()]
         for item in pending:
@@ -4183,6 +4241,7 @@ def admin_creator_studio():
         cur.execute("""
             SELECT cs.id,cs.customer_id,cs.title,cs.content_type,cs.category,cs.description,cs.poster,cs.video,
                    cs.status,cs.admin_note,cs.created_at,cs.reviewed_at,cs.movie_id,
+                   cs.rights_verified,cs.quality_checked,cs.rights_evidence,cs.reviewed_by,
                    cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile,
                    COALESCE(m.views,0) AS views,
                    COALESCE((SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=cs.movie_id),0) AS likes
@@ -4200,6 +4259,15 @@ def admin_creator_studio():
                 item["video_url"] = None
                 item["poster_url"] = None
         cur.execute("""
+            SELECT submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence,created_at
+            FROM creator_submission_audit
+            ORDER BY created_at DESC
+        """)
+        audit_by_submission = {}
+        for audit_row in cur.fetchall():
+            audit = dict(audit_row)
+            audit_by_submission.setdefault(audit["submission_id"], []).append(audit)
+        cur.execute("""
             SELECT p.id,p.customer_id,p.amount,p.payout_method,p.payout_details,p.status,p.admin_note,p.transaction_ref,p.created_at,p.reviewed_at,p.paid_at,
                    p.bank_account_holder,p.bank_name,p.bank_account_number,p.bank_ifsc,p.bank_branch,p.bank_verified,p.bank_verified_at,
                    cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile
@@ -4212,6 +4280,7 @@ def admin_creator_studio():
     finally:
         conn.close()
     return render_template("admin_creator_studio.html", pending=pending, reviewed=reviewed, payout_requests=payout_requests,
+        audit_by_submission=audit_by_submission,
         movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
         drama_rate=get_setting("creator_drama_rate_per_1000", "30"),
         min_payout=get_setting("creator_min_payout", "100"))
@@ -4283,6 +4352,12 @@ def admin_review_creator_submission(submission_id, action):
     if action not in {"approve", "reject"}:
         abort(400)
     note = str(request.form.get("admin_note") or "").strip()[:1000]
+    rights_verified = request.form.get("rights_verified") == "yes"
+    quality_checked = request.form.get("quality_checked") == "yes"
+    rights_evidence = str(request.form.get("rights_evidence") or "").strip()[:2000]
+    if action == "approve" and not (rights_verified and quality_checked and len(rights_evidence) >= 12):
+        flash("Publish blocked: confirm content rights, complete the quality check, and record evidence/reference (at least 12 characters).", "error")
+        return redirect(url_for("admin_creator_studio"))
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
@@ -4302,16 +4377,29 @@ def admin_review_creator_submission(submission_id, action):
             """, (sub["title"],sub.get("category"),sub.get("description"),sub.get("poster"),sub["video"],sub["content_type"],sub["customer_id"]))
             movie_id = cur.fetchone()["id"]
             cur.execute("""
-                UPDATE creator_submissions SET status='APPROVED',admin_note=%s,movie_id=%s,reviewed_at=NOW()
+                UPDATE creator_submissions
+                SET status='APPROVED',admin_note=%s,movie_id=%s,reviewed_at=NOW(),
+                    rights_verified=TRUE,quality_checked=TRUE,rights_evidence=%s,reviewed_by=%s
                 WHERE id=%s
-            """, (note,movie_id,submission_id))
-            flash("Approved. Content is now listed in its selected section.", "success")
+            """, (note,movie_id,rights_evidence,str(session.get("admin_user") or ADMIN_USER or "admin"),submission_id))
+            cur.execute("""
+                INSERT INTO creator_submission_audit
+                    (submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence)
+                VALUES(%s,%s,'APPROVED',%s,TRUE,TRUE,%s)
+            """, (submission_id,str(session.get("admin_user") or ADMIN_USER or "admin"),note,rights_evidence))
+            flash("Approved after recording rights and quality checks. Content is now listed in its selected section.", "success")
         else:
             cur.execute("""
-                UPDATE creator_submissions SET status='REJECTED',admin_note=%s,reviewed_at=NOW()
+                UPDATE creator_submissions SET status='REJECTED',admin_note=%s,reviewed_at=NOW(),
+                    reviewed_by=%s
                 WHERE id=%s
-            """, (note,submission_id))
-            flash("Creator submission rejected.", "success")
+            """, (note,str(session.get("admin_user") or ADMIN_USER or "admin"),submission_id))
+            cur.execute("""
+                INSERT INTO creator_submission_audit
+                    (submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence)
+                VALUES(%s,%s,'REJECTED',%s,FALSE,FALSE,NULL)
+            """, (submission_id,str(session.get("admin_user") or ADMIN_USER or "admin"),note))
+            flash("Creator submission rejected and decision recorded.", "success")
         conn.commit()
     except Exception as exc:
         conn.rollback()
@@ -4882,6 +4970,7 @@ def admin_login():
                 _ADMIN_LOGIN_GUARD.pop(client_key, None)
             session.clear()
             session["admin_logged_in"] = True
+            session["admin_user"] = username
             return redirect(url_for("admin"))
 
         with _ADMIN_LOGIN_GUARD_LOCK:
@@ -5186,15 +5275,106 @@ def customer_profile():
         premium_until and premium_until > datetime.now()
     )
 
+    follow_counts = {"followers": 0, "following": 0}
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE followed_customer_id=%s", (customer_id,))
+        follow_counts["followers"] = int((cur.fetchone() or {}).get("n") or 0)
+        cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE follower_customer_id=%s", (customer_id,))
+        follow_counts["following"] = int((cur.fetchone() or {}).get("n") or 0)
+        cur.close()
+    finally:
+        conn.close()
+
     return render_template(
         "profile.html",
         profile=profile,
+        follower_count=follow_counts["followers"],
+        following_count=follow_counts["following"],
         my_list_count=my_list_count,
         paid_count=paid_count,
         payments=payments,
         premium_until=premium_until,
         premium_active=premium_active,
     )
+
+
+@app.route("/u/<customer_id>", methods=["GET"])
+def public_customer_profile(customer_id):
+    """Public-facing member profile; private contact details are never exposed."""
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT customer_id, full_name, profile_photo, created_at
+            FROM customer_users WHERE customer_id=%s AND COALESCE(is_blocked,FALSE)=FALSE
+            LIMIT 1
+        """, (customer_id,))
+        public_profile = cur.fetchone()
+        if not public_profile:
+            abort(404)
+        cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE followed_customer_id=%s", (customer_id,))
+        follower_count = int((cur.fetchone() or {}).get("n") or 0)
+        cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE follower_customer_id=%s", (customer_id,))
+        following_count = int((cur.fetchone() or {}).get("n") or 0)
+        viewer_id = session.get("customer_id") if session.get("customer_logged_in") else None
+        is_following = False
+        if viewer_id and viewer_id != customer_id:
+            cur.execute("""
+                SELECT 1 FROM customer_follows
+                WHERE follower_customer_id=%s AND followed_customer_id=%s LIMIT 1
+            """, (viewer_id, customer_id))
+            is_following = cur.fetchone() is not None
+        cur.close()
+    finally:
+        conn.close()
+    return render_template(
+        "public_profile.html",
+        public_profile=public_profile,
+        follower_count=follower_count,
+        following_count=following_count,
+        viewer_id=viewer_id,
+        is_following=is_following,
+    )
+
+
+@app.route("/u/<customer_id>/follow", methods=["POST"])
+@customer_login_required
+def toggle_customer_follow(customer_id):
+    viewer_id = session.get("customer_id")
+    if not viewer_id or viewer_id == customer_id:
+        flash("You cannot follow your own profile.", "error")
+        return redirect(url_for("public_customer_profile", customer_id=customer_id))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s AND COALESCE(is_blocked,FALSE)=FALSE LIMIT 1", (customer_id,))
+        target = cur.fetchone()
+        if not target:
+            abort(404)
+        cur.execute("""
+            SELECT 1 FROM customer_follows
+            WHERE follower_customer_id=%s AND followed_customer_id=%s LIMIT 1
+        """, (viewer_id, customer_id))
+        exists = cur.fetchone() is not None
+        if exists:
+            cur.execute("""
+                DELETE FROM customer_follows
+                WHERE follower_customer_id=%s AND followed_customer_id=%s
+            """, (viewer_id, customer_id))
+            flash("You unfollowed this member.", "success")
+        else:
+            cur.execute("""
+                INSERT INTO customer_follows(follower_customer_id, followed_customer_id)
+                VALUES(%s,%s) ON CONFLICT (follower_customer_id, followed_customer_id) DO NOTHING
+            """, (viewer_id, customer_id))
+            flash("You are now following this member.", "success")
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+    return redirect(url_for("public_customer_profile", customer_id=customer_id))
 
 
 # Short per-customer cache for the member catalogue. The list is personalized
@@ -5707,6 +5887,8 @@ def api_my_list(movie_id):
 def admin_user_restriction(user_id):
     action = str(request.form.get("action", "block")).strip().lower()
     reason = str(request.form.get("reason", "")).strip()[:500]
+    if action not in {"block", "unblock", "revoke_premium"}:
+        abort(400)
 
     conn = get_db()
     try:
@@ -5731,6 +5913,15 @@ def admin_user_restriction(user_id):
             cur.execute("UPDATE customer_users SET is_blocked=TRUE, block_reason=%s WHERE id=%s", (reason or "Restricted by Admin", user_id))
             flash("User blocked.", "success")
 
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,%s,'customer_user',%s,%s)
+        """, (
+            str(session.get("admin_user") or ADMIN_USER or "admin"),
+            {"block": "USER_BLOCKED", "unblock": "USER_UNBLOCKED", "revoke_premium": "PREMIUM_REVOKED"}.get(action, "USER_BLOCKED"),
+            str(user_id),
+            reason or None,
+        ))
         conn.commit()
         cur.close()
     finally:
@@ -6211,7 +6402,7 @@ def admin():
     allowed_sections = {
         "dashboard","live-monitor","movies","users","payments","subscriptions","watch","home-photos",
         "analytics","live","ads","adsense","notifications","reports","r2","health",
-        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","help"
+        "security","settings","search","demand","comments","earnings","withdrawals","support","website-control","help","followers"
     }
     if section not in allowed_sections:
         section = "dashboard"
@@ -6227,6 +6418,10 @@ def admin():
 
         cur.execute("SELECT COUNT(*) AS n FROM customer_users")
         total_users = int((cur.fetchone() or {}).get("n") or 0)
+
+        # Surface creator uploads that still need admin review on every admin page.
+        cur.execute("SELECT COUNT(*) AS n FROM creator_submissions WHERE UPPER(COALESCE(status,''))='PENDING'")
+        pending_creator_uploads = int((cur.fetchone() or {}).get("n") or 0)
 
         cur.execute("""
             SELECT COUNT(*) AS n FROM customer_subscriptions
@@ -6270,6 +6465,24 @@ def admin():
         referral_rewards_admin = []
         withdrawals_admin = []
         bank_accounts_admin = []
+        followers_admin = []
+        follower_totals = {"profiles": 0, "follows": 0}
+
+        if section == "followers":
+            cur.execute("""
+                SELECT u.id, u.customer_id, u.full_name, u.email, u.mobile,
+                       u.profile_photo, u.created_at, u.last_login_at,
+                       (SELECT COUNT(*) FROM customer_follows f WHERE f.followed_customer_id=u.customer_id) AS followers_count,
+                       (SELECT COUNT(*) FROM customer_follows f WHERE f.follower_customer_id=u.customer_id) AS following_count
+                FROM customer_users u
+                ORDER BY followers_count DESC, u.id DESC
+                LIMIT 500
+            """)
+            followers_admin = cur.fetchall()
+            cur.execute("SELECT COUNT(*) AS profiles FROM customer_users")
+            follower_totals["profiles"] = int((cur.fetchone() or {}).get("profiles") or 0)
+            cur.execute("SELECT COUNT(*) AS follows FROM customer_follows")
+            follower_totals["follows"] = int((cur.fetchone() or {}).get("follows") or 0)
 
         if section == "movies":
             cur.execute("SELECT * FROM movies ORDER BY id DESC")
@@ -6282,6 +6495,7 @@ def admin():
             """)
             users = cur.fetchall()
 
+        payment_review_flags = []
         if section == "payments":
             cur.execute("""
                 SELECT p.*,u.full_name,u.email,u.mobile
@@ -6290,6 +6504,20 @@ def admin():
                 ORDER BY p.id DESC LIMIT 200
             """)
             payments = cur.fetchall()
+
+            # Highlight locally inconsistent payment records for human review only.
+            # This does not change payment state, grant access, or assert provider status.
+            cur.execute("""
+                SELECT p.order_id,p.customer_id,p.movie_id,p.payment_type,p.amount,
+                       p.status,p.created_at,p.paid_at,u.full_name,u.email
+                FROM payment_orders p
+                LEFT JOIN customer_users u ON u.customer_id=p.customer_id
+                WHERE UPPER(COALESCE(p.status,'')) IN ('PAID','SUCCESS','COMPLETED')
+                  AND p.paid_at IS NULL
+                ORDER BY p.id DESC
+                LIMIT 100
+            """)
+            payment_review_flags = cur.fetchall()
 
             # Read-only payment summary for the admin UI; never alters orders or access.
             cur.execute("""
@@ -6329,6 +6557,16 @@ def admin():
                 ORDER BY ca.id DESC LIMIT 200
             """)
             access = cur.fetchall()
+
+        admin_action_audit = []
+        if section == "security":
+            cur.execute("""
+                SELECT actor_id,action,target_type,target_id,reason,created_at
+                FROM admin_action_audit
+                ORDER BY created_at DESC, id DESC
+                LIMIT 100
+            """)
+            admin_action_audit = cur.fetchall()
 
         if section == "analytics":
             cur.execute("""
@@ -6418,6 +6656,7 @@ def admin():
         search_users = []
         search_payments = []
         movie_search_demands = []
+        cw_movie_requests = []
         if section == "demand":
             cur.execute("""
                 SELECT id, search_term, search_count, unique_users, first_searched_at,
@@ -6427,6 +6666,22 @@ def admin():
                 LIMIT 300
             """)
             movie_search_demands = cur.fetchall()
+
+            # The homepage and movie-page request forms write to cw_movie_requests.
+            # Keep these explicit requests visible alongside search-based demand.
+            cur.execute("""
+                SELECT r.id, r.customer_id, r.requested_title, r.normalized_title,
+                       r.votes, r.status, r.created_at, r.updated_at,
+                       u.full_name, u.email, u.mobile,
+                       (SELECT COUNT(*)
+                          FROM cw_movie_requests r2
+                         WHERE r2.normalized_title = r.normalized_title) AS total_requesters
+                FROM cw_movie_requests r
+                LEFT JOIN customer_users u ON u.customer_id = r.customer_id
+                ORDER BY r.updated_at DESC, r.id DESC
+                LIMIT 500
+            """)
+            cw_movie_requests = cur.fetchall()
 
         if q:
             like = "%" + q + "%"
@@ -6527,6 +6782,7 @@ def admin():
         users=users,
         payments=payments,
         payment_summary=payment_summary,
+        payment_review_flags=payment_review_flags,
         subscriptions=subscriptions,
         access=access,
         top_movies=top_movies,
@@ -6535,6 +6791,7 @@ def admin():
         search_users=search_users,
         search_payments=search_payments,
         movie_search_demands=movie_search_demands,
+        cw_movie_requests=cw_movie_requests,
         top_rated_movies=top_rated_movies,
         comments_admin=comments_admin,
         total_movies=int(stats.get("total_movies") or 0),
@@ -6550,12 +6807,16 @@ def admin():
         withdrawals_admin=withdrawals_admin,
         bank_accounts_admin=bank_accounts_admin,
         support_admin=support_admin,
+        followers_admin=followers_admin,
+        follower_totals=follower_totals,
         withdrawal_financials=withdrawal_financials,
         pending_bank_verifications=pending_bank_verifications,
         total_referral_rewards=total_referral_rewards,
         pending_withdrawals_total=pending_withdrawals_total,
         website_enabled=(str(get_setting("website_enabled", "1")).strip().lower() not in {"0", "false", "off", "no"}),
         home_hero_image_url=home_hero_image_url,
+        pending_creator_uploads=pending_creator_uploads,
+        admin_action_audit=admin_action_audit,
     )
 
 
@@ -7499,6 +7760,15 @@ def admin_delete_movie(movie_id):
         movie = cur.fetchone()
 
         if movie:
+            # Preserve a database audit record before removing the catalogue row.
+            cur.execute("""
+                INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+                VALUES(%s,'MOVIE_DELETED','movie',%s,%s)
+            """, (
+                str(session.get("admin_user") or ADMIN_USER or "admin"),
+                str(movie_id),
+                str(movie.get("title") or "")[:500] or None,
+            ))
 
             cur.execute(
                 """

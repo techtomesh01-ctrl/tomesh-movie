@@ -167,6 +167,16 @@
                 <div class="cw-stat"><b>{{ paid_count }}</b><span>Paid Orders</span></div>
                 <div class="cw-stat"><b>{% if premium_active %}ON{% else %}OFF{% endif %}</b><span>Premium</span></div>
             </div>
+            <div class="cw-panel" style="margin-bottom:18px">
+                <h2 class="cw-section-title">👥 Member Community</h2>
+                <div class="cw-stats" style="margin-bottom:12px">
+                    <div class="cw-stat"><b>{{ follower_count }}</b><span>Followers</span></div>
+                    <div class="cw-stat"><b>{{ following_count }}</b><span>Following</span></div>
+                    <div class="cw-stat"><b>PUBLIC</b><span>Profile Status</span></div>
+                </div>
+                <a class="cw-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="{{ url_for('public_customer_profile', customer_id=session.get('customer_id')) }}">View My Public Profile →</a>
+                <div class="cw-muted" style="margin-top:9px">Your public profile shows your name, photo and follower counts. Email and mobile remain private.</div>
+            </div>
 
             <div class="cw-panel">
                 <h2 class="cw-section-title">Your CINEMA WORLD</h2>
