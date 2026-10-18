@@ -4,6 +4,7 @@ These tests intentionally do not connect to production services or mutate data.
 """
 import re
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import app as cinema_app
@@ -27,6 +28,30 @@ class ApplicationSmokeTests(unittest.TestCase):
         }
         missing = required.difference(cinema_app.app.view_functions)
         self.assertFalse(missing, f"Missing required Flask endpoints: {sorted(missing)}")
+
+    def test_creator_publish_requires_rights_quality_and_evidence(self):
+        client = cinema_app.app.test_client()
+        with client.session_transaction() as session:
+            session["admin_logged_in"] = True
+            session["admin_user"] = "test-reviewer"
+
+        # Invalid approval must be rejected before opening the database or publishing.
+        with mock.patch.object(cinema_app, "get_db", side_effect=AssertionError("database should not be touched")):
+            response = client.post(
+                "/admin/creator-submission/123/approve",
+                data={"rights_verified": "yes", "quality_checked": "yes", "rights_evidence": "short"},
+                follow_redirects=False,
+            )
+        self.assertEqual(response.status_code, 302)
+        with client.session_transaction() as session:
+            flashes = session.get("_flashes", [])
+        self.assertTrue(any("Publish blocked" in message for _, message in flashes))
+
+    def test_creator_review_page_has_audit_history_and_rights_notice(self):
+        source = (TEMPLATES / "admin_creator_studio.html").read_text(encoding="utf-8")
+        self.assertIn("Decision audit history", source)
+        self.assertIn("Rights evidence/reference", source)
+        self.assertIn("not independent proof", source)
 
     def test_templates_compile(self):
         self.assertTrue(TEMPLATES.is_dir(), "templates directory is missing")
