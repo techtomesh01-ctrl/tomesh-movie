@@ -69,6 +69,7 @@ class ApplicationSmokeTests(unittest.TestCase):
         self.assertIn("CREATE TABLE IF NOT EXISTS admin_action_audit", app_source)
         self.assertIn("USER_UNBLOCKED", app_source)
         self.assertIn("PREMIUM_REVOKED", app_source)
+        self.assertIn("MOVIE_DELETED", app_source)
 
     def test_creator_review_page_has_audit_history_and_rights_notice(self):
         source = (TEMPLATES / "admin_creator_studio.html").read_text(encoding="utf-8")
