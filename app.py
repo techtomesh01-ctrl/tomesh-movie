@@ -3680,6 +3680,20 @@ def request_movie():
                 last_customer_id = NULL
             RETURNING id
         """, (search_term, normalized))
+        # Also write an explicit request row for the Admin > Movie Demand
+        # "Direct Movie Requests" table. Use a savepoint so this optional
+        # mirror cannot prevent the primary demand record from being saved.
+        try:
+            cur.execute("SAVEPOINT explicit_movie_request_mirror")
+            cur.execute("""
+                INSERT INTO cw_movie_requests
+                    (customer_id, requested_title, normalized_title, votes, status, created_at, updated_at)
+                VALUES (%s, %s, %s, 1, 'REQUESTED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """, (session.get("customer_id"), search_term, normalized))
+            cur.execute("RELEASE SAVEPOINT explicit_movie_request_mirror")
+        except Exception:
+            cur.execute("ROLLBACK TO SAVEPOINT explicit_movie_request_mirror")
+            cur.execute("RELEASE SAVEPOINT explicit_movie_request_mirror")
         conn.commit()
         cur.close()
         flash("Movie request bhej diya! CINEMA WORLD team ise review karegi.", "success")
