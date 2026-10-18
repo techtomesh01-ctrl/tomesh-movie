@@ -85,6 +85,24 @@ class ApplicationSmokeTests(unittest.TestCase):
         self.assertIn("Rights evidence/reference", source)
         self.assertIn("not independent proof", source)
 
+    def test_member_profiles_and_following_are_connected_to_admin(self):
+        app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+        admin_source = (TEMPLATES / "admin.html").read_text(encoding="utf-8")
+        profile_source = (TEMPLATES / "profile.html").read_text(encoding="utf-8")
+        public_source = (TEMPLATES / "public_profile.html").read_text(encoding="utf-8")
+
+        self.assertIn("CREATE TABLE IF NOT EXISTS customer_follows", app_source)
+        self.assertIn("def public_customer_profile", app_source)
+        self.assertIn("def toggle_customer_follow", app_source)
+        self.assertIn("UNIQUE (follower_customer_id, followed_customer_id)", app_source)
+        self.assertIn("CHECK (follower_customer_id <> followed_customer_id)", app_source)
+        self.assertIn('"followers"', app_source)
+        self.assertIn("Profiles & Followers", admin_source)
+        self.assertIn("followers_admin", admin_source)
+        self.assertIn("{{ follower_count }}", profile_source)
+        self.assertIn("Sign in to Follow", public_source)
+        self.assertIn("Email and mobile number are not shown publicly", public_source)
+
     def test_templates_compile(self):
         self.assertTrue(TEMPLATES.is_dir(), "templates directory is missing")
         template_names = sorted(
