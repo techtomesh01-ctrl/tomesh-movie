@@ -86,7 +86,7 @@
 <header class="cw-top">
   <div class="cw-brand"><div class="cw-logo">CW</div><div><strong>CINEMA WORLD</strong><span>OWNER CONTROL CENTER</span></div></div>
   <div class="cw-clock" aria-label="Live date and time in India"><strong id="cw-head-day">{{ cinema_now_ist.strftime('%A') }}</strong><span id="cw-head-date">{{ cinema_now_ist.strftime('%d %B %Y') }}</span><small>LIVE IST · <span id="cw-head-time">{{ cinema_now_ist.strftime('%I:%M:%S %p') }}</span></small></div>
-  <div class="cw-top-actions"><a class="cw-btn" href="{{ url_for('admin', section='dashboard') }}">{{ icon('home') }} <span>Dashboard</span></a><a class="cw-btn" href="{{ url_for('home') }}">{{ icon('play') }} <span>Website</span></a><a class="cw-btn red" href="{{ url_for('logout') }}">Logout</a></div>
+  <div class="cw-top-actions"><a class="cw-btn red" href="{{ url_for('admin_operations.admin_operations_home') }}">📈 <span>Operations & Payments</span></a><a class="cw-btn" href="{{ url_for('admin', section='dashboard') }}">{{ icon('home') }} <span>Dashboard</span></a><a class="cw-btn" href="{{ url_for('home') }}">{{ icon('play') }} <span>Website</span></a><a class="cw-btn red" href="{{ url_for('logout') }}">Logout</a></div>
 </header>
 
 <div class="cw-layout">
