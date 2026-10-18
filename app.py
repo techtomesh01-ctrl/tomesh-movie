@@ -4827,51 +4827,13 @@ def stream_movie(movie_id):
         )
 
     # --------------------------------------------------------
-    # Verify the object exists before handing the browser a
-    # direct R2 URL. R2 handles HTTP Range/206 natively, which
-    # is more reliable for browser MP4 playback than proxying
-    # every media range through the Render Flask worker.
+    # Generate the signed R2 URL without an extra HEAD request.
+    # Movie publishing already validates the uploaded object; a
+    # network HEAD on every playback added 10–20 seconds of
+    # avoidable latency on the Render request. R2 serves the
+    # media directly with native HTTP Range support.
     # --------------------------------------------------------
-    try:
-
-        head = r2_head(video_key)
-
-    except Exception as exc:
-
-        print(
-            "R2 HEAD ERROR:",
-            repr(exc),
-        )
-
-        return Response(
-            "Video object not found in R2.",
-            status=404,
-        )
-
-    total_size = int(
-        head.get(
-            "ContentLength",
-            0,
-        )
-    )
-
-    if total_size <= 0:
-        return Response(
-            "Video file is empty.",
-            status=404,
-        )
-
-    content_type = (
-        content_type_for_key(video_key)
-        or head.get("ContentType")
-        or "video/mp4"
-    )
-
-    # --------------------------------------------------------
-    # Direct presigned R2 URL. Browser talks to R2 directly and
-    # gets native Range support, correct Content-Type and inline
-    # playback behavior.
-    # --------------------------------------------------------
+    content_type = content_type_for_key(video_key) or "video/mp4"
     try:
 
         client = get_r2_client()
