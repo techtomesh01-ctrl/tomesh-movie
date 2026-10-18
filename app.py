@@ -3633,6 +3633,7 @@ def cashfree_return():
 # PUBLIC MOVIE REQUEST BOX
 # ============================================================
 
+@app.route("/request-movie-legacy", methods=["POST"], endpoint="cw_request_movie")
 @app.route("/request-movie-legacy", methods=["POST"])
 def request_movie():
     search_term = re.sub(r"\s+", " ", str(request.form.get("movie_name") or "").strip())[:120]
