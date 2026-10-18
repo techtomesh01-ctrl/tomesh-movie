@@ -47,6 +47,29 @@ class ApplicationSmokeTests(unittest.TestCase):
             flashes = session.get("_flashes", [])
         self.assertTrue(any("Publish blocked" in message for _, message in flashes))
 
+    def test_invalid_user_admin_action_is_rejected_without_database_write(self):
+        client = cinema_app.app.test_client()
+        with client.session_transaction() as session:
+            session["admin_logged_in"] = True
+            session["admin_user"] = "test-reviewer"
+
+        with mock.patch.object(cinema_app, "get_db", side_effect=AssertionError("database should not be touched")):
+            response = client.post(
+                "/admin/user-restriction/123",
+                data={"action": "delete_everything"},
+                follow_redirects=False,
+            )
+        self.assertEqual(response.status_code, 400)
+
+    def test_security_center_includes_admin_action_audit(self):
+        source = (TEMPLATES / "admin.html").read_text(encoding="utf-8")
+        self.assertIn("Admin Action Audit", source)
+        self.assertIn("admin_action_audit", source)
+        app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS admin_action_audit", app_source)
+        self.assertIn("USER_UNBLOCKED", app_source)
+        self.assertIn("PREMIUM_REVOKED", app_source)
+
     def test_creator_review_page_has_audit_history_and_rights_notice(self):
         source = (TEMPLATES / "admin_creator_studio.html").read_text(encoding="utf-8")
         self.assertIn("Decision audit history", source)
