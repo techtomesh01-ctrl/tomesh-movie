@@ -5775,6 +5775,8 @@ def api_my_list(movie_id):
 def admin_user_restriction(user_id):
     action = str(request.form.get("action", "block")).strip().lower()
     reason = str(request.form.get("reason", "")).strip()[:500]
+    if action not in {"block", "unblock", "revoke_premium"}:
+        abort(400)
 
     conn = get_db()
     try:
