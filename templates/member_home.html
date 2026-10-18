@@ -114,7 +114,35 @@ body{
     margin-left:auto;
     display:flex;
     align-items:center;
-    gap:12px;
+    gap:10px;
+}
+
+.tm-profile-link{
+    width:40px;
+    height:40px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:12px;
+    background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
+    box-shadow:0 6px 18px rgba(0,0,0,.22);
+    transition:border-color .2s, transform .2s, background .2s;
+}
+.tm-profile-link:hover{
+    border-color:rgba(229,9,20,.8);
+    background:rgba(229,9,20,.12);
+    transform:translateY(-1px);
+}
+.tm-profile-link .tm-avatar{
+    width:30px;
+    height:30px;
+    border-radius:8px;
+}
+.tm-logout{
+    border-color:rgba(229,9,20,.42);
+    color:#f4f4f4;
+    border-radius:10px;
 }
 
 .tm-search-wrap{
@@ -1012,11 +1040,6 @@ body{
 
         <a href="{{ url_for('creator_upload') }}">Creator Studio</a>
 
-        <a href="{{ url_for('creator_upload') }}">
-        <svg class="tm-mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v18H4zM8 7h8M8 11h8M8 15h5"/></svg>
-        <span>Creator Studio</span>
-    </a>
-
     <a href="{{ url_for('user_earnings') }}" class="tm-refer-link">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-3.9-5A4 4 0 0 0 16 11Zm-8 0a4 4 0 1 0-3.9-5A4 4 0 0 0 8 11Zm0 2c-2.7 0-5 1.35-6 3.4V19h12v-2.6C13 14.35 10.7 13 8 13Zm8 0c-.55 0-1.08.08-1.58.22 1.08.72 1.9 1.63 2.4 2.78V19h5v-2.6c-1-2.05-3.25-3.4-5.82-3.4Z"/></svg>
             Refer & Earn
@@ -1092,14 +1115,11 @@ body{
 
     </div>
 
-    <div class="tm-member-badge">
-        MEMBER
-    </div>
-
     <a
         class="tm-profile-link"
         href="{{ url_for('customer_profile') }}"
-        title="My Profile"
+        title="Account settings"
+        aria-label="Open account settings"
     >
         {% if customer_profile and customer_profile.profile_photo %}
             <img
@@ -1112,13 +1132,6 @@ body{
                 {{ ((customer_profile.full_name if customer_profile else '') or (customer_email or 'C'))[:1]|upper }}
             </div>
         {% endif %}
-    </a>
-
-    <a
-        class="tm-profile-btn"
-        href="{{ url_for('customer_profile') }}"
-    >
-        Profile
     </a>
 
     <a
