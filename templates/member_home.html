@@ -1,6 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}CINEMA WORLD | Member{% endblock %}
+{% block title %}CINEMA WORLD | Member
+<style id="cw-member-nav-premium-cleanup">
+/* Premium member header: one clean row; navigation lives in the hamburger drawer. */
+.tm-member-nav{
+  height:72px!important;
+  min-height:72px!important;
+  padding:0 clamp(14px,3vw,42px)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+  background:rgba(7,7,8,.96)!important;
+  border-bottom:1px solid rgba(255,255,255,.09)!important;
+  box-shadow:0 8px 28px rgba(0,0,0,.24)!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+.tm-nav-left{height:100%!important;display:flex!important;align-items:center!important;gap:14px!important;min-width:0!important}
+.tm-menu-toggle{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;flex:0 0 40px!important;margin:0!important;border-radius:11px!important;background:#151517!important;border:1px solid rgba(255,255,255,.13)!important}
+.tm-logo{font-size:clamp(15px,1.5vw,20px)!important;letter-spacing:1px!important;white-space:nowrap!important}
+.tm-nav-links{display:flex!important;align-items:center!important;gap:clamp(10px,1.2vw,18px)!important;min-width:0!important}
+.tm-nav-links a{font-size:12px!important;white-space:nowrap!important}
+.tm-nav-right{position:static!important;margin-left:auto!important;display:flex!important;align-items:center!important;gap:9px!important;min-width:0!important}
+.tm-search-wrap{flex:0 1 210px!important;min-width:0!important}
+.tm-search{width:100%!important;max-width:210px!important;height:40px!important;border-radius:11px!important;background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.12)!important}
+.tm-profile-link{width:40px!important;height:40px!important;flex:0 0 40px!important;border-radius:11px!important}
+.tm-profile-link .tm-avatar{width:29px!important;height:29px!important;border-radius:8px!important}
+.tm-logout{padding:10px 13px!important;border-radius:10px!important;white-space:nowrap!important}
+.tm-mobile-member-links{display:none!important}
+@media(max-width:900px){
+  .tm-nav-links{display:none!important}
+}
+@media(max-width:650px){
+  .tm-member-nav{height:64px!important;min-height:64px!important;padding:0 12px!important;gap:8px!important}
+  .tm-nav-left{gap:9px!important;flex:0 1 auto!important}
+  .tm-menu-toggle{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;flex-basis:36px!important;border-radius:10px!important}
+  .tm-logo{font-size:15px!important;letter-spacing:.55px!important}
+  .tm-nav-right{gap:6px!important;flex:0 0 auto!important}
+  .tm-search-wrap{flex:0 1 100px!important;width:100px!important}
+  .tm-search{width:100%!important;height:35px!important;padding:0 28px 0 9px!important;font-size:11px!important}
+  .tm-search-icon{right:8px!important;top:9px!important;font-size:12px!important}
+  .tm-profile-link{width:35px!important;height:35px!important;flex-basis:35px!important;border-radius:10px!important}
+  .tm-profile-link .tm-avatar{width:26px!important;height:26px!important}
+  .tm-logout{display:none!important}
+  .tm-mobile-member-links{display:none!important}
+}
+@media(max-width:360px){
+  .tm-member-nav{padding:0 8px!important}
+  .tm-nav-left{gap:7px!important}
+  .tm-logo{font-size:13px!important;letter-spacing:.25px!important}
+  .tm-search-wrap{width:82px!important;flex-basis:82px!important}
+  .tm-profile-link{width:32px!important;height:32px!important;flex-basis:32px!important}
+}
+</style>
+
+{% endblock %}
 
 {% block content %}
 
