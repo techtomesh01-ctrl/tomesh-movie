@@ -65,7 +65,14 @@ def _template_ist_date(value, fmt="%d %b %Y"):
 
 @app.context_processor
 def _inject_cinema_clock():
-    return {"cinema_now_ist": datetime.now(timezone.utc).astimezone(IST)}
+    try:
+        global_announcement = get_setting("site_global_announcement", "")
+    except Exception:
+        global_announcement = ""
+    return {
+        "cinema_now_ist": datetime.now(timezone.utc).astimezone(IST),
+        "site_global_announcement": global_announcement,
+    }
 
 app.secret_key = (
     os.environ.get("SECRET_KEY", "").strip()
@@ -5838,6 +5845,27 @@ def member_home():
     top_rated_movies.sort(key=lambda m: (float(m.get("average_rating") or 0), int(m.get("rating_count") or 0), int(m.get("id") or 0)), reverse=True)
     top_rated_movies = top_rated_movies[:10]
     saved_movies = [m for m in movies if m.get("in_my_list")]
+    community_members = []
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT u.customer_id, u.full_name, u.profile_photo,
+                   COUNT(f.followed_customer_id) AS followers_count,
+                   CASE WHEN mine.follower_customer_id IS NULL THEN FALSE ELSE TRUE END AS is_following
+            FROM customer_users u
+            LEFT JOIN customer_follows f ON f.followed_customer_id=u.customer_id
+            LEFT JOIN customer_follows mine
+              ON mine.follower_customer_id=%s AND mine.followed_customer_id=u.customer_id
+            WHERE u.customer_id<>%s AND COALESCE(u.is_blocked,FALSE)=FALSE
+            GROUP BY u.customer_id,u.full_name,u.profile_photo,u.created_at,mine.follower_customer_id
+            ORDER BY COUNT(f.followed_customer_id) DESC, u.created_at DESC
+            LIMIT 12
+        """, (customer_id, customer_id))
+        community_members = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
     categories = []
     seen = set()
     for movie in movies:
@@ -5857,6 +5885,9 @@ def member_home():
         customer_email=session.get("customer_email", ""),
         customer_profile=get_customer_profile(customer_id),
         premium=has_active_premium(),
+        community_members=community_members,
+        community_title=get_setting("site_community_title", "Discover the CINEMA WORLD Community"),
+        community_desc=get_setting("site_community_desc", "Follow other members and grow your movie community."),
     )
 
 @app.route("/api/movie-search-demand", methods=["POST"])
@@ -6594,9 +6625,14 @@ def admin_website_editor():
         "request_title": ("Movie request title", 120),
         "request_desc": ("Movie request description", 400),
         "footer_question": ("Footer contact line", 240),
+        "global_announcement": ("Site-wide announcement (blank hides it)", 240),
+        "community_title": ("Member community heading", 100),
+        "community_desc": ("Member community description", 240),
     }
     for key, (label, limit) in fields.items():
         value = str(request.form.get(key, "")).strip()
+        if key == "global_announcement" and not value:
+            continue
         if not value:
             flash(label + " cannot be empty; no changes saved.", "error")
             return redirect(url_for("admin", section="website-editor"))
@@ -7119,6 +7155,9 @@ def admin():
         "request_title": get_setting("site_request_title", "Request a Movie 🎬"),
         "request_desc": get_setting("site_request_desc", "Jo movie CINEMA WORLD par dekhna chahte ho, uska naam yahan likho. Hum popular requests review karenge."),
         "footer_question": get_setting("site_footer_question", "Questions? Contact us through CINEMA WORLD support."),
+        "global_announcement": get_setting("site_global_announcement", ""),
+        "community_title": get_setting("site_community_title", "Discover the CINEMA WORLD Community"),
+        "community_desc": get_setting("site_community_desc", "Follow other members and grow your movie community."),
     }
 
     return render_template(
