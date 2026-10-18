@@ -257,9 +257,17 @@
 </tbody></table></div></section>
 
 <section class="cw-card"><h2>Withdrawal History</h2>
-<div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Receive</th><th>Fee</th><th>Total Debit</th><th>Status</th><th>UTR</th><th>Date</th></tr></thead><tbody>
-{% for w in withdrawals %}<tr><td>#{{w.id}}</td><td>₹{{w.net_amount or w.amount}}</td><td>₹{{w.withdrawal_fee or 0}}</td><td>₹{{w.total_debit or w.amount}}</td><td><span class="cw-status">{{w.status}}</span></td><td>{{w.utr or w.transaction_ref or '—'}}</td><td>{{w.created_at}}</td></tr>
-{% else %}<tr><td colspan="7">No withdrawal requests yet.</td></tr>{% endfor %}
+<div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Receive</th><th>Fee</th><th>Total Debit</th><th>Status</th><th>UTR</th><th>Date</th><th>Report problem</th></tr></thead><tbody>
+{% for w in withdrawals %}<tr><td>#{{w.id}}</td><td>₹{{w.net_amount or w.amount}}</td><td>₹{{w.withdrawal_fee or 0}}</td><td>₹{{w.total_debit or w.amount}}</td><td><span class="cw-status">{{w.status}}</span></td><td>{{w.utr or w.transaction_ref or '—'}}</td><td>{{w.created_at}}</td><td>
+{% if w.status=='PAID' %}
+<details><summary style="cursor:pointer;color:#ff626b;font-weight:800">Report problem / fraud</summary>
+<form method="post" action="{{ url_for('report_withdrawal_dispute', withdrawal_id=w.id) }}" class="cw-form" style="margin-top:10px;min-width:240px;gap:8px">
+<select class="cw-input" name="issue_type" required><option value="">Problem select karein</option><option value="MONEY_NOT_RECEIVED">Paise bank mein nahi aaye</option><option value="WRONG_BANK_DETAILS">Galat bank details / paise kisi aur ko gaye</option><option value="UNAUTHORIZED">Fraud / unauthorized payment</option><option value="OTHER">Other problem</option></select>
+<textarea class="cw-input" name="description" minlength="10" maxlength="2000" rows="3" placeholder="Kya hua? Date, amount aur bank se mili information likhein. PIN/OTP kabhi na likhein." required></textarea>
+<button class="cw-btn cw-primary" type="submit">Submit dispute</button></form></details>
+{% endif %}
+</td></tr>
+{% else %}<tr><td colspan="8">No withdrawal requests yet.</td></tr>{% endfor %}
 </tbody></table></div></section>
 
 <section class="cw-card"><h2>Withdrawal Terms & Fees</h2><div class="cw-note">
