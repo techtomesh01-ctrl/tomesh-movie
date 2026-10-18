@@ -3690,6 +3690,69 @@ def request_movie():
         conn.close()
     return redirect(request_return_target())
 
+# PUBLIC INFORMATION PAGES + CRAWLER FILES
+# ============================================================
+
+_PUBLIC_INFO_PAGES = {
+    "/about": "about.html",
+    "/contact": "contact.html",
+    "/privacy-policy": "privacy_policy.html",
+    "/terms": "terms.html",
+    "/content-rights": "content_rights.html",
+    "/copyright": "copyright.html",
+    "/disclaimer": "disclaimer.html",
+    "/cookie-policy": "cookie_policy.html",
+    "/refund-policy": "refund_policy.html",
+}
+
+
+def _render_public_info_page(path):
+    template = _PUBLIC_INFO_PAGES.get(path)
+    if not template:
+        abort(404)
+    return render_template(template)
+
+
+@app.route("/about")
+@app.route("/contact")
+@app.route("/privacy-policy")
+@app.route("/terms")
+@app.route("/content-rights")
+@app.route("/copyright")
+@app.route("/disclaimer")
+@app.route("/cookie-policy")
+@app.route("/refund-policy")
+def public_information_page():
+    return _render_public_info_page(request.path)
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    body = "User-agent: *\\nAllow: /\\nDisallow: /admin\\nDisallow: /login\\nDisallow: /logout\\nSitemap: https://tomesh-movie.onrender.com/sitemap.xml\\n"
+    return Response(body, mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    public_urls = [
+        "https://tomesh-movie.onrender.com/",
+        "https://tomesh-movie.onrender.com/about",
+        "https://tomesh-movie.onrender.com/contact",
+        "https://tomesh-movie.onrender.com/privacy-policy",
+        "https://tomesh-movie.onrender.com/terms",
+        "https://tomesh-movie.onrender.com/content-rights",
+        "https://tomesh-movie.onrender.com/copyright",
+        "https://tomesh-movie.onrender.com/disclaimer",
+        "https://tomesh-movie.onrender.com/cookie-policy",
+        "https://tomesh-movie.onrender.com/refund-policy",
+    ]
+    entries = "".join(
+        "<url><loc>" + url + "</loc></url>" for url in public_urls
+    )
+    xml = '<?xml version="1.0" encoding="UTF-8"?>' + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + entries + "</urlset>"
+    return Response(xml, mimetype="application/xml")
+
+
 # HOME
 # ============================================================
 
