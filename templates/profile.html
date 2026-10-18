@@ -232,6 +232,34 @@
                 {% else %}
                     <div class="cw-muted">No payment history yet.</div>
                 {% endif %}
+
+                <div class="cw-panel" id="account-settings" style="margin-top:18px">
+                    <h2 class="cw-section-title">⚙️ Account Settings</h2>
+                    <p class="cw-muted" style="line-height:1.7">Manage your profile information here. Use the language selector in the CINEMA WORLD side menu to choose English or हिन्दी.</p>
+                    <a class="cw-feature" href="{{ url_for('member_home') }}" style="display:block;text-decoration:none;margin-top:12px">
+                        <b>🌐 Language / भाषा</b><span>Open the member menu and choose your preferred language.</span>
+                    </a>
+                    <a class="cw-feature" href="{{ url_for('customer_payment_history') }}" style="display:block;text-decoration:none;margin-top:10px">
+                        <b>💳 Payments &amp; Transactions</b><span>View your payment records for this account.</span>
+                    </a>
+                </div>
+
+                <div class="cw-panel" id="privacy-security" style="margin-top:18px">
+                    <h2 class="cw-section-title">🔐 Privacy &amp; Account Security</h2>
+                    <p class="cw-muted" style="line-height:1.7">This area shows the account details associated with your current sign-in. Never share your OTP or password with anyone.</p>
+                    <div style="padding:13px;background:#0b0b0b;border:1px solid #292929;border-radius:9px;margin-top:12px">
+                        <div class="cw-label">Signed-in email</div>
+                        <div style="overflow-wrap:anywhere">{{ profile.email or "Not added" }}</div>
+                        <div class="cw-label" style="margin-top:14px">Registered mobile</div>
+                        <div>{{ profile.mobile or "Not added" }}</div>
+                    </div>
+                    <a class="cw-feature" href="{{ url_for('help_support') }}" style="display:block;text-decoration:none;margin-top:12px">
+                        <b>🛟 Need account help?</b><span>Contact customer support if you suspect an account issue.</span>
+                    </a>
+                    <a class="cw-feature" href="{{ url_for('logout') }}" style="display:block;text-decoration:none;margin-top:10px">
+                        <b>↪ Sign out</b><span>End your current CINEMA WORLD session.</span>
+                    </a>
+                </div>
             </div>
         </section>
     </div>
