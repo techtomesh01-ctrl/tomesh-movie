@@ -328,6 +328,22 @@
 </td></tr>
 {% else %}<tr><td colspan="9" class="cw-empty">No withdrawal requests.</td></tr>{% endfor %}
 </tbody></table></div></section>
+<section class="cw-card">
+<div class="cw-card-head"><div><h2>Withdrawal Disputes / Fraud Reports</h2><div class="cw-muted">Check UTR with the bank/payout provider. A complaint is a report to investigate, not proof of fraud.</div></div></div>
+<div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Case / User</th><th>Withdrawal / UTR</th><th>Bank beneficiary at request</th><th>Complaint</th><th>Status</th><th>Admin review / resolution</th></tr></thead><tbody>
+{% for d in withdrawal_disputes_admin %}
+<tr><td><b>#{{d.id}} — {{d.full_name or 'User'}}</b><br><span class="cw-muted">{{d.customer_id}} · {{d.email or ''}} · {{d.mobile or ''}}</span><br><span class="cw-muted">Filed: {{d.created_at|istdate('%d %b %Y')}} · {{d.created_at|istdate('%A')}} · {{d.created_at|istdate('%I:%M:%S %p')}} IST</span></td>
+<td>Withdrawal #{{d.withdrawal_id}}<br>₹{{d.net_amount or d.requested_amount or 0}}<br>{{d.withdrawal_status or '—'}}<br>UTR: {{d.utr or d.transaction_ref or '—'}}</td>
+<td><b>{{d.account_holder_name or '—'}}</b><br>{{d.bank_name or '—'}}<br><code style="color:#fff;white-space:nowrap">{{d.account_number or '—'}}</code><br>IFSC: {{d.ifsc or '—'}}</td>
+<td><b>{{d.issue_type|replace('_',' ')|title}}</b><div style="white-space:pre-wrap;max-width:320px;margin-top:5px">{{d.user_description}}</div></td>
+<td><b>{{d.status}}</b>{% if d.resolved_at %}<br><span class="cw-muted">{{d.resolved_at|istdate('%d %b %Y')}} · {{d.resolved_at|istdate('%I:%M:%S %p')}} IST</span>{% endif %}{% if d.resolution %}<div style="white-space:pre-wrap;margin-top:6px">{{d.resolution}}</div>{% endif %}</td>
+<td><form method="post" action="{{url_for('admin_process_withdrawal_dispute',dispute_id=d.id)}}" style="display:grid;gap:6px;min-width:210px">
+<textarea name="admin_note" maxlength="2000" rows="2" placeholder="Internal review note" style="background:#09090c;border:1px solid #292930;color:#fff;border-radius:8px;padding:7px">{{d.admin_note or ''}}</textarea>
+<textarea name="resolution" maxlength="2000" rows="2" placeholder="Resolution / next step required to close" style="background:#09090c;border:1px solid #292930;color:#fff;border-radius:8px;padding:7px">{{d.resolution or ''}}</textarea>
+<select name="action" required style="background:#09090c;border:1px solid #292930;color:#fff;border-radius:8px;padding:7px"><option value="INVESTIGATING" {% if d.status=='INVESTIGATING' %}selected{% endif %}>Investigating</option><option value="RESOLVED_USER" {% if d.status=='RESOLVED_USER' %}selected{% endif %}>Resolved for user (manual follow-up)</option><option value="RESOLVED_BANK" {% if d.status=='RESOLVED_BANK' %}selected{% endif %}>Referred to bank / payout provider</option><option value="CLOSED" {% if d.status=='CLOSED' %}selected{% endif %}>Close case</option></select>
+<button class="cw-btn red" type="submit">Save case update</button></form></td></tr>
+{% else %}<tr><td colspan="6" class="cw-empty">No withdrawal disputes reported yet.</td></tr>{% endfor %}
+</tbody></table></div><div class="cw-muted" style="margin-top:10px">Case updates notify the user. This tool does not automatically reverse a transfer, recover money, or refund a wallet.</div></section>
 {% endif %}
 
 
