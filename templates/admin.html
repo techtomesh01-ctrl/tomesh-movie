@@ -276,7 +276,7 @@
 
 {% if section=='withdrawals' %}
 <section class="cw-card">
-  <div class="cw-card-head"><div><h2>Withdrawals & Bank Verification</h2><div class="cw-muted">Bank-only payouts • 5% user fee • manual review • actual payout must be confirmed before Paid.</div></div></div>
+  <div class="cw-card-head"><div><h2>Withdrawals & Bank Verification</h2><div class="cw-muted">Bank-only payouts • 5% user fee • manual review. Full beneficiary details are visible only in Admin. Rejected bank entries remain in the history; each withdrawal preserves the exact bank details submitted with that request. Record a reason for incorrect details and keep the request unpaid until corrected.</div></div></div>
   <div class="cw-stats" style="margin-top:12px">
     <div class="cw-stat"><b>₹{{ '%.2f'|format(withdrawal_financials.reserved or 0) }}</b><span>Reserved / Pending Approval</span></div>
     <div class="cw-stat"><b>₹{{ '%.2f'|format(withdrawal_financials.paid or 0) }}</b><span>Total Paid to Users</span></div>
@@ -288,7 +288,7 @@
 <section class="cw-card"><div class="cw-card-head"><div><h2>Bank Verification Queue</h2><div class="cw-muted">Verify the beneficiary details before approving a withdrawal.</div></div></div>
 <div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>User</th><th>Account Holder</th><th>Bank</th><th>Account</th><th>IFSC</th><th>Status</th><th>Requested Date / Day / Time (IST)</th><th>Last Verified / Updated (IST)</th><th>Action</th></tr></thead><tbody>
 {% for b in bank_accounts_admin %}
-<tr><td>#{{b.id}}</td><td>{{b.full_name or 'User'}}<br><span class="cw-muted">{{b.customer_id}}</span></td><td>{{b.account_holder_name}}</td><td>{{b.bank_name}}</td><td>•••• {{b.account_number[-4:]}}</td><td>{{b.ifsc}}</td><td><span class="cw-badge">{{b.status}}</span></td><td>{% if b.created_at %}<b>{{b.created_at|istdate('%d %b %Y')}}</b><br><span class="cw-muted">{{b.created_at|istdate('%A')}} · {{b.created_at|istdate('%I:%M:%S %p')}} IST</span>{% else %}—{% endif %}</td><td>{% set bank_event_time = b.verified_at or b.rejected_at or b.last_verified_at or b.updated_at %}{% if bank_event_time %}<b>{{bank_event_time|istdate('%d %b %Y')}}</b><br><span class="cw-muted">{{bank_event_time|istdate('%A')}} · {{bank_event_time|istdate('%I:%M:%S %p')}} IST</span>{% else %}—{% endif %}</td><td>
+<tr><td>#{{b.id}}</td><td>{{b.full_name or 'User'}}<br><span class="cw-muted">{{b.customer_id}}</span></td><td>{{b.account_holder_name}}</td><td>{{b.bank_name}}</td><td><code style="color:#fff;white-space:nowrap">{{b.account_number}}</code></td><td>{{b.ifsc}}</td><td><span class="cw-badge">{{b.status}}</span></td><td>{% if b.created_at %}<b>{{b.created_at|istdate('%d %b %Y')}}</b><br><span class="cw-muted">{{b.created_at|istdate('%A')}} · {{b.created_at|istdate('%I:%M:%S %p')}} IST</span>{% else %}—{% endif %}</td><td>{% set bank_event_time = b.verified_at or b.rejected_at or b.last_verified_at or b.updated_at %}{% if bank_event_time %}<b>{{bank_event_time|istdate('%d %b %Y')}}</b><br><span class="cw-muted">{{bank_event_time|istdate('%A')}} · {{bank_event_time|istdate('%I:%M:%S %p')}} IST</span>{% else %}—{% endif %}</td><td>
 {% if b.status=='PENDING' %}
 <form method="post" action="{{url_for('admin_process_bank',bank_id=b.id)}}" style="display:flex;gap:5px;flex-wrap:wrap">
 <button class="cw-btn red" name="action" value="verify" type="submit">Verify</button>
@@ -307,7 +307,7 @@
 <td>#{{w.id}}</td>
 <td>{{w.full_name or 'User'}}<br><span class="cw-muted">{{w.customer_id}}</span></td>
 <td>₹{{w.net_amount or w.amount}}</td><td>₹{{w.withdrawal_fee or 0}}</td><td>₹{{w.total_debit or w.amount}}</td>
-<td>{{w.bank_name or '—'}}<br>•••• {{w.account_number[-4:] if w.account_number else '—'}}<br>{{w.ifsc or '—'}}</td>
+<td><b>{{w.account_holder_name or '—'}}</b><br>{{w.bank_name or '—'}}<br><code style="color:#fff;white-space:nowrap">{{w.account_number or '—'}}</code><br>IFSC: {{w.ifsc or '—'}}<br><span class="cw-muted">Bank status: {{w.bank_status or 'UNKNOWN'}}</span></td>
 <td><span class="cw-badge">{{w.status}}</span></td>
 <td>{% if w.created_at %}<b>Requested: {{w.created_at|istdate('%d %b %Y')}}</b><br><span class="cw-muted">{{w.created_at|istdate('%A')}} · {{w.created_at|istdate('%I:%M:%S %p')}} IST</span>{% endif %}{% if w.approved_at %}<br><span class="cw-muted">Approved: {{w.approved_at|istdate('%d %b %Y')}} · {{w.approved_at|istdate('%A')}} · {{w.approved_at|istdate('%I:%M:%S %p')}} IST</span>{% endif %}{% if w.paid_at %}<br><span class="cw-muted">Paid: {{w.paid_at|istdate('%d %b %Y')}} · {{w.paid_at|istdate('%A')}} · {{w.paid_at|istdate('%I:%M:%S %p')}} IST</span>{% endif %}{% if not w.created_at and not w.approved_at and not w.paid_at %}—{% endif %}</td>
 <td>
