@@ -6365,6 +6365,7 @@ def admin():
             """)
             users = cur.fetchall()
 
+        payment_review_flags = []
         if section == "payments":
             cur.execute("""
                 SELECT p.*,u.full_name,u.email,u.mobile
@@ -6373,6 +6374,20 @@ def admin():
                 ORDER BY p.id DESC LIMIT 200
             """)
             payments = cur.fetchall()
+
+            # Highlight locally inconsistent payment records for human review only.
+            # This does not change payment state, grant access, or assert provider status.
+            cur.execute("""
+                SELECT p.order_id,p.customer_id,p.movie_id,p.payment_type,p.amount,
+                       p.status,p.created_at,p.paid_at,u.full_name,u.email
+                FROM payment_orders p
+                LEFT JOIN customer_users u ON u.customer_id=p.customer_id
+                WHERE UPPER(COALESCE(p.status,'')) IN ('PAID','SUCCESS','COMPLETED')
+                  AND p.paid_at IS NULL
+                ORDER BY p.id DESC
+                LIMIT 100
+            """)
+            payment_review_flags = cur.fetchall()
 
             # Read-only payment summary for the admin UI; never alters orders or access.
             cur.execute("""
@@ -6637,6 +6652,7 @@ def admin():
         users=users,
         payments=payments,
         payment_summary=payment_summary,
+        payment_review_flags=payment_review_flags,
         subscriptions=subscriptions,
         access=access,
         top_movies=top_movies,
