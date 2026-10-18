@@ -1125,6 +1125,63 @@ body{
     .tm-mobile-member-links .tm-refer-link{color:#f2c96d!important}
 }
 
+
+/* ================= HAMBURGER SIDE MENU ================= */
+.tm-menu-toggle{
+    width:42px;height:42px;flex:0 0 42px;
+    display:inline-flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:5px;
+    border:1px solid rgba(255,255,255,.14);border-radius:12px;
+    background:rgba(255,255,255,.055);color:#fff;cursor:pointer;
+    transition:background .2s,border-color .2s; margin-right:12px;
+}
+.tm-menu-toggle:hover,.tm-menu-toggle[aria-expanded="true"]{
+    background:rgba(229,9,20,.14);border-color:rgba(229,9,20,.7);
+}
+.tm-menu-toggle span{display:block;width:18px;height:2px;border-radius:3px;background:currentColor}
+.tm-menu-backdrop{
+    position:fixed;inset:0;z-index:7998;background:rgba(0,0,0,.65);
+    opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s;
+    backdrop-filter:blur(3px);
+}
+.tm-menu-drawer{
+    position:fixed;top:0;bottom:0;left:0;z-index:7999;
+    width:min(350px,88vw);overflow-y:auto;
+    padding:22px 16px 28px;
+    background:linear-gradient(180deg,#171719 0%,#09090a 100%);
+    border-right:1px solid rgba(255,255,255,.12);
+    box-shadow:20px 0 70px rgba(0,0,0,.5);
+    transform:translateX(-105%);visibility:hidden;
+    transition:transform .24s ease,visibility .24s;
+}
+body.tm-menu-open .tm-menu-backdrop{opacity:1;visibility:visible}
+body.tm-menu-open .tm-menu-drawer{transform:translateX(0);visibility:visible}
+body.tm-menu-open{overflow:hidden}
+.tm-menu-head{display:flex;align-items:center;gap:12px;padding:3px 2px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+.tm-menu-brand{font-size:17px;font-weight:950;letter-spacing:1px;color:#fff}
+.tm-menu-brand span{color:#ff2633}
+.tm-menu-subtitle{font-size:10px;color:#96969c;letter-spacing:1.5px;margin-top:4px}
+.tm-menu-close{margin-left:auto;width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#242427;color:#fff;font-size:22px;cursor:pointer}
+.tm-menu-user{display:flex;align-items:center;gap:12px;padding:17px 4px}
+.tm-menu-user-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(135deg,#e50914,#690008);font-weight:900;font-size:18px}
+.tm-menu-user-label{font-size:13px;font-weight:800;color:#fff}
+.tm-menu-user-hint{font-size:11px;color:#999;margin-top:4px}
+.tm-menu-section-label{padding:13px 10px 7px;color:#77777f;font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase}
+.tm-menu-link{display:flex;align-items:center;gap:13px;min-height:44px;padding:10px 11px;margin:2px 0;border-radius:10px;color:#e8e8eb;text-decoration:none;font-size:13px;font-weight:650;transition:background .16s,color .16s}
+.tm-menu-link:hover,.tm-menu-link:focus-visible{background:rgba(255,255,255,.08);color:#fff;outline:none}
+.tm-menu-link svg{width:19px;height:19px;flex:0 0 19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:#bcbcc3}
+.tm-menu-link.tm-menu-support svg{color:#ff5b65}
+.tm-menu-link.tm-menu-danger{color:#ff888e}
+.tm-menu-divider{height:1px;background:rgba(255,255,255,.09);margin:10px 2px}
+@media(max-width:650px){
+    .tm-menu-toggle{width:36px;height:36px;flex-basis:36px;margin-right:9px;border-radius:10px}
+    .tm-nav-left{gap:0}
+    .tm-logo{font-size:16px!important}
+    .tm-nav-right{right:10px;gap:6px}
+    .tm-profile-link{width:34px!important;height:34px!important;flex-basis:34px!important;border-radius:10px!important}
+    .tm-profile-link .tm-avatar{width:26px!important;height:26px!important}
+}
+
 </style>
 
 <!-- ================= NAVBAR ================= -->
@@ -1133,6 +1190,8 @@ body{
 
 
 <div class="tm-nav-left">
+
+<button type="button" class="tm-menu-toggle" id="tmMenuToggle" aria-label="Open menu" aria-controls="tmMenuDrawer" aria-expanded="false"><span></span><span></span><span></span></button>
 
     <a class="tm-logo" href="#top">
         CINEMA <span>WORLD</span>
@@ -1257,6 +1316,59 @@ body{
 
 
 </nav>
+
+
+<!-- CINEMA WORLD full navigation drawer -->
+<div class="tm-menu-backdrop" id="tmMenuBackdrop" aria-hidden="true"></div>
+<aside class="tm-menu-drawer" id="tmMenuDrawer" aria-label="CINEMA WORLD navigation" aria-hidden="true">
+    <div class="tm-menu-head">
+        <div><div class="tm-menu-brand">CINEMA <span>WORLD</span></div><div class="tm-menu-subtitle">YOUR CINEMATIC WORLD</div></div>
+        <button type="button" class="tm-menu-close" id="tmMenuClose" aria-label="Close menu">×</button>
+    </div>
+    <a class="tm-menu-link" href="{{ url_for('customer_profile') }}" style="margin-top:12px">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span><strong>My Account & Settings</strong></span>
+    </a>
+    <div class="tm-menu-section-label">Discover</div>
+    <a class="tm-menu-link" href="#top"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9M9 21v-7h6v7"/></svg>Home</a>
+    <a class="tm-menu-link" href="#movies"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M16 4v16M3 9h5M16 9h5M3 15h5M16 15h5"/></svg>All Movies</a>
+    <a class="tm-menu-link" href="#categories"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Categories & Genres</a>
+    <a class="tm-menu-link" href="#my-list"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>My Watchlist</a>
+    <a class="tm-menu-link" href="{{ url_for('dramas_page') }}"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M16 4v16"/></svg>Dramas & Shows</a>
+    <div class="tm-menu-section-label">Your CINEMA WORLD</div>
+    <a class="tm-menu-link" href="{{ url_for('creator_upload') }}"><svg viewBox="0 0 24 24"><path d="m15 10 5-3v10l-5-3"/><rect x="3" y="5" width="12" height="14" rx="2"/></svg>Creator Studio</a>
+    <a class="tm-menu-link" href="{{ url_for('user_earnings') }}"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 8h5M18.5 5.5v5"/></svg>Refer & Earn / Earnings</a>
+    <a class="tm-menu-link" href="{{ url_for('membership_checkout') }}"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/></svg>Membership & Plans</a>
+    <div class="tm-menu-section-label">Help & Account</div>
+    <a class="tm-menu-link tm-menu-support" href="{{ url_for('help_support') }}"><svg viewBox="0 0 24 24"><path d="M4 13v-2a8 8 0 0 1 16 0v2"/><path d="M4 13H3v4h4v-4H4ZM20 13h1v4h-4v-4h3ZM17 19a5 5 0 0 1-5 2h-2"/></svg>Customer Support</a>
+    <a class="tm-menu-link" href="{{ url_for('customer_profile') }}"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile & Personal Details</a>
+    <a class="tm-menu-link" href="{{ url_for('customer_profile') }}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-2.6v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H6.3v-2.6h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.2H15v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v2.6h-.2a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</a>
+    <a class="tm-menu-link" href="{{ url_for('customer_profile') }}"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg>Privacy & Account Security</a>
+    <div class="tm-menu-divider"></div>
+    <a class="tm-menu-link tm-menu-danger" href="{{ url_for('logout') }}"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg>Logout</a>
+</aside>
+<script>
+(function(){
+    const toggle=document.getElementById('tmMenuToggle');
+    const drawer=document.getElementById('tmMenuDrawer');
+    const backdrop=document.getElementById('tmMenuBackdrop');
+    const close=document.getElementById('tmMenuClose');
+    if(!toggle||!drawer||!backdrop||!close)return;
+    function setMenu(open){
+        document.body.classList.toggle('tm-menu-open',open);
+        toggle.setAttribute('aria-expanded',open?'true':'false');
+        toggle.setAttribute('aria-label',open?'Close menu':'Open menu');
+        drawer.setAttribute('aria-hidden',open?'false':'true');
+        backdrop.setAttribute('aria-hidden',open?'false':'true');
+        if(open) close.focus();
+    }
+    toggle.addEventListener('click',()=>setMenu(!document.body.classList.contains('tm-menu-open')));
+    close.addEventListener('click',()=>{setMenu(false);toggle.focus()});
+    backdrop.addEventListener('click',()=>{setMenu(false);toggle.focus()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('tm-menu-open')){setMenu(false);toggle.focus()}});
+    drawer.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setMenu(false)));
+})();
+</script>
 
 <!-- ================= HERO ================= -->
 
