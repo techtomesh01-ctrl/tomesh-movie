@@ -413,6 +413,36 @@
     </table>
   </div>
 </section>
+
+<section class="cw-card">
+  <div class="cw-card-head">
+    <div>
+      <h2>Direct Movie Requests</h2>
+      <div class="cw-muted">Requests submitted from the homepage, movie pages, and Request Movie page.</div>
+    </div>
+    <span class="cw-muted">{{ cw_movie_requests|length }} recent request records</span>
+  </div>
+  <div class="cw-table-wrap">
+    <table class="cw-table">
+      <thead><tr><th>Movie Requested</th><th>Requested By</th><th>Contact</th><th>Total Requesters</th><th>Status</th><th>Submitted</th><th>Last Updated</th></tr></thead>
+      <tbody>
+      {% for r in cw_movie_requests %}
+        <tr>
+          <td><strong>{{ r.requested_title }}</strong></td>
+          <td>{{ r.full_name or 'Guest / account name unavailable' }}<br><span class="cw-muted">{{ r.customer_id or 'No customer ID' }}</span></td>
+          <td>{{ r.email or '—' }}<br><span class="cw-muted">{{ r.mobile or '—' }}</span></td>
+          <td>{{ r.total_requesters or 1 }}</td>
+          <td>{{ r.status or 'REQUESTED' }}</td>
+          <td>{% if r.created_at %}<b>{{ r.created_at|istdate('%d %b %Y') }}</b><br><span class="cw-muted">{{ r.created_at|istdate('%A') }} · {{ r.created_at|istdate('%I:%M:%S %p') }} IST</span>{% else %}—{% endif %}</td>
+          <td>{% if r.updated_at %}<b>{{ r.updated_at|istdate('%d %b %Y') }}</b><br><span class="cw-muted">{{ r.updated_at|istdate('%A') }} · {{ r.updated_at|istdate('%I:%M:%S %p') }} IST</span>{% else %}—{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="cw-empty">No direct movie requests submitted yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 {% endif %}</div></div></div>{% if q %}<h3>Movies</h3><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Title</th><th>Category</th><th>Views</th></tr></thead><tbody>{% for m in search_movies %}<tr><td>{{m.id}}</td><td>{{m.title}}</td><td>{{m.category or '—'}}</td><td>{{m.views or 0}}</td></tr>{% else %}<tr><td colspan="4" class="cw-empty">No movie match.</td></tr>{% endfor %}</tbody></table></div><h3 style="margin-top:20px">Users</h3><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Mobile</th><th>Customer ID</th></tr></thead><tbody>{% for u in search_users %}<tr><td>{{u.id}}</td><td>{{u.full_name or '—'}}</td><td>{{u.email or '—'}}</td><td>{{u.mobile or '—'}}</td><td>{{u.customer_id}}</td></tr>{% else %}<tr><td colspan="5" class="cw-empty">No user match.</td></tr>{% endfor %}</tbody></table></div><h3 style="margin-top:20px">Payments</h3><div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Amount</th><th>Status</th><th>Created Date</th><th>Day</th><th>Paid Date</th><th>Day</th></tr></thead><tbody>{% for p in search_payments %}<tr><td>{{p.order_id}}</td><td>{{p.customer_id}}</td><td>{{p.payment_type}}</td><td>₹{{p.amount}}</td><td>{{p.status}}</td><td>{{p.created_at|istdate('%d %b %Y')}}</td><td>{{p.created_at|istdate('%A')}} · {{p.created_at|istdate('%I:%M:%S %p')}} IST</td><td>{{p.paid_at|istdate('%d %b %Y') if p.paid_at else '—'}}</td><td>{{(p.paid_at|istdate('%A')) ~ ' · ' ~ (p.paid_at|istdate('%I:%M:%S %p')) ~ ' IST' if p.paid_at else '—'}}</td></tr>{% else %}<tr><td colspan="9" class="cw-empty">No payment match.</td></tr>{% endfor %}</tbody></table></div>{% endif %}</section>{% endif %}
 
 {% if section=='help' %}
