@@ -121,7 +121,15 @@
         {% if item.video_url %}<video controls preload="metadata" src="{{ item.video_url }}">Your browser does not support video preview.</video>{% endif %}
         <div style="display:flex;gap:7px;flex-wrap:wrap;margin:10px 0"><span class="tag">{{ item.content_type }}</span><span class="tag">{{ item.status }}</span><span class="tag">👁 {{ item.views or 0 }} views</span><span class="tag">♥ {{ item.likes or 0 }} likes</span></div>
         <h3 style="margin:8px 0">{{ item.title }}</h3>
-        <div class="meta">Submission #{{ item.id }} · Movie ID: {{ item.movie_id or 'Not published' }}<br>Creator ID: {{ item.customer_id }}<br>{{ item.creator_name or 'Name not provided' }} · {{ item.creator_email or 'Email unavailable' }} · {{ item.creator_mobile or 'Mobile not provided' }}<br>Submitted: {{ item.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% if item.reviewed_at %}<br>Reviewed: {{ item.reviewed_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% endif %}</div>
+        <div class="meta">Submission #{{ item.id }} · Movie ID: {{ item.movie_id or 'Not published' }}<br>Creator ID: {{ item.customer_id }}<br>{{ item.creator_name or 'Name not provided' }} · {{ item.creator_email or 'Email unavailable' }} · {{ item.creator_mobile or 'Mobile not provided' }}<br>Submitted: {{ item.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% if item.reviewed_at %}<br>Reviewed: {{ item.reviewed_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% endif %}{% if item.reviewed_by %}<br>Reviewed by: {{ item.reviewed_by }}{% endif %}</div>
+        {% if item.status == 'APPROVED' %}
+        <div class="cs-card" style="margin:10px 0;padding:12px;border-color:#365344">
+          <strong>Recorded publishing checks</strong>
+          <div class="meta" style="margin-top:6px">Rights check: {{ 'Confirmed by reviewer' if item.rights_verified else 'Not recorded' }} · Quality check: {{ 'Confirmed by reviewer' if item.quality_checked else 'Not recorded' }}</div>
+          <div class="meta" style="margin-top:6px"><strong>Rights evidence/reference:</strong> {{ item.rights_evidence or 'No evidence reference recorded' }}</div>
+          <div class="meta" style="margin-top:6px">Note: these are admin-recorded checks, not independent proof that a license is genuine.</div>
+        </div>
+        {% endif %}
         <p class="cs-muted">{{ item.category or 'Uncategorised' }}</p>
         <div class="description">{{ item.description or 'No description provided.' }}</div>
         {% if item.admin_note %}<p class="meta"><strong>Admin note:</strong> {{ item.admin_note }}</p>{% endif %}
