@@ -100,7 +100,7 @@ def cw_like(movie_id):
         conn.commit()
     finally:
         conn.close()
-    return redirect(url_for('movie', movie_id=movie_id))
+    return redirect(url_for('movie_page', movie_id=movie_id))
 
 
 @app.route('/movie/<int:movie_id>/cw-report', methods=['POST'])
@@ -125,7 +125,7 @@ def cw_report(movie_id):
     finally:
         conn.close()
     flash('Report submitted to CINEMA WORLD support.', 'success')
-    return redirect(url_for('movie', movie_id=movie_id))
+    return redirect(url_for('movie_page', movie_id=movie_id))
 
 
 @app.route('/request-movie', methods=['GET','POST'])
