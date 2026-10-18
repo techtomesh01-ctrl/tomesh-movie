@@ -399,7 +399,7 @@ def sitemap_xml():
         cur = conn.cursor()
         cur.execute('SELECT id FROM movies ORDER BY id DESC')
         for row in cur.fetchall():
-            urls.append(url_for('movie', movie_id=int(row['id']), _external=True))
+            urls.append(url_for('movie_page', movie_id=int(row['id']), _external=True))
     except Exception as exc:
         print('SITEMAP MOVIE QUERY WARNING:', repr(exc))
     finally:
