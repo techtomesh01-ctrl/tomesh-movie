@@ -3798,6 +3798,22 @@ def home():
         q=q,
         category=category,
         hero_image_url=hero_image_url,
+        site_editor_values={
+            "hero_title_en": get_setting("site_hero_title_en", "Unlimited movies, shows, and more"),
+            "hero_title_hi": get_setting("site_hero_title_hi", "अनलिमिटेड मूवीज़, शो और बहुत कुछ"),
+            "hero_desc_en": get_setting("site_hero_desc_en", "Watch movies and entertainment in one cinematic place. Discover stories you'll want to watch again and again."),
+            "hero_desc_hi": get_setting("site_hero_desc_hi", "एक सिनेमैटिक जगह पर मूवीज़ और एंटरटेनमेंट देखें। ऐसी कहानियाँ खोजें जिन्हें आप बार-बार देखना चाहेंगे।"),
+            "hero_price_en": get_setting("site_hero_price_en", "Starts at ₹1. Watch from ₹1. Cancel at any time."),
+            "hero_price_hi": get_setting("site_hero_price_hi", "₹1 से शुरू। कभी भी कैंसल करें।"),
+            "hero_ready_en": get_setting("site_hero_ready_en", "Ready to watch? Enter your email to create or restart your membership."),
+            "hero_ready_hi": get_setting("site_hero_ready_hi", "देखने के लिए तैयार हैं? अपनी membership शुरू या फिर से शुरू करने के लिए ईमेल डालें।"),
+            "hero_button": get_setting("site_hero_button", "Get Started →"),
+            "trending_title": get_setting("site_trending_title", "Trending Now"),
+            "trending_subtitle": get_setting("site_trending_subtitle", "Popular on CINEMA WORLD"),
+            "request_title": get_setting("site_request_title", "Request a Movie 🎬"),
+            "request_desc": get_setting("site_request_desc", "Jo movie CINEMA WORLD par dekhna chahte ho, uska naam yahan likho. Hum popular requests review karenge."),
+            "footer_question": get_setting("site_footer_question", "Questions? Contact us through CINEMA WORLD support."),
+        },
     )
 
 
