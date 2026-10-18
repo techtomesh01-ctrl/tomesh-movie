@@ -7093,6 +7093,30 @@ def request_earnings_withdrawal():
 # USER SUPPORT
 # ============================================================
 
+@app.route("/payment-history")
+@customer_login_required
+def customer_payment_history():
+    """Show only the signed-in customer's payment records."""
+    customer_id = session.get("customer_id")
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT order_id, movie_id, payment_type, amount, status, created_at, paid_at
+            FROM payment_orders
+            WHERE customer_id = %s
+            ORDER BY COALESCE(paid_at, created_at) DESC, id DESC
+            LIMIT 100
+            """,
+            (customer_id,),
+        )
+        payments = cur.fetchall()
+    finally:
+        conn.close()
+    return render_template("payment_history.html", payments=payments)
+
+
 @app.route("/help-support", methods=["GET", "POST"])
 @customer_login_required
 def help_support():
