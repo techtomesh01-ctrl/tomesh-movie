@@ -244,7 +244,7 @@
 
 {% if section=='watch' %}
 <section class="cw-card">
-  <div class="cw-card-head"><div><h2>👁️ Individual Customer Movie Views</h2><div class="cw-muted">Latest 500 movie-page views. Admin previews are excluded. New events start being tracked after this update; old visits cannot be reconstructed.</div></div><span class="cw-badge">{{ view_events_admin|length }} listed</span></div>
+  <div class="cw-card-head"><div><h2>👁️ Individual Customer Movie Views</h2><div class="cw-muted">Latest 500 movie-page views. Admin previews are excluded. New events start being tracked after this update; old visits cannot be reconstructed.</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="cw-badge">{{ view_events_admin|length }} listed</span><a class="cw-btn" href="{{ url_for('admin_report_csv', report_name='movie-views') }}">Export CSV</a></div></div>
   <div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Customer</th><th>Movie</th><th>Viewed at (IST)</th></tr></thead><tbody>
   {% for v in view_events_admin %}<tr><td><b>{{ v.customer_name }}</b><br><span class="cw-muted">{{ v.customer_id }}</span><br><span class="cw-muted">{{ v.email or '—' }} · {{ v.mobile or '—' }}</span></td><td>{{ v.movie_title or ('Movie #' ~ v.movie_id) }}</td><td>{% if v.viewed_at %}<b>{{ v.viewed_at|istdate('%d %b %Y') }}</b><br><span class="cw-muted">{{ v.viewed_at|istdate('%A · %I:%M:%S %p') }} IST</span>{% else %}—{% endif %}</td></tr>
   {% else %}<tr><td colspan="3" class="cw-empty">No individual view events recorded yet. New customer visits will appear here.</td></tr>{% endfor %}
@@ -253,7 +253,7 @@
 {% endif %}
 
 {% if section=='engagement' %}
-<section class="cw-card"><div class="cw-card-head"><div><h2>❤️ Movie Likes</h2><div class="cw-muted">Review and remove spam or abusive likes. Removing a like updates the real count.</div></div><span class="cw-badge">{{ engagement_likes|length }} listed</span></div>
+<section class="cw-card"><div class="cw-card-head"><div><h2>❤️ Movie Likes</h2><div class="cw-muted">Review and remove spam or abusive likes. Removing a like updates the real count.</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="cw-badge">{{ engagement_likes|length }} listed</span><a class="cw-btn" href="{{ url_for('admin_report_csv', report_name='engagement') }}">Export Likes & Ratings CSV</a></div></div>
 <div class="cw-table-wrap"><table class="cw-table"><thead><tr><th>Movie</th><th>User</th><th>Liked at</th><th>Action</th></tr></thead><tbody>
 {% for l in engagement_likes %}<tr><td>{{ l.movie_title or ('Movie #' ~ l.movie_id) }}</td><td><b>{{ l.customer_name }}</b><br><span class="cw-muted">{{ l.customer_id }}</span></td><td>{% if l.created_at %}{{ l.created_at|istdate('%d %b %Y · %I:%M %p') }} IST{% else %}—{% endif %}</td><td><form method="post" action="{{ url_for('admin_engagement_action') }}" onsubmit="return confirm('Remove this like?');"><input type="hidden" name="record_id" value="{{ l.id }}"><button class="cw-btn red" name="action" value="delete_like" type="submit">Remove Like</button></form></td></tr>{% else %}<tr><td colspan="4" class="cw-empty">No likes found.</td></tr>{% endfor %}
 </tbody></table></div></section>
