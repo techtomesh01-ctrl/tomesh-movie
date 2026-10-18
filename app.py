@@ -3635,7 +3635,7 @@ def cashfree_return():
 
 @app.route("/request-movie-legacy", methods=["POST"])
 def request_movie():
-    search_term = re.sub(r"\s+", " ", str(request.form.get("movie_name") or "").strip())[:120]
+    search_term = re.sub(r"\s+", " ", str(request.form.get("movie_name") or request.form.get("title") or request.form.get("requested_title") or "").strip())[:120]
     honeypot = str(request.form.get("website") or "").strip()
     from_movie_page = request.form.get("source") == "moviepage"
     try:
