@@ -1,39 +1,73 @@
 {% extends "base.html" %}
-{% block title %}CINEMA WORLD | Member Profile{% endblock %}
+{% block title %}{{ public_profile.full_name or 'Member' }} · CINEMA WORLD{% endblock %}
 {% block content %}
 <style>
-.cw-public{min-height:80vh;padding:110px 18px 60px;background:radial-gradient(circle at 50% 0%,rgba(229,9,20,.18),transparent 35%),#050505;color:#fff;font-family:Arial,sans-serif}
-.cw-public-card{width:min(620px,100%);margin:auto;padding:30px;background:#111;border:1px solid #292929;border-radius:18px;text-align:center;box-shadow:0 20px 60px #0008}
-.cw-public-photo{width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid #e50914;box-shadow:0 0 0 6px #e5091422}
-.cw-public-fallback{width:120px;height:120px;border-radius:50%;margin:auto;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e50914,#540007);font-size:42px;font-weight:900}
-.cw-public-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0}
-.cw-public-stat{padding:17px;border-radius:12px;border:1px solid #292929;background:#090909}
-.cw-public-stat b{display:block;font-size:25px}.cw-public-stat span{color:#aaa;font-size:12px}
-.cw-public-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border-radius:8px;background:#e50914;color:white;text-decoration:none;font-weight:800;border:0;cursor:pointer}
-.cw-public-muted{color:#888;font-size:12px;line-height:1.6}
+.cw-channel{min-height:100vh;background:#0f0f0f;color:#f1f1f1;padding:88px 0 60px;font-family:Arial,Helvetica,sans-serif}
+.cw-channel-inner{width:min(1120px,calc(100% - 36px));margin:auto}
+.cw-banner{height:190px;border-radius:18px;overflow:hidden;position:relative;background:radial-gradient(ellipse at 78% 15%,#e5091466,transparent 35%),linear-gradient(115deg,#250307,#111 55%,#39060b)}
+.cw-banner:before{content:"CINEMA WORLD";position:absolute;right:26px;bottom:12px;font-size:clamp(28px,6vw,64px);font-weight:900;letter-spacing:3px;color:#ffffff0d}
+.cw-banner-mark{position:absolute;left:24px;top:22px;font-size:11px;letter-spacing:3px;font-weight:900;color:#ff5a62}
+.cw-channel-head{display:flex;align-items:center;gap:24px;padding:25px 8px 22px;border-bottom:1px solid #303030}
+.cw-avatar,.cw-avatar-fallback{width:112px;height:112px;flex:0 0 112px;border-radius:50%;object-fit:cover;background:#292929;border:2px solid #333}
+.cw-avatar-fallback{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e50914,#4b050a);font-size:42px;font-weight:900}
+.cw-channel-name{font-size:clamp(25px,4vw,34px);font-weight:800;line-height:1.2;margin:0 0 9px;overflow-wrap:anywhere}
+.cw-channel-meta{font-size:13px;color:#aaa;line-height:1.8}
+.cw-channel-description{font-size:13px;color:#bbb;margin-top:8px;line-height:1.6}
+.cw-channel-actions{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.cw-channel-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 19px;border-radius:24px;border:0;background:#f1f1f1;color:#111;text-decoration:none;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
+.cw-channel-btn.primary{background:#e50914;color:#fff}.cw-channel-btn.secondary{background:#272727;color:#fff}
+.cw-channel-tabs{display:flex;gap:30px;border-bottom:1px solid #303030;padding:0 8px;margin-bottom:24px}
+.cw-channel-tab{padding:17px 2px 14px;color:#aaa;font-size:12px;font-weight:800;letter-spacing:1px;border-bottom:3px solid #e50914}
+.cw-channel-section{padding:6px 8px 20px}
+.cw-channel-section h2{font-size:20px;margin:0 0 7px}
+.cw-channel-section p{font-size:13px;color:#aaa;line-height:1.7;max-width:720px;margin:0}
+.cw-channel-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.cw-channel-stat{background:#191919;border:1px solid #292929;border-radius:12px;padding:14px 18px;min-width:135px}
+.cw-channel-stat b{display:block;font-size:23px}.cw-channel-stat span{display:block;color:#999;font-size:11px;margin-top:5px}
+.cw-channel-note{margin-top:22px;padding:16px;border-radius:12px;background:#171717;border:1px solid #292929;color:#aaa;font-size:12px;line-height:1.7}
+.cw-channel-back{display:inline-block;margin-top:24px;color:#bbb;text-decoration:none;font-size:12px}
+.cw-channel-back:hover{color:#fff}
+@media(max-width:680px){.cw-channel{padding-top:76px}.cw-banner{height:130px;border-radius:12px}.cw-channel-head{align-items:flex-start;gap:14px;flex-wrap:wrap;padding:20px 2px}.cw-avatar,.cw-avatar-fallback{width:82px;height:82px;flex-basis:82px}.cw-avatar-fallback{font-size:32px}.cw-channel-identity{flex:1;min-width:160px}.cw-channel-actions{margin-left:0;width:100%}.cw-channel-actions form{flex:1}.cw-channel-actions .cw-channel-btn{width:100%}.cw-channel-tabs{gap:22px}.cw-channel-stat{flex:1;min-width:110px}}
 </style>
-<div class="cw-public">
-  <div class="cw-public-card">
-    <div style="color:#e50914;font-size:11px;letter-spacing:2px;font-weight:900;margin-bottom:20px">CINEMA WORLD · MEMBER</div>
-    {% if public_profile.profile_photo %}<img class="cw-public-photo" src="{{ public_profile.profile_photo }}" alt="Profile photo">{% else %}<div class="cw-public-fallback">{{ ((public_profile.full_name or 'C')[:1])|upper }}</div>{% endif %}
-    <h1 style="margin:18px 0 5px;font-size:28px">{{ public_profile.full_name or 'CINEMA WORLD Member' }}</h1>
-    <div class="cw-public-muted">Member since {{ public_profile.created_at.strftime('%d %b %Y') if public_profile.created_at else 'CINEMA WORLD' }}</div>
-    <div class="cw-public-stats">
-      <div class="cw-public-stat"><b>{{ follower_count }}</b><span>Followers</span></div>
-      <div class="cw-public-stat"><b>{{ following_count }}</b><span>Following</span></div>
-    </div>
-    {% if viewer_id and viewer_id != public_profile.customer_id %}
-      <form method="post" action="{{ url_for('toggle_customer_follow', customer_id=public_profile.customer_id) }}">
-        <button class="cw-public-btn" type="submit">{{ '✓ Following · Unfollow' if is_following else '+ Follow' }}</button>
-      </form>
-    {% elif not viewer_id %}
-      <a class="cw-public-btn" href="{{ url_for('login') }}">Sign in to Follow</a>
-    {% else %}
-      <span class="cw-public-muted">This is your public profile.</span>
-    {% endif %}
-    <p class="cw-public-muted" style="margin-top:20px">Follow members to connect with the CINEMA WORLD community. Email and mobile number are not shown publicly.</p>
-    <a href="{{ url_for('home') }}" style="color:#aaa;text-decoration:none;font-size:12px">← Back to CINEMA WORLD</a>
-    {% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<p class="cw-public-muted">{{ message }}</p>{% endfor %}{% endwith %}
+<div class="cw-channel">
+  <div class="cw-channel-inner">
+    <div class="cw-banner"><span class="cw-banner-mark">CINEMA WORLD · COMMUNITY</span></div>
+    <section class="cw-channel-head">
+      {% if public_profile.profile_photo %}
+        <img class="cw-avatar" src="{{ public_profile.profile_photo }}" alt="Profile photo of {{ public_profile.full_name or 'member' }}">
+      {% else %}
+        <div class="cw-avatar-fallback">{{ ((public_profile.full_name or 'C')[:1])|upper }}</div>
+      {% endif %}
+      <div class="cw-channel-identity">
+        <h1 class="cw-channel-name">{{ public_profile.full_name or 'CINEMA WORLD Member' }}</h1>
+        <div class="cw-channel-meta">@{{ public_profile.full_name|default('member', true)|lower|replace(' ', '')|replace('.', '')|replace('@', '') }} · {{ follower_count }} followers · {{ following_count }} following</div>
+        <div class="cw-channel-description">CINEMA WORLD member since {{ public_profile.created_at.strftime('%d %b %Y') if public_profile.created_at else 'joining the community' }}.</div>
+      </div>
+      <div class="cw-channel-actions">
+        {% if viewer_id and viewer_id != public_profile.customer_id %}
+          <form method="post" action="{{ url_for('toggle_customer_follow', customer_id=public_profile.customer_id) }}">
+            <button class="cw-channel-btn primary" type="submit">{{ 'Following · Unfollow' if is_following else '＋ Follow' }}</button>
+          </form>
+        {% elif not viewer_id %}
+          <a class="cw-channel-btn primary" href="{{ url_for('login') }}">Sign in to Follow</a>
+        {% else %}
+          <a class="cw-channel-btn secondary" href="{{ url_for('customer_profile') }}">Edit Profile</a>
+        {% endif %}
+      </div>
+    </section>
+    <nav class="cw-channel-tabs" aria-label="Profile sections"><span class="cw-channel-tab">HOME</span><span class="cw-channel-tab" style="border-bottom-color:transparent">ABOUT</span></nav>
+    <section class="cw-channel-section">
+      <h2>Channel overview</h2>
+      <p>This is a public CINEMA WORLD member profile. Follow this member to connect with the community. Email address and mobile number are kept private.</p>
+      <div class="cw-channel-stats">
+        <div class="cw-channel-stat"><b>{{ follower_count }}</b><span>FOLLOWERS</span></div>
+        <div class="cw-channel-stat"><b>{{ following_count }}</b><span>FOLLOWING</span></div>
+        <div class="cw-channel-stat"><b>{{ public_profile.created_at.strftime('%b %Y') if public_profile.created_at else '—' }}</b><span>JOINED</span></div>
+      </div>
+      <div class="cw-channel-note"><strong style="color:#eee">About this member</strong><br>Public profile · CINEMA WORLD community member<br>Private contact details are not displayed on this page.</div>
+      {% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="cw-channel-note">{{ message }}</div>{% endfor %}{% endwith %}
+      <a class="cw-channel-back" href="{{ url_for('home') }}">← Back to CINEMA WORLD</a>
+    </section>
   </div>
 </div>
 {% endblock %}
