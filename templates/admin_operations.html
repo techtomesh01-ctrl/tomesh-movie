@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}CINEMA WORLD | Operations Monitor{% endblock %}
+{% block content %}
+<style>
+.op{max-width:1450px;margin:24px auto;padding:18px;color:#f7f7f8;background:#09090b;font-family:Arial,sans-serif;min-height:80vh}
+.op a{color:#ff777d}.op-head{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.op h1{margin:4px 0}.op p,.muted{color:#a2a2ac;font-size:13px}.op-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}.op-card{background:#151519;border:1px solid #303038;border-radius:13px;padding:15px;min-width:0}.op-card small{display:block;color:#aaaab3}.op-card strong{display:block;font-size:27px;margin:8px 0;overflow-wrap:anywhere}.op-section{background:#111115;border:1px solid #303038;border-radius:14px;padding:16px;margin:14px 0;overflow:hidden}.op-table{overflow:auto}.op table{width:100%;border-collapse:collapse;min-width:650px}.op th,.op td{text-align:left;padding:10px;border-bottom:1px solid #2c2c32;font-size:12px;overflow-wrap:anywhere}.op th{color:#aaa}.pill{display:inline-block;padding:5px 8px;border:1px solid #444;border-radius:99px;font-size:11px}.good{color:#75e6a6}.bad{color:#ff858b}.unknown{color:#ffd58a}.op-btn{display:inline-block;padding:10px 13px;background:#e50914;border-radius:9px;color:white!important;text-decoration:none;font-weight:bold}.op-links{display:flex;gap:8px;flex-wrap:wrap}.op-links a{padding:8px 10px;border:1px solid #38383f;border-radius:8px;text-decoration:none}@media(max-width:800px){.op-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.op{padding:10px}.op-card strong{font-size:22px}}
+</style>
+<div class="op">
+ <div class="op-head"><div><div class="muted">CINEMA WORLD • OWNER ONLY</div><h1>Operations & Payment Monitor</h1><p>Live PostgreSQL records, recent activity, and integration configuration. Payment status is read-only here.</p></div><div class="op-links"><a href="{{ url_for('admin') }}">← Admin Panel</a><a class="op-btn" href="{{ url_for('admin_operations.admin_operations_home',check=1) }}">Check integrations</a></div></div>
+ <div class="op-grid">
+  <div class="op-card"><small>Total registered users</small><strong>{{ stats.users }}</strong><span class="muted">{{ stats.blocked_users }} blocked</span></div>
+  <div class="op-card"><small>Movies in catalogue</small><strong>{{ stats.movies }}</strong><span class="muted">{{ stats.views }} recorded views</span></div>
+  <div class="op-card"><small>Paid orders</small><strong>{{ stats.paid_orders }}</strong><span class="muted">₹{{ '%.2f'|format(stats.revenue) }} recorded successful-order amount</span></div>
+  <div class="op-card"><small>Pending / failed orders</small><strong>{{ stats.pending_orders }} / {{ stats.failed_orders }}</strong><span class="muted">{{ stats.orders }} total orders</span></div>
+  <div class="op-card"><small>Creator uploads awaiting review</small><strong>{{ stats.pending_uploads }}</strong><a href="{{ url_for('admin',section='help') }}">Open Admin Panel</a></div>
+  <div class="op-card"><small>Active subscriptions</small><strong>{{ stats.active_subscriptions }}</strong><span class="muted">Database status count</span></div>
+  <div class="op-card"><small>Database health</small><strong class="{{ 'good' if database_ok else 'bad' }}">{{ 'OK' if database_ok else 'ISSUE' }}</strong><span class="muted">Current request test</span></div>
+  <div class="op-card"><small>Payment review</small><strong>{{ stats.pending_orders + stats.failed_orders }}</strong><a href="{{ url_for('admin',section='payments') }}">Review all payments</a></div>
+ </div>
+ <section class="op-section"><h2>Integrations & system checks</h2><p class="muted">Configuration indicators do not guarantee an external provider is accepting transactions. Secrets are never shown.</p>
+  <div class="op-table"><table><thead><tr><th>Service</th><th>Configuration</th><th>Check status</th><th>Details</th></tr></thead><tbody>
+  {% for item in integrations %}<tr><td>{{ item.name }}</td><td><span class="pill {{ 'good' if item.configured else 'bad' }}">{{ 'Configured' if item.configured else 'Missing configuration' }}</span></td><td>{% if item.ok is sameas true %}<span class="good">OK</span>{% elif item.ok is sameas false %}<span class="bad">Failed</span>{% else %}<span class="unknown">Not tested</span>{% endif %}</td><td>{{ item.detail }}</td></tr>{% endfor %}
+  </tbody></table></div>
+ </section>
+ <section class="op-section"><h2>Payment status breakdown</h2><p class="muted">Read-only database summary. Confirm individual disputed payments in Cashfree before making a manual decision.</p><div class="op-table"><table><thead><tr><th>Status</th><th>Orders</th><th>Amount (₹)</th></tr></thead><tbody>
+ {% for item in payment_statuses %}<tr><td>{{ item.status or 'Unknown' }}</td><td>{{ item.n }}</td><td>{{ '%.2f'|format(item.amount or 0) }}</td></tr>{% else %}<tr><td colspan="3">No payment records found.</td></tr>{% endfor %}
+ </tbody></table></div></section>
+ <section class="op-section"><h2>Latest payments / orders</h2><div class="op-table"><table><thead><tr><th>Order ID</th><th>User</th><th>Type</th><th>Amount</th><th>Status</th><th>Created</th></tr></thead><tbody>
+ {% for p in recent_payments %}<tr><td>{{ p.order_id }}</td><td>{{ p.customer_label }}<br><span class="muted">{{ p.email or p.customer_id }}</span></td><td>{{ p.payment_type }}</td><td>₹{{ '%.2f'|format(p.amount or 0) }}</td><td>{{ p.status }}</td><td>{{ p.created_at|istdate('%d %b %Y %I:%M %p') }}</td></tr>{% else %}<tr><td colspan="6">No payment records found.</td></tr>{% endfor %}
+ </tbody></table></div><p><a href="{{ url_for('admin',section='payments') }}">Open full payment manager →</a></p></section>
+ <section class="op-section"><h2>Latest users</h2><div class="op-table"><table><thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Account status</th><th>Joined</th><th>Last login</th></tr></thead><tbody>
+ {% for u in recent_users %}<tr><td>{{ u.full_name or '—' }}</td><td>{{ u.email }}</td><td>{{ u.mobile or '—' }}</td><td>{{ 'Blocked' if u.is_blocked else 'Active' }}</td><td>{{ u.created_at|istdate('%d %b %Y %I:%M %p') }}</td><td>{{ u.last_login_at|istdate('%d %b %Y %I:%M %p') }}</td></tr>{% else %}<tr><td colspan="6">No users found.</td></tr>{% endfor %}
+ </tbody></table></div><p><a href="{{ url_for('admin',section='users') }}">Open user manager →</a></p></section>
+ <section class="op-section"><h2>Quick controls</h2><div class="op-links"><a href="{{ url_for('admin',section='users') }}">Users</a><a href="{{ url_for('admin',section='payments') }}">Payments</a><a href="{{ url_for('admin',section='subscriptions') }}">Subscriptions</a><a href="{{ url_for('admin',section='watch') }}">Watch activity</a><a href="{{ url_for('admin',section='health') }}">System health</a><a href="{{ url_for('admin_errors') }}">Error history</a><a href="{{ url_for('admin',section='reports') }}">CSV reports</a></div></section>
+ <p class="muted">Security note: this page does not expose secrets, grant access, or change payment/order status. Provider-specific payment confirmation must remain authoritative.</p>
+</div>
+{% endblock %}
