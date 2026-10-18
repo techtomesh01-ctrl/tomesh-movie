@@ -6552,6 +6552,7 @@ def admin():
         search_users=search_users,
         search_payments=search_payments,
         movie_search_demands=movie_search_demands,
+        cw_movie_requests=cw_movie_requests,
         top_rated_movies=top_rated_movies,
         comments_admin=comments_admin,
         total_movies=int(stats.get("total_movies") or 0),
