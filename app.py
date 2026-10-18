@@ -7612,6 +7612,15 @@ def admin_delete_movie(movie_id):
         movie = cur.fetchone()
 
         if movie:
+            # Preserve a database audit record before removing the catalogue row.
+            cur.execute("""
+                INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+                VALUES(%s,'MOVIE_DELETED','movie',%s,%s)
+            """, (
+                str(session.get("admin_user") or ADMIN_USER or "admin"),
+                str(movie_id),
+                str(movie.get("title") or "")[:500] or None,
+            ))
 
             cur.execute(
                 """
