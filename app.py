@@ -4086,6 +4086,8 @@ def movie_page(movie_id):
         ads=get_ads(),
         access=access,
         view_events_admin=view_events_admin,
+        engagement_likes=engagement_likes,
+        engagement_ratings=engagement_ratings,
         comments=comments,
         comment_csrf=comment_csrf,
         rating_summary=rating_summary,
@@ -5950,6 +5952,44 @@ def api_my_list(movie_id):
 
 # ============================================================
 # ADMIN DASHBOARD MISSING ENDPOINTS
+@app.route("/admin/engagement-action", methods=["POST"])
+@admin_required
+def admin_engagement_action():
+    action = str(request.form.get("action", "")).strip().lower()
+    try:
+        record_id = int(request.form.get("record_id", "0"))
+    except (TypeError, ValueError):
+        abort(400)
+    tables = {"delete_like": ("movie_likes", "LIKE_REMOVED"), "delete_rating": ("movie_ratings", "RATING_REMOVED")}
+    if action not in tables or record_id < 1:
+        abort(400)
+    table, audit_action = tables[action]
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM " + table + " WHERE id=%s", (record_id,))
+        removed = cur.rowcount
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,%s,%s,%s,%s)
+        """, (
+            str(session.get("admin_user") or ADMIN_USER or "admin"),
+            audit_action,
+            table,
+            str(record_id),
+            "Removed by Admin from Engagement Center" if removed else "Record not found",
+        ))
+        conn.commit()
+        flash("Engagement record removed." if removed else "Record was already absent.", "success" if removed else "error")
+    except Exception as exc:
+        conn.rollback()
+        print("ADMIN ENGAGEMENT ACTION ERROR:", repr(exc))
+        flash("Could not update engagement record.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin", section="engagement"))
+
+
 @app.route("/admin/follow-action", methods=["POST"])
 @admin_required
 def admin_follow_action():
@@ -6624,6 +6664,8 @@ def admin():
         subscriptions = []
         access = []
         view_events_admin = []
+        engagement_likes = []
+        engagement_ratings = []
         top_movies = []
         top_rated_movies = []
         live_events = []
@@ -6660,6 +6702,27 @@ def admin():
             follower_totals["profiles"] = int((cur.fetchone() or {}).get("profiles") or 0)
             cur.execute("SELECT COUNT(*) AS follows FROM customer_follows")
             follower_totals["follows"] = int((cur.fetchone() or {}).get("follows") or 0)
+
+        if section == "engagement":
+            cur.execute("""
+                SELECT l.id,l.movie_id,m.title AS movie_title,l.customer_id,
+                       COALESCE(u.full_name,u.email,l.customer_id) AS customer_name,l.created_at
+                FROM movie_likes l
+                LEFT JOIN movies m ON m.id=l.movie_id
+                LEFT JOIN customer_users u ON u.customer_id=l.customer_id
+                ORDER BY l.created_at DESC,l.id DESC LIMIT 300
+            """)
+            engagement_likes = cur.fetchall()
+            cur.execute("""
+                SELECT r.id,r.movie_id,m.title AS movie_title,r.customer_id,
+                       COALESCE(u.full_name,u.email,r.customer_id) AS customer_name,
+                       r.rating,r.created_at,r.updated_at
+                FROM movie_ratings r
+                LEFT JOIN movies m ON m.id=r.movie_id
+                LEFT JOIN customer_users u ON u.customer_id=r.customer_id
+                ORDER BY r.updated_at DESC,r.id DESC LIMIT 300
+            """)
+            engagement_ratings = cur.fetchall()
 
         if section == "movies":
             cur.execute("SELECT * FROM movies ORDER BY id DESC")
