@@ -654,6 +654,27 @@ def init_db():
                 reviewed_at TIMESTAMP
             )
         """)
+        cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS rights_verified BOOLEAN NOT NULL DEFAULT FALSE")
+        cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS quality_checked BOOLEAN NOT NULL DEFAULT FALSE")
+        cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS rights_evidence TEXT")
+        cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS reviewed_by TEXT")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_submission_audit (
+                id BIGSERIAL PRIMARY KEY,
+                submission_id INTEGER NOT NULL,
+                actor_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                note TEXT,
+                rights_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                quality_checked BOOLEAN NOT NULL DEFAULT FALSE,
+                rights_evidence TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_creator_submission_audit_submission
+            ON creator_submission_audit(submission_id, created_at DESC)
+        """)
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_creator_submissions_status_created
             ON creator_submissions(status, created_at DESC)
@@ -4183,6 +4204,7 @@ def admin_creator_studio():
         cur.execute("""
             SELECT cs.id,cs.customer_id,cs.title,cs.content_type,cs.category,cs.description,cs.poster,cs.video,
                    cs.status,cs.admin_note,cs.created_at,cs.reviewed_at,cs.movie_id,
+                   cs.rights_verified,cs.quality_checked,cs.rights_evidence,cs.reviewed_by,
                    cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile,
                    COALESCE(m.views,0) AS views,
                    COALESCE((SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=cs.movie_id),0) AS likes
@@ -4283,6 +4305,12 @@ def admin_review_creator_submission(submission_id, action):
     if action not in {"approve", "reject"}:
         abort(400)
     note = str(request.form.get("admin_note") or "").strip()[:1000]
+    rights_verified = request.form.get("rights_verified") == "yes"
+    quality_checked = request.form.get("quality_checked") == "yes"
+    rights_evidence = str(request.form.get("rights_evidence") or "").strip()[:2000]
+    if action == "approve" and not (rights_verified and quality_checked and len(rights_evidence) >= 12):
+        flash("Publish blocked: confirm content rights, complete the quality check, and record evidence/reference (at least 12 characters).", "error")
+        return redirect(url_for("admin_creator_studio"))
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
@@ -4302,16 +4330,29 @@ def admin_review_creator_submission(submission_id, action):
             """, (sub["title"],sub.get("category"),sub.get("description"),sub.get("poster"),sub["video"],sub["content_type"],sub["customer_id"]))
             movie_id = cur.fetchone()["id"]
             cur.execute("""
-                UPDATE creator_submissions SET status='APPROVED',admin_note=%s,movie_id=%s,reviewed_at=NOW()
+                UPDATE creator_submissions
+                SET status='APPROVED',admin_note=%s,movie_id=%s,reviewed_at=NOW(),
+                    rights_verified=TRUE,quality_checked=TRUE,rights_evidence=%s,reviewed_by=%s
                 WHERE id=%s
-            """, (note,movie_id,submission_id))
-            flash("Approved. Content is now listed in its selected section.", "success")
+            """, (note,movie_id,rights_evidence,str(session.get("admin_user") or session.get("admin_username") or "admin"),submission_id))
+            cur.execute("""
+                INSERT INTO creator_submission_audit
+                    (submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence)
+                VALUES(%s,%s,'APPROVED',%s,TRUE,TRUE,%s)
+            """, (submission_id,str(session.get("admin_user") or session.get("admin_username") or "admin"),note,rights_evidence))
+            flash("Approved after recording rights and quality checks. Content is now listed in its selected section.", "success")
         else:
             cur.execute("""
-                UPDATE creator_submissions SET status='REJECTED',admin_note=%s,reviewed_at=NOW()
+                UPDATE creator_submissions SET status='REJECTED',admin_note=%s,reviewed_at=NOW(),
+                    reviewed_by=%s
                 WHERE id=%s
-            """, (note,submission_id))
-            flash("Creator submission rejected.", "success")
+            """, (note,str(session.get("admin_user") or session.get("admin_username") or "admin"),submission_id))
+            cur.execute("""
+                INSERT INTO creator_submission_audit
+                    (submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence)
+                VALUES(%s,%s,'REJECTED',%s,FALSE,FALSE,NULL)
+            """, (submission_id,str(session.get("admin_user") or session.get("admin_username") or "admin"),note))
+            flash("Creator submission rejected and decision recorded.", "success")
         conn.commit()
     except Exception as exc:
         conn.rollback()
