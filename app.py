@@ -5901,6 +5901,43 @@ def api_my_list(movie_id):
 
 # ============================================================
 # ADMIN DASHBOARD MISSING ENDPOINTS
+@app.route("/admin/follow-action", methods=["POST"])
+@admin_required
+def admin_follow_action():
+    action = str(request.form.get("action", "")).strip().lower()
+    follower_id = str(request.form.get("follower_customer_id", "")).strip()[:160]
+    followed_id = str(request.form.get("followed_customer_id", "")).strip()[:160]
+    if action != "remove" or not follower_id or not followed_id or follower_id == followed_id:
+        abort(400)
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            DELETE FROM customer_follows
+            WHERE follower_customer_id=%s AND followed_customer_id=%s
+        """, (follower_id, followed_id))
+        removed = cur.rowcount
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,%s,%s,%s,%s)
+        """, (
+            str(session.get("admin_user") or ADMIN_USER or "admin"),
+            "FOLLOW_RELATION_REMOVED",
+            "customer_follow",
+            follower_id + " -> " + followed_id,
+            "Admin removed follow relationship" if removed else "Follow relationship was not found",
+        ))
+        conn.commit()
+        flash("Follow relationship removed." if removed else "Follow relationship was already absent.", "success" if removed else "error")
+    except Exception as exc:
+        conn.rollback()
+        print("ADMIN FOLLOW ACTION ERROR:", repr(exc))
+        flash("Could not update follower relationship.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin", section="followers"))
+
+
 @app.route("/admin/user-restriction/<int:user_id>", methods=["POST"])
 @admin_required
 def admin_user_restriction(user_id):
@@ -6544,6 +6581,7 @@ def admin():
         withdrawals_admin = []
         bank_accounts_admin = []
         followers_admin = []
+        follow_relations_admin = []
         follower_totals = {"profiles": 0, "follows": 0}
 
         if section == "followers":
@@ -6557,6 +6595,17 @@ def admin():
                 LIMIT 500
             """)
             followers_admin = cur.fetchall()
+            cur.execute("""
+                SELECT f.follower_customer_id, f.followed_customer_id, f.created_at,
+                       COALESCE(fu.full_name, fu.email, f.follower_customer_id) AS follower_name,
+                       COALESCE(tu.full_name, tu.email, f.followed_customer_id) AS followed_name
+                FROM customer_follows f
+                LEFT JOIN customer_users fu ON fu.customer_id=f.follower_customer_id
+                LEFT JOIN customer_users tu ON tu.customer_id=f.followed_customer_id
+                ORDER BY f.created_at DESC, f.id DESC
+                LIMIT 500
+            """)
+            follow_relations_admin = cur.fetchall()
             cur.execute("SELECT COUNT(*) AS profiles FROM customer_users")
             follower_totals["profiles"] = int((cur.fetchone() or {}).get("profiles") or 0)
             cur.execute("SELECT COUNT(*) AS follows FROM customer_follows")
@@ -6912,6 +6961,7 @@ def admin():
         pending_withdrawals_total=pending_withdrawals_total,
         website_enabled=(str(get_setting("website_enabled", "1")).strip().lower() not in {"0", "false", "off", "no"}),
         home_hero_image_url=home_hero_image_url,
+        follow_relations_admin=follow_relations_admin,
         site_editor_values={
             "hero_title_en": get_setting("site_hero_title_en", "Unlimited movies, shows, and more"),
             "hero_title_hi": get_setting("site_hero_title_hi", "अनलिमिटेड मूवीज़, शो और बहुत कुछ"),
