@@ -187,6 +187,30 @@
 
     </main>
 
+    <footer class="cw-site-footer" aria-label="CINEMA WORLD information links">
+      <div class="cw-site-footer-inner">
+        <span>© {{ cinema_now_ist.year }} CINEMA WORLD</span>
+        <nav aria-label="Legal and information">
+          <a href="{{ url_for('public_information_page', ) if false else '/about' }}">About Us</a>
+          <a href="/contact">Contact</a>
+          <a href="/privacy-policy">Privacy Policy</a>
+          <a href="/terms">Terms</a>
+          <a href="/cookie-policy">Cookie Policy</a>
+          <a href="/refund-policy">Refund Policy</a>
+          <a href="/content-rights">Content Rights</a>
+          <a href="/copyright">Copyright / DMCA</a>
+          <a href="/disclaimer">Disclaimer</a>
+        </nav>
+      </div>
+    </footer>
+    <style>
+      .cw-site-footer{padding:24px 5%;background:#080808;border-top:1px solid #242424;color:#aaa;font:12px/1.6 Arial,Helvetica,sans-serif}
+      .cw-site-footer-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+      .cw-site-footer nav{display:flex;gap:10px 18px;flex-wrap:wrap}
+      .cw-site-footer a{color:#bbb;text-decoration:none}
+      .cw-site-footer a:hover{color:#fff;text-decoration:underline}
+    </style>
+
 
 <style id="cw-mobile-member-fix">
 /* CINEMA WORLD Member page - mobile responsive fix */
