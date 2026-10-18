@@ -1032,6 +1032,17 @@ def init_db():
         cur.execute("""ALTER TABLE withdrawal_requests ADD COLUMN IF NOT EXISTS bank_status_at_request TEXT""")
         cur.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_withdrawal_idempotency ON withdrawal_requests(idempotency_key) WHERE idempotency_key IS NOT NULL""")
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS withdrawal_disputes (
+                id SERIAL PRIMARY KEY, withdrawal_id INTEGER NOT NULL REFERENCES withdrawal_requests(id),
+                customer_id TEXT NOT NULL, issue_type TEXT NOT NULL, user_description TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'OPEN', admin_note TEXT, resolution TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, resolved_at TIMESTAMP
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_withdrawal_disputes_status ON withdrawal_disputes(status, id DESC)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_withdrawal_disputes_customer ON withdrawal_disputes(customer_id, id DESC)")
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS wallet_ledger (
                 id BIGSERIAL PRIMARY KEY, customer_id TEXT NOT NULL,
                 entry_type TEXT NOT NULL, direction TEXT NOT NULL, amount NUMERIC(12,2) NOT NULL,
@@ -6779,6 +6790,7 @@ def admin():
         referral_rewards_admin = []
         withdrawals_admin = []
         bank_accounts_admin = []
+        withdrawal_disputes_admin = []
         followers_admin = []
         follow_relations_admin = []
         follower_totals = {"profiles": 0, "follows": 0}
@@ -7007,6 +7019,22 @@ def admin():
                 ORDER BY b.id DESC LIMIT 300
             """)
             bank_accounts_admin = cur.fetchall()
+            cur.execute("""
+                SELECT d.*, u.full_name, u.email, u.mobile,
+                       w.amount AS requested_amount, w.net_amount, w.status AS withdrawal_status,
+                       w.transaction_ref, w.utr, w.created_at AS withdrawal_created_at,
+                       COALESCE(w.bank_account_holder,b.account_holder_name) AS account_holder_name,
+                       COALESCE(w.bank_account_number,b.account_number) AS account_number,
+                       COALESCE(w.bank_ifsc,b.ifsc) AS ifsc,
+                       COALESCE(w.bank_name,b.bank_name) AS bank_name
+                FROM withdrawal_disputes d
+                LEFT JOIN customer_users u ON u.customer_id=d.customer_id
+                LEFT JOIN withdrawal_requests w ON w.id=d.withdrawal_id
+                LEFT JOIN customer_bank_accounts b ON b.id=w.bank_account_id
+                ORDER BY CASE WHEN d.status IN ('OPEN','INVESTIGATING') THEN 0 ELSE 1 END, d.id DESC
+                LIMIT 300
+            """)
+            withdrawal_disputes_admin = cur.fetchall()
 
         # Support tickets and their message history are needed only on the
         # Support section. Loading them on every admin page caused up to 200
@@ -7204,6 +7232,7 @@ def admin():
         referral_rewards_admin=referral_rewards_admin,
         withdrawals_admin=withdrawals_admin,
         bank_accounts_admin=bank_accounts_admin,
+        withdrawal_disputes_admin=withdrawal_disputes_admin,
         support_admin=support_admin,
         followers_admin=followers_admin,
         follower_totals=follower_totals,
@@ -7300,6 +7329,42 @@ def user_earnings():
         rewards=rewards,withdrawals=withdrawals,withdrawal_min=WITHDRAWAL_MIN_AMOUNT,
         withdrawal_fee_rate=WITHDRAWAL_FEE_RATE,withdrawal_max=WITHDRAWAL_MAX_AMOUNT,
         bank_account=bank_account,pin_set=pin_set,notifications=notifications)
+
+
+@app.route("/earnings/withdrawal/<int:withdrawal_id>/dispute", methods=["POST"])
+@customer_login_required
+def report_withdrawal_dispute(withdrawal_id):
+    customer_id = session.get("customer_id")
+    issue_type = str(request.form.get("issue_type", "") or "").strip().upper()
+    description = re.sub(r"\s+", " ", str(request.form.get("description", "") or "").strip())[:2000]
+    if issue_type not in {"MONEY_NOT_RECEIVED", "WRONG_BANK_DETAILS", "UNAUTHORIZED", "OTHER"} or len(description) < 10:
+        flash("Problem type select karein aur kam se kam 10 characters mein detail likhein.", "error")
+        return redirect(url_for("user_earnings"))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id,status FROM withdrawal_requests WHERE id=%s AND customer_id=%s FOR UPDATE", (withdrawal_id, customer_id))
+        withdrawal = cur.fetchone()
+        if not withdrawal:
+            conn.rollback(); flash("Withdrawal record nahi mila.", "error"); return redirect(url_for("user_earnings"))
+        if str(withdrawal.get("status") or "").upper() != "PAID":
+            conn.rollback(); flash("Dispute tab submit karein jab withdrawal Paid ho. Pending request ke liye Customer Support use karein.", "error"); return redirect(url_for("user_earnings"))
+        cur.execute("""SELECT id FROM withdrawal_disputes WHERE withdrawal_id=%s AND customer_id=%s AND status IN ('OPEN','INVESTIGATING') LIMIT 1""", (withdrawal_id, customer_id))
+        if cur.fetchone():
+            conn.rollback(); flash("Is withdrawal par pehle se open dispute hai. Admin review ka wait karein.", "error"); return redirect(url_for("user_earnings"))
+        cur.execute("""INSERT INTO withdrawal_disputes(withdrawal_id,customer_id,issue_type,user_description,status)
+                       VALUES(%s,%s,%s,%s,'OPEN') RETURNING id""", (withdrawal_id, customer_id, issue_type, description))
+        dispute = cur.fetchone()
+        cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                       VALUES(%s,'Withdrawal payment dispute received',%s,'WITHDRAWAL')""",
+                    (customer_id, f"Dispute #{dispute['id']} for withdrawal #{withdrawal_id} has been recorded. Admin review is pending."))
+        conn.commit()
+    except Exception:
+        conn.rollback(); raise
+    finally:
+        conn.close()
+    flash("Dispute record ho gaya hai. Admin payment reference aur bank details check karega.", "success")
+    return redirect(url_for("user_earnings"))
 
 
 @app.route("/earnings/pin/change",methods=["POST"])
@@ -7728,6 +7793,40 @@ def admin_process_withdrawal(withdrawal_id):
     finally: conn.close()
     flash("Withdrawal rejected and reserved balance released.","success")
     return redirect(url_for("admin",section="withdrawals"))
+
+@app.route("/admin/withdrawal-dispute/<int:dispute_id>/process", methods=["POST"])
+@admin_required
+def admin_process_withdrawal_dispute(dispute_id):
+    action = str(request.form.get("action", "") or "").strip().upper()
+    note = re.sub(r"\s+", " ", str(request.form.get("admin_note", "") or "").strip())[:2000]
+    resolution = re.sub(r"\s+", " ", str(request.form.get("resolution", "") or "").strip())[:2000]
+    allowed = {"INVESTIGATING", "RESOLVED_USER", "RESOLVED_BANK", "CLOSED"}
+    if action not in allowed:
+        flash("Invalid dispute action.", "error"); return redirect(url_for("admin", section="withdrawals"))
+    if action in {"RESOLVED_USER", "RESOLVED_BANK", "CLOSED"} and len(resolution) < 5:
+        flash("Case close karne se pehle resolution/next step likhein.", "error"); return redirect(url_for("admin", section="withdrawals"))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id,customer_id,withdrawal_id FROM withdrawal_disputes WHERE id=%s FOR UPDATE", (dispute_id,))
+        dispute = cur.fetchone()
+        if not dispute:
+            conn.rollback(); flash("Dispute record nahi mila.", "error"); return redirect(url_for("admin", section="withdrawals"))
+        resolved_at = datetime.now() if action in {"RESOLVED_USER", "RESOLVED_BANK", "CLOSED"} else None
+        cur.execute("""UPDATE withdrawal_disputes SET status=%s,admin_note=%s,resolution=%s,updated_at=NOW(),resolved_at=%s WHERE id=%s""",
+                    (action, note or None, resolution or None, resolved_at, dispute_id))
+        message = f"Withdrawal dispute #{dispute_id} for withdrawal #{dispute['withdrawal_id']} updated to {action}."
+        if resolution: message += " Admin update: " + resolution[:700]
+        cur.execute("""INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+                       VALUES(%s,'Withdrawal dispute update',%s,'WITHDRAWAL')""", (dispute["customer_id"], message))
+        conn.commit()
+    except Exception:
+        conn.rollback(); raise
+    finally:
+        conn.close()
+    flash("Dispute history updated. Is action se paisa automatically transfer, refund ya recover nahi hota.", "success")
+    return redirect(url_for("admin", section="withdrawals"))
+
 
 @app.route("/admin/support/<int:ticket_id>/reply", methods=["POST"])
 @admin_required
