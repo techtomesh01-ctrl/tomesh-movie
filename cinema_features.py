@@ -410,3 +410,9 @@ def sitemap_xml():
         xml.append('<url><loc>' + u.replace('&', '&amp;') + '</loc></url>')
     xml.append('</urlset>')
     return Response('\n'.join(xml), mimetype='application/xml')
+
+
+# Google Search Console HTML-file verification endpoint.
+@app.route('/googleaa2c7aea3fca410e.html')
+def google_search_console_verification():
+    return Response('google-site-verification: googleaa2c7aea3fca410e.html\n', mimetype='text/html')
