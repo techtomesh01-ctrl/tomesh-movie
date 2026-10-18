@@ -1190,6 +1190,21 @@ body.tm-menu-open{overflow:hidden}
 .tm-menu-language select{width:100%;height:43px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#202023;color:#fff;font-size:13px;outline:none}
 .tm-menu-language select:focus{border-color:#e50914}
 
+
+/* Visibility hardening: keep the member top bar and three-line menu visible on every screen */
+.tm-member-nav{display:flex!important;position:fixed!important;top:0;left:0;right:0;z-index:7000!important;visibility:visible!important;opacity:1!important}
+.tm-nav-left{display:flex!important;align-items:center!important;min-width:0}
+.tm-menu-toggle{display:inline-flex!important;visibility:visible!important;opacity:1!important;position:relative;z-index:7002;flex:0 0 42px;min-width:42px;min-height:42px;padding:0}
+.tm-menu-toggle span{width:19px!important;height:2px!important;background:#fff!important;opacity:1!important}
+.tm-menu-backdrop{z-index:7998!important}
+.tm-menu-drawer{z-index:7999!important}
+@media(max-width:650px){
+  .tm-member-nav{height:108px!important;padding:0 12px!important}
+  .tm-menu-toggle{flex-basis:36px;min-width:36px;min-height:36px;width:36px;height:36px;margin-right:9px}
+  .tm-nav-left{height:60px!important;gap:0!important}
+  .tm-mobile-member-links{display:flex!important}
+}
+
 </style>
 
 <!-- ================= NAVBAR ================= -->
