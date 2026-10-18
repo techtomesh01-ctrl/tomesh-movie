@@ -5187,10 +5187,16 @@ def track_customer_activity():
 # ============================================================
 
 @app.route("/user-details", methods=["GET", "POST"])
+@customer_login_required
 def user_details():
-    if not session.get("customer_id"):
-        session["customer_id"]="tm_"+secrets.token_hex(16); session["customer_logged_in"]=True
-    customer_id=session["customer_id"]
+    # Never create a customer identity or mark a visitor as logged in just
+    # because they opened the profile/details URL. OTP/password login must
+    # establish the session first.
+    customer_id = session.get("customer_id")
+    if not customer_id:
+        session.clear()
+        flash("Please login first to continue.", "error")
+        return redirect(url_for("login"))
     if request.method=="POST":
         full_name=(request.form.get("full_name") or "").strip(); mobile=normalize_mobile(request.form.get("mobile") or session.get("customer_mobile", "")); email=normalize_email(request.form.get("email") or session.get("customer_email", "")); password=str(request.form.get("password", "")); confirm=str(request.form.get("confirm_password", ""))
         if not full_name: flash("Please enter your full name.","error"); return redirect(url_for("user_details"))
