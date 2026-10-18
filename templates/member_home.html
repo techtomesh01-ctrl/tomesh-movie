@@ -2626,68 +2626,6 @@ window.cwSearchMovies = function(value){
 })();
 </script>
 
-<script>
-(function(){
-  const language = {{ session.get('language', 'en')|tojson }};
-  if(language !== 'hi') return;
-  const words = {
-    'YOUR CINEMATIC WORLD':'आपकी सिनेमा की दुनिया',
-    'My Account & Settings':'मेरा अकाउंट और सेटिंग्स',
-    'Discover':'देखें',
-    'Home':'होम',
-    'Movies':'फ़िल्में',
-    'All Movies':'सभी फ़िल्में',
-    'Categories':'श्रेणियाँ',
-    'Categories & Genres':'श्रेणियाँ और जॉनर',
-    'My List':'मेरी सूची',
-    'My Watchlist':'मेरी वॉचलिस्ट',
-    'Dramas':'ड्रामा',
-    'Dramas & Shows':'ड्रामा और शो',
-    'Your CINEMA WORLD':'आपकी CINEMA WORLD',
-    'Creator Studio':'क्रिएटर स्टूडियो',
-    'Refer & Earn':'रेफ़र करें और कमाएँ',
-    'Refer & Earn / Earnings':'रेफ़र करें और कमाई',
-    'Membership & Plans':'मेंबरशिप और प्लान',
-    'Payments & Transactions':'भुगतान और लेन-देन',
-    'Preferences':'प्राथमिकताएँ',
-    'Language / भाषा':'भाषा चुनें',
-    'English':'अंग्रेज़ी',
-    'Help & Account':'सहायता और अकाउंट',
-    'Customer Support':'ग्राहक सहायता',
-    'Profile & Personal Details':'प्रोफ़ाइल और निजी जानकारी',
-    'Settings':'सेटिंग्स',
-    'Privacy & Account Security':'प्राइवेसी और अकाउंट सुरक्षा',
-    'Logout':'लॉग आउट',
-    'Search movies...':'फ़िल्म खोजें...',
-    'Trending Now':'अभी ट्रेंड में',
-    'Popular Movies':'लोकप्रिय फ़िल्में',
-    'Recently Added':'हाल ही में जोड़ी गईं',
-    'Continue Watching':'देखना जारी रखें',
-    'Top Rated':'सबसे ज़्यादा रेटिंग वाली',
-    'Browse Categories':'श्रेणियाँ देखें',
-    'Watch':'देखें',
-    'Recently watched':'हाल ही में देखी गई',
-    'No movies found':'कोई फ़िल्म नहीं मिली',
-    'Add to My List':'मेरी सूची में जोड़ें',
-    'Remove from My List':'मेरी सूची से हटाएँ',
-    'Your Watchlist is empty':'आपकी वॉचलिस्ट खाली है',
-    'No movies in your list yet':'अभी आपकी सूची में कोई फ़िल्म नहीं है'
-  };
-  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-  const nodes=[];
-  while(walker.nextNode()) nodes.push(walker.currentNode);
-  nodes.forEach(node=>{
-    const raw=node.nodeValue;
-    const trimmed=raw.trim();
-    if(!trimmed || !words[trimmed]) return;
-    node.nodeValue=raw.replace(trimmed,words[trimmed]);
-  });
-  document.querySelectorAll('[placeholder]').forEach(el=>{
-    const v=el.getAttribute('placeholder');
-    if(words[v]) el.setAttribute('placeholder',words[v]);
-  });
-  document.documentElement.lang='hi';
-})();
-</script>
+
 
 {% endblock %}
