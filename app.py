@@ -904,6 +904,29 @@ def init_db():
             ON customer_follows(follower_customer_id, created_at DESC)
         """)
 
+        # Per-customer movie page views for owner analytics. This is separate
+        # from creator_earnings and never counts admin previews.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movie_view_events (
+                id BIGSERIAL PRIMARY KEY,
+                movie_id INTEGER NOT NULL,
+                customer_id TEXT NOT NULL,
+                viewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movie_view_events_viewed
+            ON movie_view_events(viewed_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movie_view_events_customer
+            ON movie_view_events(customer_id, viewed_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_movie_view_events_movie
+            ON movie_view_events(movie_id, viewed_at DESC)
+        """)
+
         cur.execute("""
             UPDATE customer_users
             SET referral_code = 'CW' || UPPER(SUBSTRING(MD5(customer_id || RANDOM()::text) FROM 1 FOR 10))
@@ -3890,6 +3913,15 @@ def movie_page(movie_id):
                 """,
                 (movie_id,),
             )
+            viewer_customer_id = str(session.get("customer_id") or "").strip()
+            if viewer_customer_id and session.get("customer_logged_in"):
+                cur.execute(
+                    """
+                    INSERT INTO movie_view_events(movie_id, customer_id)
+                    VALUES(%s, %s)
+                    """,
+                    (movie_id, viewer_customer_id),
+                )
             conn.commit()
         cur.close()
 
