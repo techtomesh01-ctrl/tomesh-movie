@@ -6228,6 +6228,10 @@ def admin():
         cur.execute("SELECT COUNT(*) AS n FROM customer_users")
         total_users = int((cur.fetchone() or {}).get("n") or 0)
 
+        # Surface creator uploads that still need admin review on every admin page.
+        cur.execute("SELECT COUNT(*) AS n FROM creator_submissions WHERE UPPER(COALESCE(status,''))='PENDING'")
+        pending_creator_uploads = int((cur.fetchone() or {}).get("n") or 0)
+
         cur.execute("""
             SELECT COUNT(*) AS n FROM customer_subscriptions
             WHERE status IN ('ACTIVE','BANK_APPROVAL_PENDING')
@@ -6574,6 +6578,7 @@ def admin():
         pending_withdrawals_total=pending_withdrawals_total,
         website_enabled=(str(get_setting("website_enabled", "1")).strip().lower() not in {"0", "false", "off", "no"}),
         home_hero_image_url=home_hero_image_url,
+        pending_creator_uploads=pending_creator_uploads,
     )
 
 
