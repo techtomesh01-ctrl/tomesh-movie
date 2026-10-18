@@ -71,6 +71,14 @@ class ApplicationSmokeTests(unittest.TestCase):
         self.assertIn("PREMIUM_REVOKED", app_source)
         self.assertIn("MOVIE_DELETED", app_source)
 
+    def test_payment_center_flags_success_without_paid_timestamp_read_only(self):
+        source = (TEMPLATES / "admin.html").read_text(encoding="utf-8")
+        self.assertIn("Payment Records Needing Review", source)
+        self.assertIn("payment_review_flags", source)
+        app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+        self.assertIn("AND p.paid_at IS NULL", app_source)
+        self.assertIn("payment_review_flags=payment_review_flags", app_source)
+
     def test_creator_review_page_has_audit_history_and_rights_notice(self):
         source = (TEMPLATES / "admin_creator_studio.html").read_text(encoding="utf-8")
         self.assertIn("Decision audit history", source)
