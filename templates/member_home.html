@@ -1597,6 +1597,37 @@ body.tm-menu-open{overflow:hidden}
 </section>
 
 
+<!-- ================= MEMBER COMMUNITY / FOLLOW ================= -->
+<section class="tm-section" id="cw-community" style="margin-top:28px">
+  <div class="tm-section-head" style="display:flex;align-items:end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+    <div>
+      <h2 style="margin:0 0 6px;font-size:22px;font-weight:950">{{ community_title }}</h2>
+      <p style="margin:0;color:#aaa;font-size:13px;line-height:1.5">{{ community_desc }}</p>
+    </div>
+    <a href="{{ url_for('customer_profile') }}" style="color:#ff626b;font-size:12px;font-weight:800;text-decoration:none">My Profile →</a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px">
+    {% for member in community_members %}
+    <article style="background:#111;border:1px solid #292929;border-radius:14px;padding:15px;display:flex;align-items:center;gap:12px;min-width:0">
+      {% if member.profile_photo %}
+        <img src="{{ member.profile_photo }}" alt="" loading="lazy" style="width:54px;height:54px;flex:0 0 54px;border-radius:50%;object-fit:cover;border:2px solid #e50914">
+      {% else %}
+        <div style="width:54px;height:54px;flex:0 0 54px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e50914,#42050a);font-size:22px;font-weight:900">{{ ((member.full_name or 'C')[:1])|upper }}</div>
+      {% endif %}
+      <div style="min-width:0;flex:1">
+        <a href="{{ url_for('public_customer_profile', customer_id=member.customer_id) }}" style="display:block;color:#fff;text-decoration:none;font-weight:800;overflow-wrap:anywhere">{{ member.full_name or 'CINEMA WORLD Member' }}</a>
+        <div style="font-size:11px;color:#aaa;margin:5px 0 9px">{{ member.followers_count or 0 }} followers</div>
+        <form method="post" action="{{ url_for('toggle_customer_follow', customer_id=member.customer_id) }}">
+          <button type="submit" style="border:0;border-radius:18px;padding:8px 13px;background:{{ '#333' if member.is_following else '#e50914' }};color:#fff;font-size:11px;font-weight:900;cursor:pointer">{{ 'Following · Unfollow' if member.is_following else '＋ Follow' }}</button>
+        </form>
+      </div>
+    </article>
+    {% else %}
+    <div style="grid-column:1/-1;color:#aaa;background:#111;border:1px solid #292929;border-radius:12px;padding:18px">Abhi follow karne ke liye aur members nahi hain. Apna public profile complete karein aur doston ko CINEMA WORLD join karne ko bolein.</div>
+    {% endfor %}
+  </div>
+</section>
+
 <!-- ================= CATEGORIES ================= -->
 
 <section
