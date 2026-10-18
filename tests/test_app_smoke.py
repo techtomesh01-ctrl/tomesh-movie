@@ -20,6 +20,10 @@ class ApplicationSmokeTests(unittest.TestCase):
             "request_movie",
             "cw_request_movie",
             "movie_page",
+            "admin",
+            "admin_creator_studio",
+            "admin_review_creator_submission",
+            "creator_upload",
         }
         missing = required.difference(cinema_app.app.view_functions)
         self.assertFalse(missing, f"Missing required Flask endpoints: {sorted(missing)}")
