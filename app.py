@@ -4088,6 +4088,7 @@ def movie_page(movie_id):
         view_events_admin=view_events_admin,
         engagement_likes=engagement_likes,
         engagement_ratings=engagement_ratings,
+        movie_reports_admin=movie_reports_admin,
         comments=comments,
         comment_csrf=comment_csrf,
         rating_summary=rating_summary,
@@ -5952,6 +5953,42 @@ def api_my_list(movie_id):
 
 # ============================================================
 # ADMIN DASHBOARD MISSING ENDPOINTS
+@app.route("/admin/movie-report-action", methods=["POST"])
+@admin_required
+def admin_movie_report_action():
+    try:
+        report_id = int(request.form.get("report_id", "0"))
+    except (TypeError, ValueError):
+        abort(400)
+    status = str(request.form.get("status", "")).strip().upper()
+    if report_id < 1 or status not in {"REVIEWED", "RESOLVED", "DISMISSED"}:
+        abort(400)
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE movie_reports SET status=%s WHERE id=%s", (status, report_id))
+        changed = cur.rowcount
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,%s,%s,%s,%s)
+        """, (
+            str(session.get("admin_user") or ADMIN_USER or "admin"),
+            "MOVIE_REPORT_" + status,
+            "movie_reports",
+            str(report_id),
+            "Report status updated by Admin",
+        ))
+        conn.commit()
+        flash("Report status updated." if changed else "Report was not found.", "success" if changed else "error")
+    except Exception as exc:
+        conn.rollback()
+        print("ADMIN MOVIE REPORT ACTION ERROR:", repr(exc))
+        flash("Could not update the report.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin", section="reports"))
+
+
 @app.route("/admin/engagement-action", methods=["POST"])
 @admin_required
 def admin_engagement_action():
@@ -6688,6 +6725,7 @@ def admin():
         view_events_admin = []
         engagement_likes = []
         engagement_ratings = []
+        movie_reports_admin = []
         top_movies = []
         top_rated_movies = []
         live_events = []
@@ -6724,6 +6762,20 @@ def admin():
             follower_totals["profiles"] = int((cur.fetchone() or {}).get("profiles") or 0)
             cur.execute("SELECT COUNT(*) AS follows FROM customer_follows")
             follower_totals["follows"] = int((cur.fetchone() or {}).get("follows") or 0)
+
+        if section == "reports":
+            cur.execute("""
+                SELECT mr.id, mr.movie_id, COALESCE(m.title, 'Deleted movie') AS movie_title,
+                       mr.customer_id, COALESCE(u.full_name, u.email, mr.customer_id) AS customer_name,
+                       mr.reason, mr.details, mr.status, mr.created_at
+                FROM movie_reports mr
+                LEFT JOIN movies m ON m.id=mr.movie_id
+                LEFT JOIN customer_users u ON u.customer_id=mr.customer_id
+                ORDER BY CASE WHEN UPPER(mr.status)='OPEN' THEN 0 ELSE 1 END,
+                         mr.created_at DESC, mr.id DESC
+                LIMIT 500
+            """)
+            movie_reports_admin = cur.fetchall()
 
         if section == "engagement":
             cur.execute("""
