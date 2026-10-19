@@ -64,7 +64,23 @@
         <div class="cw-channel-stat"><b>{{ following_count }}</b><span>FOLLOWING</span></div>
         <div class="cw-channel-stat"><b>{{ public_profile.created_at.strftime('%b %Y') if public_profile.created_at else '—' }}</b><span>JOINED</span></div>
       </div>
-      <div class="cw-channel-note"><strong style="color:#eee">About this member</strong><br>Public profile · CINEMA WORLD community member<br>Private contact details are not displayed on this page.</div>
+      <div class="cw-channel-note"><strong style="color:#eee">About this member</strong><br>Public profile · CINEMA WORLD community member<br>Email, mobile number, bank account, payment records and other private details are never shown here.</div>
+      <section class="cw-channel-section" style="padding-top:26px">
+        <h2>Published by this creator</h2>
+        <p>Only content published after CINEMA WORLD Admin review appears here. Pending or rejected uploads remain private.</p>
+        {% if creator_movies %}
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:18px">
+          {% for movie in creator_movies %}
+            <a href="{{ url_for('movie_page', movie_id=movie.id) }}" style="display:block;text-decoration:none;color:inherit;background:#191919;border:1px solid #303030;border-radius:12px;overflow:hidden">
+              {% if movie.poster_url %}<img src="{{ movie.poster_url }}" alt="{{ movie.title }} poster" loading="lazy" style="width:100%;height:230px;object-fit:cover;background:#080808">{% else %}<div style="height:230px;display:flex;align-items:center;justify-content:center;background:#222;color:#aaa">CINEMA WORLD</div>{% endif %}
+              <div style="padding:12px"><strong style="display:block;font-size:15px;line-height:1.4">{{ movie.title }}</strong><span style="font-size:12px;color:#aaa">{{ movie.category or 'Entertainment' }} · {{ movie.views or 0 }} views</span></div>
+            </a>
+          {% endfor %}
+          </div>
+        {% else %}
+          <div class="cw-channel-note">This creator has no publicly published movies yet.</div>
+        {% endif %}
+      </section>
       {% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="cw-channel-note">{{ message }}</div>{% endfor %}{% endwith %}
       <a class="cw-channel-back" href="{{ url_for('home') }}">← Back to CINEMA WORLD</a>
     </section>
