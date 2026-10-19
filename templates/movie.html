@@ -2118,9 +2118,25 @@
         player.classList.add("active"); clearTimeout(hideTimer);
         if(!video.paused){ hideTimer=setTimeout(()=>{ if(!settings.classList.contains("open")) player.classList.remove("active"); },3000); }
     }
+    function explainPlayFailure(err){
+        const name = err && err.name ? err.name : "";
+        // If autoplay policy or browser permissions reject scripted playback,
+        // expose the browser's native controls so the viewer can start playback
+        // with a direct user gesture. Never retry in a loop or bypass browser policy.
+        if(name === "NotAllowedError"){
+            video.controls = true;
+            setError("Browser ne playback ko automatic tareeke se rok diya. Neeche video ke asli Play button ko ek baar dabayein. Agar phir bhi na chale, video format ya source check karna hoga.");
+            return;
+        }
+        if(name === "NotSupportedError"){
+            setError("Yeh video format/codec browser support nahi karta. MP4 (H.264 video + AAC audio) format mein upload ki gayi file try karein.");
+            return;
+        }
+        setError("Video play nahi ho paya. Internet/source connection check karein aur Retry dabayein. Agar error code 3 ya 4 aaye, file ka codec/format browser-compatible nahi ho sakta.");
+    }
     function togglePlay(){
         if(video.paused){
-            video.play().catch(()=>{ setError("Browser ne video play ko block kar diya."); });
+            video.play().catch(explainPlayFailure);
         }else video.pause();
         showControls();
     }
@@ -2149,8 +2165,10 @@
     function clearError(){ player.classList.remove("error-state"); setStatus(""); }
     function retry(){
         clearError(); setBuffering(true);
+        // A direct click on Retry is a user gesture; if scripted play is still
+        // rejected, preserve the native controls and explain the actual cause.
         video.load();
-        video.play().catch(()=>{});
+        video.play().catch(explainPlayFailure);
     }
 
     centerPlay.addEventListener("click",togglePlay);
