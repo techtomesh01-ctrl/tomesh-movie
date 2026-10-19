@@ -12,7 +12,7 @@ import traceback
 from collections import deque
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from io import BytesIO
@@ -6981,6 +6981,19 @@ def admin_repair_action():
                     # Only test public HTTP(S) URLs; never fetch arbitrary local/internal addresses.
                     if not raw.startswith(("https://", "http://")):
                         failures.append(str(movie.get("title") or movie.get("id")) + ": video URL HTTP(S) नहीं है")
+                        continue
+                    # Do not let a repair click make server-side requests to arbitrary/private hosts.
+                    try:
+                        target_host = (urlsplit(raw).hostname or "").lower()
+                        allowed_hosts = {
+                            (urlsplit(str(R2_PUBLIC_URL or "")).hostname or "").lower(),
+                            (urlsplit(str(R2_ENDPOINT or "")).hostname or "").lower(),
+                        } - {""}
+                        if not target_host or target_host not in allowed_hosts:
+                            failures.append(str(movie.get("title") or movie.get("id")) + ": host allowlist के बाहर; सुरक्षित रूप से test नहीं किया")
+                            continue
+                    except Exception:
+                        failures.append(str(movie.get("title") or movie.get("id")) + ": URL parse नहीं हुआ")
                         continue
                     try:
                         req = Request(raw, headers={"Range": "bytes=0-1023", "User-Agent": "CINEMA-WORLD-RepairCheck/1.0"}, method="GET")
