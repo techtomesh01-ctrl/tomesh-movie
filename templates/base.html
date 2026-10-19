@@ -468,12 +468,26 @@
   const close=document.getElementById('cwProblemClose');
   const frame=document.getElementById('cwProblemFrame');
   const autoAlert=document.getElementById('cwProblemAutoAlert');
-  let opened=false, autoShown=false;
+  let opened=false, autoShown=false, pendingAutoError='';
   function showReport(){
     if(!modal) return;
-    if(frame && frame.src==='about:blank') frame.src={{ url_for('report_problem')|tojson }};
+    if(frame && frame.getAttribute('src')==='about:blank') frame.src={{ url_for('report_problem')|tojson }};
     modal.hidden=false; opened=true; document.body.style.overflow='hidden';
   }
+  if(frame) frame.addEventListener('load',function(){
+    if(!pendingAutoError) return;
+    try{
+      const doc=frame.contentDocument;
+      if(!doc) return;
+      const description=doc.getElementById('description');
+      const category=doc.getElementById('category');
+      const pagePath=doc.querySelector('input[name="page_path"]');
+      if(description && !description.value) description.value='Auto-detected browser problem: '+pendingAutoError+'\nPage: '+location.href+'\nTime: '+new Date().toISOString()+'\n\nPlease describe what you were doing when this appeared.';
+      if(category) category.value='Website Error';
+      if(pagePath) pagePath.value=location.pathname+location.search;
+      pendingAutoError='';
+    }catch(e){}
+  });
   function hideReport(){ if(!modal) return; modal.hidden=true; opened=false; document.body.style.overflow=''; }
   if(open) open.addEventListener('click',showReport);
   if(close) close.addEventListener('click',hideReport);
@@ -484,8 +498,9 @@
   function showDetectedProblem(message){
     if(autoShown || opened || !modal) return;
     autoShown=true;
+    pendingAutoError=String(message||'अनजान समस्या').slice(0,500);
     showReport();
-    if(autoAlert){autoAlert.hidden=false; autoAlert.firstChild.textContent='वेबसाइट में तकनीकी समस्या मिली: '+String(message||'अनजान समस्या').slice(0,180)+'। ';}
+    if(autoAlert){autoAlert.hidden=false; autoAlert.firstChild.textContent='वेबसाइट में तकनीकी समस्या मिली: '+pendingAutoError.slice(0,180)+'। ';}
   }
   window.addEventListener('error',function(e){
     if(e && (e.error || e.message)) showDetectedProblem(e.message || 'JavaScript error');
