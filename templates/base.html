@@ -440,12 +440,62 @@
 })();
 </script>
 
-<a href="{{ url_for('report_problem') }}" class="cw-report-problem" aria-label="Report a website problem">⚠️ <span>Report a problem / समस्या बताएँ</span></a>
+<button type="button" id="cwProblemOpen" class="cw-report-problem" aria-label="Report a website problem">⚠️ <span>Website समस्या? / Report</span></button>
+<div id="cwProblemModal" class="cw-problem-modal" role="dialog" aria-modal="true" aria-labelledby="cwProblemTitle" hidden>
+  <div class="cw-problem-panel">
+    <div class="cw-problem-head"><div><strong id="cwProblemTitle">⚠️ Website की समस्या</strong><div class="cw-problem-sub">समस्या चुनें और Admin को रिपोर्ट भेजें</div></div><button type="button" id="cwProblemClose" class="cw-problem-close" aria-label="Close">✕</button></div>
+    <iframe id="cwProblemFrame" title="Report a website problem" loading="lazy" src="about:blank"></iframe>
+    <div id="cwProblemAutoAlert" class="cw-problem-auto-alert" hidden>वेबसाइट में तकनीकी समस्या मिली है। रिपोर्ट भेजने के लिए नीचे फॉर्म खोलें। <button type="button" id="cwProblemReportNow">रिपोर्ट करें</button></div>
+  </div>
+</div>
 <style>
-.cw-report-problem{position:fixed;right:16px;bottom:16px;z-index:9500;display:flex;align-items:center;gap:8px;padding:12px 15px;border-radius:999px;background:#e50914;color:#fff;text-decoration:none;font:800 13px Arial,sans-serif;box-shadow:0 8px 28px #0008;border:1px solid #ff5960}
+.cw-report-problem{position:fixed;right:16px;bottom:16px;z-index:9500;display:flex;align-items:center;gap:8px;padding:12px 15px;border-radius:999px;background:#e50914;color:#fff;text-decoration:none;font:800 13px Arial,sans-serif;box-shadow:0 8px 28px #0008;border:1px solid #ff5960;cursor:pointer}
 .cw-report-problem:hover{background:#b20710}
-@media(max-width:520px){.cw-report-problem{right:10px;bottom:10px;padding:11px 13px}.cw-report-problem span{max-width:190px}}
+.cw-problem-modal[hidden],.cw-problem-auto-alert[hidden]{display:none!important}
+.cw-problem-modal{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:14px}
+.cw-problem-panel{width:min(680px,100%);height:min(780px,92vh);background:#0b0b0e;border:1px solid #6b2229;border-radius:16px;overflow:hidden;box-shadow:0 25px 100px #000c;display:flex;flex-direction:column}
+.cw-problem-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 17px;background:#200b0e;color:#fff;border-bottom:1px solid #512027}
+.cw-problem-head strong{font-size:18px}.cw-problem-sub{font-size:12px;color:#e2b9bd;margin-top:4px}
+.cw-problem-close{border:1px solid #633139;background:#321216;color:#fff;border-radius:9px;padding:8px 11px;cursor:pointer;font-size:16px}
+#cwProblemFrame{width:100%;height:100%;border:0;background:#070708;flex:1}
+.cw-problem-auto-alert{padding:12px;background:#3a0b10;color:#fff;font-size:13px}.cw-problem-auto-alert button{margin-left:8px;background:#e50914;color:#fff;border:0;border-radius:7px;padding:7px 10px;font-weight:800;cursor:pointer}
+@media(max-width:520px){.cw-report-problem{right:10px;bottom:10px;padding:11px 13px}.cw-report-problem span{max-width:190px}.cw-problem-modal{padding:5px}.cw-problem-panel{height:94vh;border-radius:12px}.cw-problem-head strong{font-size:16px}}
 </style>
+<script>
+(function(){
+  const modal=document.getElementById('cwProblemModal');
+  const open=document.getElementById('cwProblemOpen');
+  const close=document.getElementById('cwProblemClose');
+  const frame=document.getElementById('cwProblemFrame');
+  const autoAlert=document.getElementById('cwProblemAutoAlert');
+  let opened=false, autoShown=false;
+  function showReport(){
+    if(!modal) return;
+    if(frame && frame.src==='about:blank') frame.src={{ url_for('report_problem')|tojson }};
+    modal.hidden=false; opened=true; document.body.style.overflow='hidden';
+  }
+  function hideReport(){ if(!modal) return; modal.hidden=true; opened=false; document.body.style.overflow=''; }
+  if(open) open.addEventListener('click',showReport);
+  if(close) close.addEventListener('click',hideReport);
+  if(modal) modal.addEventListener('click',e=>{if(e.target===modal) hideReport();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape' && opened) hideReport();});
+  const autoBtn=document.getElementById('cwProblemReportNow');
+  if(autoBtn) autoBtn.addEventListener('click',showReport);
+  function showDetectedProblem(message){
+    if(autoShown || opened || !modal) return;
+    autoShown=true;
+    showReport();
+    if(autoAlert){autoAlert.hidden=false; autoAlert.firstChild.textContent='वेबसाइट में तकनीकी समस्या मिली: '+String(message||'अनजान समस्या').slice(0,180)+'। ';}
+  }
+  window.addEventListener('error',function(e){
+    if(e && (e.error || e.message)) showDetectedProblem(e.message || 'JavaScript error');
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    const reason=e && e.reason;
+    if(reason) showDetectedProblem(reason.message || String(reason));
+  });
+})();
+</script>
 
 </body>
 
