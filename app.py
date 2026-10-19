@@ -7044,7 +7044,7 @@ def admin_repair():
     safe_errors = []
     for item in raw_errors:
         safe_item = dict(item)
-        safe_item["message"] = re.sub(r"(?i)(password|secret|token|api[_-]?key)\\s*[:=]\\s*[^,\\s]+", r"\\1=[REDACTED]", str(item.get("message", "")))[:700]
+        safe_item["message"] = re.sub(r"(?i)(password|secret|token|api[_-]?key)\s*[:=]\s*[^,\s]+", r"\1=[REDACTED]", str(item.get("message", "")))[:700]
         safe_errors.append(safe_item)
 
     return render_template("admin_repair.html", diagnostics=diagnostics, errors=safe_errors)
