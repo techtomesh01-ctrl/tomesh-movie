@@ -381,6 +381,9 @@ def robots_txt():
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
+    # Include only public, crawlable pages. Individual movie pages require a
+    # customer/admin session, so advertising them in the public sitemap gives
+    # search engines URLs they cannot actually access and can expose unlisted IDs.
     urls = [
         url_for('home', _external=True),
         url_for('about', _external=True),
@@ -392,19 +395,9 @@ def sitemap_xml():
         url_for('cookie_policy', _external=True),
         url_for('refund_policy', _external=True),
         url_for('content_rights', _external=True),
+        url_for('dramas_page', _external=True),
+        url_for('cw_request_movie', _external=True),
     ]
-    conn = None
-    try:
-        conn = get_db(dict_rows=True)
-        cur = conn.cursor()
-        cur.execute('SELECT id FROM movies ORDER BY id DESC')
-        for row in cur.fetchall():
-            urls.append(url_for('movie_page', movie_id=int(row['id']), _external=True))
-    except Exception as exc:
-        print('SITEMAP MOVIE QUERY WARNING:', repr(exc))
-    finally:
-        if conn is not None:
-            conn.close()
     xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for u in urls:
         xml.append('<url><loc>' + u.replace('&', '&amp;') + '</loc></url>')
