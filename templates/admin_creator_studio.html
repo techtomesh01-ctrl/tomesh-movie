@@ -16,6 +16,53 @@
     <div class="cs-stat"><b>{{ payout_requests|selectattr('status','equalto','PENDING')|list|length }}</b><span>Pending payouts</span></div>
     <div class="cs-stat"><b>{{ payout_requests|selectattr('status','equalto','APPROVED')|list|length }}</b><span>Approved / unpaid</span></div>
   </div>
+
+  <div class="cs-card" style="margin-top:18px">
+    <h2>Creator Profiles & Activity Review</h2>
+    <p class="cs-muted">Admin-only overview of each creator's profile, uploads, approval history, audience activity, earnings, payout requests and saved bank details. Use actual activity and rights evidence before approving content or payouts.</p>
+    <div style="overflow-x:auto">
+      <table style="width:100%;min-width:1100px;border-collapse:collapse;font-size:13px">
+        <thead><tr style="text-align:left;color:#aaa;border-bottom:1px solid #333">
+          <th style="padding:10px">Creator / Contact</th><th style="padding:10px">Joined / Last Login</th>
+          <th style="padding:10px">Uploads</th><th style="padding:10px">Published Movies</th>
+          <th style="padding:10px">Views / Likes</th><th style="padding:10px">Earnings</th>
+          <th style="padding:10px">Payouts</th><th style="padding:10px">Saved Bank Details</th>
+        </tr></thead>
+        <tbody>
+        {% for creator in creator_profiles %}
+          <tr style="border-bottom:1px solid #292929;vertical-align:top">
+            <td style="padding:12px 10px;min-width:210px">
+              <b>{{ creator.full_name or 'Unnamed creator' }}</b><br>
+              <span class="meta">{{ creator.customer_id }}</span><br>
+              <span>{{ creator.email or '—' }}</span><br><span>{{ creator.mobile or '—' }}</span>
+            </td>
+            <td style="padding:12px 10px;min-width:150px">
+              <div>Joined: {{ creator.created_at|istdate('%d %b %Y') if creator.created_at else '—' }}</div>
+              <div class="meta">Last login: {{ creator.last_login_at|istdate('%d %b %Y, %I:%M %p') if creator.last_login_at else '—' }} IST</div>
+            </td>
+            <td style="padding:12px 10px;min-width:130px">
+              <b>{{ creator.upload_count }}</b> total<br><span class="meta">Pending {{ creator.pending_count }} · Approved {{ creator.approved_count }} · Rejected {{ creator.rejected_count }}</span>
+            </td>
+            <td style="padding:12px 10px">{{ creator.movie_count }}</td>
+            <td style="padding:12px 10px">{{ creator.total_views }} views<br>{{ creator.total_likes }} likes<br><span class="meta">{{ creator.valid_views }} eligible earning views</span></td>
+            <td style="padding:12px 10px">₹{{ '%.2f'|format(creator.total_earned|float) }}</td>
+            <td style="padding:12px 10px">Requests: {{ creator.payout_count }}<br>Pending: ₹{{ '%.2f'|format(creator.pending_payout|float) }}<br>Paid: ₹{{ '%.2f'|format(creator.paid_payout|float) }}</td>
+            <td style="padding:12px 10px;min-width:210px">
+              {% if creator.saved_bank_account %}
+                <b>{{ creator.saved_bank_holder or '—' }}</b><br>{{ creator.saved_bank_name or '—' }}<br>
+                <code style="overflow-wrap:anywhere">{{ creator.saved_bank_account }}</code><br>
+                IFSC: {{ creator.saved_bank_ifsc or '—' }}<br>
+                <span class="tag">{{ creator.saved_bank_status or 'UNKNOWN' }}</span>
+              {% else %}<span class="meta">No saved withdrawal bank account</span>{% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8" style="padding:22px;text-align:center;color:#999">No creator activity found yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
   <div class="cs-card">
     <h2>Creator earning rates</h2>
     <p class="cs-muted">Rates are paid as an earning accrual per 1,000 qualified logged-in unique views. This does not automatically transfer money to a bank account.</p>
