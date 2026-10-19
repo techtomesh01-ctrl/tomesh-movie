@@ -440,6 +440,13 @@
 })();
 </script>
 
+<a href="{{ url_for('report_problem') }}" class="cw-report-problem" aria-label="Report a website problem">⚠️ <span>Report a problem / समस्या बताएँ</span></a>
+<style>
+.cw-report-problem{position:fixed;right:16px;bottom:16px;z-index:9500;display:flex;align-items:center;gap:8px;padding:12px 15px;border-radius:999px;background:#e50914;color:#fff;text-decoration:none;font:800 13px Arial,sans-serif;box-shadow:0 8px 28px #0008;border:1px solid #ff5960}
+.cw-report-problem:hover{background:#b20710}
+@media(max-width:520px){.cw-report-problem{right:10px;bottom:10px;padding:11px 13px}.cw-report-problem span{max-width:190px}}
+</style>
+
 </body>
 
 </html>
