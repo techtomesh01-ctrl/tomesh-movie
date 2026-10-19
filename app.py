@@ -6892,6 +6892,101 @@ def admin_website_editor():
     return redirect(url_for("admin", section="website-editor"))
 
 
+
+# Customer problem reports and admin notifications.
+def _ensure_user_issue_table():
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS user_problem_reports (
+            id BIGSERIAL PRIMARY KEY, customer_id TEXT, customer_name TEXT,
+            contact_email TEXT, category TEXT NOT NULL DEFAULT 'Other',
+            page_path TEXT, description TEXT NOT NULL, user_agent TEXT,
+            status TEXT NOT NULL DEFAULT 'NEW', admin_note TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, resolved_at TIMESTAMP
+        )""")
+        cur.execute("""CREATE INDEX IF NOT EXISTS idx_user_problem_reports_status_created
+                       ON user_problem_reports(status, created_at DESC)""")
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+
+@app.route("/report-problem", methods=["GET", "POST"])
+def report_problem():
+    if request.method == "POST":
+        description = str(request.form.get("description", "") or "").strip()
+        category = str(request.form.get("category", "Other") or "Other").strip()
+        allowed = {"Video/Playback", "Login/OTP", "Payment", "Upload", "Website Error", "Other"}
+        if category not in allowed:
+            category = "Other"
+        name = str(request.form.get("customer_name", "") or "").strip()[:100]
+        email = str(request.form.get("contact_email", "") or "").strip()[:254]
+        if len(description) < 8 or len(description) > 4000:
+            flash("Problem ko 8 se 4000 characters ke beech detail mein likhein.", "error")
+            return render_template("report_problem.html", current_path=request.form.get("page_path", request.path))
+        if email and ("@" not in email or any(ch.isspace() for ch in email)):
+            flash("Email sahi likhein, ya email khaali chhod dein.", "error")
+            return render_template("report_problem.html", current_path=request.form.get("page_path", request.path))
+        try:
+            _ensure_user_issue_table()
+            conn = get_db()
+            try:
+                cur = conn.cursor()
+                cur.execute("""INSERT INTO user_problem_reports
+                    (customer_id, customer_name, contact_email, category, page_path, description, user_agent)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)""", (
+                    str(session.get("customer_id") or "")[:120] or None,
+                    name or None, email or None, category,
+                    str(request.form.get("page_path", "") or request.referrer or request.path)[:500],
+                    description, str(request.headers.get("User-Agent", ""))[:500]))
+                conn.commit()
+                cur.close()
+            finally:
+                conn.close()
+            flash("Aapki problem Admin ko bhej di gayi hai. Shukriya!", "success")
+            return redirect(url_for("report_problem", sent="1"))
+        except Exception:
+            app.logger.exception("Could not save customer problem report")
+            flash("Abhi report save nahi hui. Thodi der baad dobara try karein.", "error")
+    return render_template("report_problem.html", current_path=request.referrer or request.path)
+
+
+@app.route("/admin/user-issues", methods=["GET", "POST"])
+@admin_required
+def admin_user_issues():
+    _ensure_user_issue_table()
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        if request.method == "POST":
+            issue_id = request.form.get("issue_id", type=int)
+            status = str(request.form.get("action", "") or "").strip().upper()
+            note = str(request.form.get("admin_note", "") or "").strip()[:2000]
+            if issue_id and status in {"IN_PROGRESS", "RESOLVED", "NEW"}:
+                cur.execute("""UPDATE user_problem_reports SET status=%s, admin_note=%s,
+                    resolved_at=CASE WHEN %s='RESOLVED' THEN CURRENT_TIMESTAMP ELSE NULL END
+                    WHERE id=%s""", (status, note or None, status, issue_id))
+                conn.commit()
+                flash("User problem report update ho gayi.", "success")
+            cur.close()
+            conn.close()
+            return redirect(url_for("admin_user_issues"))
+        cur.execute("""SELECT id, customer_id, customer_name, contact_email, category,
+            page_path, description, user_agent, status, admin_note, created_at
+            FROM user_problem_reports
+            ORDER BY CASE WHEN status='NEW' THEN 0 WHEN status='IN_PROGRESS' THEN 1 ELSE 2 END,
+                     created_at DESC, id DESC LIMIT 300""")
+        reports = cur.fetchall()
+        cur.execute("SELECT COUNT(*) AS n FROM user_problem_reports WHERE status IN ('NEW','IN_PROGRESS')")
+        open_count = int((cur.fetchone() or {}).get("n") or 0)
+        cur.close()
+    finally:
+        conn.close()
+    return render_template("admin_user_issues.html", reports=reports, open_count=open_count)
+
+
 @app.route("/admin/errors", methods=["GET", "POST"])
 @admin_required
 def admin_errors():
@@ -7763,8 +7858,23 @@ def admin():
             "message": safe_message,
         })
 
+    admin_user_issue_count = 0
+    try:
+        _ensure_user_issue_table()
+        issue_conn = get_db(dict_rows=True)
+        try:
+            issue_cur = issue_conn.cursor()
+            issue_cur.execute("SELECT COUNT(*) AS n FROM user_problem_reports WHERE status IN ('NEW','IN_PROGRESS')")
+            admin_user_issue_count = int((issue_cur.fetchone() or {}).get("n") or 0)
+            issue_cur.close()
+        finally:
+            issue_conn.close()
+    except Exception:
+        app.logger.warning("Could not load customer problem notification count.", exc_info=True)
+
     return render_template(
         "admin.html",
+        admin_user_issue_count=admin_user_issue_count,
         admin_system_alerts=admin_system_alerts,
         admin_runtime_errors=admin_runtime_errors,
         section=section,
