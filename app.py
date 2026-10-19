@@ -4599,6 +4599,7 @@ def admin_creator_studio():
             WHERE COALESCE(s.upload_count,0)>0
                OR COALESCE(e.total_earned,0)>0
                OR COALESCE(p.payout_count,0)>0
+               OR EXISTS (SELECT 1 FROM customer_bank_accounts ba WHERE ba.customer_id=u.customer_id)
             ORDER BY COALESCE(e.total_earned,0) DESC, COALESCE(m.total_views,0) DESC, u.id DESC
             LIMIT 500
         """)
@@ -5599,7 +5600,7 @@ def customer_profile():
 
 @app.route("/u/<customer_id>", methods=["GET"])
 def public_customer_profile(customer_id):
-    """Public-facing member profile; private contact details are never exposed."""
+    """Public-facing profile: only profile name/photo and published creator titles are exposed."""
     conn = get_db(dict_rows=True)
     try:
         cur = conn.cursor()
@@ -5615,6 +5616,20 @@ def public_customer_profile(customer_id):
         follower_count = int((cur.fetchone() or {}).get("n") or 0)
         cur.execute("SELECT COUNT(*) AS n FROM customer_follows WHERE follower_customer_id=%s", (customer_id,))
         following_count = int((cur.fetchone() or {}).get("n") or 0)
+        # A public creator can show only movies already published after Admin approval.
+        cur.execute("""
+            SELECT id,title,category,description,poster,views,created_at
+            FROM movies
+            WHERE creator_customer_id=%s
+            ORDER BY id DESC
+            LIMIT 30
+        """, (customer_id,))
+        creator_movies = [dict(row) for row in cur.fetchall()]
+        for movie in creator_movies:
+            try:
+                movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
+            except Exception:
+                movie["poster_url"] = None
         viewer_id = session.get("customer_id") if session.get("customer_logged_in") else None
         is_following = False
         if viewer_id and viewer_id != customer_id:
@@ -5631,6 +5646,7 @@ def public_customer_profile(customer_id):
         public_profile=public_profile,
         follower_count=follower_count,
         following_count=following_count,
+        creator_movies=creator_movies,
         viewer_id=viewer_id,
         is_following=is_following,
     )
