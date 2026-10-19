@@ -3783,6 +3783,119 @@ _HOME_MOVIES_CACHE_LOCK = threading.Lock()
 _HOME_MOVIES_CACHE_TTL = 10.0
 
 
+LEGAL_PAGES = {
+    "terms": {
+        "title": "Terms & Conditions",
+        "intro": "These Terms govern your use of the CINEMA WORLD website and services. By accessing the site or creating an account, you agree to these Terms. If you do not agree, please stop using the service.",
+        "sections": [
+            ("1. Eligibility and account", "Provide accurate information, keep your login credentials secure, and use only your own account. Do not impersonate another person, bypass access controls, share accounts in breach of displayed plan rules, or use the service for unlawful activity."),
+            ("2. Movies and content", "Availability, quality, language, subtitles, and playback can vary by title, device, network, and rights status. Titles may be added, changed, restricted, or removed. Do not copy, record, redistribute, sell, or publicly screen content unless you have written permission or the law allows it."),
+            ("3. Payments and access", "Prices, access duration, eligibility, and applicable fees are shown before purchase or withdrawal confirmation. Check the amount and terms before paying. Paid access starts only after payment confirmation. Do not submit false payment claims or misuse refunds, promotions, or chargebacks."),
+            ("4. User uploads and rights", "Upload only material you own or are authorized to distribute. You must not upload pirated, infringing, unlawful, deceptive, or harmful material. You remain responsible for your uploads and confirm that you have the required rights and permissions. We may review, restrict, remove, or disable reported content and accounts where appropriate."),
+            ("5. Withdrawals and bank details", "If withdrawal features are available, you must provide accurate bank details and check the beneficiary name, account number, and IFSC before submitting a request. A transfer sent to the details you supplied may not be reversible. A reported missing or misdirected payment will be reviewed against available records and the bank/payment provider; a complaint alone does not prove fraud. Never share your PIN, password, OTP, or full card credentials."),
+            ("6. Acceptable use and security", "Do not attempt unauthorized access, interfere with the service, introduce malware, scrape protected data, manipulate views or rewards, or exploit payment or referral systems. We may investigate suspicious activity and take proportionate action."),
+            ("7. Service availability and changes", "We aim to keep the service available but do not guarantee uninterrupted access or error-free playback. Maintenance, network failures, third-party outages, legal requirements, or rights changes may affect availability. We may update features and these Terms; the latest version will be posted on this page."),
+            ("8. Complaints and support", "Contact CINEMA WORLD through the support options shown on the website. Include the relevant order or withdrawal reference and a clear description. Do not include passwords, OTPs, PINs, or unnecessary sensitive information."),
+            ("9. Liability and applicable law", "To the extent permitted by applicable law, the service is provided subject to its available features and stated limitations. Nothing in these Terms excludes a right or remedy that cannot lawfully be excluded. Applicable Indian law and competent Indian courts apply, subject to mandatory consumer protections."),
+            ("10. Contact", "For questions about these Terms, use the Contact or Customer Support options on CINEMA WORLD.")
+        ]
+    },
+    "privacy-policy": {
+        "title": "Privacy Policy",
+        "intro": "This page explains in general how CINEMA WORLD may handle information needed to operate accounts, playback, payments, support, and security. Review the information requested in each form before submitting it.",
+        "sections": [
+            ("Information we may collect", "Account details such as name, email, mobile number, login/security events, viewing and interaction activity, support messages, payment references, withdrawal requests, and bank details when you choose to use payout features."),
+            ("Why we use it", "To create and protect accounts, provide requested features, process or reconcile payments, review withdrawals and disputes, respond to support requests, prevent abuse, comply with legal obligations, and improve reliability."),
+            ("Payments and service providers", "Payment processing and hosting/storage may be handled by third-party providers. Their systems may process information needed for the transaction under their own policies. CINEMA WORLD should not ask you to send your OTP, PIN, or banking password to support."),
+            ("Sharing and disclosure", "Information may be shared with relevant providers, authorized personnel, or authorities where necessary to provide the service, investigate a reported transaction, protect users, or comply with law. We do not display full bank details publicly."),
+            ("Retention and security", "Information is retained as needed for the purpose collected, recordkeeping, dispute handling, security, and legal requirements. We use reasonable safeguards, but no online system can promise absolute security."),
+            ("Your choices", "Keep account information accurate and contact support to request help with access, correction, or account-related questions. Some records may need to be retained for security, financial reconciliation, or legal reasons."),
+            ("Children and updates", "The service is not intended to be used by children in a way that violates applicable law. This policy may be updated as features or legal requirements change; check this page for the current version.")
+        ]
+    },
+    "cookie-policy": {
+        "title": "Cookie Policy",
+        "intro": "CINEMA WORLD may use cookies or similar browser storage for login sessions, security, preferences, and service functionality.",
+        "sections": [
+            ("Essential cookies", "Some browser storage is necessary to keep you signed in, protect forms, and maintain core site functionality. Blocking it may prevent parts of the service from working."),
+            ("Preferences and measurement", "If optional analytics or preference tools are enabled, they may use similar technologies to understand site use or remember choices. Browser settings can be used to clear or restrict cookies, though essential features may stop working."),
+            ("Third parties and updates", "Embedded or payment-related third-party services may apply their own technologies and policies. This page may be updated if the website's cookie use changes.")
+        ]
+    },
+    "refund-policy": {
+        "title": "Refund & Cancellation Policy",
+        "intro": "Please review the price, access duration, and payment details shown at checkout before confirming a purchase.",
+        "sections": [
+            ("Failed or duplicate payments", "If money was debited but access was not activated, or a duplicate charge appears, contact support with the order ID, amount, date, and payment reference. Do not send OTPs, PINs, or banking passwords."),
+            ("Digital access", "Because purchases may provide immediate digital access, refunds are not automatic once access has been provided. Requests are reviewed according to the offer displayed at purchase, payment-provider status, and applicable law. Mandatory consumer rights remain unaffected."),
+            ("Subscriptions", "If recurring subscriptions are offered, cancellation and renewal terms shown at the time of subscription apply. Cancellation may stop future renewals but does not necessarily refund a period already paid for, subject to applicable law and the displayed offer."),
+            ("Withdrawal disputes", "A withdrawal marked paid should be reported from the withdrawal history if the money did not arrive or was sent to incorrect bank details. We will review the recorded beneficiary details and transaction reference. Recovery or reversal depends on the bank/payment provider and is not guaranteed.")
+        ]
+    },
+    "about": {
+        "title": "About CINEMA WORLD",
+        "intro": "CINEMA WORLD is an online entertainment platform for discovering and accessing movie-related content and member features.",
+        "sections": [
+            ("Our goal", "We aim to provide a clear, accessible way to discover titles, manage account access, and contact support."),
+            ("Content and permissions", "Content availability depends on the rights and permissions applicable to each title. Users who submit content are responsible for having the rights needed to upload and distribute it."),
+            ("Need help?", "Use the website's Customer Support or Contact options for account, playback, payment, or content concerns.")
+        ]
+    },
+    "contact": {
+        "title": "Contact CINEMA WORLD",
+        "intro": "For account, playback, payment, withdrawal, or content-rights questions, use the Customer Support feature available on the website or the support contact shown in your account.",
+        "sections": [
+            ("What to include", "Describe the issue and include a relevant movie title, order ID, withdrawal ID, or payment reference where applicable. For account safety, never include your password, OTP, UPI PIN, bank PIN, or full card credentials."),
+            ("Payment and withdrawal complaints", "Include the amount, date, and transaction reference. For a misdirected transfer, contact your bank promptly as well; CINEMA WORLD cannot guarantee a bank transfer can be recalled."),
+            ("Content-rights requests", "For a copyright or distribution concern, identify the title, explain your rights or concern, and provide a safe way for the team to request clarification. Do not submit false claims.")
+        ]
+    },
+    "content-rights": {
+        "title": "Content Rights & Upload Rules",
+        "intro": "Only content that is lawfully available for distribution may be published on CINEMA WORLD.",
+        "sections": [
+            ("Uploader responsibility", "Uploaders must own the content or have written permission and all required distribution, music, performance, territory, and promotional rights. A movie being available elsewhere online does not mean it is free to upload."),
+            ("Review and removal", "We may request proof of rights, delay publication, restrict access, or remove content when rights are unclear or a credible complaint is received."),
+            ("Report a rights concern", "Use Customer Support or the Contact page. Identify the content and explain the issue; include evidence of authority where appropriate. We may request further information before taking action.")
+        ]
+    },
+    "copyright": {
+        "title": "Copyright / DMCA Requests",
+        "intro": "If you believe content on CINEMA WORLD infringes your copyright or other rights, submit a clear report through Customer Support or Contact.",
+        "sections": [
+            ("Include in your report", "Identify the protected work, the exact page or title complained about, your contact information, why you believe the use is unauthorized, and a good-faith statement that the information is accurate. If you act for a rights holder, explain your authority."),
+            ("Review process", "We may request more information, restrict access while reviewing a credible claim, notify the uploader where appropriate, or restore content if a report is incomplete or resolved. False or misleading claims may have legal consequences."),
+            ("No automatic legal finding", "A report is reviewed as a complaint and is not by itself a final determination that infringement occurred.")
+        ]
+    },
+    "disclaimer": {
+        "title": "Disclaimer",
+        "intro": "Website information is provided for general service use. Features, content availability, pricing, and playback may change.",
+        "sections": [
+            ("Third-party services", "Payment, hosting, storage, and network services may depend on third-party providers. Their availability and processing are subject to their systems and policies."),
+            ("Content and user submissions", "Users are responsible for rights and accuracy of content they submit. We review reports as appropriate but cannot guarantee every submission is error-free or authorized."),
+            ("No guarantee of transfer recovery", "A payment or withdrawal status shown on the website is a record of the recorded workflow and is not a guarantee that a bank can reverse a completed transfer. Contact your bank and support promptly if funds are missing or misdirected.")
+        ]
+    }
+}
+
+@app.route("/terms")
+@app.route("/privacy-policy")
+@app.route("/cookie-policy")
+@app.route("/refund-policy")
+@app.route("/about")
+@app.route("/contact")
+@app.route("/content-rights")
+@app.route("/copyright")
+@app.route("/disclaimer")
+def legal_page():
+    page_key = request.path.strip("/").lower()
+    page = LEGAL_PAGES.get(page_key)
+    if not page:
+        abort(404)
+    return render_template("legal_page.html", page=page, page_key=page_key)
+
+
 @app.route("/")
 def home():
     # Keep signed-in customers in the Member area instead of sending them
