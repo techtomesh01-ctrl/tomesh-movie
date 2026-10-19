@@ -1,54 +1,12 @@
-{% extends "base.html" %}
-{% block title %}Admin Repair Center | CINEMA WORLD{% endblock %}
-{% block content %}
+<!doctype html>
+<html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Repair Center | CINEMA WORLD</title>
 <style>
-.repair-wrap{max-width:1100px;margin:28px auto;padding:0 16px;color:#f7f7f7}
-.repair-panel{background:#151515;border:1px solid #333;border-radius:14px;padding:18px;margin:14px 0}
-.repair-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-.repair-item{background:#202020;border:1px solid #383838;border-radius:10px;padding:14px;overflow-wrap:anywhere}
-.repair-ok{color:#71e3a0}.repair-bad{color:#ff7777}.repair-warn{color:#ffd166}
-.repair-btn{display:inline-block;padding:10px 14px;border-radius:8px;background:#b91c35;color:#fff;text-decoration:none;border:0;font-weight:700;cursor:pointer}
-.repair-muted{color:#bdbdbd;font-size:14px}.repair-code{font-family:monospace;white-space:pre-wrap;overflow-wrap:anywhere}
-</style>
-<div class="repair-wrap">
-  <h1>🛠️ CINEMA WORLD — Admin Repair Center</h1>
-  <p class="repair-muted">Read-only health checks for website, database, R2, login/email and payments. Checks never reveal secret values or modify customer/payment/movie data.</p>
-  <div class="repair-panel">
-    <a class="repair-btn" href="{{ url_for('admin_repair', check='1') }}">Run all checks again</a>
-    <a class="repair-btn" href="{{ url_for('admin_errors') }}" style="background:#333;margin-left:8px">Error history</a>
-    <a class="repair-btn" href="{{ url_for('admin') }}" style="background:#333;margin-left:8px">Admin home</a>
-  </div>
-  {% if diagnostics is none %}
-    <div class="repair-panel"><p>Run the checks to identify configuration or service failures.</p></div>
-  {% else %}
-    <div class="repair-grid">
-    {% for item in diagnostics %}
-      <div class="repair-item">
-        <strong>{{ item.name }}</strong>
-        <p class="{{ 'repair-ok' if item.ok else ('repair-warn' if item.warn else 'repair-bad') }}">{{ 'OK' if item.ok else ('CHECK' if item.warn else 'FAILED') }}</p>
-        <div class="repair-muted">{{ item.detail }}</div>
-        {% if item.fix %}<p><strong>Suggested next step:</strong> {{ item.fix }}</p>{% endif %}
-      </div>
-    {% endfor %}
-    </div>
-  {% endif %}
-  <div class="repair-panel">
-    <h2>Recent server errors</h2>
-    {% if errors %}
-      {% for e in errors[:25] %}
-        <div class="repair-item" style="margin:10px 0">
-          <strong class="{{ 'repair-bad' if e.status >= 500 else 'repair-warn' }}">{{ e.status }} · {{ e.source }}</strong>
-          <div class="repair-muted">{{ e.time }} · {{ e.method }} {{ e.path }}</div>
-          <div class="repair-code">{{ e.message }}</div>
-        </div>
-      {% endfor %}
-    {% else %}
-      <p class="repair-muted">No recent errors recorded in this running process. The in-memory history resets when Render restarts.</p>
-    {% endif %}
-  </div>
-  <div class="repair-panel">
-    <h2>Important for 502 errors</h2>
-    <p>A 502 can happen before Flask receives a request (for example, the Render proxy cannot reach a running Gunicorn worker). This page can diagnose app dependencies only while the app is reachable. If the whole site returns 502, check Render Events, Deploy Logs and Runtime Logs; verify the latest deployment is live and the start command is <code>gunicorn app:app --bind 0.0.0.0:$PORT</code>. Never paste secret environment-variable values into support chats.</p>
-  </div>
-</div>
-{% endblock %}
+:root{color-scheme:dark;--red:#e50914;--bg:#08080b;--line:#292930;--muted:#a4a4b0}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top right,#26090d 0,transparent 40%),var(--bg);color:#fff;font:14px/1.5 Arial,sans-serif}main{max-width:1100px;margin:0 auto;padding:26px 16px 50px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.brand{font-size:22px;font-weight:900}.brand span{color:var(--red)}.btn{display:inline-block;padding:10px 14px;border-radius:9px;background:var(--red);color:#fff;text-decoration:none;border:0;font-weight:800;cursor:pointer;margin:4px 6px 4px 0}.btn.secondary{background:#24242b;border:1px solid #41414a}.muted{color:var(--muted)}.panel{background:linear-gradient(145deg,#15151b,#0d0d11);border:1px solid var(--line);border-radius:14px;padding:18px;margin:14px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.item{background:#0b0b10;border:1px solid #34343d;border-radius:10px;padding:14px;overflow-wrap:anywhere}.ok{color:#71e3a0}.bad{color:#ff7777}.warn{color:#ffd166}.small{font-size:13px}.code{font-family:monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+</style></head><body><main>
+<div class="top"><div class="brand">CINEMA <span>WORLD</span> · Admin Repair Center</div><div><a class="btn secondary" href="{{ url_for('admin') }}">Admin Home</a><a class="btn secondary" href="{{ url_for('admin_errors') }}">Error History</a></div></div>
+<p class="muted">Read-only health checks for website, database, R2, login/email and payments. Checks never reveal secret values or modify customer, payment, or movie data.</p>
+<div class="panel"><a class="btn" href="{{ url_for('admin_repair', check='1') }}">Run all checks again</a><a class="btn secondary" href="{{ url_for('admin_errors', check='1') }}">Run existing DB/R2 checks</a></div>
+{% if diagnostics is none %}<div class="panel">Run the checks to identify configuration or service failures.</div>{% else %}<div class="grid">{% for item in diagnostics %}<div class="item"><strong>{{ item.name }}</strong><p class="{{ 'ok' if item.ok else ('warn' if item.warn else 'bad') }}">{{ 'OK' if item.ok else ('CHECK' if item.warn else 'FAILED') }}</p><div class="muted">{{ item.detail }}</div>{% if item.fix %}<p><strong>Suggested next step:</strong> {{ item.fix }}</p>{% endif %}</div>{% endfor %}</div>{% endif %}
+<div class="panel"><h2>Recent server errors</h2>{% if errors %}{% for e in errors[:25] %}<div class="item" style="margin:10px 0"><strong class="{{ 'bad' if e.status >= 500 else 'warn' }}">{{ e.status }} · {{ e.source }}</strong><div class="muted small">{{ e.time }} · {{ e.method }} {{ e.path }}</div><div class="code">{{ e.message }}</div></div>{% endfor %}{% else %}<p class="muted">No recent errors recorded in this running process. In-memory history resets when Render restarts.</p>{% endif %}</div>
+<div class="panel"><h2>500 / 502 के बारे में</h2><p>500 आम तौर पर Flask के अंदर की exception है; उसका विवरण ऊपर Error History में दिखेगा। 502 कभी-कभी Flask तक request पहुँचने से पहले Render proxy, crashed worker या Gunicorn startup/port समस्या से आता है। यदि पूरा site 502 दे रहा है, यह पेज भी उपलब्ध नहीं होगा—Render Events, Deploy Logs और Runtime Logs देखना जरूरी है। Start command की पुष्टि करें: <code>gunicorn app:app --bind 0.0.0.0:$PORT</code>.</p><p class="muted">यह केंद्र diagnosis और सुरक्षित next steps देता है; यह अपने-आप external Render outages, गलत secrets, Cashfree KYC या provider-side failures नहीं बदल सकता।</p></div>
+</main></body></html>
