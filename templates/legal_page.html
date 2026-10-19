@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title }} | CINEMA WORLD{% endblock %}
+{% block content %}
+<style>
+.legal-wrap{min-height:75vh;background:#080808;color:#eee;padding:100px 18px 70px}
+.legal-inner{max-width:940px;margin:0 auto}
+.legal-kicker{font-size:11px;letter-spacing:2px;font-weight:900;color:#ff4652;text-transform:uppercase}
+.legal-inner h1{font-size:clamp(32px,5vw,52px);line-height:1.08;margin:12px 0 18px;color:#fff}
+.legal-intro{font-size:16px;line-height:1.8;color:#c8c8c8;border-left:3px solid #e50914;padding:12px 18px;background:#111;border-radius:0 10px 10px 0}
+.legal-section{padding:22px 0;border-bottom:1px solid #242424}
+.legal-section h2{font-size:19px;color:#fff;margin:0 0 10px}
+.legal-section p{font-size:14px;line-height:1.85;color:#b8b8b8;margin:0}
+.legal-updated{margin-top:25px;font-size:12px;color:#777}
+.legal-nav{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:28px}
+.legal-nav a{color:#ff7b83;text-decoration:underline;font-size:13px}
+</style>
+<div class="legal-wrap"><article class="legal-inner">
+<div class="legal-kicker">CINEMA WORLD · Legal &amp; Information</div>
+<h1>{{ page.title }}</h1>
+<p class="legal-intro">{{ page.intro }}</p>
+{% for heading, body in page.sections %}
+<section class="legal-section"><h2>{{ heading }}</h2><p>{{ body }}</p></section>
+{% endfor %}
+<p class="legal-updated">Last reviewed: 19 October 2026. These pages provide general service information and are not a substitute for legal advice. Please review and adapt them to the actual business, payment terms, and applicable law.</p>
+<nav class="legal-nav" aria-label="Other legal pages">
+<a href="/terms">Terms &amp; Conditions</a><a href="/privacy-policy">Privacy</a><a href="/cookie-policy">Cookies</a><a href="/refund-policy">Refunds</a><a href="/content-rights">Content Rights</a><a href="/copyright">Copyright</a><a href="/disclaimer">Disclaimer</a><a href="/contact">Contact</a><a href="/">Home</a>
+</nav></article></div>
+{% endblock %}
