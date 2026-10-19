@@ -7744,10 +7744,29 @@ def admin():
     }
 
     admin_system_alerts = _load_admin_repair_alerts()
+    with _CINEMA_ERROR_LOGS_LOCK:
+        runtime_error_snapshot = list(_CINEMA_ERROR_LOGS)[:25]
+    admin_runtime_errors = []
+    for entry in runtime_error_snapshot:
+        # Keep actionable metadata while redacting possible secrets from exception messages.
+        safe_message = re.sub(
+            r"(?i)(password|secret|token|api[_-]?key|authorization|cookie)\\s*[:=]\\s*[^,\\s]+",
+            r"\\1=[REDACTED]",
+            str(entry.get("message", "Error"))[:700],
+        )
+        admin_runtime_errors.append({
+            "time": str(entry.get("time", ""))[:100],
+            "status": int(entry.get("status", 500) or 500),
+            "method": str(entry.get("method", ""))[:12],
+            "path": str(entry.get("path", ""))[:250],
+            "source": str(entry.get("source", ""))[:80],
+            "message": safe_message,
+        })
 
     return render_template(
         "admin.html",
         admin_system_alerts=admin_system_alerts,
+        admin_runtime_errors=admin_runtime_errors,
         section=section,
         site_editor_values=site_editor_values,
         q=q,
