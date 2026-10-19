@@ -43,6 +43,7 @@
 <form method="post" action="{{ url_for('admin_repair_action') }}" style="margin-top:14px">
 {% if 'database' in item.name|lower or 'postgres' in item.name|lower %}<input type="hidden" name="action" value="database"><button class="btn primary" type="submit">↻ DB फिर जाँचें</button>
 {% elif 'r2' in item.name|lower or 'storage' in item.name|lower %}<input type="hidden" name="action" value="r2"><button class="btn primary" type="submit">↻ R2 टेस्ट / सुधार जाँच</button>
+{% elif 'video' in item.name|lower or 'playback' in item.name|lower %}<input type="hidden" name="action" value="playback"><button class="btn primary" type="submit">▶ Video Play Error ठीक / टेस्ट</button>
 {% elif 'cashfree' in item.name|lower or 'payment' in item.name|lower %}<input type="hidden" name="action" value="payment"><button class="btn primary" type="submit">↻ Payment जाँचें</button>
 {% elif 'brevo' in item.name|lower or 'otp' in item.name|lower or 'email' in item.name|lower %}<input type="hidden" name="action" value="email"><button class="btn primary" type="submit">↻ OTP / Email जाँचें</button>
 {% elif 'error' in item.name|lower or 'server' in item.name|lower %}<input type="hidden" name="action" value="server"><button class="btn primary" type="submit">↻ Server जाँचें</button>
