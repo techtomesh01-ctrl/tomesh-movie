@@ -7106,6 +7106,34 @@ def admin_repair():
             "fix": "Add the missing Brevo environment settings and verify sender authorization." if email_missing else "If OTP delivery fails, check Brevo logs, sender verification and API quota."
         })
 
+        # Video playback has its own actionable diagnostic, not just an R2 connectivity check.
+        try:
+            conn = get_db(dict_rows=True)
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE COALESCE(video,'') <> '') AS with_video FROM movies")
+                video_stats = cur.fetchone() or {}
+                cur.close()
+            finally:
+                conn.close()
+            total = int(video_stats.get("total", 0) or 0)
+            with_video = int(video_stats.get("with_video", 0) or 0)
+            diagnostics.append({
+                "name": "Video playback",
+                "ok": total > 0 and with_video > 0,
+                "warn": total > 0 and with_video == 0,
+                "detail": str(with_video) + " movie(s) have a video URL out of " + str(total) + " movie record(s). Actual HTTP Range test can be run using the button.",
+                "fix": "Run the Video playback test. If it fails, the result will identify URL/host/HTTP Range issues; codec and browser-console problems require checking the actual player."
+            })
+        except Exception as exc:
+            app.logger.exception("Admin Repair Center: video diagnostics failed")
+            diagnostics.append({
+                "name": "Video playback",
+                "ok": False,
+                "detail": "Could not read movie video metadata (" + type(exc).__name__ + ").",
+                "fix": "Repair the database connection first, then run the video playback test again."
+            })
+
         diagnostics.append({
             "name": "Admin password configuration",
             "ok": ADMIN_PASSWORD != "change-me-now",
