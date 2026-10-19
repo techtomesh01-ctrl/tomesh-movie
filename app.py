@@ -6971,7 +6971,6 @@ def admin_user_issues():
                 conn.commit()
                 flash("User problem report update ho gayi.", "success")
             cur.close()
-            conn.close()
             return redirect(url_for("admin_user_issues"))
         cur.execute("""SELECT id, customer_id, customer_name, contact_email, category,
             page_path, description, user_agent, status, admin_note, created_at
