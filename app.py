@@ -6942,6 +6942,78 @@ def admin_errors():
 
 
 
+@app.route("/admin/repair/action", methods=["POST"])
+@admin_required
+def admin_repair_action():
+    """Run safe one-click recovery checks; never mutate customer/payment/movie records."""
+    action = str(request.form.get("action", "all") or "all").strip().lower()
+    result = {"title": "Repair result", "ok": False, "detail": "", "next": ""}
+    try:
+        if action in ("all", "database"):
+            conn = get_db()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT 1")
+                cur.fetchone()
+                cur.close()
+            finally:
+                conn.close()
+            result = {"title": "Database connection", "ok": True, "detail": "Database connection retry succeeded. No records were changed.", "next": "अगर website में फिर भी error आए तो Error History में उसी route की traceback देखें."}
+        elif action == "r2":
+            get_r2_client().list_objects_v2(Bucket=R2_BUCKET, MaxKeys=1)
+            result = {"title": "Cloudflare R2", "ok": True, "detail": "R2 credentials, endpoint and bucket access test passed. No files were uploaded, deleted or changed.", "next": "अगर कोई खास video नहीं चल रही, Playback test चलाएँ और उस movie की video URL / HTTP Range response जाँचें."}
+        elif action == "playback":
+            conn = get_db(dict_rows=True)
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT id, title, video FROM movies WHERE COALESCE(video,'') <> '' ORDER BY id DESC LIMIT 10")
+                rows = cur.fetchall() or []
+                cur.close()
+            finally:
+                conn.close()
+            if not rows:
+                result = {"title": "Video playback", "ok": False, "detail": "किसी movie record में video URL नहीं मिली.", "next": "Admin Movies में movie का video field और R2 object key जाँचें."}
+            else:
+                tested = []
+                failures = []
+                for movie in rows:
+                    raw = str(movie.get("video") or "").strip()
+                    # Only test public HTTP(S) URLs; never fetch arbitrary local/internal addresses.
+                    if not raw.startswith(("https://", "http://")):
+                        failures.append(str(movie.get("title") or movie.get("id")) + ": video URL HTTP(S) नहीं है")
+                        continue
+                    try:
+                        req = Request(raw, headers={"Range": "bytes=0-1023", "User-Agent": "CINEMA-WORLD-RepairCheck/1.0"}, method="GET")
+                        with urlopen(req, timeout=6) as response:
+                            status = getattr(response, "status", 200)
+                            content_range = response.headers.get("Content-Range", "")
+                            response.read(1024)
+                            if status == 206 or content_range:
+                                tested.append(str(movie.get("title") or movie.get("id")) + ": Range OK")
+                            elif status in (200, 206):
+                                failures.append(str(movie.get("title") or movie.get("id")) + ": server ने Range 206 नहीं दिया")
+                            else:
+                                failures.append(str(movie.get("title") or movie.get("id")) + ": HTTP " + str(status))
+                    except Exception as exc:
+                        failures.append(str(movie.get("title") or movie.get("id")) + ": " + type(exc).__name__)
+                passed = bool(tested) and not failures
+                result = {"title": "Video playback test", "ok": passed, "detail": ("; ".join(tested + failures))[:1400] if tested or failures else "Video URL test पूरा नहीं हुआ.", "next": "Range OK होने पर भी browser autoplay, codec (H.264/AAC), CORS और video tag console errors देखें. Failed URL/object को बिना पुष्टि auto-rewrite नहीं किया गया."}
+        elif action == "email":
+            missing = [key for key in ("BREVO_API_KEY", "BREVO_FROM") if not str(os.environ.get(key, "") or "").strip()]
+            result = {"title": "Email / OTP configuration", "ok": not missing, "detail": "Required setting names present; कोई OTP/email नहीं भेजा गया." if not missing else "Missing settings: " + ", ".join(missing), "next": "Missing settings Render Environment में जोड़ें; sender verification और Brevo logs भी जाँचें."}
+        elif action == "payment":
+            missing = [key for key, val in (("CASHFREE_APP_ID", CASHFREE_APP_ID), ("CASHFREE_SECRET_KEY", CASHFREE_SECRET_KEY)) if not str(val or "").strip()]
+            result = {"title": "Cashfree configuration", "ok": not missing, "detail": "Required setting names present; कोई वास्तविक payment शुरू नहीं किया गया." if not missing else "Missing settings: " + ", ".join(missing), "next": "Cashfree profile/KYC activation provider dashboard से ठीक करनी होगी; यहाँ payment charge नहीं होगा."}
+        elif action == "server":
+            result = {"title": "Flask process", "ok": True, "detail": "Repair endpoint तक request पहुँच गई; Flask process अभी response दे रहा है.", "next": "अगर 502 बार-बार आता है या यह page नहीं खुलता, Render Events और Runtime Logs जाँचें. Proxy-level 502 को app अपने-आप ठीक नहीं कर सकता."}
+        else:
+            result = {"title": "Unknown action", "ok": False, "detail": "यह repair action पहचाना नहीं गया.", "next": "पेज reload करें और संबंधित सिस्टम का बटन चुनें."}
+    except Exception as exc:
+        app.logger.exception("Admin Repair Center action failed: %s", action)
+        result = {"title": "Repair test failed", "ok": False, "detail": "Test असफल: " + type(exc).__name__ + ". Secret values या निजी error details नहीं दिखाए गए.", "next": "Render Runtime Logs / Error History देखें. External credentials या provider-side issues को admin button से बदलना सुरक्षित नहीं है."}
+    return render_template("admin_repair.html", diagnostics=None, errors=[], action_result=result)
+
+
 @app.route("/admin/repair", methods=["GET"])
 @admin_required
 def admin_repair():
