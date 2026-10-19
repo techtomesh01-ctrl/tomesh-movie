@@ -7858,6 +7858,7 @@ def admin():
         })
 
     admin_user_issue_count = 0
+    admin_issue_category_counts = {}
     try:
         _ensure_user_issue_table()
         issue_conn = get_db(dict_rows=True)
@@ -7865,6 +7866,13 @@ def admin():
             issue_cur = issue_conn.cursor()
             issue_cur.execute("SELECT COUNT(*) AS n FROM user_problem_reports WHERE status IN ('NEW','IN_PROGRESS')")
             admin_user_issue_count = int((issue_cur.fetchone() or {}).get("n") or 0)
+            issue_cur.execute("""SELECT category, COUNT(*) AS n
+                FROM user_problem_reports WHERE status IN ('NEW','IN_PROGRESS')
+                GROUP BY category""")
+            admin_issue_category_counts = {
+                str(row.get("category") or "Other"): int(row.get("n") or 0)
+                for row in issue_cur.fetchall()
+            }
             issue_cur.close()
         finally:
             issue_conn.close()
@@ -7874,6 +7882,7 @@ def admin():
     return render_template(
         "admin.html",
         admin_user_issue_count=admin_user_issue_count,
+        admin_issue_category_counts=admin_issue_category_counts,
         admin_system_alerts=admin_system_alerts,
         admin_runtime_errors=admin_runtime_errors,
         section=section,
