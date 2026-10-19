@@ -7750,8 +7750,8 @@ def admin():
     for entry in runtime_error_snapshot:
         # Keep actionable metadata while redacting possible secrets from exception messages.
         safe_message = re.sub(
-            r"(?i)(password|secret|token|api[_-]?key|authorization|cookie)\\s*[:=]\\s*[^,\\s]+",
-            r"\\1=[REDACTED]",
+            r"(?i)(password|secret|token|api[_-]?key|authorization|cookie)\s*[:=]\s*[^,\s]+",
+            r"\1=[REDACTED]",
             str(entry.get("message", "Error"))[:700],
         )
         admin_runtime_errors.append({
