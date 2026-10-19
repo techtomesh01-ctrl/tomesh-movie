@@ -6947,9 +6947,40 @@ def admin_errors():
 def admin_repair_action():
     """Run safe one-click recovery checks; never mutate customer/payment/movie records."""
     action = str(request.form.get("action", "all") or "all").strip().lower()
+    issue = str(request.form.get("issue", "") or "").strip().lower()
     result = {"title": "Repair result", "ok": False, "detail": "", "next": ""}
+    # Safe auto-recovery is limited to retrying a subsystem or running its targeted test.
+    # Secrets, payment provider activation, Render proxy failures and movie objects are never rewritten automatically.
+    if action == "fix":
+        if "postgresql connection" in issue or "database" in issue:
+            action = "database"
+        elif "r2" in issue or "storage" in issue:
+            action = "r2"
+        elif "video" in issue or "playback" in issue:
+            action = "playback"
+        elif "cashfree" in issue or "payment" in issue:
+            missing = [key for key, val in (("CASHFREE_APP_ID", CASHFREE_APP_ID), ("CASHFREE_SECRET_KEY", CASHFREE_SECRET_KEY)) if not str(val or "").strip()]
+            result = {"title": "Cashfree समाधान", "ok": False, "detail": ("Missing settings: " + ", ".join(missing)) if missing else "API setting names are present, so the issue may be provider-side.", "next": "Render Environment में missing Cashfree settings ठीक करें. अगर दोनों मौजूद हैं, Cashfree dashboard में profile/KYC, sandbox/production mode और provider logs जाँचें. सुरक्षा के लिए payment credentials यहाँ अपने-आप नहीं बदले जाते.", "manual_env": True}
+            action = "manual"
+        elif "brevo" in issue or "otp" in issue or "email" in issue:
+            missing = [key for key in ("BREVO_API_KEY", "BREVO_FROM") if not str(os.environ.get(key, "") or "").strip()]
+            result = {"title": "OTP / Email समाधान", "ok": False, "detail": ("Missing settings: " + ", ".join(missing)) if missing else "Required setting names मौजूद हैं; delivery/provider issue की जाँच चाहिए.", "next": "Render Environment में missing Brevo settings जोड़ें. अगर मौजूद हैं तो Brevo में sender verification, API quota और logs जाँचें. Secret key अपने-आप generate या overwrite नहीं की गई.", "manual_env": True}
+            action = "manual"
+        elif "password" in issue or "session security" in issue or "secret_key" in issue:
+            result = {"title": "Admin security समाधान", "ok": False, "detail": "Security secret को अपने-आप बदलना सुरक्षित नहीं है; बदलने पर existing sessions/login प्रभावित हो सकते हैं.", "next": "Render Environment में ADMIN_PASSWORD या SECRET_KEY को खुद सुरक्षित value से सेट करें, फिर deploy पूरा होने पर सभी सिस्टम की जाँच दोबारा चलाएँ.", "manual_env": True}
+            action = "manual"
+        elif "server" in issue or "error" in issue or "flask" in issue:
+            action = "server"
+        elif "postgresql configuration" in issue or "database url" in issue:
+            result = {"title": "Database configuration समाधान", "ok": False, "detail": "DATABASE_URL missing है या configuration में समस्या है.", "next": "Render Environment में सही Render PostgreSQL DATABASE_URL जोड़ें. इस बटन से database credentials बदले नहीं जाते.", "manual_env": True}
+            action = "manual"
+        else:
+            result = {"title": "समाधान उपलब्ध नहीं", "ok": False, "detail": "इस जाँच के लिए कोई सुरक्षित automatic change परिभाषित नहीं है.", "next": "दिखाए गए error और Render Runtime Logs के अनुसार समस्या ठीक करें; customer, movie या payment data को बिना पुष्टि नहीं बदला जाएगा."}
+            action = "manual"
     try:
-        if action in ("all", "database"):
+        if action == "manual":
+            pass
+        elif action in ("all", "database"):
             conn = get_db()
             try:
                 cur = conn.cursor()
