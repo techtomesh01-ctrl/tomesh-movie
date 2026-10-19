@@ -2633,6 +2633,10 @@ def login_start():
         if row and row.get("password_hash"):
             session["login_identifier"] = email
             return redirect(url_for("login", step="password", identifier=email))
+        if request.form.get("agree_terms") != "yes":
+            flash("Naya account banane ke liye Terms & Conditions aur Privacy Policy se sahmat hona zaroori hai.", "error")
+            return redirect(url_for("login", identifier=email))
+        session["terms_agreed_for_signup"] = True
         return redirect(url_for("request_otp", email=email))
     mobile=normalize_mobile(value)
     if valid_mobile(mobile):
@@ -2643,6 +2647,10 @@ def login_start():
         if row and row.get("password_hash"):
             session["login_identifier"] = mobile
             return redirect(url_for("login", step="password", identifier=mobile))
+        if request.form.get("agree_terms") != "yes":
+            flash("Naya account banane ke liye Terms & Conditions aur Privacy Policy se sahmat hona zaroori hai.", "error")
+            return redirect(url_for("login", identifier=mobile))
+        session["terms_agreed_for_signup"] = True
         return _start_mobile_otp(mobile)
     flash("Please enter a valid email address or 10-digit mobile number.", "error")
     return redirect(url_for("login"))
