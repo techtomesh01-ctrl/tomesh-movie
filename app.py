@@ -4542,10 +4542,72 @@ def admin_creator_studio():
             ORDER BY CASE p.status WHEN 'PENDING' THEN 0 WHEN 'APPROVED' THEN 1 ELSE 2 END, p.id DESC
         """)
         payout_requests = [dict(row) for row in cur.fetchall()]
+
+        # Creator directory: show profile/contact, upload/review history, audience
+        # engagement, earned amount, payouts, and the latest saved bank details
+        # together so admins can make a review decision using real account activity.
+        cur.execute("""
+            SELECT u.customer_id, u.full_name, u.email, u.mobile, u.profile_photo,
+                   u.created_at, u.last_login_at,
+                   COALESCE(s.upload_count,0) AS upload_count,
+                   COALESCE(s.pending_count,0) AS pending_count,
+                   COALESCE(s.approved_count,0) AS approved_count,
+                   COALESCE(s.rejected_count,0) AS rejected_count,
+                   COALESCE(m.movie_count,0) AS movie_count,
+                   COALESCE(m.total_views,0) AS total_views,
+                   COALESCE(m.total_likes,0) AS total_likes,
+                   COALESCE(e.total_earned,0) AS total_earned,
+                   COALESCE(e.valid_views,0) AS valid_views,
+                   COALESCE(p.payout_count,0) AS payout_count,
+                   COALESCE(p.pending_payout,0) AS pending_payout,
+                   COALESCE(p.paid_payout,0) AS paid_payout,
+                   b.account_holder_name AS saved_bank_holder,
+                   b.bank_name AS saved_bank_name,
+                   b.account_number AS saved_bank_account,
+                   b.ifsc AS saved_bank_ifsc,
+                   b.status AS saved_bank_status
+            FROM customer_users u
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) AS upload_count,
+                       COUNT(*) FILTER (WHERE UPPER(COALESCE(status,''))='PENDING') AS pending_count,
+                       COUNT(*) FILTER (WHERE UPPER(COALESCE(status,'')) IN ('APPROVED','PUBLISHED','LIVE')) AS approved_count,
+                       COUNT(*) FILTER (WHERE UPPER(COALESCE(status,'')) IN ('REJECTED','DECLINED')) AS rejected_count
+                FROM creator_submissions WHERE customer_id=u.customer_id
+            ) s ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) AS movie_count,
+                       COALESCE(SUM(views),0) AS total_views,
+                       COALESCE(SUM((SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=movies.id)),0) AS total_likes
+                FROM movies WHERE creator_customer_id=u.customer_id
+            ) m ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(SUM(amount),0) AS total_earned,
+                       COALESCE(SUM(valid_views),0) AS valid_views
+                FROM creator_earnings WHERE customer_id=u.customer_id
+            ) e ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) AS payout_count,
+                       COALESCE(SUM(amount) FILTER (WHERE UPPER(COALESCE(status,'')) IN ('PENDING','APPROVED')),0) AS pending_payout,
+                       COALESCE(SUM(amount) FILTER (WHERE UPPER(COALESCE(status,''))='PAID'),0) AS paid_payout
+                FROM creator_payout_requests WHERE customer_id=u.customer_id
+            ) p ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT account_holder_name,bank_name,account_number,ifsc,status
+                FROM customer_bank_accounts WHERE customer_id=u.customer_id
+                ORDER BY id DESC LIMIT 1
+            ) b ON TRUE
+            WHERE COALESCE(s.upload_count,0)>0
+               OR COALESCE(e.total_earned,0)>0
+               OR COALESCE(p.payout_count,0)>0
+            ORDER BY COALESCE(e.total_earned,0) DESC, COALESCE(m.total_views,0) DESC, u.id DESC
+            LIMIT 500
+        """)
+        creator_profiles = [dict(row) for row in cur.fetchall()]
         cur.close()
     finally:
         conn.close()
     return render_template("admin_creator_studio.html", pending=pending, reviewed=reviewed, payout_requests=payout_requests,
+        creator_profiles=creator_profiles,
         audit_by_submission=audit_by_submission,
         movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
         drama_rate=get_setting("creator_drama_rate_per_1000", "30"),
