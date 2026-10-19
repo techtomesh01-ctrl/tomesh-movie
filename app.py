@@ -6916,6 +6916,10 @@ def _ensure_user_issue_table():
 @app.route("/report-problem", methods=["GET", "POST"])
 def report_problem():
     if request.method == "POST":
+        # Lightweight spam protection for the public support form.
+        # Bots that fill the hidden honeypot are silently accepted without storing a report.
+        if str(request.form.get("website", "") or "").strip():
+            return redirect(url_for("report_problem", sent="1"))
         description = str(request.form.get("description", "") or "").strip()
         category = str(request.form.get("category", "Other") or "Other").strip()
         allowed = {"Video/Playback", "Login/OTP", "Payment", "Upload", "Website Error", "Other"}
@@ -6939,7 +6943,9 @@ def report_problem():
                     VALUES (%s,%s,%s,%s,%s,%s,%s)""", (
                     str(session.get("customer_id") or "")[:120] or None,
                     name or None, email or None, category,
-                    str(request.form.get("page_path", "") or request.referrer or request.path)[:500],
+                    (lambda p: p[:500] if p.startswith("/") and not p.startswith("//") else request.path)(
+                        str(request.form.get("page_path", "") or request.path).strip()
+                    ),
                     description, str(request.headers.get("User-Agent", ""))[:500]))
                 conn.commit()
                 cur.close()
