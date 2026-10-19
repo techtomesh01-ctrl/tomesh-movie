@@ -6942,6 +6942,48 @@ def admin_errors():
 
 
 
+def _store_admin_repair_alerts(alerts):
+    """Persist safe admin-visible diagnostic failures without customer/secret data."""
+    try:
+        payload = json.dumps(list(alerts or [])[:20], ensure_ascii=False)
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """INSERT INTO settings (key, value) VALUES (%s, %s)
+                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
+                ("admin_repair_failures", payload),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+    except Exception:
+        # Keep diagnostics usable even if the database is the failed subsystem.
+        app.logger.warning("Could not persist admin repair alerts.", exc_info=True)
+
+
+def _load_admin_repair_alerts():
+    """Load persisted admin alerts; never expose secret values."""
+    try:
+        raw = get_setting("admin_repair_failures", "[]")
+        data = json.loads(raw or "[]")
+        if not isinstance(data, list):
+            return []
+        return [
+            {
+                "name": str(item.get("name", "System check"))[:120],
+                "detail": str(item.get("detail", "Needs attention"))[:500],
+                "fix": str(item.get("fix", "Open Repair Center for diagnosis."))[:500],
+                "warn": bool(item.get("warn", False)),
+                "time": str(item.get("time", ""))[:80],
+            }
+            for item in data[:20] if isinstance(item, dict)
+        ]
+    except Exception:
+        return []
+
+
 @app.route("/admin/repair/action", methods=["POST"])
 @admin_required
 def admin_repair_action():
@@ -7055,6 +7097,15 @@ def admin_repair_action():
     except Exception as exc:
         app.logger.exception("Admin Repair Center action failed: %s", action)
         result = {"title": "Repair test failed", "ok": False, "detail": "Test असफल: " + type(exc).__name__ + ". Secret values या निजी error details नहीं दिखाए गए.", "next": "Render Runtime Logs / Error History देखें. External credentials या provider-side issues को admin button से बदलना सुरक्षित नहीं है."}
+    # A failed targeted test is also visible from the main Admin panel.
+    if not result.get("ok"):
+        _store_admin_repair_alerts([{
+            "name": result.get("title", "Repair test failed"),
+            "detail": result.get("detail", "A targeted system test failed."),
+            "fix": result.get("next", "Open Repair Center for diagnosis."),
+            "warn": False,
+            "time": datetime.now(timezone.utc).astimezone(IST).strftime("%d %b %Y %I:%M %p IST"),
+        }])
     return render_template("admin_repair.html", diagnostics=None, errors=[], action_result=result)
 
 
@@ -7182,6 +7233,21 @@ def admin_repair():
             "detail": "No 500+ response recorded in this process." if not any(int(e.get("status", 0)) >= 500 for e in recent_errors) else str(sum(1 for e in recent_errors if int(e.get("status", 0)) >= 500)) + " recent 500+ response(s) recorded in this process.",
             "fix": "Open Error History and Render Runtime Logs to find the failing route. A proxy-level 502 may not reach Flask and may not appear here."
         })
+
+    if diagnostics is not None:
+        # Keep only safe, concise failure summaries so the main Admin panel can
+        # alert the owner after leaving Repair Center. A clean run clears alerts.
+        failed_checks = [
+            {
+                "name": item.get("name", "System check"),
+                "detail": item.get("detail", "Needs attention"),
+                "fix": item.get("fix", "Open Repair Center for diagnosis."),
+                "warn": bool(item.get("warn", False)),
+                "time": datetime.now(timezone.utc).astimezone(IST).strftime("%d %b %Y %I:%M %p IST"),
+            }
+            for item in diagnostics if not item.get("ok")
+        ]
+        _store_admin_repair_alerts(failed_checks)
 
     with _CINEMA_ERROR_LOGS_LOCK:
         raw_errors = list(_CINEMA_ERROR_LOGS)[:25]
@@ -7677,8 +7743,11 @@ def admin():
         "community_desc": get_setting("site_community_desc", "Follow other members and grow your movie community."),
     }
 
+    admin_system_alerts = _load_admin_repair_alerts()
+
     return render_template(
         "admin.html",
+        admin_system_alerts=admin_system_alerts,
         section=section,
         site_editor_values=site_editor_values,
         q=q,
