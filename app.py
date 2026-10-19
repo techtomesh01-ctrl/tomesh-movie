@@ -6941,6 +6941,115 @@ def admin_errors():
     )
 
 
+
+@app.route("/admin/repair", methods=["GET"])
+@admin_required
+def admin_repair():
+    diagnostics = None
+    if request.args.get("check") == "1":
+        diagnostics = []
+
+        # Report configuration presence only; never show secret values.
+        diagnostics.append({
+            "name": "Flask session security",
+            "ok": bool(os.environ.get("SECRET_KEY", "").strip()),
+            "warn": not bool(os.environ.get("SECRET_KEY", "").strip()),
+            "detail": "SECRET_KEY is configured." if os.environ.get("SECRET_KEY", "").strip() else "SECRET_KEY is missing; sessions may reset when the process restarts.",
+            "fix": "" if os.environ.get("SECRET_KEY", "").strip() else "Set a long random SECRET_KEY in Render Environment, then redeploy."
+        })
+        diagnostics.append({
+            "name": "PostgreSQL configuration",
+            "ok": bool(DATABASE_URL),
+            "warn": False,
+            "detail": "DATABASE_URL is present." if DATABASE_URL else "DATABASE_URL is missing.",
+            "fix": "" if DATABASE_URL else "Add the correct Render PostgreSQL DATABASE_URL in the service Environment."
+        })
+
+        try:
+            conn = get_db()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT 1")
+                cur.fetchone()
+                cur.close()
+            finally:
+                conn.close()
+            diagnostics.append({"name": "PostgreSQL connection", "ok": True, "detail": "Connection and SELECT 1 succeeded.", "fix": ""})
+        except Exception as exc:
+            app.logger.exception("Admin Repair Center: database health check failed")
+            diagnostics.append({"name": "PostgreSQL connection", "ok": False, "detail": "Database connection/query failed (" + type(exc).__name__ + "). Details are in Render Runtime Logs.", "fix": "Check Render PostgreSQL status, DATABASE_URL, connection limits and Runtime Logs."})
+
+        r2_vars = {
+            "R2_ACCOUNT_ID": R2_ACCOUNT_ID,
+            "R2_ACCESS_KEY_ID": R2_ACCESS_KEY_ID,
+            "R2_SECRET_ACCESS_KEY": R2_SECRET_ACCESS_KEY,
+            "R2_BUCKET": R2_BUCKET,
+            "R2_ENDPOINT": R2_ENDPOINT,
+        }
+        missing_r2 = [name for name, value in r2_vars.items() if not str(value or "").strip()]
+        if missing_r2:
+            diagnostics.append({"name": "Cloudflare R2 configuration", "ok": False, "detail": "Missing configuration keys: " + ", ".join(missing_r2), "fix": "Set the listed R2 keys in Render Environment; do not share their values publicly."})
+        else:
+            try:
+                get_r2_client().list_objects_v2(Bucket=R2_BUCKET, MaxKeys=1)
+                diagnostics.append({"name": "Cloudflare R2 connection", "ok": True, "detail": "Bucket access check succeeded (one object maximum; no files changed).", "fix": ""})
+            except Exception as exc:
+                app.logger.exception("Admin Repair Center: R2 health check failed")
+                diagnostics.append({"name": "Cloudflare R2 connection", "ok": False, "detail": "Bucket access check failed (" + type(exc).__name__ + "). Details are in Render Runtime Logs.", "fix": "Verify the R2 endpoint, bucket name, access key permissions and Cloudflare service status."})
+
+        cashfree_missing = [name for name, value in {
+            "CASHFREE_APP_ID": CASHFREE_APP_ID,
+            "CASHFREE_SECRET_KEY": CASHFREE_SECRET_KEY,
+        }.items() if not str(value or "").strip()]
+        diagnostics.append({
+            "name": "Cashfree payment configuration",
+            "ok": not cashfree_missing,
+            "warn": bool(cashfree_missing),
+            "detail": "Required API key names are present; no payment was initiated." if not cashfree_missing else "Missing configuration keys: " + ", ".join(cashfree_missing),
+            "fix": "Add the missing Cashfree values in Render Environment and confirm the correct sandbox/production mode." if cashfree_missing else "If payments still fail, check Cashfree dashboard activation/KYC and payment logs."
+        })
+
+        email_missing = [name for name, value in {
+            "BREVO_API_KEY": os.environ.get("BREVO_API_KEY", ""),
+            "BREVO_FROM": os.environ.get("BREVO_FROM", ""),
+        }.items() if not str(value or "").strip()]
+        diagnostics.append({
+            "name": "Brevo email / OTP configuration",
+            "ok": not email_missing,
+            "warn": bool(email_missing),
+            "detail": "Required Brevo setting names are present; no email/OTP was sent." if not email_missing else "Missing configuration keys: " + ", ".join(email_missing),
+            "fix": "Add the missing Brevo environment settings and verify sender authorization." if email_missing else "If OTP delivery fails, check Brevo logs, sender verification and API quota."
+        })
+
+        diagnostics.append({
+            "name": "Admin password configuration",
+            "ok": ADMIN_PASSWORD != "change-me-now",
+            "warn": ADMIN_PASSWORD == "change-me-now",
+            "detail": "Admin password is not the built-in default." if ADMIN_PASSWORD != "change-me-now" else "The built-in default admin password is active.",
+            "fix": "Set a strong ADMIN_PASSWORD in Render Environment immediately." if ADMIN_PASSWORD == "change-me-now" else ""
+        })
+
+        with _CINEMA_ERROR_LOGS_LOCK:
+            recent_errors = list(_CINEMA_ERROR_LOGS)[:25]
+        diagnostics.append({
+            "name": "Recent application errors",
+            "ok": not any(int(e.get("status", 0)) >= 500 for e in recent_errors),
+            "warn": not any(int(e.get("status", 0)) >= 500 for e in recent_errors) and bool(recent_errors),
+            "detail": "No 500+ response recorded in this process." if not any(int(e.get("status", 0)) >= 500 for e in recent_errors) else str(sum(1 for e in recent_errors if int(e.get("status", 0)) >= 500)) + " recent 500+ response(s) recorded in this process.",
+            "fix": "Open Error History and Render Runtime Logs to find the failing route. A proxy-level 502 may not reach Flask and may not appear here."
+        })
+
+    with _CINEMA_ERROR_LOGS_LOCK:
+        raw_errors = list(_CINEMA_ERROR_LOGS)[:25]
+    safe_errors = []
+    for item in raw_errors:
+        safe_item = dict(item)
+        safe_item["message"] = re.sub(r"(?i)(password|secret|token|api[_-]?key)\\s*[:=]\\s*[^,\\s]+", r"\\1=[REDACTED]", str(item.get("message", "")))[:700]
+        safe_errors.append(safe_item)
+
+    return render_template("admin_repair.html", diagnostics=diagnostics, errors=safe_errors)
+
+
 @app.route("/admin")
 @admin_required
 def admin():
