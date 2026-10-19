@@ -4184,19 +4184,31 @@ def movie_page(movie_id):
     )
 
     # --------------------------------------------------------
-    # Only give stream URL when access exists.
+    # Give authorized viewers a short-lived, signed R2 media URL.
+    # This removes the extra Render request/redirect from the Play
+    # click path. On Render Free, that extra request can wake a
+    # sleeping web service and add a minute or more before playback.
+    # R2 serves the object directly and supports HTTP byte ranges.
+    # Watch access is still checked above before any URL is issued.
     # --------------------------------------------------------
 
     if video_key and access["watch"]:
-        if session.get("admin_logged_in"):
-            # The stream route independently checks the admin session.
-            movie["video_url"] = url_for("stream_movie", movie_id=movie_id)
-        else:
-            movie["video_url"] = url_for(
-                "stream_movie",
-                movie_id=movie_id,
-                access_token=make_stream_token(movie_id),
+        try:
+            stream_client = get_r2_client()
+            movie["video_url"] = stream_client.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": R2_BUCKET,
+                    "Key": validate_r2_key(video_key),
+                    "ResponseContentType": movie["video_mime"] or "video/mp4",
+                    "ResponseContentDisposition": "inline",
+                    "ResponseCacheControl": "private, max-age=300",
+                },
+                ExpiresIn=min(PRESIGNED_EXPIRES, 12 * 60 * 60),
             )
+        except Exception as exc:
+            print("MOVIE STREAM URL ERROR:", repr(exc))
+            movie["video_url"] = None
     else:
         movie["video_url"] = None
 
