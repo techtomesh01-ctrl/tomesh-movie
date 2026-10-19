@@ -41,14 +41,22 @@
 <div class="grid">{% for item in diagnostics %}
 <article class="item"><div class="item-top"><strong>{{ item.name }}</strong><span class="status {{ 'ok' if item.ok else ('warn' if item.warn else 'bad') }}">{{ 'PASS' if item.ok else ('CHECK' if item.warn else 'FAILED') }}</span></div><div class="detail">{{ item.detail }}</div>{% if item.fix %}<div class="fix"><b>अगला कदम</b>{{ item.fix }}</div>{% else %}<div class="fix" style="color:var(--green)"><b>स्थिति</b>इस जाँच में अभी कोई सुधार सुझाया नहीं गया।</div>{% endif %}
 <form method="post" action="{{ url_for('admin_repair_action') }}" style="margin-top:14px">
-{% if not item.ok %}<input type="hidden" name="action" value="fix"><input type="hidden" name="issue" value="{{ item.name }}"><button class="btn primary" type="submit">🛠 समस्या ठीक करें</button>{% else %}<input type="hidden" name="action" value="all">{% endif %}
-{% if 'database' in item.name|lower or 'postgres' in item.name|lower %}<input type="hidden" name="action" value="{{ 'fix' if not item.ok else 'database' }}"><button class="btn" type="submit">{{ '🛠 DB समस्या ठीक करें' if not item.ok else '↻ DB फिर जाँचें' }}</button>
-{% elif 'r2' in item.name|lower or 'storage' in item.name|lower %}<input type="hidden" name="action" value="r2"><button class="btn primary" type="submit">↻ R2 टेस्ट / सुधार जाँच</button>
-{% elif 'video' in item.name|lower or 'playback' in item.name|lower %}<input type="hidden" name="action" value="playback"><button class="btn primary" type="submit">▶ Video Play जाँचें</button>
-{% elif 'cashfree' in item.name|lower or 'payment' in item.name|lower %}<input type="hidden" name="action" value="payment"><button class="btn primary" type="submit">↻ Payment जाँचें</button>
-{% elif 'brevo' in item.name|lower or 'otp' in item.name|lower or 'email' in item.name|lower %}<input type="hidden" name="action" value="email"><button class="btn primary" type="submit">↻ OTP / Email जाँचें</button>
-{% elif 'error' in item.name|lower or 'server' in item.name|lower %}<input type="hidden" name="action" value="server"><button class="btn primary" type="submit">↻ Server जाँचें</button>
-{% else %}<input type="hidden" name="action" value="all"><button class="btn" type="submit">↻ फिर जाँचें</button>{% endif %}
+{% if not item.ok %}
+<input type="hidden" name="action" value="fix"><input type="hidden" name="issue" value="{{ item.name }}">
+<button class="btn primary" type="submit">🛠 समस्या ठीक करें</button>
+{% elif 'database' in item.name|lower or 'postgres' in item.name|lower %}
+<input type="hidden" name="action" value="database"><button class="btn" type="submit">↻ DB फिर जाँचें</button>
+{% elif 'r2' in item.name|lower or 'storage' in item.name|lower %}
+<input type="hidden" name="action" value="r2"><button class="btn" type="submit">↻ R2 फिर जाँचें</button>
+{% elif 'video' in item.name|lower or 'playback' in item.name|lower %}
+<input type="hidden" name="action" value="playback"><button class="btn" type="submit">▶ Video फिर जाँचें</button>
+{% elif 'cashfree' in item.name|lower or 'payment' in item.name|lower %}
+<input type="hidden" name="action" value="payment"><button class="btn" type="submit">↻ Payment फिर जाँचें</button>
+{% elif 'brevo' in item.name|lower or 'otp' in item.name|lower or 'email' in item.name|lower %}
+<input type="hidden" name="action" value="email"><button class="btn" type="submit">↻ OTP / Email फिर जाँचें</button>
+{% else %}
+<input type="hidden" name="action" value="server"><button class="btn" type="submit">↻ फिर जाँचें</button>
+{% endif %}
 </form></article>
 {% endfor %}</div>
 {% endif %}
