@@ -116,6 +116,20 @@ def _log_slow_request(response):
 
 
 # ============================================================
+# Add conservative browser security headers without imposing a Content-Security-Policy
+# that could break existing movie players, payment checkout, or inline scripts.
+@app.after_request
+def _cinema_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    # Render serves the public site over HTTPS; enable HSTS only for HTTPS requests.
+    if request.is_secure:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return response
+
+
 # ADMIN ERROR MONITOR
 # ============================================================
 
