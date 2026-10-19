@@ -83,6 +83,22 @@
 {% endmacro %}
 
 <div class="cw-admin"><div class="cw-shell">
+{% if admin_system_alerts %}
+<section class="cw-card" role="alert" style="border-color:#8b222a;background:linear-gradient(135deg,#2a0b0f,#151013);margin-top:8px">
+  <div class="cw-card-head" style="margin-bottom:8px">
+    <div><h2 style="color:#ff8c93">⚠ System attention needed · {{ admin_system_alerts|length }} alert(s)</h2><div class="cw-muted">Repair Center की पिछली जाँच में समस्या मिली थी। यह सूचना अगली जाँच में समस्या ठीक होने पर अपने-आप हटेगी।</div></div>
+    <a class="cw-btn red" href="{{ url_for('admin_repair', check='1') }}">Repair Center खोलें →</a>
+  </div>
+  {% for alert in admin_system_alerts %}
+  <div style="padding:10px 12px;margin-top:8px;border:1px solid #5c242a;border-radius:10px;background:#160c0f">
+    <strong style="display:block;color:#fff">{{ alert.name }}{% if alert.warn %} · CHECK{% else %} · FAILED{% endif %}</strong>
+    <div class="cw-muted" style="margin-top:4px;color:#f0c4c7">{{ alert.detail }}</div>
+    {% if alert.fix %}<div style="font-size:12px;color:#fff;margin-top:5px"><b>अगला कदम:</b> {{ alert.fix }}</div>{% endif %}
+    {% if alert.time %}<div class="cw-muted" style="margin-top:4px;font-size:10px">{{ alert.time }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
 <header class="cw-top">
   <div class="cw-brand"><div class="cw-logo">CW</div><div><strong>CINEMA WORLD</strong><span>OWNER CONTROL CENTER</span></div></div>
   <div class="cw-clock" aria-label="Live date and time in India"><strong id="cw-head-day">{{ cinema_now_ist.strftime('%A') }}</strong><span id="cw-head-date">{{ cinema_now_ist.strftime('%d %B %Y') }}</span><small>LIVE IST · <span id="cw-head-time">{{ cinema_now_ist.strftime('%I:%M:%S %p') }}</span></small></div>
