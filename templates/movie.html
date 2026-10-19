@@ -2124,8 +2124,13 @@
         // expose the browser's native controls so the viewer can start playback
         // with a direct user gesture. Never retry in a loop or bypass browser policy.
         if(name === "NotAllowedError"){
+            // The error overlay sits above the video element, so do not leave
+            // it covering the native controls the viewer needs to press.
             video.controls = true;
-            setError("Browser ne playback ko automatic tareeke se rok diya. Neeche video ke asli Play button ko ek baar dabayein. Agar phir bhi na chale, video format ya source check karna hoga.");
+            clearError();
+            setBuffering(false);
+            setStatus("Browser ne custom Play ko block kiya. Video ke asli controls mein ▶ dabayein.", true);
+            video.focus({preventScroll:true});
             return;
         }
         if(name === "NotSupportedError"){
