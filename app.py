@@ -9467,3 +9467,54 @@ if __name__ == "__main__":
         debug=False,
     )
     
+
+# ============================================================
+# PUBLIC SEO ENDPOINTS
+# ============================================================
+
+@app.route("/robots.txt", methods=["GET"])
+def public_robots_txt():
+    """Tell search engines which public pages may be crawled."""
+    body = """User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /login
+Disallow: /logout
+Disallow: /account
+Disallow: /payments
+Disallow: /earnings
+Disallow: /creator/
+Sitemap: https://tomesh-movie.onrender.com/sitemap.xml
+"""
+    return Response(body, mimetype="text/plain; charset=utf-8")
+
+
+@app.route("/sitemap.xml", methods=["GET"])
+def public_sitemap_xml():
+    """Publish only public, indexable URLs; private movie pages require login."""
+    from xml.sax.saxutils import escape
+
+    public_paths = (
+        "/",
+        "/terms",
+        "/privacy-policy",
+        "/cookie-policy",
+        "/refund-policy",
+        "/about",
+        "/contact",
+        "/content-rights",
+        "/copyright",
+        "/disclaimer",
+    )
+    urls = "".join(
+        "<url><loc>%s</loc></url>" % escape("https://tomesh-movie.onrender.com" + path)
+        for path in public_paths
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        + urls +
+        '</urlset>'
+    )
+    return Response(xml, mimetype="application/xml; charset=utf-8")
