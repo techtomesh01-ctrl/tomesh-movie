@@ -99,6 +99,23 @@
   {% endfor %}
 </section>
 {% endif %}
+{% if admin_runtime_errors %}
+<section class="cw-card" role="alert" style="border-color:#7b2929;background:#170d0e;margin-top:8px">
+  <div class="cw-card-head" style="margin-bottom:8px">
+    <div><h2 style="color:#ff9a9a">⚠ Recent application errors · {{ admin_runtime_errors|length }}</h2><div class="cw-muted">इस running process में पकड़ी गई हाल की HTTP/server errors। Render restart होने पर in-memory entries reset हो सकती हैं।</div></div>
+    <a class="cw-btn" href="{{ url_for('admin_errors') }}">Error History खोलें →</a>
+  </div>
+  {% for err in admin_runtime_errors %}
+  <div style="padding:10px 12px;margin-top:8px;border:1px solid #54272a;border-radius:10px;background:#10090a">
+    <strong style="display:block;color:#fff">HTTP {{ err.status }} · {{ err.source }}</strong>
+    <div class="cw-muted" style="margin-top:4px;color:#f0c4c7">{{ err.method }} {{ err.path }}</div>
+    <div style="font-size:12px;color:#fff;margin-top:5px;overflow-wrap:anywhere">{{ err.message }}</div>
+    {% if err.time %}<div class="cw-muted" style="margin-top:4px;font-size:10px">{{ err.time }}</div>{% endif %}
+  </div>
+  {% endfor %}
+  <div style="font-size:11px;color:#c9b8b8;margin-top:8px">नोट: Render proxy-level 502, browser-only errors और third-party failures जो app तक नहीं पहुँचते, यहाँ दिखाई न भी दें।</div>
+</section>
+{% endif %}
 <header class="cw-top">
   <div class="cw-brand"><div class="cw-logo">CW</div><div><strong>CINEMA WORLD</strong><span>OWNER CONTROL CENTER</span></div></div>
   <div class="cw-clock" aria-label="Live date and time in India"><strong id="cw-head-day">{{ cinema_now_ist.strftime('%A') }}</strong><span id="cw-head-date">{{ cinema_now_ist.strftime('%d %B %Y') }}</span><small>LIVE IST · <span id="cw-head-time">{{ cinema_now_ist.strftime('%I:%M:%S %p') }}</span></small></div>
