@@ -13,7 +13,7 @@
     </a>
     {% for category, label, emoji in [('Website Error','Website Error','🌐'),('Video/Playback','Video / Playback','▶️'),('Login/OTP','Login / OTP','🔐'),('Payment','Payment','💳'),('Upload','Upload','📤'),('Other','Other Problems','🛠️')] %}
     <a href="{{ url_for('admin_user_issues') }}" style="text-decoration:none;color:#fff;padding:13px;border:1px solid #35353c;border-radius:11px;background:#151519">
-      <span style="display:block;font-size:12px;color:#d4d4dc">{{ emoji }} {{ label }}</span><strong style="display:block;font-size:24px;margin-top:5px">{{ admin_issue_category_counts|default({}).get(category, 0) }}</strong><small style="color:#999">Open reports</small>
+      <span style="display:block;font-size:12px;color:#d4d4dc">{{ emoji }} {{ label }}</span><strong style="display:block;font-size:24px;margin-top:5px">{{ admin_issue_category_counts.get(category, 0) }}</strong><small style="color:#999">Open reports</small>
     </a>
     {% endfor %}
     <a href="{{ url_for('admin_repair', check='1') }}" style="text-decoration:none;color:#fff;padding:13px;border:1px solid #73591e;border-radius:11px;background:#211a0b">
