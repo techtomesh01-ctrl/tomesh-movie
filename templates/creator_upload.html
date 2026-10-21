@@ -313,7 +313,7 @@
       <div class="tm-file">
         <label class="tm-label">Video *</label>
         <input id="video" type="file" accept=".mp4,.mkv,.webm,.mov,video/mp4,video/webm,video/quicktime,video/x-matroska" required>
-        <div class="tm-hint">Allowed: MP4, MKV, WebM, MOV · Maximum 4 GB</div>
+        <div class="tm-hint">Allowed: MP4, MKV, WebM, MOV · Maximum 10 GB</div>
       </div>
       <div class="tm-file">
         <label class="tm-label">Poster</label>
@@ -365,7 +365,7 @@
   const stage = document.getElementById('stage');
   const msg = document.getElementById('msg');
 
-  const MAX_VIDEO = 4 * 1024 * 1024 * 1024;
+  const MAX_VIDEO = 10 * 1024 * 1024 * 1024;
   const MAX_POSTER = 25 * 1024 * 1024;
   const VIDEO_EXT = ['mp4','mkv','webm','mov'];
   const POSTER_EXT = ['jpg','jpeg','png','webp'];
@@ -517,7 +517,7 @@
     if(!title.value.trim()) return setMsg('Movie title required.','err');
     if(!video) return setMsg('Video required.','err');
     if(!VIDEO_EXT.includes(ext(video.name))) return setMsg('Video केवल MP4, MKV, WebM या MOV होनी चाहिए.','err');
-    if(video.size>MAX_VIDEO) return setMsg('Video 4 GB se badi hai.','err');
+    if(video.size>MAX_VIDEO) return setMsg('Video 10 GB se badi hai.','err');
     if(poster && !POSTER_EXT.includes(ext(poster.name))) return setMsg('Poster केवल JPG, JPEG, PNG या WEBP होना चाहिए.','err');
     if(poster && poster.size>MAX_POSTER) return setMsg('Poster 25 MB se bada hai.','err');
 
