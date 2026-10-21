@@ -4460,7 +4460,7 @@ def api_creator_submission_save():
         if int(video_head.get("ContentLength") or 0) <= 0:
             return json_error("Uploaded video is empty.")
         if int(video_head.get("ContentLength") or 0) > MAX_VIDEO_SIZE:
-            return json_error("Video exceeds 4 GB.")
+            return json_error("Video exceeds 10 GB.")
         if poster_key and int(r2_head(validate_r2_key(poster_key)).get("ContentLength") or 0) <= 0:
             return json_error("Poster is empty.")
         conn = get_db()
@@ -9470,7 +9470,7 @@ def api_movie_save():
 
         if video_size > MAX_VIDEO_SIZE:
             return json_error(
-                "Video exceeds 4 GB."
+                "Video exceeds 10 GB."
             )
 
         if poster_key:
@@ -9800,7 +9800,7 @@ def legacy_video(name):
 def request_entity_too_large(error):
 
     return Response(
-        "File too large. Maximum 4 GB.",
+        "File too large. Maximum 10 GB.",
         status=413,
     )
 
