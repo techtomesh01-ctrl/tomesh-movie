@@ -164,30 +164,45 @@
     try{await fetch('/api/r2/multipart/abort',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,upload_id:uploadId})});}catch(e){}
   }
   async function putPart(url, blob, onBytes, key, uploadId, partNumber){
+    let lastError;
     for(let attempt=1;attempt<=RETRIES;attempt++){
       if(cancelled) throw new Error('Upload cancelled.');
+      let xhr=null;
       try{
-        const controller=new AbortController(); activeUploads.push(controller);
-        const r=await fetch(url,{method:'PUT',body:blob,signal:controller.signal});
-        activeUploads=activeUploads.filter(x=>x!==controller);
-        if(!r.ok) throw new Error('Part upload HTTP '+r.status);
-        const etag=r.headers.get('ETag') || r.headers.get('etag');
-        if(!etag) throw new Error('ETag header not available. R2 CORS must expose ETag.');
+        const etag=await new Promise((resolve,reject)=>{
+          xhr=new XMLHttpRequest();
+          activeUploads.push(xhr);
+          xhr.open('PUT',url,true);
+          xhr.timeout=120000;
+          xhr.onload=()=>{
+            if(xhr.status<200||xhr.status>=300) return reject(new Error('R2 part upload HTTP '+xhr.status));
+            const tag=xhr.getResponseHeader('ETag')||xhr.getResponseHeader('etag');
+            if(!tag) return reject(new Error('R2 CORS error: ETag header is not exposed. Allow PUT and expose ETag in Cloudflare R2 CORS.'));
+            resolve(tag);
+          };
+          xhr.onerror=()=>reject(new Error('Network/CORS error uploading R2 part '+partNumber+'. Check internet and Cloudflare R2 CORS (allow PUT, expose ETag).'));
+          xhr.ontimeout=()=>reject(new Error('R2 part '+partNumber+' timed out after 120 seconds.'));
+          xhr.onabort=()=>reject(new Error('Upload cancelled.'));
+          xhr.send(blob);
+        });
+        activeUploads=activeUploads.filter(x=>x!==xhr);
         onBytes(blob.size);
         return etag;
       }catch(e){
-        activeUploads=[];
+        activeUploads=activeUploads.filter(x=>x!==xhr);
+        lastError=e;
         if(cancelled) throw new Error('Upload cancelled.');
-        if(attempt===RETRIES) throw e;
+        if(attempt===RETRIES) throw lastError;
         stage.textContent='Retrying failed part ('+attempt+'/'+RETRIES+')...';
         try{
           const fresh=await getPartUrls(key,uploadId,[partNumber]);
           const freshMap=fresh.urls||fresh.url_map||fresh.part_urls||{};
           url=freshMap[String(partNumber)]||freshMap[partNumber]||url;
         }catch(refreshErr){}
-        await new Promise(r=>setTimeout(r,700*attempt));
+        await new Promise(r=>setTimeout(r,Math.min(1500*attempt,6000)));
       }
     }
+    throw lastError||new Error('R2 part upload failed.');
   }
   async function uploadFile(file,prefix,onTotal){
     const key=keyFor(prefix,file);
