@@ -79,7 +79,7 @@ app.secret_key = (
     or secrets.token_hex(32)
 )
 
-app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024 * 1024
 
 # Harden browser session cookies. HTTPS is used on the production Render site.
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -268,7 +268,7 @@ ALLOWED_POSTERS = {
     "webp",
 }
 
-MAX_VIDEO_SIZE = 4 * 1024 * 1024 * 1024
+MAX_VIDEO_SIZE = 10 * 1024 * 1024 * 1024
 MAX_POSTER_SIZE = 25 * 1024 * 1024
 
 
