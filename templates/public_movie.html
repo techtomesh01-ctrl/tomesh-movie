@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ movie.title }} | CINEMA WORLD{% endblock %}
+{% block meta_description %}{{ (movie.description or ("Explore " ~ movie.title ~ " on CINEMA WORLD. View title details and sign in for available streaming access."))|striptags|truncate(155, True, '…') }}{% endblock %}
+{% block content %}
+<main class="cw-public-title">
+  <a class="cw-back" href="{{ url_for('home') }}">← CINEMA WORLD Home</a>
+  <article class="cw-title-card">
+    {% if movie.poster_url %}
+    <img class="cw-poster" src="{{ movie.poster_url }}" alt="{{ movie.title }} poster" fetchpriority="high">
+    {% endif %}
+    <div class="cw-copy">
+      <p class="cw-kicker">CINEMA WORLD · {{ (movie.content_type or 'MOVIE')|upper }}</p>
+      <h1>{{ movie.title }}</h1>
+      {% if movie.category %}<p class="cw-category">{{ movie.category }}</p>{% endif %}
+      {% if movie.description %}<p class="cw-description">{{ movie.description }}</p>{% else %}<p class="cw-description">Discover {{ movie.title }} on CINEMA WORLD. Sign in to check available viewing options.</p>{% endif %}
+      <a class="cw-cta" href="{{ url_for('login', next=url_for('movie_page', movie_id=movie.id)) }}">Sign in to view options →</a>
+      <p class="cw-note">Playback and paid access remain protected by your CINEMA WORLD account and access permissions.</p>
+    </div>
+  </article>
+</main>
+<style>
+.cw-public-title{min-height:75vh;padding:clamp(18px,4vw,48px);background:radial-gradient(ellipse at 80% 0,rgba(229,9,20,.15),transparent 45%),#050505;color:#fff;font-family:Inter,Arial,sans-serif}
+.cw-back{display:inline-flex;min-height:42px;align-items:center;color:#ddd;text-decoration:none;padding:10px 14px;border:1px solid #333;border-radius:9px;background:#111}
+.cw-title-card{display:grid;grid-template-columns:minmax(180px,300px) minmax(0,1fr);gap:clamp(22px,4vw,48px);align-items:center;width:min(100%,1050px);margin:34px auto;padding:clamp(20px,4vw,42px);border:1px solid #292929;border-radius:18px;background:linear-gradient(145deg,#171717,#090909);box-shadow:0 25px 70px #0008}
+.cw-poster{display:block;width:100%;max-height:450px;aspect-ratio:2/3;object-fit:cover;border-radius:12px;background:#111}
+.cw-kicker{color:#ff5360;font-size:11px;font-weight:900;letter-spacing:1.8px}
+.cw-copy h1{margin:10px 0;font-size:clamp(30px,5vw,54px);line-height:1.05;overflow-wrap:anywhere}
+.cw-category{color:#bbb;font-size:13px}
+.cw-description{color:#d0d0d0;font-size:16px;line-height:1.75;overflow-wrap:anywhere}
+.cw-cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin-top:12px;padding:0 19px;border-radius:8px;background:#e50914;color:#fff;font-weight:900;text-decoration:none}
+.cw-note{margin-top:16px;color:#858585;font-size:12px;line-height:1.6}
+@media(max-width:620px){.cw-title-card{grid-template-columns:minmax(0,1fr);margin-top:20px}.cw-poster{width:min(100%,260px);margin:auto}.cw-copy h1{font-size:34px}.cw-description{font-size:14px}}
+</style>
+{% endblock %}
