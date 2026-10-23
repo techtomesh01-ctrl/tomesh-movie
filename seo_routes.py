@@ -1,16 +1,47 @@
-"""Public SEO endpoints for CINEMA WORLD.
-
-The existing app registers the endpoint URLs; this module replaces the
-robots/sitemap view functions so we don't add duplicate URL rules. The
-catalogue pages expose metadata only; /movie/<id> playback stays protected.
-"""
+"""Public SEO endpoints and crawlable metadata pages for CINEMA WORLD."""
 from xml.sax.saxutils import escape
 
-from flask import Response, url_for
+from flask import Response, abort, render_template, url_for
 
-from app import app, get_db
+from app import app, get_db, media_url
 
 SITE_ORIGIN = "https://tomesh-movie.onrender.com"
+PUBLIC_PATHS = (
+    "/", "/dramas", "/terms", "/privacy-policy", "/cookie-policy",
+    "/refund-policy", "/about", "/contact", "/content-rights",
+    "/copyright", "/disclaimer",
+)
+
+
+@app.route("/title/<int:movie_id>", methods=["GET"])
+def public_movie_page(movie_id):
+    """Public movie metadata only; playback remains behind existing access checks."""
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, title, category, description, poster, content_type
+            FROM movies
+            WHERE id = %s
+              AND UPPER(COALESCE(status, '')) = 'LIVE'
+            """,
+            (movie_id,),
+        )
+        movie = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not movie:
+        abort(404)
+
+    movie = dict(movie)
+    try:
+        movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
+    except Exception:
+        movie["poster_url"] = None
+    return render_template("public_movie_title.html", movie=movie)
 
 
 def _robots_txt():
@@ -23,7 +54,7 @@ Disallow: /logout
 Disallow: /account
 Disallow: /profile
 Disallow: /user-details
-Disallow: /member/
+Disallow: /member
 Disallow: /membership
 Disallow: /payment-history
 Disallow: /payments
@@ -42,30 +73,8 @@ Sitemap: https://tomesh-movie.onrender.com/sitemap.xml
 
 
 def _sitemap_xml():
-    """Generate a sitemap using real public routes and live movie records."""
-    static_endpoints = (
-        "home",
-        "about",
-        "contact",
-        "privacy_policy",
-        "terms",
-        "disclaimer",
-        "copyright_policy",
-        "cookie_policy",
-        "refund_policy",
-        "content_rights",
-        "dramas_page",
-        "cw_request_movie",
-    )
-    urls = []
-    for endpoint in static_endpoints:
-        try:
-            urls.append(SITE_ORIGIN + url_for(endpoint))
-        except Exception as exc:
-            # An optional route can be absent in a future app version; do not
-            # make the entire sitemap unavailable because of that one route.
-            print("SITEMAP OPTIONAL ROUTE SKIPPED:", endpoint, repr(exc))
-
+    """Return canonical public URLs and only live movie landing pages."""
+    urls = [SITE_ORIGIN + path for path in PUBLIC_PATHS]
     conn = None
     try:
         conn = get_db(dict_rows=True)
@@ -95,23 +104,16 @@ def _sitemap_xml():
         if conn is not None:
             conn.close()
 
-    unique_urls = dict.fromkeys(urls)
-    entries = "".join(
-        "<url><loc>%s</loc></url>" % escape(url)
-        for url in unique_urls
-    )
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>'
+    entries = "".join("<url><loc>%s</loc></url>" % escape(url) for url in dict.fromkeys(urls))
+    xml = '<?xml version="1.0" encoding="UTF-8"?>' + (
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-        + entries
-        + "</urlset>"
+        + entries + "</urlset>"
     )
     response = Response(xml, mimetype="application/xml; charset=utf-8")
     response.headers["Cache-Control"] = "public, max-age=3600"
     return response
 
 
-# The app's original URL rules already exist. Replacing these view functions
-# keeps one route per endpoint and ensures the dynamic sitemap is used.
+# Reuse the original URL rules without duplicate registrations.
 app.view_functions["public_robots_txt"] = _robots_txt
 app.view_functions["public_sitemap_xml"] = _sitemap_xml
