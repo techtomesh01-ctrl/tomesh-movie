@@ -10087,3 +10087,6 @@ def public_sitemap_xml():
         '</urlset>'
     )
     return Response(xml, mimetype="application/xml; charset=utf-8")
+
+# Register public SEO title pages and dynamic sitemap after all core routes exist.
+import seo_routes  # noqa: F401
