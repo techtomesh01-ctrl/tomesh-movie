@@ -127,5 +127,43 @@ class ApplicationSmokeTests(unittest.TestCase):
         )
 
 
+    def test_robots_allows_public_pages_and_protects_private_paths(self):
+        response = cinema_app.app.test_client().get("/robots.txt")
+        self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        self.assertIn("Allow: /", body)
+        self.assertIn("Sitemap: https://tomesh-movie.onrender.com/sitemap.xml", body)
+        self.assertIn("Disallow: /admin", body)
+        self.assertIn("Disallow: /login", body)
+        self.assertNotIn("Disallow: /title/", body)
+
+    def test_sitemap_includes_public_title_landing_not_private_player(self):
+        import cinema_features
+
+        class FakeCursor:
+            def execute(self, *args, **kwargs):
+                pass
+            def fetchall(self):
+                return [{"id": 42}]
+            def close(self):
+                pass
+
+        class FakeConnection:
+            def cursor(self):
+                return FakeCursor()
+            def close(self):
+                pass
+            def rollback(self):
+                pass
+
+        client = cinema_app.app.test_client()
+        with mock.patch.object(cinema_features, "get_db", return_value=FakeConnection()):
+            response = client.get("/sitemap.xml")
+        self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        self.assertIn("https://tomesh-movie.onrender.com/title/42", body)
+        self.assertNotIn("https://tomesh-movie.onrender.com/movie/42", body)
+        self.assertNotIn("http://tomesh-movie.onrender.com", body)
+
 if __name__ == "__main__":
     unittest.main()
