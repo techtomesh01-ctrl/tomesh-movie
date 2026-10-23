@@ -16,8 +16,14 @@
 
     <meta
         name="description"
-        content="CINEMA WORLD - Movies, entertainment and latest stories."
+        content="{% block meta_description %}CINEMA WORLD — discover movies, dramas, entertainment and stories. Explore published titles and watch with secure account access.{% endblock %}"
     >
+    <link rel="canonical" href="https://tomesh-movie.onrender.com{{ request.path }}">
+    {% if request.path.startswith('/admin') or request.path.startswith('/login') or request.path.startswith('/logout') or request.path.startswith('/api/') or request.path.startswith('/member/') or request.path.startswith('/creator/') or request.path.startswith('/movie/') or request.path.startswith('/payment/') %}
+    <meta name="robots" content="noindex,nofollow">
+    {% else %}
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    {% endif %}
 
     <meta
         name="theme-color"
