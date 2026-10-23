@@ -3,7 +3,7 @@ import time
 from flask import request, session, redirect, url_for, render_template, flash, jsonify, Response
 
 # This module is imported at the very end of app.py, after Flask and DB helpers exist.
-from app import app, get_db, customer_login_required, admin_required
+from app import app, get_db, media_url, customer_login_required, admin_required
 
 
 def _ensure_tables():
