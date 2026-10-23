@@ -1,62 +1,16 @@
-"""Public SEO routes for CINEMA WORLD.
+"""Public SEO endpoints for CINEMA WORLD.
 
-Public title pages expose only catalogue metadata; playback remains protected
-by the existing /movie/<id> login/access checks.
+The existing app registers the endpoint URLs; this module replaces the
+robots/sitemap view functions so we don't add duplicate URL rules. The
+catalogue pages expose metadata only; /movie/<id> playback stays protected.
 """
-from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 
-from flask import Response, abort, render_template, url_for
+from flask import Response, url_for
 
-from app import app, get_db, media_url
+from app import app, get_db
 
 SITE_ORIGIN = "https://tomesh-movie.onrender.com"
-
-PUBLIC_STATIC_PATHS = (
-    "/",
-    "/dramas",
-    "/terms",
-    "/privacy-policy",
-    "/cookie-policy",
-    "/refund-policy",
-    "/about",
-    "/contact",
-    "/content-rights",
-    "/copyright",
-    "/disclaimer",
-)
-
-
-@app.route("/title/<int:movie_id>", methods=["GET"])
-def public_movie_title(movie_id):
-    """Public, crawlable movie information without exposing the video URL."""
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT id, title, category, description, poster, content_type
-            FROM movies
-            WHERE id = %s
-              AND COALESCE(video, '') <> ''
-            """,
-            (movie_id,),
-        )
-        movie = cur.fetchone()
-        cur.close()
-    finally:
-        conn.close()
-
-    if not movie:
-        abort(404)
-
-    movie = dict(movie)
-    try:
-        movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
-    except Exception:
-        movie["poster_url"] = None
-
-    return render_template("public_movie_title.html", movie=movie)
 
 
 def _robots_txt():
@@ -66,47 +20,85 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /login
 Disallow: /logout
-Disallow: /movie/
-Disallow: /share/movie/
 Disallow: /account
 Disallow: /profile
 Disallow: /user-details
-Disallow: /member
+Disallow: /member/
 Disallow: /membership
 Disallow: /payment-history
 Disallow: /payments
+Disallow: /payment/
 Disallow: /earnings
 Disallow: /creator/
 Disallow: /notifications/
 Disallow: /help-support
+Disallow: /movie/
+Disallow: /share/movie/
 Sitemap: https://tomesh-movie.onrender.com/sitemap.xml
 """
-    return Response(body, mimetype="text/plain; charset=utf-8")
+    response = Response(body, mimetype="text/plain; charset=utf-8")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
 
 
 def _sitemap_xml():
-    """Generate the sitemap from real, available public pages and movie rows."""
-    urls = list(PUBLIC_STATIC_PATHS)
-    conn = get_db(dict_rows=True)
+    """Generate a sitemap using real public routes and live movie records."""
+    static_endpoints = (
+        "home",
+        "about",
+        "contact",
+        "privacy_policy",
+        "terms",
+        "disclaimer",
+        "copyright_policy",
+        "cookie_policy",
+        "refund_policy",
+        "content_rights",
+        "dramas_page",
+        "cw_request_movie",
+    )
+    urls = []
+    for endpoint in static_endpoints:
+        try:
+            urls.append(SITE_ORIGIN + url_for(endpoint))
+        except Exception as exc:
+            # An optional route can be absent in a future app version; do not
+            # make the entire sitemap unavailable because of that one route.
+            print("SITEMAP OPTIONAL ROUTE SKIPPED:", endpoint, repr(exc))
+
+    conn = None
     try:
+        conn = get_db(dict_rows=True)
         cur = conn.cursor()
         cur.execute(
             """
             SELECT id
             FROM movies
-            WHERE COALESCE(video, '') <> ''
+            WHERE UPPER(COALESCE(status, '')) = 'LIVE'
+              AND UPPER(COALESCE(content_type, 'MOVIE')) IN ('MOVIE', 'DRAMA')
             ORDER BY id ASC
             """
         )
-        urls.extend("/title/%s" % int(row["id"]) for row in cur.fetchall())
+        urls.extend(
+            SITE_ORIGIN + url_for("public_movie_page", movie_id=int(row["id"]))
+            for row in cur.fetchall()
+        )
         cur.close()
+    except Exception as exc:
+        print("SITEMAP MOVIE QUERY ERROR:", repr(exc))
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
     unique_urls = dict.fromkeys(urls)
     entries = "".join(
-        "<url><loc>%s</loc></url>" % escape(SITE_ORIGIN + path)
-        for path in unique_urls
+        "<url><loc>%s</loc></url>" % escape(url)
+        for url in unique_urls
     )
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
@@ -114,9 +106,12 @@ def _sitemap_xml():
         + entries
         + "</urlset>"
     )
-    return Response(xml, mimetype="application/xml; charset=utf-8")
+    response = Response(xml, mimetype="application/xml; charset=utf-8")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
 
 
-# Replace the earlier inline static handlers without creating duplicate rules.
+# The app's original URL rules already exist. Replacing these view functions
+# keeps one route per endpoint and ensures the dynamic sitemap is used.
 app.view_functions["public_robots_txt"] = _robots_txt
 app.view_functions["public_sitemap_xml"] = _sitemap_xml
