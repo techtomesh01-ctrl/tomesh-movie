@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ movie.title }} | CINEMA WORLD{% endblock %}
+{% block meta_description %}{{ (movie.description or ("Explore " ~ movie.title ~ " on CINEMA WORLD. View movie information, category and poster."))[:300] }}{% endblock %}
+{% block content %}
+<article class="cw-public-title">
+  <div class="cw-public-title-card">
+    {% if movie.poster_url %}
+      <img class="cw-public-poster" src="{{ movie.poster_url }}" alt="{{ movie.title }} poster" loading="eager" fetchpriority="high">
+    {% endif %}
+    <div class="cw-public-info">
+      <p class="cw-eyebrow">CINEMA WORLD · {{ movie.content_type or "MOVIE" }}</p>
+      <h1>{{ movie.title }}</h1>
+      {% if movie.category %}<p class="cw-category">{{ movie.category }}</p>{% endif %}
+      {% if movie.description %}<p class="cw-description">{{ movie.description }}</p>{% else %}<p class="cw-description">Explore {{ movie.title }} on CINEMA WORLD.</p>{% endif %}
+      <a class="cw-watch-button" href="{{ url_for('movie_page', movie_id=movie.id) }}">Sign in to watch</a>
+      <a class="cw-back-link" href="{{ url_for('home') }}">Browse CINEMA WORLD</a>
+    </div>
+  </div>
+</article>
+<style>
+.cw-public-title{min-height:70vh;padding:clamp(24px,6vw,76px) 16px;background:radial-gradient(ellipse at 15% 0%,#321014 0,transparent 48%),#080808;color:#fff}
+.cw-public-title-card{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:minmax(190px,320px) minmax(0,1fr);gap:clamp(22px,5vw,54px);align-items:center}
+.cw-public-poster{display:block;width:100%;max-height:480px;object-fit:cover;aspect-ratio:2/3;border-radius:14px;background:#151515;box-shadow:0 20px 70px #0009}
+.cw-public-info{min-width:0}.cw-eyebrow{color:#ff5964;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.cw-public-info h1{font-size:clamp(30px,5vw,56px);line-height:1.08;margin:12px 0 14px;overflow-wrap:anywhere}
+.cw-category{color:#ddd;font-size:14px}.cw-description{color:#c8c8c8;font-size:16px;line-height:1.8;white-space:pre-line;overflow-wrap:anywhere}
+.cw-watch-button,.cw-back-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;margin:14px 10px 0 0;padding:11px 18px;border-radius:7px;text-decoration:none;font-weight:800}
+.cw-watch-button{background:#e50914;color:white}.cw-back-link{border:1px solid #555;color:white}
+@media(max-width:600px){.cw-public-title-card{grid-template-columns:minmax(0,1fr);gap:24px}.cw-public-poster{width:min(72vw,280px);margin:0 auto;max-height:390px}.cw-public-info h1{font-size:32px}.cw-public-title{padding:24px 16px 50px}}
+</style>
+{% endblock %}
