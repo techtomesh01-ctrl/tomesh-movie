@@ -373,36 +373,133 @@ def content_rights():
     return render_template('content_rights.html')
 
 
+# Use a fixed HTTPS origin rather than request-derived URLs. This avoids
+# advertising http:// canonical/sitemap links behind Render's TLS proxy.
+SEO_SITE_URL = "https://tomesh-movie.onrender.com"
+
+
+@app.route('/title/<int:movie_id>')
+def public_movie_page(movie_id):
+    """Public, crawlable title details; the existing /movie/<id> player stays private."""
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT *
+            FROM movies
+            WHERE id = %s
+              AND UPPER(COALESCE(status, '')) = 'LIVE'
+              AND UPPER(COALESCE(content_type, 'MOVIE')) IN ('MOVIE', 'DRAMA')
+            LIMIT 1
+            """,
+            (movie_id,),
+        )
+        row = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+
+    if not row:
+        from flask import abort
+        abort(404)
+
+    movie = dict(row)
+    try:
+        movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
+    except Exception:
+        movie["poster_url"] = None
+
+    return render_template("public_movie.html", movie=movie)
+
+
 @app.route('/robots.txt')
 def robots_txt():
-    body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /login\nDisallow: /logout\nDisallow: /api/\nSitemap: " + url_for('sitemap_xml', _external=True) + "\n"
-    return Response(body, mimetype='text/plain')
+    # Public landing pages and assets remain crawlable. Account, admin,
+    # API, payment, and the existing login-gated playback route stay private.
+    body = "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin",
+        "Disallow: /login",
+        "Disallow: /logout",
+        "Disallow: /api/",
+        "Disallow: /member/",
+        "Disallow: /creator/",
+        "Disallow: /cinema-support",
+        "Disallow: /cinema-notifications",
+        "Disallow: /cinema-stats",
+        "Disallow: /payment/",
+        "Disallow: /movie/",
+        "Disallow: /share/movie/",
+        "Sitemap: " + SEO_SITE_URL + "/sitemap.xml",
+        "",
+    ])
+    response = Response(body, mimetype='text/plain')
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
 
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    # Include only public, crawlable pages. Individual movie pages require a
-    # customer/admin session, so advertising them in the public sitemap gives
-    # search engines URLs they cannot actually access and can expose unlisted IDs.
+    # Only include public pages and published title landing pages. Do not
+    # expose private /movie/<id> player URLs, pending uploads, or admin paths.
     urls = [
-        url_for('home', _external=True),
-        url_for('about', _external=True),
-        url_for('contact', _external=True),
-        url_for('privacy_policy', _external=True),
-        url_for('terms', _external=True),
-        url_for('disclaimer', _external=True),
-        url_for('copyright_policy', _external=True),
-        url_for('cookie_policy', _external=True),
-        url_for('refund_policy', _external=True),
-        url_for('content_rights', _external=True),
-        url_for('dramas_page', _external=True),
-        url_for('cw_request_movie', _external=True),
+        SEO_SITE_URL + url_for('home'),
+        SEO_SITE_URL + url_for('about'),
+        SEO_SITE_URL + url_for('contact'),
+        SEO_SITE_URL + url_for('privacy_policy'),
+        SEO_SITE_URL + url_for('terms'),
+        SEO_SITE_URL + url_for('disclaimer'),
+        SEO_SITE_URL + url_for('copyright_policy'),
+        SEO_SITE_URL + url_for('cookie_policy'),
+        SEO_SITE_URL + url_for('refund_policy'),
+        SEO_SITE_URL + url_for('content_rights'),
+        SEO_SITE_URL + url_for('dramas_page'),
+        SEO_SITE_URL + url_for('cw_request_movie'),
     ]
-    xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
-    for u in urls:
-        xml.append('<url><loc>' + u.replace('&', '&amp;') + '</loc></url>')
-    xml.append('</urlset>')
-    return Response('\n'.join(xml), mimetype='application/xml')
+
+    conn = None
+    try:
+        conn = get_db(dict_rows=True)
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id
+            FROM movies
+            WHERE UPPER(COALESCE(status, '')) = 'LIVE'
+              AND UPPER(COALESCE(content_type, 'MOVIE')) IN ('MOVIE', 'DRAMA')
+            ORDER BY id DESC
+            """
+        )
+        for row in cur.fetchall():
+            urls.append(SEO_SITE_URL + url_for('public_movie_page', movie_id=int(row["id"])))
+        cur.close()
+    except Exception as exc:
+        # Keep the sitemap available during a temporary database interruption.
+        print("SITEMAP MOVIE QUERY ERROR:", repr(exc))
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+    finally:
+        if conn is not None:
+            conn.close()
+
+    # Stable order and no duplicates make the sitemap deterministic.
+    urls = list(dict.fromkeys(urls))
+    from xml.sax.saxutils import escape as xml_escape
+    xml = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for url in urls:
+        xml.append("  <url><loc>" + xml_escape(url) + "</loc></url>")
+    xml.append("</urlset>")
+    response = Response("\n".join(xml), mimetype='application/xml')
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
 
 
 # Google Search Console HTML-file verification endpoint.
