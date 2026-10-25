@@ -32,7 +32,7 @@ jobs:
         run: gradle --no-daemon -p android-app assembleDebug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: CINEMA-WORLD-debug-APK
           path: android-app/app/build/outputs/apk/debug/*.apk
