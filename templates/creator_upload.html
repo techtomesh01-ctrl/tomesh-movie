@@ -564,10 +564,10 @@
     updateProgress(0,video.size+(poster?poster.size:0));
     let totalDone=0; const total=video.size+(poster?poster.size:0);
     const add=(n)=>{totalDone=Math.max(0,Math.min(total,totalDone+n));updateProgress(totalDone,total)};
+    let videoKey='', posterKey='';
     try{
       stage.textContent='Starting direct R2 video upload...';
-      const videoKey=await uploadFile(video,'videos/creator-pending/',add);
-      let posterKey='';
+      videoKey=await uploadFile(video,'videos/creator-pending/',add);
       if(poster){stage.textContent='Starting direct R2 poster upload...'; posterKey=await uploadFile(poster,'posters/creator-pending/',add);}
       if(cancelled) throw new Error('Upload cancelled.');
       stage.textContent='Submitting for Admin approval...';
@@ -575,8 +575,19 @@
       updateProgress(total,total); stage.textContent='Creator submission saved for review.'; setMsg('✅ Submitted for Admin approval. Submission ID: '+saved.submission_id,'ok');
       setTimeout(()=>{window.location.href='/creator/upload';},1200);
     }catch(err){
+      const failedStage=stage.textContent;
       setMsg(cancelled?'Upload cancelled.':('Upload failed: '+err.message),'err');
-      stage.textContent=cancelled?'Upload cancelled.':'Upload failed.';
+      stage.textContent=cancelled?'Cancelling...':'Upload failed.';
+      if(!cancelled){
+        try{
+          const reported=await fetch('/api/creator/upload-issue/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            title:title.value.trim(),category:category.value.trim(),description:description.value.trim(),
+            content_type:document.getElementById('content_type').value,video_key:videoKey,poster_key:posterKey,
+            stage:failedStage,error_message:err.message||'Upload failed'
+          })});
+          if(reported.ok) setMsg('⚠️ Upload failed. Admin ko issue bhej diya gaya hai; Admin complete video ko 1-click se recover kar sakta hai.','err');
+        }catch(reportError){}
+      }
     }finally{saveBtn.disabled=false;cancelBtn.disabled=true;}
   });
 })();

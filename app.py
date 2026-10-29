@@ -4498,6 +4498,126 @@ def api_creator_submission_save():
         return json_error("Submission could not be saved.", 500)
 
 
+@app.route("/api/creator/upload-issue/report", methods=["POST"])
+@creator_customer_required
+def api_creator_upload_issue_report():
+    data = request.get_json(silent=True) or {}
+    title = str(data.get("title") or "").strip()[:200]
+    category = str(data.get("category") or "").strip()[:120]
+    description = str(data.get("description") or "").strip()[:2000]
+    content_type = str(data.get("content_type") or "MOVIE").strip().upper()
+    if content_type not in {"MOVIE", "DRAMA"}:
+        content_type = "MOVIE"
+    video_key = str(data.get("video_key") or "").strip()[:600]
+    poster_key = str(data.get("poster_key") or "").strip()[:600]
+    stage = str(data.get("stage") or "unknown").strip()[:100]
+    error_message = str(data.get("error_message") or "Upload failed").strip()[:1000]
+    if video_key and not video_key.startswith("videos/creator-pending/"):
+        video_key = ""
+    if poster_key and not poster_key.startswith("posters/creator-pending/"):
+        poster_key = ""
+    try:
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO creator_upload_issues
+                    (customer_id,title,content_type,category,description,video_key,poster_key,stage,error_message)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            """, (str(session.get("customer_id") or ""),title,content_type,category,description,
+                  video_key or None,poster_key or None,stage,error_message))
+            issue_id = cur.fetchone()[0]
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+        return json_ok(message="Upload issue sent to Admin.", issue_id=issue_id)
+    except Exception as exc:
+        print("CREATOR UPLOAD ISSUE REPORT ERROR:", repr(exc))
+        return json_error("Could not send the upload issue to Admin.", 500)
+
+
+@app.route("/admin/creator-upload-issue/<int:issue_id>/auto-fix", methods=["POST"])
+@admin_required
+def admin_creator_upload_issue_auto_fix(issue_id):
+    conn = get_db(dict_rows=True)
+    cur = None
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM creator_upload_issues WHERE id=%s FOR UPDATE", (issue_id,))
+        issue = cur.fetchone()
+        if not issue:
+            conn.rollback()
+            abort(404)
+        issue = dict(issue)
+        if issue.get("status") == "RESOLVED":
+            conn.rollback()
+            flash("This upload issue has already been resolved.", "info")
+            return redirect(url_for("admin_creator_studio"))
+        video_key = str(issue.get("video_key") or "")
+        if not video_key.startswith("videos/creator-pending/"):
+            conn.rollback()
+            flash("Auto-fix cannot recover this upload because the video did not finish uploading. Ask the creator to retry the video upload.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        try:
+            video_head = r2_head(validate_r2_key(video_key))
+            video_size = int(video_head.get("ContentLength") or 0)
+        except Exception as exc:
+            conn.rollback()
+            print("CREATOR UPLOAD AUTO-FIX VIDEO CHECK:", repr(exc))
+            flash("The complete video is not available in R2. The creator must retry the upload.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        if video_size <= 0 or video_size > MAX_VIDEO_SIZE:
+            conn.rollback()
+            flash("Auto-fix could not verify a valid complete video. Ask the creator to retry.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        poster_key = str(issue.get("poster_key") or "")
+        if poster_key and poster_key.startswith("posters/creator-pending/"):
+            try:
+                if int(r2_head(validate_r2_key(poster_key)).get("ContentLength") or 0) <= 0:
+                    poster_key = ""
+            except Exception:
+                poster_key = ""
+        else:
+            poster_key = ""
+        cur.execute("SELECT id FROM creator_submissions WHERE video=%s ORDER BY id DESC LIMIT 1", (video_key,))
+        existing = cur.fetchone()
+        if existing:
+            submission_id = existing["id"]
+            note = "Recovered report linked to existing creator submission."
+        else:
+            cur.execute("""
+                INSERT INTO creator_submissions
+                    (customer_id,title,content_type,category,description,poster,video,status)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,'PENDING') RETURNING id
+            """, (issue["customer_id"],issue["title"] or "Untitled upload",
+                  issue["content_type"] if issue["content_type"] in {"MOVIE","DRAMA"} else "MOVIE",
+                  issue.get("category") or "",issue.get("description") or "",
+                  poster_key or None,video_key))
+            submission_id = cur.fetchone()["id"]
+            note = "Recovered complete R2 video into Admin approval queue."
+        cur.execute("""
+            UPDATE creator_upload_issues
+            SET status='RESOLVED',repaired_submission_id=%s,admin_note=%s,resolved_at=NOW()
+            WHERE id=%s
+        """, (submission_id,note,issue_id))
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,'CREATOR_UPLOAD_AUTO_FIX','creator_upload_issue',%s,%s)
+        """, (str(session.get("admin_user") or ADMIN_USER or "admin"),str(issue_id),note))
+        conn.commit()
+        flash("One-click fix successful: complete video recovered into Admin approval queue (submission #%s)." % submission_id, "success")
+    except Exception as exc:
+        conn.rollback()
+        print("CREATOR UPLOAD AUTO-FIX ERROR:", repr(exc))
+        flash("Auto-fix failed safely. The video was not published; check Render logs.", "error")
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
+
+
 @app.route("/admin/creator-studio", methods=["GET", "POST"])
 @admin_required
 def admin_creator_studio():
@@ -4551,6 +4671,12 @@ def admin_creator_studio():
             except Exception:
                 item["video_url"] = None
                 item["poster_url"] = None
+        cur.execute("""
+            SELECT * FROM creator_upload_issues
+            ORDER BY CASE status WHEN 'OPEN' THEN 0 ELSE 1 END, id DESC LIMIT 100
+        """)
+        upload_issues = [dict(row) for row in cur.fetchall()]
+
         cur.execute("""
             SELECT submission_id,actor_id,action,note,rights_verified,quality_checked,rights_evidence,created_at
             FROM creator_submission_audit
@@ -4635,6 +4761,7 @@ def admin_creator_studio():
     finally:
         conn.close()
     return render_template("admin_creator_studio.html", pending=pending, reviewed=reviewed, payout_requests=payout_requests,
+        upload_issues=upload_issues,
         creator_profiles=creator_profiles,
         audit_by_submission=audit_by_submission,
         movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
