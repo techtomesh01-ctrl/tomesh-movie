@@ -7459,8 +7459,12 @@ def admin():
         """)
         total_revenue = (cur.fetchone() or {}).get("revenue") or 0
 
-        cur.execute("UPDATE referral_rewards SET status='AVAILABLE', updated_at=NOW() WHERE status='PENDING' AND available_at <= NOW()")
-        conn.commit()
+        # Do not write/commit on every Admin page load. On the free Render instance,
+        # this update was contributing to slow /admin requests and worker timeouts.
+        # Release matured rewards only when the Admin opens the Earnings section.
+        if section == "earnings":
+            cur.execute("UPDATE referral_rewards SET status='AVAILABLE', updated_at=NOW() WHERE status='PENDING' AND available_at <= NOW()")
+            conn.commit()
 
         cur.execute("SELECT COALESCE(SUM(amount),0) AS n FROM referral_rewards WHERE status IN ('PENDING','AVAILABLE')")
         total_referral_rewards = (cur.fetchone() or {}).get("n") or 0
