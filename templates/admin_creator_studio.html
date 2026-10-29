@@ -86,6 +86,30 @@
       <button type="submit">Save monetization settings</button>
     </form>
   </div>
+  <div class="cs-card" style="border-color:#7f1d1d">
+    <h2>🛠️ Creator Upload Problems ({{ upload_issues|selectattr('status','equalto','OPEN')|list|length }} open)</h2>
+    <p class="cs-muted">Use Auto-Fix to check Cloudflare R2 and recover a complete video into the approval queue. It never auto-publishes or bypasses rights/quality checks.</p>
+    {% if upload_issues %}
+    <div class="cs-grid">
+      {% for issue in upload_issues %}
+      <article class="cs-review-card">
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag">Issue #{{ issue.id }}</span><span class="tag">{{ issue.status }}</span></div>
+        <h3>{{ issue.title or 'Untitled upload' }}</h3>
+        <div class="meta">Creator ID: {{ issue.customer_id }}<br>Reported: {{ issue.created_at|istdate("%d %b %Y · %I:%M %p IST") }}<br>Stage: {{ issue.stage }}</div>
+        <p class="description" style="color:#fecaca">{{ issue.error_message }}</p>
+        {% if issue.admin_note %}<p class="meta">{{ issue.admin_note }}</p>{% endif %}
+        {% if issue.status == 'OPEN' %}
+        <form method="post" action="{{ url_for('admin_creator_upload_issue_auto_fix', issue_id=issue.id) }}" onsubmit="return confirm('Check R2 and recover the complete video into the Admin approval queue? This will not publish it.');">
+          <button type="submit">⚡ 1-Click Auto-Fix / Recover</button>
+        </form>
+        {% elif issue.repaired_submission_id %}
+        <p class="meta">Recovered as submission #{{ issue.repaired_submission_id }}</p>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty">No upload issues reported by creators yet.</div>{% endif %}
+  </div>
   <h2>Pending approval ({{ pending|length }})</h2>
   {% if pending %}
   <div class="cs-grid">
