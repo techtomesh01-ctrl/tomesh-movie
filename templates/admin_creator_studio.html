@@ -209,10 +209,10 @@
     {% if reviewed %}
     <div class="cs-grid" id="creatorReviewedGrid">
       {% for item in reviewed %}
-      <article class="cs-review-card{% if item.status == 'APPROVED' %} is-approved{% endif %}" data-search="{{ (item.title ~ ' ' ~ item.customer_id ~ ' ' ~ (item.creator_email or '') ~ ' ' ~ (item.creator_name or '') ~ ' ' ~ (item.category or '') ~ ' ' ~ item.status ~ ' ' ~ item.content_type)|lower }}">
+      <article class="cs-review-card{% if item.status|upper == 'APPROVED' %} is-approved{% endif %}" data-search="{{ (item.title ~ ' ' ~ item.customer_id ~ ' ' ~ (item.creator_email or '') ~ ' ' ~ (item.creator_name or '') ~ ' ' ~ (item.category or '') ~ ' ' ~ item.status ~ ' ' ~ item.content_type)|lower }}">
         {% if item.poster_url %}<img src="{{ item.poster_url }}" alt="Poster for {{ item.title }}" loading="lazy">{% endif %}
         {% if item.video_url %}<video controls preload="metadata" src="{{ item.video_url }}">Your browser does not support video preview.</video>{% endif %}
-        <div style="display:flex;gap:7px;flex-wrap:wrap;margin:10px 0"><span class="tag">{{ item.content_type }}</span>{% if item.status == 'APPROVED' %}<span class="approved-tag">✓ APPROVED</span>{% else %}<span class="tag">{{ item.status }}</span>{% endif %}<span class="tag">👁 {{ item.views or 0 }} views</span><span class="tag">♥ {{ item.likes or 0 }} likes</span></div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin:10px 0"><span class="tag">{{ item.content_type }}</span>{% if item.status|upper == 'APPROVED' %}<span class="approved-tag">✓ APPROVED</span>{% else %}<span class="tag">{{ item.status }}</span>{% endif %}<span class="tag">👁 {{ item.views or 0 }} views</span><span class="tag">♥ {{ item.likes or 0 }} likes</span></div>
         <h3 style="margin:8px 0">{{ item.title }}</h3>
         <div class="meta">Submission #{{ item.id }} · Movie ID: {{ item.movie_id or 'Not published' }}<br>Creator ID: {{ item.customer_id }}<br>{{ item.creator_name or 'Name not provided' }} · {{ item.creator_email or 'Email unavailable' }} · {{ item.creator_mobile or 'Mobile not provided' }}<br>Submitted: {{ item.created_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% if item.reviewed_at %}<br>Reviewed: {{ item.reviewed_at|istdate("%d %b %Y · %A · %I:%M %p IST") }}{% endif %}{% if item.reviewed_by %}<br>Reviewed by: {{ item.reviewed_by }}{% endif %}</div>
         {% if audit_by_submission.get(item.id) %}
@@ -229,7 +229,7 @@
           <p class="meta">Audit history records actions and reviewer-entered details; it does not independently authenticate licensing documents.</p>
         </details>
         {% endif %}
-        {% if item.status == 'APPROVED' %}
+        {% if item.status|upper == 'APPROVED' %}
         <div class="cs-card" style="margin:10px 0;padding:12px;border-color:#365344">
           <strong>Recorded publishing checks</strong>
           <div class="meta" style="margin-top:6px">Rights check: {{ 'Confirmed by reviewer' if item.rights_verified else 'Not recorded' }} · Quality check: {{ 'Confirmed by reviewer' if item.quality_checked else 'Not recorded' }}</div>
