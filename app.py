@@ -819,6 +819,15 @@ def init_db():
         cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_branch TEXT")
         cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_verified BOOLEAN NOT NULL DEFAULT FALSE")
         cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_verified_at TIMESTAMP")
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS hidden_from_creator BOOLEAN NOT NULL DEFAULT FALSE")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_earnings_admin_overrides (
+                customer_id TEXT PRIMARY KEY,
+                total_override NUMERIC(14,2) NOT NULL CHECK (total_override >= 0),
+                updated_by TEXT,
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_creator_payout_requests_status ON creator_payout_requests(status, created_at DESC)")
         cur.execute("INSERT INTO settings(key,value) VALUES('creator_min_payout','100') ON CONFLICT(key) DO NOTHING")
 
@@ -4403,6 +4412,10 @@ def creator_upload():
             FROM creator_earnings WHERE customer_id=%s
         """, (customer_id,))
         earnings = dict(cur.fetchone() or {})
+        cur.execute("SELECT total_override FROM creator_earnings_admin_overrides WHERE customer_id=%s", (customer_id,))
+        earnings_override_row = cur.fetchone()
+        if earnings_override_row:
+            earnings["total"] = float(earnings_override_row.get("total_override") or 0)
         cur.execute("""
             SELECT COALESCE(SUM(amount),0) AS reserved
             FROM creator_payout_requests
@@ -4422,7 +4435,7 @@ def creator_upload():
         cur.execute("""
             SELECT id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,paid_at,
                    bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified,bank_verified_at
-            FROM creator_payout_requests WHERE customer_id=%s ORDER BY id DESC LIMIT 50
+            FROM creator_payout_requests WHERE customer_id=%s AND COALESCE(hidden_from_creator,FALSE)=FALSE ORDER BY id DESC LIMIT 50
         """, (customer_id,))
         payouts = [dict(row) for row in cur.fetchall()]
         cur.close()
@@ -4478,6 +4491,10 @@ def creator_payout_request():
         cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s FOR UPDATE", (customer_id,))
         cur.execute("SELECT COALESCE(SUM(amount),0) AS total FROM creator_earnings WHERE customer_id=%s", (customer_id,))
         earned = float((cur.fetchone() or {}).get("total") or 0)
+        cur.execute("SELECT total_override FROM creator_earnings_admin_overrides WHERE customer_id=%s", (customer_id,))
+        payout_earnings_override = cur.fetchone()
+        if payout_earnings_override:
+            earned = float(payout_earnings_override.get("total_override") or 0)
         cur.execute("""
             SELECT COALESCE(SUM(amount),0) AS reserved FROM creator_payout_requests
             WHERE customer_id=%s AND status IN ('PENDING','APPROVED','PAID')
@@ -4753,7 +4770,7 @@ def admin_creator_studio():
             audit_by_submission.setdefault(audit["submission_id"], []).append(audit)
         cur.execute("""
             SELECT p.id,p.customer_id,p.amount,p.payout_method,p.payout_details,p.status,p.admin_note,p.transaction_ref,p.created_at,p.reviewed_at,p.paid_at,
-                   p.bank_account_holder,p.bank_name,p.bank_account_number,p.bank_ifsc,p.bank_branch,p.bank_verified,p.bank_verified_at,
+                   p.hidden_from_creator,p.bank_account_holder,p.bank_name,p.bank_account_number,p.bank_ifsc,p.bank_branch,p.bank_verified,p.bank_verified_at,
                    cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile
             FROM creator_payout_requests p
             LEFT JOIN customer_users cu ON cu.customer_id=p.customer_id
@@ -4775,6 +4792,7 @@ def admin_creator_studio():
                    COALESCE(m.total_views,0) AS total_views,
                    COALESCE(m.total_likes,0) AS total_likes,
                    COALESCE(e.total_earned,0) AS total_earned,
+                   e.earnings_override,
                    COALESCE(e.valid_views,0) AS valid_views,
                    COALESCE(p.payout_count,0) AS payout_count,
                    COALESCE(p.pending_payout,0) AS pending_payout,
@@ -4804,9 +4822,14 @@ def admin_creator_studio():
                 FROM movies WHERE creator_customer_id=u.customer_id
             ) m ON TRUE
             LEFT JOIN LATERAL (
-                SELECT COALESCE(SUM(amount),0) AS total_earned,
-                       COALESCE(SUM(valid_views),0) AS valid_views
-                FROM creator_earnings WHERE customer_id=u.customer_id
+                SELECT COALESCE(ov.total_override, ledger.total_earned) AS total_earned,
+                       ledger.valid_views, ov.total_override AS earnings_override
+                FROM (
+                    SELECT COALESCE(SUM(amount),0) AS total_earned,
+                           COALESCE(SUM(valid_views),0) AS valid_views
+                    FROM creator_earnings WHERE customer_id=u.customer_id
+                ) ledger
+                LEFT JOIN creator_earnings_admin_overrides ov ON ov.customer_id=u.customer_id
             ) e ON TRUE
             LEFT JOIN LATERAL (
                 SELECT COUNT(*) AS payout_count,
@@ -4822,6 +4845,7 @@ def admin_creator_studio():
             ) b ON TRUE
             WHERE COALESCE(s.upload_count,0)>0
                OR COALESCE(e.total_earned,0)>0
+               OR e.earnings_override IS NOT NULL
                OR COALESCE(p.payout_count,0)>0
                OR EXISTS (SELECT 1 FROM customer_bank_accounts ba WHERE ba.customer_id=u.customer_id)
             ORDER BY COALESCE(e.total_earned,0) DESC, COALESCE(m.total_views,0) DESC, u.id DESC
@@ -5015,6 +5039,87 @@ def admin_creator_payout_action(payout_id, action):
         conn.rollback()
         print("ADMIN CREATOR PAYOUT ERROR:", repr(exc))
         flash("Could not update payout. Check server logs.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
+
+
+@app.route("/admin/creator-payout/<int:payout_id>/hide-history", methods=["POST"])
+@admin_required
+def admin_creator_payout_hide_history(payout_id):
+    """Hide payout from the creator-facing history without deleting financial/audit records."""
+    note = str(request.form.get("admin_note") or "Hidden from creator payout history by Admin").strip()[:500]
+    actor = str(session.get("admin_user") or ADMIN_USER or "admin")[:200]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id,customer_id,status FROM creator_payout_requests WHERE id=%s FOR UPDATE", (payout_id,))
+        payout = cur.fetchone()
+        if not payout:
+            conn.rollback()
+            abort(404)
+        cur.execute("UPDATE creator_payout_requests SET hidden_from_creator=TRUE WHERE id=%s", (payout_id,))
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,'CREATOR_PAYOUT_HISTORY_HIDDEN','creator_payout',%s,%s)
+        """, (actor, str(payout_id), note))
+        conn.commit()
+        flash("Payout creator ki history se hide ho gaya; financial record aur balance calculation safe rakhe gaye hain.", "success")
+    except Exception:
+        conn.rollback()
+        app.logger.exception("Admin hide creator payout history failed")
+        flash("Payout history hide nahi hui. Render logs check karein.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
+
+
+@app.route("/admin/creator-earnings/<customer_id>/set", methods=["POST"])
+@admin_required
+def admin_creator_earnings_override(customer_id):
+    """Set the creator's exact accrued-earnings total, or restore ledger-calculated earnings."""
+    actor = str(session.get("admin_user") or ADMIN_USER or "admin")[:200]
+    note = str(request.form.get("admin_note") or "").strip()[:500]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s FOR UPDATE", (customer_id,))
+        if not cur.fetchone():
+            conn.rollback()
+            flash("Creator account not found.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        if request.form.get("clear_override") == "1":
+            cur.execute("DELETE FROM creator_earnings_admin_overrides WHERE customer_id=%s", (customer_id,))
+            reason = "Restored ledger-calculated accrued earnings" + ((" — " + note) if note else "")
+            flash("Creator ki accrued earnings ab actual ledger se calculate hongi.", "success")
+        else:
+            raw = str(request.form.get("total_earned") or "").strip()
+            try:
+                amount = round(float(raw), 2)
+            except (TypeError, ValueError):
+                raise ValueError("Accrued earnings mein valid amount enter karein.")
+            if not (0 <= amount <= 100000000):
+                raise ValueError("Accrued earnings ₹0 se ₹100,000,000 ke beech honi chahiye.")
+            cur.execute("""
+                INSERT INTO creator_earnings_admin_overrides(customer_id,total_override,updated_by,updated_at)
+                VALUES(%s,%s,%s,NOW())
+                ON CONFLICT(customer_id) DO UPDATE SET total_override=EXCLUDED.total_override,
+                    updated_by=EXCLUDED.updated_by,updated_at=NOW()
+            """, (customer_id, amount, actor))
+            reason = "Exact accrued earnings set to ₹%.2f" % amount + ((" — " + note) if note else "")
+            flash("Creator ki accrued earnings exact total par save ho gayi. Aap baad mein dobara edit kar sakte hain.", "success")
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,'CREATOR_EARNINGS_OVERRIDE','creator_earnings',%s,%s)
+        """, (actor, customer_id, reason))
+        conn.commit()
+    except ValueError as exc:
+        conn.rollback()
+        flash(str(exc), "error")
+    except Exception:
+        conn.rollback()
+        app.logger.exception("Admin creator earnings override failed")
+        flash("Accrued earnings update nahi hui. Render logs check karein.", "error")
     finally:
         conn.close()
     return redirect(url_for("admin_creator_studio"))
