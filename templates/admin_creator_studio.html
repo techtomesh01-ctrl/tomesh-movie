@@ -240,11 +240,36 @@
         <p class="cs-muted">{{ item.category or 'Uncategorised' }}</p>
         <div class="description">{{ item.description or 'No description provided.' }}</div>
         {% if item.admin_note %}<p class="meta"><strong>Admin note:</strong> {{ item.admin_note }}</p>{% endif %}
+        <div class="cs-card" style="margin:12px 0;padding:14px;border-color:#4b3b3b">
+          <h3 style="margin:0 0 8px">🛠 Admin controls for this upload</h3>
+          <form method="post" action="{{ url_for('admin_creator_wallet_credit', customer_id=item.customer_id) }}" style="border-bottom:1px solid #333;padding-bottom:12px;margin-bottom:12px">
+            <label class="meta" for="credit-{{ item.id }}">＋ Add Balance to {{ item.creator_name or 'Creator' }} (₹)</label>
+            <input id="credit-{{ item.id }}" type="number" name="amount" min="0.01" max="10000000" step="0.01" required placeholder="Amount in rupees">
+            <input type="text" name="admin_note" maxlength="500" placeholder="Reason / note (optional)">
+            <button type="submit" style="background:#15803d">＋ Add Balance to User</button>
+          </form>
+          {% if item.movie_id %}
+          <form method="post" action="{{ url_for('admin_creator_media_stats', submission_id=item.id) }}" style="border-bottom:1px solid #333;padding-bottom:12px;margin-bottom:12px">
+            <label class="meta" for="views-{{ item.id }}">👁 Set total views</label>
+            <input id="views-{{ item.id }}" type="number" name="views" min="0" max="1000000000000" step="1" value="{{ item.views or 0 }}" required>
+            <label class="meta" for="likes-{{ item.id }}">♥ Set displayed likes</label>
+            <input id="likes-{{ item.id }}" type="number" name="likes" min="0" max="1000000000000" step="1" value="{{ item.likes or 0 }}" required>
+            <input type="text" name="admin_note" maxlength="500" placeholder="Reason / note (optional)">
+            <button type="submit">✏️ Save Views / Likes</button>
+            <p class="meta">Views update the published movie counter. Likes here set the displayed count; individual user like records are not fabricated or deleted.</p>
+          </form>
+          {% else %}
+          <p class="meta">Views/likes edit tab active hoga jab upload published Movie ID se linked ho.</p>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin_delete_creator_submission', submission_id=item.id) }}" onsubmit="return confirm('Permanently delete this creator upload and its published listing if present? This cannot be undone.');">
+            <input type="text" name="admin_note" maxlength="500" placeholder="Delete reason (optional)">
+            <button class="delete-upload" type="submit">🗑 DELETE CREATOR VIDEO</button>
+          </form>
+        </div>
         <div class="cs-review-actions">
           {% if item.poster_url %}<a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.poster_url }}">Open poster</a>{% endif %}
           {% if item.video_url %}<a class="cs-link secondary" target="_blank" rel="noopener" href="{{ item.video_url }}">Preview uploaded video</a>{% endif %}
           {% if item.movie_id %}<a class="cs-link" target="_blank" rel="noopener" href="{{ url_for('movie_page', movie_id=item.movie_id) }}">Open published title</a>{% endif %}
-          <form method="post" action="{{ url_for('admin_delete_creator_submission', submission_id=item.id) }}" onsubmit="return confirm('Permanently delete this creator upload and its published listing if present? This cannot be undone.');"><button class="delete-upload" type="submit">🗑 Delete creator video</button></form>
         </div>
       </article>
       {% endfor %}
