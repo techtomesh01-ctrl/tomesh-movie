@@ -696,6 +696,18 @@ def init_db():
         cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS rights_evidence TEXT")
         cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS reviewed_by TEXT")
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_upload_issues (
+                id BIGSERIAL PRIMARY KEY, customer_id TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '', content_type TEXT NOT NULL DEFAULT 'MOVIE',
+                category TEXT, description TEXT, video_key TEXT, poster_key TEXT,
+                stage TEXT NOT NULL DEFAULT 'unknown', error_message TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'OPEN', repaired_submission_id INTEGER,
+                admin_note TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                resolved_at TIMESTAMP
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_creator_upload_issues_status_created ON creator_upload_issues(status, created_at DESC)")
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS creator_submission_audit (
                 id BIGSERIAL PRIMARY KEY,
                 submission_id INTEGER NOT NULL,
