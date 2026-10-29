@@ -4504,8 +4504,8 @@ def creator_upload():
 @creator_customer_required
 def api_creator_upload_payment_create():
     data = request.get_json(silent=True) or {}
-    phone = re.sub(r"\\D", "", str(data.get("phone") or ""))
-    if not re.fullmatch(r"[6-9]\\d{9}", phone):
+    phone = re.sub(r"\D", "", str(data.get("phone") or ""))
+    if not re.fullmatch(r"[6-9]\d{9}", phone):
         return json_error("Enter a valid 10 digit Indian mobile number.")
     customer_id = str(session.get("customer_id") or "")
     conn = get_db(dict_rows=True)
