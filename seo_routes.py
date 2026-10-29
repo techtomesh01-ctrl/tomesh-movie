@@ -13,37 +13,6 @@ PUBLIC_PATHS = (
 )
 
 
-@app.route("/title/<int:movie_id>", methods=["GET"])
-def public_movie_page(movie_id):
-    """Public movie metadata only; playback remains behind existing access checks."""
-    conn = get_db(dict_rows=True)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT id, title, category, description, poster, content_type
-            FROM movies
-            WHERE id = %s
-              AND UPPER(COALESCE(status, '')) = 'LIVE'
-            """,
-            (movie_id,),
-        )
-        movie = cur.fetchone()
-        cur.close()
-    finally:
-        conn.close()
-
-    if not movie:
-        abort(404)
-
-    movie = dict(movie)
-    try:
-        movie["poster_url"] = media_url(movie.get("poster")) if movie.get("poster") else None
-    except Exception:
-        movie["poster_url"] = None
-    return render_template("public_movie_title.html", movie=movie)
-
-
 def _robots_txt():
     body = """User-agent: *
 Allow: /
