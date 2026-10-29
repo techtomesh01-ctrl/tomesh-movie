@@ -26,7 +26,7 @@
           <th style="padding:10px">Creator / Contact</th><th style="padding:10px">Joined / Last Login</th>
           <th style="padding:10px">Uploads</th><th style="padding:10px">Published Movies</th>
           <th style="padding:10px">Views / Likes</th><th style="padding:10px">Earnings</th>
-          <th style="padding:10px">Payouts</th><th style="padding:10px">Saved Bank Details</th>
+          <th style="padding:10px">Payouts</th><th style="padding:10px">Saved Bank Details</th><th style="padding:10px">Admin Wallet Credit</th>
         </tr></thead>
         <tbody>
         {% for creator in creator_profiles %}
@@ -56,9 +56,18 @@
                 <span class="tag">{{ creator.saved_bank_status or 'UNKNOWN' }}</span>
               {% else %}<span class="meta">No saved withdrawal bank account</span>{% endif %}
             </td>
+            <td style="padding:12px 10px;min-width:230px">
+              <form method="post" action="{{ url_for('admin_creator_wallet_credit', customer_id=creator.customer_id) }}" style="display:grid;gap:7px;min-width:190px">
+                <label class="meta">Amount to credit (₹)</label>
+                <input type="number" name="amount" min="0.01" max="10000000" step="0.01" placeholder="e.g. 100" required>
+                <input type="text" name="admin_note" maxlength="500" placeholder="Reason (optional)">
+                <button type="submit" style="background:#15803d;color:#fff;border:0;border-radius:8px;padding:9px 10px;font-weight:800;cursor:pointer">Add to creator balance</button>
+              </form>
+              <span class="meta">Credits appear in the creator account. Withdrawals still need Admin approval and a real transfer reference.</span>
+            </td>
           </tr>
         {% else %}
-          <tr><td colspan="8" style="padding:22px;text-align:center;color:#999">No creator activity found yet.</td></tr>
+          <tr><td colspan="9" style="padding:22px;text-align:center;color:#999">No creator activity found yet.</td></tr>
         {% endfor %}
         </tbody>
       </table>
