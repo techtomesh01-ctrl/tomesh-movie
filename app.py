@@ -721,6 +721,16 @@ def init_db():
         """)
 
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_admin_media_stats (
+                movie_id INTEGER PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                likes_override BIGINT NOT NULL DEFAULT 0 CHECK (likes_override >= 0),
+                updated_by TEXT,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS creator_submission_audit (
                 id BIGSERIAL PRIMARY KEY,
                 submission_id INTEGER NOT NULL,
@@ -4285,6 +4295,10 @@ def movie_page(movie_id):
         lc = like_conn.cursor()
         lc.execute("SELECT COUNT(*) AS n FROM movie_likes WHERE movie_id=%s", (movie_id,))
         like_summary["like_count"] = int((lc.fetchone() or {}).get("n") or 0)
+        lc.execute("SELECT likes_override FROM creator_admin_media_stats WHERE movie_id=%s", (movie_id,))
+        admin_like_override = lc.fetchone()
+        if admin_like_override and admin_like_override.get("likes_override") is not None:
+            like_summary["like_count"] = int(admin_like_override["likes_override"])
         if session.get("customer_logged_in"):
             lc.execute("SELECT 1 FROM movie_likes WHERE movie_id=%s AND customer_id=%s LIMIT 1", (movie_id, str(session.get("customer_id") or "")))
             like_summary["my_like"] = bool(lc.fetchone())
@@ -4677,9 +4691,10 @@ def admin_creator_studio():
                    cs.rights_verified,cs.quality_checked,cs.rights_evidence,cs.reviewed_by,
                    cu.email AS creator_email,cu.full_name AS creator_name,cu.mobile AS creator_mobile,
                    COALESCE(m.views,0) AS views,
-                   COALESCE((SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=cs.movie_id),0) AS likes
+                   COALESCE(ams.likes_override,(SELECT COUNT(*) FROM movie_likes ml WHERE ml.movie_id=cs.movie_id),0) AS likes
             FROM creator_submissions cs
             LEFT JOIN movies m ON m.id=cs.movie_id
+            LEFT JOIN creator_admin_media_stats ams ON ams.movie_id=cs.movie_id
             LEFT JOIN customer_users cu ON cu.customer_id=cs.customer_id
             WHERE cs.status <> 'PENDING' ORDER BY cs.id DESC
         """)
@@ -4966,6 +4981,61 @@ def admin_creator_wallet_credit(customer_id):
         conn.rollback()
         app.logger.exception("Admin creator wallet credit failed")
         flash("Balance add nahi hua. Database/logs check karein.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
+
+
+@app.route("/admin/creator-submission/<int:submission_id>/media-stats", methods=["POST"])
+@admin_required
+def admin_creator_media_stats(submission_id):
+    """Admin may set published view count and displayed like count for a creator upload."""
+    try:
+        views = int(request.form.get("views") or 0)
+        likes = int(request.form.get("likes") or 0)
+    except (TypeError, ValueError):
+        flash("Views aur likes mein valid whole numbers enter karein.", "error")
+        return redirect(url_for("admin_creator_studio"))
+    if not (0 <= views <= 1000000000000 and 0 <= likes <= 1000000000000):
+        flash("Views/likes 0 se 1,000,000,000,000 ke beech hone chahiye.", "error")
+        return redirect(url_for("admin_creator_studio"))
+    actor = str(session.get("admin_user") or ADMIN_USER or "admin")[:200]
+    note = str(request.form.get("admin_note") or "").strip()[:500]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, customer_id, movie_id, status FROM creator_submissions WHERE id=%s FOR UPDATE", (submission_id,))
+        sub = cur.fetchone()
+        if not sub:
+            conn.rollback()
+            flash("Creator submission nahi mila.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        movie_id = sub.get("movie_id")
+        if not movie_id:
+            conn.rollback()
+            flash("Is upload ka published Movie ID nahi hai; views/likes sirf published movie par edit ho sakte hain.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        cur.execute("UPDATE movies SET views=%s WHERE id=%s AND creator_customer_id=%s", (views, movie_id, sub.get("customer_id")))
+        if cur.rowcount != 1:
+            conn.rollback()
+            flash("Published movie nahi mili ya creator ownership match nahi hui.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        cur.execute("""
+            INSERT INTO creator_admin_media_stats(movie_id,customer_id,likes_override,updated_by,updated_at)
+            VALUES(%s,%s,%s,%s,NOW())
+            ON CONFLICT(movie_id) DO UPDATE SET customer_id=EXCLUDED.customer_id,
+                likes_override=EXCLUDED.likes_override,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+        """, (movie_id, sub.get("customer_id"), likes, actor))
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,'CREATOR_MEDIA_STATS_EDIT','movie',%s,%s)
+        """, (actor, str(movie_id), "Views=%s, displayed likes=%s%s" % (views, likes, (" — " + note) if note else "")))
+        conn.commit()
+        flash("Movie #%s ke views aur displayed likes update ho gaye." % movie_id, "success")
+    except Exception:
+        conn.rollback()
+        app.logger.exception("Admin creator media stats update failed")
+        flash("Views/likes update nahi hue. Render logs check karein.", "error")
     finally:
         conn.close()
     return redirect(url_for("admin_creator_studio"))
