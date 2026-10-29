@@ -4884,6 +4884,61 @@ def admin_creator_wallet_credit(customer_id):
     return redirect(url_for("admin_creator_studio"))
 
 
+@app.route("/admin/creator-submission/<int:submission_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_creator_submission(submission_id):
+    """Admin-only removal of a creator upload; removes its published catalogue item too."""
+    note = str(request.form.get("admin_note") or "Removed by Admin").strip()[:500]
+    conn = get_db(dict_rows=True)
+    video_key = None
+    poster_key = None
+    movie_id = None
+    title = "creator upload"
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM creator_submissions WHERE id=%s FOR UPDATE", (submission_id,))
+        sub = cur.fetchone()
+        if not sub:
+            conn.rollback()
+            flash("Creator upload nahi mila; list refresh karein.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        video_key = sub.get("video")
+        poster_key = sub.get("poster")
+        movie_id = sub.get("movie_id")
+        title = str(sub.get("title") or title)
+        # Delete the published catalogue row as well, if this submission was approved.
+        if movie_id:
+            cur.execute("DELETE FROM movies WHERE id=%s AND creator_customer_id=%s", (movie_id, sub.get("customer_id")))
+        cur.execute("DELETE FROM creator_submissions WHERE id=%s", (submission_id,))
+        cur.execute(
+            """INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+               VALUES(%s,'CREATOR_UPLOAD_DELETE','creator_submission',%s,%s)""",
+            (str(session.get("admin_user") or ADMIN_USER or "admin")[:200], str(submission_id), note or "Removed by Admin"),
+        )
+        conn.commit()
+        # Only delete R2 objects when no other catalogue/submission row references them.
+        for key, table, column in ((video_key, "movies", "video"), (video_key, "creator_submissions", "video"),
+                                   (poster_key, "movies", "poster"), (poster_key, "creator_submissions", "poster")):
+            if not key:
+                continue
+            try:
+                safe_key = validate_r2_key(key)
+                cur.execute("SELECT 1 FROM " + table + " WHERE " + column + "=%s LIMIT 1", (safe_key,))
+                if not cur.fetchone():
+                    r2_delete(safe_key)
+            except Exception as media_exc:
+                app.logger.warning("Creator upload R2 cleanup skipped for %s: %r", str(key)[:180], media_exc)
+        conn.commit()
+        flash("Creator upload '%s' delete ho gaya. Published listing aur unused media bhi remove kiye gaye." % title, "success")
+    except Exception as exc:
+        conn.rollback()
+        app.logger.exception("Admin creator upload delete failed")
+        flash("Video delete nahi hua. Render logs check karein.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
+
+
 @app.route("/admin/creator-submission/<int:submission_id>/<action>", methods=["POST"])
 @admin_required
 def admin_review_creator_submission(submission_id, action):
