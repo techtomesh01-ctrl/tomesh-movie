@@ -696,6 +696,23 @@ def init_db():
         cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS rights_evidence TEXT")
         cur.execute("ALTER TABLE creator_submissions ADD COLUMN IF NOT EXISTS reviewed_by TEXT")
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_upload_payment_credits (
+                order_id TEXT PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                payment_type TEXT NOT NULL CHECK (payment_type IN ('creator_upload_video','creator_upload_pass')),
+                consumed_submission_id INTEGER,
+                paid_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_creator_upload_credits_customer ON creator_upload_payment_credits(customer_id, consumed_submission_id)")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_upload_passes (
+                customer_id TEXT PRIMARY KEY,
+                order_id TEXT UNIQUE NOT NULL,
+                paid_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS creator_upload_issues (
                 id BIGSERIAL PRIMARY KEY, customer_id TEXT NOT NULL,
                 title TEXT NOT NULL DEFAULT '', content_type TEXT NOT NULL DEFAULT 'MOVIE',
@@ -820,6 +837,7 @@ def init_db():
         cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_verified BOOLEAN NOT NULL DEFAULT FALSE")
         cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_verified_at TIMESTAMP")
         cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS hidden_from_creator BOOLEAN NOT NULL DEFAULT FALSE")
+        cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS ladder_step INTEGER")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS creator_earnings_admin_overrides (
                 customer_id TEXT PRIMARY KEY,
@@ -3700,32 +3718,41 @@ def cashfree_return():
                     cur.execute(
                         """
                         UPDATE payment_orders
-                        SET
-                            status = 'PAID',
-                            paid_at = NOW()
+                        SET status = 'PAID', paid_at = NOW()
                         WHERE order_id = %s
                         """,
                         (order_id,),
                     )
-
+                    if local_order["payment_type"] == "creator_upload_video":
+                        cur.execute("""
+                            INSERT INTO creator_upload_payment_credits(order_id,customer_id,payment_type,paid_at)
+                            VALUES(%s,%s,'creator_upload_video',NOW())
+                            ON CONFLICT(order_id) DO NOTHING
+                        """, (order_id, local_order["customer_id"]))
+                    elif local_order["payment_type"] == "creator_upload_pass":
+                        cur.execute("""
+                            INSERT INTO creator_upload_passes(customer_id,order_id,paid_at)
+                            VALUES(%s,%s,NOW())
+                            ON CONFLICT(customer_id) DO NOTHING
+                        """, (local_order["customer_id"], order_id))
+                        cur.execute("""
+                            INSERT INTO creator_upload_payment_credits(order_id,customer_id,payment_type,paid_at)
+                            VALUES(%s,%s,'creator_upload_pass',NOW())
+                            ON CONFLICT(order_id) DO NOTHING
+                        """, (order_id, local_order["customer_id"]))
                     conn.commit()
                     cur.close()
 
                 finally:
                     conn.close()
 
-                grant_access(
-                    local_order[
-                        "customer_id"
-                    ],
-                    local_order[
-                        "movie_id"
-                    ],
-                    local_order[
-                        "payment_type"
-                    ],
-                )
-                create_referral_reward_for_order(local_order)
+                if local_order["payment_type"] not in {"creator_upload_video", "creator_upload_pass"}:
+                    grant_access(
+                        local_order["customer_id"],
+                        local_order["movie_id"],
+                        local_order["payment_type"],
+                    )
+                    create_referral_reward_for_order(local_order)
 
             # Restore the paid customer identity in the current browser session.
             # This is critical when the user returns from Cashfree or opens the
@@ -3748,6 +3775,9 @@ def cashfree_return():
 
             if local_order["payment_type"] == "activation":
                 return redirect(url_for("member_home"))
+            if local_order["payment_type"] in {"creator_upload_video", "creator_upload_pass"}:
+                flash("Upload payment verified. You can now submit your video.", "success")
+                return redirect(url_for("creator_upload"))
             return redirect(url_for("movie_page", movie_id=local_order["movie_id"]))
 
         flash(
@@ -3767,6 +3797,9 @@ def cashfree_return():
             "Payment verification failed.",
             "error",
         )
+
+    if local_order["payment_type"] in {"creator_upload_video", "creator_upload_pass"}:
+        return redirect(url_for("creator_upload"))
 
     try:
         target_movie = int(movie_id)
@@ -4438,14 +4471,89 @@ def creator_upload():
             FROM creator_payout_requests WHERE customer_id=%s AND COALESCE(hidden_from_creator,FALSE)=FALSE ORDER BY id DESC LIMIT 50
         """, (customer_id,))
         payouts = [dict(row) for row in cur.fetchall()]
+        cur.execute("SELECT COUNT(*) AS n FROM creator_submissions WHERE customer_id=%s", (customer_id,))
+        creator_video_count = int((cur.fetchone() or {}).get("n") or 0)
+        cur.execute("SELECT COUNT(*) AS n FROM creator_upload_payment_credits WHERE customer_id=%s AND payment_type='creator_upload_video' AND consumed_submission_id IS NULL", (customer_id,))
+        upload_credit_count = int((cur.fetchone() or {}).get("n") or 0)
+        cur.execute("SELECT 1 FROM creator_upload_passes WHERE customer_id=%s", (customer_id,))
+        upload_pass_active = bool(cur.fetchone())
         cur.close()
     finally:
         conn.close()
+    ladder = [1, 1000, 2500, 3000, 5000, 10000, 50000]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT ladder_step,status FROM creator_payout_requests WHERE customer_id=%s AND ladder_step IS NOT NULL ORDER BY ladder_step", (customer_id,))
+        ladder_rows = cur.fetchall()
+    finally:
+        conn.close()
+    paid_steps = {int(row["ladder_step"]) for row in ladder_rows if str(row.get("status") or "").upper() == "PAID"}
+    next_step = 0
+    while next_step < len(ladder) and next_step in paid_steps:
+        next_step += 1
+    pending_step = next((int(row["ladder_step"]) for row in ladder_rows if int(row["ladder_step"]) == next_step and str(row.get("status") or "").upper() in {"PENDING","APPROVED"}), None) if next_step < len(ladder) else None
+    next_payout_amount = ladder[next_step] if next_step < len(ladder) and pending_step is None else None
     return render_template("creator_upload.html", submissions=submissions, earnings=earnings, payouts=payouts, admin_stats=admin_stats,
         movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
         drama_rate=get_setting("creator_drama_rate_per_1000", "30"),
-        min_payout=get_setting("creator_min_payout", "100"))
+        min_payout=get_setting("creator_min_payout", "100"),
+        creator_video_count=creator_video_count, upload_credit_count=upload_credit_count, upload_pass_active=upload_pass_active,
+        next_payout_amount=next_payout_amount, payout_ladder=ladder, payout_step=next_step, payout_pending=(pending_step is not None))
 
+
+
+@app.route("/api/creator/upload-payment/create", methods=["POST"])
+@creator_customer_required
+def api_creator_upload_payment_create():
+    data = request.get_json(silent=True) or {}
+    phone = re.sub(r"\D", "", str(data.get("phone") or ""))
+    if not re.fullmatch(r"[6-9]\d{9}", phone):
+        return json_error("Enter a valid 10 digit Indian mobile number.")
+    customer_id = str(session.get("customer_id") or "")
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS n FROM creator_submissions WHERE customer_id=%s", (customer_id,))
+        video_count = int((cur.fetchone() or {}).get("n") or 0)
+        cur.execute("SELECT 1 FROM creator_upload_passes WHERE customer_id=%s", (customer_id,))
+        if cur.fetchone():
+            return json_ok(already_paid=True, pass_active=True)
+        cur.execute("SELECT 1 FROM creator_upload_payment_credits WHERE customer_id=%s AND payment_type='creator_upload_video' AND consumed_submission_id IS NULL LIMIT 1", (customer_id,))
+        if cur.fetchone():
+            return json_ok(already_paid=True, credit_available=True)
+        payment_type = "creator_upload_video" if video_count < 5 else "creator_upload_pass"
+        amount = 1.00 if payment_type == "creator_upload_video" else 49.00
+        cur.execute("SELECT order_id FROM payment_orders WHERE customer_id=%s AND payment_type=%s AND status='ACTIVE' AND created_at > NOW() - INTERVAL '30 minutes' ORDER BY id DESC LIMIT 1", (customer_id, payment_type))
+        if cur.fetchone():
+            return json_error("A payment is already in progress. Finish it or wait 30 minutes before retrying.", 409)
+    finally:
+        conn.close()
+    order_id = "tm_" + payment_type + "_" + secrets.token_hex(10)
+    return_url = url_for("cashfree_return", order_id=order_id, movie_id=0, _external=True)
+    payload = {
+        "order_id": order_id, "order_amount": amount, "order_currency": "INR",
+        "customer_details": {"customer_id": customer_id, "customer_phone": phone},
+        "order_meta": {"return_url": return_url},
+        "order_note": "CINEMA WORLD Creator Upload " + ("Single Video" if payment_type == "creator_upload_video" else "Unlimited Upload Pass"),
+        "order_tags": {"payment_type": payment_type, "customer_id": customer_id}
+    }
+    try:
+        result = cashfree_request("POST", "/orders", payload)
+        payment_session_id = result.get("payment_session_id")
+        if not payment_session_id:
+            return json_error("Cashfree did not return payment session.", 502)
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO payment_orders(order_id,customer_id,movie_id,payment_type,amount,status) VALUES(%s,%s,NULL,%s,%s,'ACTIVE')", (order_id, customer_id, payment_type, amount))
+            conn.commit()
+        finally:
+            conn.close()
+        return json_ok(order_id=order_id, payment_session_id=payment_session_id, amount=amount, mode=CASHFREE_JS_MODE)
+    except Exception as exc:
+        print("CREATOR UPLOAD PAYMENT CREATE ERROR:", repr(exc))
+        return json_error("Could not create upload payment. Please try again.", 500)
 
 
 @app.route("/creator/payout-request", methods=["POST"])
@@ -4466,9 +4574,9 @@ def creator_payout_request():
     bank_account = "".join(ch for ch in str(request.form.get("bank_account_number") or "") if ch.isdigit())
     bank_ifsc = str(request.form.get("bank_ifsc") or "").strip().upper()
     bank_branch = str(request.form.get("bank_branch") or "").strip()[:120]
-    min_payout = max(0.0, float(get_setting("creator_min_payout", "100") or 100))
-    if amount <= 0 or amount < min_payout:
-        flash("Minimum payout request is ₹%.2f." % min_payout, "error")
+    ladder = [1, 1000, 2500, 3000, 5000, 10000, 50000]
+    if amount <= 0:
+        flash("Enter a valid payout amount.", "error")
         return redirect(url_for("creator_upload"))
     if method not in {"BANK", "USDT"}:
         flash("Choose Bank Transfer or USDT (TRC20).", "error")
@@ -4489,6 +4597,24 @@ def creator_payout_request():
         cur = conn.cursor()
         # Lock the creator's account row so concurrent requests cannot reserve the same balance.
         cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s FOR UPDATE", (customer_id,))
+        cur.execute("SELECT ladder_step,status FROM creator_payout_requests WHERE customer_id=%s AND ladder_step IS NOT NULL ORDER BY ladder_step", (customer_id,))
+        ladder_rows = cur.fetchall()
+        paid_steps = {int(row["ladder_step"]) for row in ladder_rows if str(row.get("status") or "").upper() == "PAID"}
+        expected_step = 0
+        while expected_step < len(ladder) and expected_step in paid_steps:
+            expected_step += 1
+        if expected_step >= len(ladder):
+            conn.rollback()
+            flash("All withdrawal ladder levels have been completed.", "error")
+            return redirect(url_for("creator_upload"))
+        if any(int(row["ladder_step"]) == expected_step and str(row.get("status") or "").upper() in {"PENDING","APPROVED"} for row in ladder_rows):
+            conn.rollback()
+            flash("Your current withdrawal level is already awaiting Admin review/payment.", "error")
+            return redirect(url_for("creator_upload"))
+        if abs(amount - float(ladder[expected_step])) > 0.001:
+            conn.rollback()
+            flash("Next withdrawal amount must be exactly ₹%s. The next level unlocks after Admin marks this payout PAID." % format(ladder[expected_step], ","), "error")
+            return redirect(url_for("creator_upload"))
         cur.execute("SELECT COALESCE(SUM(amount),0) AS total FROM creator_earnings WHERE customer_id=%s", (customer_id,))
         earned = float((cur.fetchone() or {}).get("total") or 0)
         cur.execute("SELECT total_override FROM creator_earnings_admin_overrides WHERE customer_id=%s", (customer_id,))
@@ -4508,14 +4634,14 @@ def creator_payout_request():
         cur.execute("""
             INSERT INTO creator_payout_requests(
                 customer_id,amount,payout_method,payout_details,
-                bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified
-            ) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,FALSE)
+                bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified,ladder_step
+            ) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,FALSE,%s)
         """, (customer_id, amount, method, details,
               bank_holder if method == "BANK" else None,
               bank_name if method == "BANK" else None,
               bank_account if method == "BANK" else None,
               bank_ifsc if method == "BANK" else None,
-              bank_branch if method == "BANK" else None))
+              bank_branch if method == "BANK" else None, expected_step))
         conn.commit()
         flash("Payout request submitted. Admin will review and pay manually.", "success")
     except Exception as exc:
@@ -4556,6 +4682,18 @@ def api_creator_submission_save():
         conn = get_db()
         try:
             cur = conn.cursor()
+            customer_id = str(session.get("customer_id") or "")
+            cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s FOR UPDATE", (customer_id,))
+            cur.execute("SELECT 1 FROM creator_upload_passes WHERE customer_id=%s", (customer_id,))
+            has_pass = bool(cur.fetchone())
+            credit_order_id = None
+            if not has_pass:
+                cur.execute("SELECT order_id FROM creator_upload_payment_credits WHERE customer_id=%s AND payment_type='creator_upload_video' AND consumed_submission_id IS NULL ORDER BY paid_at,order_id LIMIT 1 FOR UPDATE", (customer_id,))
+                credit_row = cur.fetchone()
+                if not credit_row:
+                    conn.rollback()
+                    return json_error("Upload payment required. Pay ₹1 for each of the first five videos, then ₹49 once for unlimited future uploads.")
+                credit_order_id = credit_row[0]
             cur.execute("""
                 INSERT INTO creator_submissions
                 (customer_id,title,content_type,category,description,poster,video,status)
@@ -4563,6 +4701,11 @@ def api_creator_submission_save():
                 RETURNING id
             """, (str(session.get("customer_id") or ""),title,content_type,category,description,poster_key or None,video_key))
             submission_id = cur.fetchone()[0]
+            if credit_order_id:
+                cur.execute("UPDATE creator_upload_payment_credits SET consumed_submission_id=%s WHERE order_id=%s AND consumed_submission_id IS NULL", (submission_id, credit_order_id))
+                if cur.rowcount != 1:
+                    conn.rollback()
+                    return json_error("Upload payment credit was already used. Refresh and try again.", 409)
             conn.commit()
             cur.close()
         finally:

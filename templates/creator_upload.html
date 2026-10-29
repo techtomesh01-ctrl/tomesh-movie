@@ -188,18 +188,26 @@
     <p class="tm-hint">A qualified view is counted once per logged-in viewer per title per day. Your available balance can be requested for manual payout.</p>
     <div style="display:flex;gap:20px;flex-wrap:wrap;margin:14px 0">
       <div><div style="font-size:12px;color:#999">Available balance</div><strong style="font-size:24px;color:#86efac">₹{{ '%.2f'|format(earnings.available or 0) }}</strong></div>
-      <div><div style="font-size:12px;color:#999">Minimum payout</div><strong style="font-size:24px">₹{{ min_payout }}</strong></div>
+      <div><div style="font-size:12px;color:#999">Next withdrawal level</div><strong style="font-size:24px">₹{{ '{:,}'.format(next_payout_amount) if next_payout_amount is not none else 'Complete' }}</strong></div>
     </div>
     <div class="tm-payout-panel" style="padding:15px;border:1px solid #23834a;border-radius:12px;margin:12px 0;background:linear-gradient(145deg,rgba(21,128,61,.12),rgba(0,0,0,.2))">
-      <h3 style="margin-top:0;color:#86efac">💸 Request payout</h3>
-      {% if earnings.available >= (min_payout|float) %}
-      <p class="tm-hint">Your available balance is eligible. Choose Bank Transfer or USDT (TRC20). UPI is not available.</p>
+      <h3 style="margin-top:0;color:#16803d">💸 Withdrawal ladder</h3>
+      <p class="tm-hint">Withdrawal levels unlock only after Admin verifies and marks the previous payout as PAID: ₹1 → ₹1,000 → ₹2,500 → ₹3,000 → ₹5,000 → ₹10,000 → ₹50,000. Payouts are reviewed and paid manually.</p>
+      {% if next_payout_amount is none %}
+      <p class="tm-hint"><strong>All withdrawal levels completed.</strong></p>
+      {% elif payout_pending %}
+      <p class="tm-hint">Your current level ₹{{ next_payout_amount }} is awaiting Admin review/payment. The next level unlocks only after it is marked PAID.</p>
       {% else %}
-      <p class="tm-hint">Payout option is available here. You need at least ₹{{ min_payout }}; current eligible balance is ₹{{ '%.2f'|format(earnings.available or 0) }}. The request button will unlock automatically once you reach the minimum.</p>
+      <p class="tm-hint">Next allowed withdrawal: <strong>₹{{ '{:,}'.format(next_payout_amount) }}</strong> (level {{ payout_step + 1 }} of {{ payout_ladder|length }}). Available balance must cover this amount.</p>
+      {% endif %}
+      {% if next_payout_amount is not none and not payout_pending and earnings.available >= next_payout_amount %}
+      <p class="tm-hint">Your balance covers this level. Choose Bank Transfer or USDT (TRC20). UPI is not available.</p>
+      {% else %}
+      <p class="tm-hint">Current available balance: ₹{{ '%.2f'|format(earnings.available or 0) }}. You can request only the next ladder amount shown above; the next level unlocks after the current payout is marked PAID.</p>
       {% endif %}
       <form method="post" action="{{ url_for('creator_payout_request') }}" class="cw-payout-box" style="padding:16px;border:1px solid #86c99c;border-radius:16px;margin:12px 0;background:linear-gradient(135deg,#f0fdf4,#eff6ff);box-shadow:0 8px 24px rgba(15,23,42,.08)">
-        <label class="tm-label">Amount (₹)</label>
-        <input class="tm-input" type="number" name="amount" min="{{ min_payout }}" max="{{ '%.2f'|format(earnings.available if earnings.available >= (min_payout|float) else min_payout|float) }}" step="0.01" value="{{ '%.2f'|format(earnings.available if earnings.available >= (min_payout|float) else min_payout|float) }}" required>
+        <label class="tm-label">Withdrawal amount (₹)</label>
+        <input class="tm-input" type="number" name="amount" min="{{ next_payout_amount if next_payout_amount is not none else 1 }}" max="{{ next_payout_amount if next_payout_amount is not none else 1 }}" step="1" value="{{ next_payout_amount if next_payout_amount is not none else 1 }}" readonly required>
         <label class="tm-label">Payment method</label>
         <select class="tm-select" id="payoutMethod" name="payout_method" required><option value="BANK">🏦 Bank Transfer</option><option value="USDT">₮ USDT (TRC20)</option></select>
         <div id="bankFields" style="border:1px solid #b7dfc4;border-radius:12px;padding:12px;margin-top:10px;background:#fff">
@@ -215,7 +223,7 @@
           <label class="tm-label">USDT TRC20 wallet address</label><input class="tm-input" name="usdt_wallet_address" maxlength="250" placeholder="Paste your TRC20 wallet address" autocomplete="off">
         </div>
         <p class="tm-hint">Admin request verify karke manually payout karega. Pending requests yellow badge mein dikhengi.</p>
-        <button class="tm-btn cw-submit-payout" type="submit" {% if earnings.available < (min_payout|float) %}disabled title="Minimum payout balance not reached"{% endif %}>➤ Submit Payout Request</button>
+        <button class="tm-btn cw-submit-payout" type="submit" {% if next_payout_amount is none or payout_pending or earnings.available < next_payout_amount %}disabled title="Current ladder amount must be available and no payout may be pending"{% endif %}>➤ Request ₹{{ '{:,}'.format(next_payout_amount) if next_payout_amount is not none else '0' }} Withdrawal</button>
         <script>
         (function(){
           const method=document.getElementById('payoutMethod');
@@ -301,7 +309,24 @@
     {% else %}<p class="tm-hint">You haven't submitted any content yet.</p>{% endif %}
   </div>
 
-  <form id="movieForm" class="tm-card" novalidate>
+  <section class="tm-card" id="creator-upload-fee" style="grid-column:2;grid-row:3;min-width:0;border:1px solid #f3c5c8">
+    <h2 style="margin-top:0">Video upload payment</h2>
+    <p class="tm-hint">First 5 submitted videos: ₹1 per video. From the 6th video onward: pay ₹49 once for unlimited future uploads. All videos still require Admin approval.</p>
+    {% if upload_pass_active %}
+      <p style="color:#16803d;font-weight:800">✓ Unlimited upload pass active — no further upload fee.</p>
+    {% elif upload_credit_count > 0 %}
+      <p style="color:#16803d;font-weight:800">✓ ₹1 upload payment ready. You can submit one video.</p>
+    {% elif creator_video_count < 5 %}
+      <p style="font-weight:800">Next upload fee: ₹1 ({{ creator_video_count + 1 }} of first 5 videos).</p>
+    {% else %}
+      <p style="font-weight:800">Unlock unlimited uploads for ₹49 one time.</p>
+    {% endif %}
+    <label class="tm-label" for="creatorPaymentPhone">Indian mobile number for Cashfree</label>
+    <input class="tm-input" id="creatorPaymentPhone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" autocomplete="tel">
+    <button type="button" id="creatorPayBtn" class="tm-btn tm-save" style="margin-top:12px" {% if upload_pass_active or upload_credit_count > 0 %}disabled{% endif %}>{% if upload_pass_active %}✓ Unlimited pass active{% elif upload_credit_count > 0 %}✓ Payment ready — submit video{% elif creator_video_count < 5 %}Pay ₹1 and continue{% else %}Pay ₹49 for unlimited uploads{% endif %}</button>
+    <div id="creatorPayMsg" class="tm-msg" role="status" aria-live="polite"></div>
+  </section>
+  <form id="movieForm" class="tm-card" novalidate style="grid-column:2;grid-row:4;min-width:0">
     <div class="tm-grid">
       <div>
         <label class="tm-label">Movie Title *</label>
@@ -370,6 +395,32 @@
 </div>
 </div>
 
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+<script>
+(() => {
+  const payBtn = document.getElementById('creatorPayBtn');
+  const phoneInput = document.getElementById('creatorPaymentPhone');
+  const payMsg = document.getElementById('creatorPayMsg');
+  if (!payBtn) return;
+  payBtn.addEventListener('click', async () => {
+    const phone = (phoneInput.value || '').replace(/\D/g, '');
+    if (!/^[6-9]\d{9}$/.test(phone)) { payMsg.textContent = 'Enter a valid 10 digit Indian mobile number.'; payMsg.className='tm-msg err'; phoneInput.focus(); return; }
+    payBtn.disabled = true; payMsg.textContent = 'Creating secure Cashfree payment...'; payMsg.className='tm-msg';
+    try {
+      const response = await fetch('/api/creator/upload-payment/create', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})});
+      const data = await response.json();
+      if (!response.ok || data.ok === false) throw new Error(data.error || data.message || 'Could not create payment.');
+      if (data.already_paid) { window.location.reload(); return; }
+      if (!data.payment_session_id) throw new Error('Cashfree payment session was not returned.');
+      const cashfree = Cashfree({mode: data.mode || 'sandbox'});
+      await cashfree.checkout({paymentSessionId:data.payment_session_id,redirectTarget:'_self'});
+    } catch (error) {
+      payMsg.textContent = error.message || 'Payment could not be started. Please retry.';
+      payMsg.className='tm-msg err'; payBtn.disabled = false;
+    }
+  });
+})();
+</script>
 <script>
 (() => {
   const form = document.getElementById('movieForm');
@@ -566,6 +617,7 @@
     e.preventDefault(); setMsg('');
     const video=videoInput.files[0], poster=posterInput.files[0];
     if(!title.value.trim()) return setMsg('Movie title required.','err');
+    if (!{{ 'true' if (upload_pass_active or upload_credit_count > 0) else 'false' }}) return setMsg('Please complete the upload payment above first. After payment returns successfully, submit your video.','err');
     if(!video) return setMsg('Video required.','err');
     if(!VIDEO_EXT.includes(ext(video.name))) return setMsg('Video केवल MP4, MKV, WebM या MOV होनी चाहिए.','err');
     if(video.size>MAX_VIDEO) return setMsg('Video 10 GB se badi hai.','err');
