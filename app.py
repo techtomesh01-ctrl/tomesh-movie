@@ -804,6 +804,13 @@ def init_db():
                 paid_at TIMESTAMP
             )
         """)
+        # Preserve legacy UPI history while allowing USDT requests.
+        cur.execute("ALTER TABLE creator_payout_requests DROP CONSTRAINT IF EXISTS creator_payout_requests_payout_method_check")
+        cur.execute("""
+            ALTER TABLE creator_payout_requests
+            ADD CONSTRAINT creator_payout_requests_payout_method_check
+            CHECK (payout_method IN ('UPI','BANK','USDT'))
+        """)
         # Add structured bank fields safely for existing deployments.
         cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_account_holder TEXT")
         cur.execute("ALTER TABLE creator_payout_requests ADD COLUMN IF NOT EXISTS bank_name TEXT")
@@ -4437,8 +4444,10 @@ def creator_payout_request():
     except (TypeError, ValueError):
         flash("Enter a valid payout amount.", "error")
         return redirect(url_for("creator_upload"))
-    method = str(request.form.get("payout_method") or "UPI").upper()
+    method = str(request.form.get("payout_method") or "BANK").upper()
     details = str(request.form.get("payout_details") or "").strip()
+    if method == "USDT":
+        details = str(request.form.get("usdt_wallet_address") or "").strip()
     bank_holder = str(request.form.get("bank_account_holder") or "").strip()[:120]
     bank_name = str(request.form.get("bank_name") or "").strip()[:120]
     bank_account = "".join(ch for ch in str(request.form.get("bank_account_number") or "") if ch.isdigit())
@@ -4448,13 +4457,14 @@ def creator_payout_request():
     if amount <= 0 or amount < min_payout:
         flash("Minimum payout request is ₹%.2f." % min_payout, "error")
         return redirect(url_for("creator_upload"))
-    if method not in {"UPI", "BANK"}:
-        flash("Choose UPI or Bank Transfer.", "error")
+    if method not in {"BANK", "USDT"}:
+        flash("Choose Bank Transfer or USDT (TRC20).", "error")
         return redirect(url_for("creator_upload"))
-    if method == "UPI":
-        if not details or len(details) > 250 or "@" not in details:
-            flash("Enter a valid UPI ID, for example name@bank.", "error")
+    if method == "USDT":
+        if not details or len(details) < 20 or len(details) > 250 or any(ch.isspace() for ch in details):
+            flash("Enter a valid USDT TRC20 wallet address.", "error")
             return redirect(url_for("creator_upload"))
+        details = "USDT network: TRC20 · Wallet: " + details
     else:
         import re
         if not bank_holder or not bank_name or not (6 <= len(bank_account) <= 18) or not re.fullmatch(r"[A-Z]{4}0[A-Z0-9]{6}", bank_ifsc):
