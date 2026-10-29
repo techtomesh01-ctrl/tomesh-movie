@@ -4472,7 +4472,7 @@ def api_creator_submission_save():
             cur.execute("""
                 INSERT INTO creator_submissions
                 (customer_id,title,content_type,category,description,poster,video,status)
-                VALUES(%s,%s,%s,%s,%s,%s,'PENDING')
+                VALUES(%s,%s,%s,%s,%s,%s,%s,'PENDING')
                 RETURNING id
             """, (str(session.get("customer_id") or ""),title,content_type,category,description,poster_key or None,video_key))
             submission_id = cur.fetchone()[0]
