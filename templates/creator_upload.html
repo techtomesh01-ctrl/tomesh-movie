@@ -186,47 +186,52 @@
       <div><div style="font-size:12px;color:#999">Available balance</div><strong style="font-size:24px;color:#86efac">₹{{ '%.2f'|format(earnings.available or 0) }}</strong></div>
       <div><div style="font-size:12px;color:#999">Minimum payout</div><strong style="font-size:24px">₹{{ min_payout }}</strong></div>
     </div>
-    {% if earnings.available >= (min_payout|float) %}
-    <form method="post" action="{{ url_for('creator_payout_request') }}" style="padding:15px;border:1px solid #333;border-radius:12px;margin:12px 0">
-      <h3 style="margin-top:0">Request payout</h3>
-      <label class="tm-label">Amount (₹)</label>
-      <input class="tm-input" type="number" name="amount" min="{{ min_payout }}" max="{{ '%.2f'|format(earnings.available) }}" step="0.01" value="{{ '%.2f'|format(earnings.available) }}" required>
-      <label class="tm-label">Payment method</label>
-      <select class="tm-select" id="payoutMethod" name="payout_method" required><option value="UPI">UPI</option><option value="BANK">Bank transfer</option></select>
-      <div id="upiFields">
-        <label class="tm-label">UPI ID</label>
-        <input class="tm-input" name="payout_details" maxlength="250" placeholder="e.g. name@bank">
-      </div>
-      <div id="bankFields" style="display:none;border:1px solid #444;border-radius:10px;padding:12px;margin-top:10px">
-        <p class="tm-hint">Bank details admin ko verify karne ke liye dikhengi. Account number sirf admin panel mein detail kholne par dikhega.</p>
-        <label class="tm-label">Account holder name</label><input class="tm-input" name="bank_account_holder" maxlength="120" autocomplete="name">
-        <label class="tm-label">Bank name</label><input class="tm-input" name="bank_name" maxlength="120" placeholder="e.g. State Bank of India">
-        <label class="tm-label">Account number</label><input class="tm-input" name="bank_account_number" inputmode="numeric" pattern="[0-9]{6,18}" maxlength="18" autocomplete="off">
-        <label class="tm-label">IFSC code</label><input class="tm-input" name="bank_ifsc" maxlength="11" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" placeholder="e.g. SBIN0001234" autocapitalize="characters">
-        <label class="tm-label">Branch (optional)</label><input class="tm-input" name="bank_branch" maxlength="120">
-      </div>
-      <p class="tm-hint">Admin details verify karke payout approve karega. Payment manual hoga; bank details sirf apne account ki bharein.</p>
-      <button class="tm-btn" type="submit">Submit payout request</button>
-      <script>
-      (function(){
-        const method=document.getElementById('payoutMethod');
-        const upi=document.getElementById('upiFields');
-        const bank=document.getElementById('bankFields');
-        const form=method.closest('form');
-        function toggle(){
-          const isBank=method.value==='BANK';
-          upi.style.display=isBank?'none':'block';
-          bank.style.display=isBank?'block':'none';
-          form.querySelector('[name="payout_details"]').required=!isBank;
-          ['bank_account_holder','bank_name','bank_account_number','bank_ifsc'].forEach(function(n){
-            form.querySelector('[name="'+n+'"]').required=isBank;
-          });
-        }
-        method.addEventListener('change',toggle);toggle();
-      })();
-      </script>
-    </form>
-    {% else %}<p class="tm-hint">You can request payout after your available balance reaches ₹{{ min_payout }}.</p>{% endif %}
+    <div class="tm-payout-panel" style="padding:15px;border:1px solid #23834a;border-radius:12px;margin:12px 0;background:linear-gradient(145deg,rgba(21,128,61,.12),rgba(0,0,0,.2))">
+      <h3 style="margin-top:0;color:#86efac">💸 Request payout</h3>
+      {% if earnings.available >= (min_payout|float) %}
+      <p class="tm-hint">Your available balance is eligible. Choose UPI or bank transfer below.</p>
+      {% else %}
+      <p class="tm-hint">Payout option is available here. You need at least ₹{{ min_payout }}; current eligible balance is ₹{{ '%.2f'|format(earnings.available or 0) }}. The request button will unlock automatically once you reach the minimum.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('creator_payout_request') }}" style="padding:12px;border:1px solid #333;border-radius:12px;margin:12px 0">
+        <label class="tm-label">Amount (₹)</label>
+        <input class="tm-input" type="number" name="amount" min="{{ min_payout }}" max="{{ '%.2f'|format(earnings.available if earnings.available >= (min_payout|float) else min_payout|float) }}" step="0.01" value="{{ '%.2f'|format(earnings.available if earnings.available >= (min_payout|float) else min_payout|float) }}" required>
+        <label class="tm-label">Payment method</label>
+        <select class="tm-select" id="payoutMethod" name="payout_method" required><option value="UPI">UPI</option><option value="BANK">Bank transfer</option></select>
+        <div id="upiFields">
+          <label class="tm-label">UPI ID</label>
+          <input class="tm-input" name="payout_details" maxlength="250" placeholder="e.g. name@bank">
+        </div>
+        <div id="bankFields" style="display:none;border:1px solid #444;border-radius:10px;padding:12px;margin-top:10px">
+          <p class="tm-hint">Bank details admin ko verify karne ke liye dikhengi. Account number sirf admin panel mein detail kholne par dikhega.</p>
+          <label class="tm-label">Account holder name</label><input class="tm-input" name="bank_account_holder" maxlength="120" autocomplete="name">
+          <label class="tm-label">Bank name</label><input class="tm-input" name="bank_name" maxlength="120" placeholder="e.g. State Bank of India">
+          <label class="tm-label">Account number</label><input class="tm-input" name="bank_account_number" inputmode="numeric" pattern="[0-9]{6,18}" maxlength="18" autocomplete="off">
+          <label class="tm-label">IFSC code</label><input class="tm-input" name="bank_ifsc" maxlength="11" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" placeholder="e.g. SBIN0001234" autocapitalize="characters">
+          <label class="tm-label">Branch (optional)</label><input class="tm-input" name="bank_branch" maxlength="120">
+        </div>
+        <p class="tm-hint">Admin details verify karke payout approve karega. Payment manual hoga; bank details sirf apne account ki bharein.</p>
+        <button class="tm-btn" type="submit" {% if earnings.available < (min_payout|float) %}disabled title="Minimum payout balance not reached"{% endif %}>Submit payout request</button>
+        <script>
+        (function(){
+          const method=document.getElementById('payoutMethod');
+          const upi=document.getElementById('upiFields');
+          const bank=document.getElementById('bankFields');
+          const form=method.closest('form');
+          function toggle(){
+            const isBank=method.value==='BANK';
+            upi.style.display=isBank?'none':'block';
+            bank.style.display=isBank?'block':'none';
+            form.querySelector('[name="payout_details"]').required=!isBank;
+            ['bank_account_holder','bank_name','bank_account_number','bank_ifsc'].forEach(function(n){
+              form.querySelector('[name="'+n+'"]').required=isBank;
+            });
+          }
+          method.addEventListener('change',toggle);toggle();
+        })();
+        </script>
+      </form>
+    </div>
     <h3 id="studio-earnings">Payout history</h3>
     {% if payouts %}
       {% for payout in payouts %}
@@ -251,7 +256,7 @@
     {% set summary = namespace(total=0,published=0,pending=0,views=0,likes=0) %}
     {% for entry in submissions %}
       {% set summary.total = summary.total + 1 %}
-      {% if entry.status == 'APPROVED' %}{% set summary.published = summary.published + 1 %}{% endif %}
+      {% if entry.status|upper == 'APPROVED' %}{% set summary.published = summary.published + 1 %}{% endif %}
       {% if entry.status == 'PENDING' %}{% set summary.pending = summary.pending + 1 %}{% endif %}
       {% set summary.views = summary.views + (entry.views or 0) %}
       {% set summary.likes = summary.likes + (entry.likes or 0) %}
