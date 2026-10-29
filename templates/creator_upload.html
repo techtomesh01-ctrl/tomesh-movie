@@ -60,6 +60,7 @@
 .tm-upload-poster{width:100px;height:145px;border-radius:14px;border-color:#3b3b46;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .tm-upload-title{font-size:18px;letter-spacing:-.2px;line-height:1.4}
 .tm-status{padding:6px 10px;border-color:rgba(248,113,113,.25);background:rgba(127,29,29,.23);letter-spacing:.25px}
+.tm-status.is-approved{background:#dcfce7!important;border:1px solid #16a34a!important;color:#166534!important;font-weight:900!important;box-shadow:0 0 0 1px rgba(22,163,74,.12)}
 .tm-upload-link{border-color:#393943;background:rgba(255,255,255,.045);color:#ffd0d2;border-radius:10px;padding:9px 12px;transition:border-color .18s,background .18s}
 .tm-upload-link:hover{border-color:#e54854;background:rgba(127,29,29,.17)}
 #payoutMethod{margin-bottom:10px}
@@ -257,15 +258,17 @@
     {% for entry in submissions %}
       {% set summary.total = summary.total + 1 %}
       {% if entry.status|upper == 'APPROVED' %}{% set summary.published = summary.published + 1 %}{% endif %}
-      {% if entry.status == 'PENDING' %}{% set summary.pending = summary.pending + 1 %}{% endif %}
+      {% if entry.status|upper == 'PENDING' %}{% set summary.pending = summary.pending + 1 %}{% endif %}
       {% set summary.views = summary.views + (entry.views or 0) %}
       {% set summary.likes = summary.likes + (entry.likes or 0) %}
     {% endfor %}
-    {% set summary.total = summary.total + (admin_stats.extra_uploads or 0) %}
-    {% set summary.published = summary.published + (admin_stats.extra_published or 0) %}
-    {% set summary.pending = summary.pending + (admin_stats.extra_pending or 0) %}
-    {% set summary.views = summary.views + (admin_stats.extra_views or 0) %}
-    {% set summary.likes = summary.likes + (admin_stats.extra_likes or 0) %}
+    {% if admin_stats.has_override %}
+      {% set summary.total = admin_stats.extra_uploads %}
+      {% set summary.published = admin_stats.extra_published %}
+      {% set summary.pending = admin_stats.extra_pending %}
+      {% set summary.views = admin_stats.extra_views %}
+      {% set summary.likes = admin_stats.extra_likes %}
+    {% endif %}
     <div id="studio-analytics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:12px 0 18px;scroll-margin-top:20px">
       <div class="tm-stat"><b>{{ summary.total }}</b><span>Total uploads</span></div>
       <div class="tm-stat"><b>{{ summary.published }}</b><span>Published</span></div>
@@ -279,7 +282,7 @@
           {% if item.poster_url %}<img class="tm-upload-poster" src="{{ item.poster_url }}" alt="Poster for {{ item.title }}" loading="lazy">{% else %}<div class="tm-upload-poster" style="display:grid;place-items:center;color:#777">No poster</div>{% endif %}
           <div>
           <div class="tm-upload-title">{{ item.title }}</div>
-          <span class="tm-status">{{ item.content_type }} · {{ item.status }}</span>
+          <span class="tm-status{% if item.status|upper == 'APPROVED' %} is-approved{% endif %}">{% if item.status|upper == 'APPROVED' %}✓ {% endif %}{{ item.content_type }} · {{ item.status|upper }}</span>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <span class="tm-badge">👁 Views: {{ item.views or 0 }}</span>
             <span class="tm-badge">♥ Likes: {{ item.likes or 0 }}</span>
