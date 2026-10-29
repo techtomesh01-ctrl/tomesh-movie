@@ -739,6 +739,9 @@ def init_db():
             )
         """)
         cur.execute("ALTER TABLE creator_earnings ALTER COLUMN amount TYPE NUMERIC(14,4)")
+        # Admin wallet credits are stored as earning entries with no movie/view event.
+        # Nullable movie_id keeps these credits inside the same available-balance and payout flow.
+        cur.execute("ALTER TABLE creator_earnings ALTER COLUMN movie_id DROP NOT NULL")
         cur.execute("INSERT INTO settings(key,value) VALUES('creator_movie_rate_per_1000','50') ON CONFLICT(key) DO NOTHING")
         cur.execute("INSERT INTO settings(key,value) VALUES('creator_drama_rate_per_1000','30') ON CONFLICT(key) DO NOTHING")
         cur.execute("""
@@ -4682,6 +4685,61 @@ def admin_creator_payout_action(payout_id, action):
         conn.rollback()
         print("ADMIN CREATOR PAYOUT ERROR:", repr(exc))
         flash("Could not update payout. Check server logs.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
+
+
+@app.route("/admin/creator-wallet/<customer_id>/credit", methods=["POST"])
+@admin_required
+def admin_creator_wallet_credit(customer_id):
+    """Credit creator earnings from Admin; payout remains a separate approval/payment step."""
+    try:
+        amount = round(float(request.form.get("amount") or 0), 2)
+    except (TypeError, ValueError):
+        flash("Amount valid number mein enter karein.", "error")
+        return redirect(url_for("admin_creator_studio"))
+    note = str(request.form.get("admin_note") or "").strip()[:500]
+    if not (0.01 <= amount <= 10000000):
+        flash("Credit amount ₹0.01 se ₹10,000,000 ke beech hona chahiye.", "error")
+        return redirect(url_for("admin_creator_studio"))
+    actor = str(session.get("admin_user") or ADMIN_USER or "admin")[:200]
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT customer_id, full_name FROM customer_users WHERE customer_id=%s FOR UPDATE",
+            (customer_id,),
+        )
+        creator = cur.fetchone()
+        if not creator:
+            conn.rollback()
+            flash("Creator account nahi mila.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        # NULL movie_id distinguishes a manual admin credit from view-based earnings.
+        cur.execute(
+            """INSERT INTO creator_earnings(customer_id,movie_id,view_date,valid_views,amount)
+               VALUES(%s,NULL,CURRENT_DATE,0,%s) RETURNING id""",
+            (customer_id, amount),
+        )
+        earning_id = cur.fetchone()["id"]
+        cur.execute(
+            """INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+               VALUES(%s,'CREATOR_WALLET_CREDIT','creator_wallet',%s,%s)""",
+            (actor, customer_id, ("₹%.2f" % amount) + ((" — " + note) if note else "")),
+        )
+        cur.execute(
+            """INSERT INTO customer_notifications(customer_id,title,message,notification_type)
+               VALUES(%s,%s,%s,'EARNINGS')""",
+            (customer_id, "Creator balance updated",
+             "Admin ne aapke creator balance mein ₹%.2f add kiye hain." % amount),
+        )
+        conn.commit()
+        flash("₹%.2f creator balance mein add ho gaye. User ke account mein balance show hoga." % amount, "success")
+    except Exception as exc:
+        conn.rollback()
+        app.logger.exception("Admin creator wallet credit failed")
+        flash("Balance add nahi hua. Database/logs check karein.", "error")
     finally:
         conn.close()
     return redirect(url_for("admin_creator_studio"))
