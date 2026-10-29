@@ -146,8 +146,11 @@
 #studio-overview>div[style*="display:flex"]>div{background:#fafafa!important;border-color:#eceef0!important}
 #studio-overview>div[style*="display:flex"] strong{color:#202124!important}
 #studio-overview>div[style*="display:flex"] strong[style*="86efac"]{color:#16803d!important}
-#studio-overview form[action*="creator_payout_request"]{background:#fafafa!important;border-color:#e1e3e6!important}
-#studio-overview form[action*="creator_payout_request"] .tm-btn{background:#188038!important;color:#fff!important}
+#studio-overview form[action*="creator_payout_request"]{background:linear-gradient(135deg,#f0fdf4,#eff6ff)!important;border:1px solid #86c99c!important;box-shadow:0 8px 24px rgba(15,23,42,.08)!important}
+#studio-overview form[action*="creator_payout_request"] .tm-btn{background:linear-gradient(110deg,#15803d,#16a34a)!important;color:#fff!important;border:0!important;box-shadow:0 6px 16px rgba(22,163,74,.2)!important}
+#studio-overview form[action*="creator_payout_request"] .cw-submit-payout{width:100%;min-height:48px;border-radius:12px!important;font-size:14px;letter-spacing:.2px}
+#studio-overview form[action*="creator_payout_request"] .cw-submit-payout:disabled{background:#9ca3af!important;box-shadow:none!important}
+.cw-payout-status{display:inline-flex;padding:5px 10px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-size:12px;font-weight:900}
 #studio-earnings{border-top:1px solid #eceef0!important;padding-top:20px!important}
 .cw-content-tools input,.cw-content-tools select{background:#fff!important;color:#202124!important;border-color:#c9cdd2!important;border-radius:10px!important}
 #cwContentCount{color:#747982!important}
@@ -190,20 +193,16 @@
     <div class="tm-payout-panel" style="padding:15px;border:1px solid #23834a;border-radius:12px;margin:12px 0;background:linear-gradient(145deg,rgba(21,128,61,.12),rgba(0,0,0,.2))">
       <h3 style="margin-top:0;color:#86efac">💸 Request payout</h3>
       {% if earnings.available >= (min_payout|float) %}
-      <p class="tm-hint">Your available balance is eligible. Choose UPI or bank transfer below.</p>
+      <p class="tm-hint">Your available balance is eligible. Choose Bank Transfer or USDT (TRC20). UPI is not available.</p>
       {% else %}
       <p class="tm-hint">Payout option is available here. You need at least ₹{{ min_payout }}; current eligible balance is ₹{{ '%.2f'|format(earnings.available or 0) }}. The request button will unlock automatically once you reach the minimum.</p>
       {% endif %}
-      <form method="post" action="{{ url_for('creator_payout_request') }}" style="padding:12px;border:1px solid #333;border-radius:12px;margin:12px 0">
+      <form method="post" action="{{ url_for('creator_payout_request') }}" class="cw-payout-box" style="padding:16px;border:1px solid #86c99c;border-radius:16px;margin:12px 0;background:linear-gradient(135deg,#f0fdf4,#eff6ff);box-shadow:0 8px 24px rgba(15,23,42,.08)">
         <label class="tm-label">Amount (₹)</label>
         <input class="tm-input" type="number" name="amount" min="{{ min_payout }}" max="{{ '%.2f'|format(earnings.available if earnings.available >= (min_payout|float) else min_payout|float) }}" step="0.01" value="{{ '%.2f'|format(earnings.available if earnings.available >= (min_payout|float) else min_payout|float) }}" required>
         <label class="tm-label">Payment method</label>
-        <select class="tm-select" id="payoutMethod" name="payout_method" required><option value="UPI">UPI</option><option value="BANK">Bank transfer</option></select>
-        <div id="upiFields">
-          <label class="tm-label">UPI ID</label>
-          <input class="tm-input" name="payout_details" maxlength="250" placeholder="e.g. name@bank">
-        </div>
-        <div id="bankFields" style="display:none;border:1px solid #444;border-radius:10px;padding:12px;margin-top:10px">
+        <select class="tm-select" id="payoutMethod" name="payout_method" required><option value="BANK">🏦 Bank Transfer</option><option value="USDT">₮ USDT (TRC20)</option></select>
+        <div id="bankFields" style="border:1px solid #b7dfc4;border-radius:12px;padding:12px;margin-top:10px;background:#fff">
           <p class="tm-hint">Bank details admin ko verify karne ke liye dikhengi. Account number sirf admin panel mein detail kholne par dikhega.</p>
           <label class="tm-label">Account holder name</label><input class="tm-input" name="bank_account_holder" maxlength="120" autocomplete="name">
           <label class="tm-label">Bank name</label><input class="tm-input" name="bank_name" maxlength="120" placeholder="e.g. State Bank of India">
@@ -211,22 +210,23 @@
           <label class="tm-label">IFSC code</label><input class="tm-input" name="bank_ifsc" maxlength="11" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" placeholder="e.g. SBIN0001234" autocapitalize="characters">
           <label class="tm-label">Branch (optional)</label><input class="tm-input" name="bank_branch" maxlength="120">
         </div>
-        <p class="tm-hint">Admin details verify karke payout approve karega. Payment manual hoga; bank details sirf apne account ki bharein.</p>
-        <button class="tm-btn" type="submit" {% if earnings.available < (min_payout|float) %}disabled title="Minimum payout balance not reached"{% endif %}>Submit payout request</button>
+        <div id="usdtFields" style="display:none;border:1px solid #b7d7f5;border-radius:12px;padding:12px;margin-top:10px;background:#fff">
+          <p class="tm-hint"><strong>Network: TRC20 only.</strong> Use a TRON/TRC20 USDT wallet address. Wrong network/address can permanently lose funds.</p>
+          <label class="tm-label">USDT TRC20 wallet address</label><input class="tm-input" name="usdt_wallet_address" maxlength="250" placeholder="Paste your TRC20 wallet address" autocomplete="off">
+        </div>
+        <p class="tm-hint">Admin request verify karke manually payout karega. Pending requests yellow badge mein dikhengi.</p>
+        <button class="tm-btn cw-submit-payout" type="submit" {% if earnings.available < (min_payout|float) %}disabled title="Minimum payout balance not reached"{% endif %}>➤ Submit Payout Request</button>
         <script>
         (function(){
           const method=document.getElementById('payoutMethod');
-          const upi=document.getElementById('upiFields');
           const bank=document.getElementById('bankFields');
+          const usdt=document.getElementById('usdtFields');
           const form=method.closest('form');
           function toggle(){
             const isBank=method.value==='BANK';
-            upi.style.display=isBank?'none':'block';
-            bank.style.display=isBank?'block':'none';
-            form.querySelector('[name="payout_details"]').required=!isBank;
-            ['bank_account_holder','bank_name','bank_account_number','bank_ifsc'].forEach(function(n){
-              form.querySelector('[name="'+n+'"]').required=isBank;
-            });
+            bank.style.display=isBank?'block':'none'; usdt.style.display=isBank?'none':'block';
+            ['bank_account_holder','bank_name','bank_account_number','bank_ifsc'].forEach(function(n){form.querySelector('[name="'+n+'"]').required=isBank;});
+            form.querySelector('[name="usdt_wallet_address"]').required=!isBank;
           }
           method.addEventListener('change',toggle);toggle();
         })();
@@ -237,7 +237,7 @@
     {% if payouts %}
       {% for payout in payouts %}
       <div style="padding:12px 0;border-top:1px solid #333">
-        <strong>₹{{ '%.2f'|format(payout.amount) }} · {{ payout.status }}</strong>
+        <strong>₹{{ '%.2f'|format(payout.amount) }} · <span class="cw-payout-status" style="{% if payout.status == 'PAID' %}background:#dcfce7;color:#166534;border-color:#86efac{% elif payout.status == 'REJECTED' %}background:#fee2e2;color:#991b1b;border-color:#fca5a5{% elif payout.status == 'APPROVED' %}background:#dbeafe;color:#1d4ed8;border-color:#93c5fd{% endif %}">{{ payout.status }}</span></strong>
         <div class="tm-hint">{{ payout.payout_method }} · Requested {{ payout.created_at }}{% if payout.payout_method == 'BANK' %} · Bank verification: {{ 'Verified' if payout.bank_verified else 'Pending admin verification' }}{% endif %}{% if payout.transaction_ref %} · Transaction ref: {{ payout.transaction_ref }}{% endif %}</div>
         {% if payout.admin_note %}<div class="tm-hint">Admin note: {{ payout.admin_note }}</div>{% endif %}
       </div>
