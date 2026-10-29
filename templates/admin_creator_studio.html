@@ -21,12 +21,12 @@
     <h2>Creator Profiles & Activity Review</h2>
     <p class="cs-muted">Admin-only overview of each creator's profile, uploads, approval history, audience activity, earnings, payout requests and saved bank details. Use actual activity and rights evidence before approving content or payouts.</p>
     <div style="overflow-x:auto">
-      <table style="width:100%;min-width:1100px;border-collapse:collapse;font-size:13px">
+      <table style="width:100%;min-width:1450px;border-collapse:collapse;font-size:13px">
         <thead><tr style="text-align:left;color:#aaa;border-bottom:1px solid #333">
           <th style="padding:10px">Creator / Contact</th><th style="padding:10px">Joined / Last Login</th>
           <th style="padding:10px">Uploads</th><th style="padding:10px">Published Movies</th>
           <th style="padding:10px">Views / Likes</th><th style="padding:10px">Earnings</th>
-          <th style="padding:10px">Payouts</th><th style="padding:10px">Saved Bank Details</th><th style="padding:10px">Admin Wallet Credit</th>
+          <th style="padding:10px">Payouts</th><th style="padding:10px">Saved Bank Details</th><th style="padding:10px">Admin Wallet Credit</th><th style="padding:10px">Add Creator Dashboard Stats</th>
         </tr></thead>
         <tbody>
         {% for creator in creator_profiles %}
@@ -65,9 +65,20 @@
               </form>
               <span class="meta">Credits appear in the creator account. Withdrawals still need Admin approval and a real transfer reference.</span>
             </td>
+            <td style="padding:12px 10px;min-width:240px">
+              <form method="post" action="{{ url_for('admin_creator_stats_adjust', customer_id=creator.customer_id) }}" style="display:grid;gap:5px;min-width:220px">
+                <span class="meta">Extra counts added to creator dashboard (not real upload/review records)</span>
+                <label class="meta">Total uploads</label><input type="number" name="extra_uploads" min="0" max="1000000000" step="1" value="{{ creator.extra_uploads or 0 }}" required>
+                <label class="meta">Published</label><input type="number" name="extra_published" min="0" max="1000000000" step="1" value="{{ creator.extra_published or 0 }}" required>
+                <label class="meta">Pending review</label><input type="number" name="extra_pending" min="0" max="1000000000" step="1" value="{{ creator.extra_pending or 0 }}" required>
+                <label class="meta">Total views</label><input type="number" name="extra_views" min="0" max="1000000000" step="1" value="{{ creator.extra_views or 0 }}" required>
+                <label class="meta">Total likes</label><input type="number" name="extra_likes" min="0" max="1000000000" step="1" value="{{ creator.extra_likes or 0 }}" required>
+                <button type="submit" style="background:#2563eb;color:#fff">Save Stats Additions</button>
+              </form>
+            </td>
           </tr>
         {% else %}
-          <tr><td colspan="9" style="padding:22px;text-align:center;color:#999">No creator activity found yet.</td></tr>
+          <tr><td colspan="10" style="padding:22px;text-align:center;color:#999">No creator activity found yet.</td></tr>
         {% endfor %}
         </tbody>
       </table>
