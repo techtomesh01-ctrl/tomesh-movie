@@ -256,6 +256,11 @@
       {% set summary.views = summary.views + (entry.views or 0) %}
       {% set summary.likes = summary.likes + (entry.likes or 0) %}
     {% endfor %}
+    {% set summary.total = summary.total + (admin_stats.extra_uploads or 0) %}
+    {% set summary.published = summary.published + (admin_stats.extra_published or 0) %}
+    {% set summary.pending = summary.pending + (admin_stats.extra_pending or 0) %}
+    {% set summary.views = summary.views + (admin_stats.extra_views or 0) %}
+    {% set summary.likes = summary.likes + (admin_stats.extra_likes or 0) %}
     <div id="studio-analytics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:12px 0 18px;scroll-margin-top:20px">
       <div class="tm-stat"><b>{{ summary.total }}</b><span>Total uploads</span></div>
       <div class="tm-stat"><b>{{ summary.published }}</b><span>Published</span></div>
