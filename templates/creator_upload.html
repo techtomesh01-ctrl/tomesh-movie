@@ -15,7 +15,7 @@
 .tm-file{border:1px dashed #45454d;border-radius:15px;padding:15px;background:#0a0a0e}.tm-file input{width:100%;color:#ddd}.tm-hint{font-size:12px;color:#8e8e98;margin-top:8px}
 .tm-progress{display:none}.tm-progress.show{display:block}.tm-bar{height:12px;background:#24242b;border-radius:99px;overflow:hidden;margin:14px 0}.tm-fill{height:100%;width:0%;background:linear-gradient(90deg,#8b5cf6,#ec4899,#ef4444);transition:width .15s ease}.tm-percent{font-size:28px;font-weight:900}.tm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.tm-stat{background:#0a0a0d;border:1px solid #25252c;border-radius:12px;padding:11px}.tm-stat b{display:block;font-size:15px}.tm-stat span{font-size:11px;color:#888}.tm-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.tm-badge{font-size:11px;font-weight:800;border:1px solid #333;border-radius:999px;padding:7px 10px;color:#cfcfd6;background:#101015}
 .tm-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tm-btn{border:0;border-radius:13px;padding:13px 20px;font-weight:900;cursor:pointer}.tm-save{color:#fff;background:linear-gradient(135deg,#7c3aed,#db2777,#dc2626)}.tm-cancel{color:#fff;background:#202026;border:1px solid #3a3a42}.tm-btn:disabled{opacity:.5;cursor:not-allowed}.tm-msg{margin-top:12px;font-weight:700;min-height:20px}.ok{color:#86efac}.err{color:#fca5a5}
-@media(max-width:760px){.tm-grid{grid-template-columns:1fr}.tm-full{grid-column:auto}.tm-stats{grid-template-columns:1fr 1fr}.tm-title{font-size:24px}}
+.tm-file-preview{display:none;margin-top:14px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:#07070a}.tm-file-preview.show{display:block}.tm-preview-label{font-size:11px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:#c7c7d2;margin-bottom:9px}.tm-preview-video{display:block;width:100%;max-height:260px;border-radius:10px;background:#000;object-fit:contain}.tm-preview-poster{display:block;max-width:100%;max-height:300px;object-fit:contain;border-radius:10px;background:#000}.tm-preview-meta{font-size:12px;color:#aaa;margin-top:8px;overflow-wrap:anywhere}.tm-file-preview .tm-preview-error{font-size:12px;color:#fca5a5;margin-top:8px}@media(max-width:760px){.tm-preview-video{max-height:210px}.tm-preview-poster{max-height:230px}.tm-grid{grid-template-columns:1fr}.tm-full{grid-column:auto}.tm-stats{grid-template-columns:1fr 1fr}.tm-title{font-size:24px}}
 
 /* CINEMA WORLD Creator Studio premium visual refresh — presentation only */
 .tm-add-wrap{position:relative;isolation:isolate;padding:34px 20px 80px;background:radial-gradient(ellipse at 12% 0%,rgba(229,9,20,.22),transparent 36%),radial-gradient(ellipse at 92% 8%,rgba(124,58,237,.14),transparent 30%),linear-gradient(180deg,#08080b 0%,#050507 72%);color:#f7f7fb}
@@ -314,11 +314,22 @@
         <label class="tm-label">Video *</label>
         <input id="video" type="file" accept=".mp4,.mkv,.webm,.mov,video/mp4,video/webm,video/quicktime,video/x-matroska" required>
         <div class="tm-hint">Allowed: MP4, MKV, WebM, MOV · Maximum 10 GB</div>
+        <div id="videoPreviewBox" class="tm-file-preview" aria-live="polite">
+          <div class="tm-preview-label">Selected video preview</div>
+          <video id="videoPreview" class="tm-preview-video" controls preload="metadata" playsinline></video>
+          <div id="videoPreviewMeta" class="tm-preview-meta"></div>
+          <div id="videoPreviewError" class="tm-preview-error" hidden>Browser may not preview this format (for example, some MKV files). The selected file can still be submitted.</div>
+        </div>
       </div>
       <div class="tm-file">
         <label class="tm-label">Poster</label>
         <input id="poster" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
         <div class="tm-hint">Allowed: JPG, JPEG, PNG, WEBP · Maximum 25 MB</div>
+        <div id="posterPreviewBox" class="tm-file-preview" aria-live="polite">
+          <div class="tm-preview-label">Selected poster preview</div>
+          <img id="posterPreview" class="tm-preview-poster" alt="Selected poster preview">
+          <div id="posterPreviewMeta" class="tm-preview-meta"></div>
+        </div>
       </div>
     </div>
 
@@ -354,6 +365,15 @@
   const description = document.getElementById('description');
   const videoInput = document.getElementById('video');
   const posterInput = document.getElementById('poster');
+  const videoPreviewBox = document.getElementById('videoPreviewBox');
+  const videoPreview = document.getElementById('videoPreview');
+  const videoPreviewMeta = document.getElementById('videoPreviewMeta');
+  const videoPreviewError = document.getElementById('videoPreviewError');
+  const posterPreviewBox = document.getElementById('posterPreviewBox');
+  const posterPreview = document.getElementById('posterPreview');
+  const posterPreviewMeta = document.getElementById('posterPreviewMeta');
+  let videoPreviewUrl = '';
+  let posterPreviewUrl = '';
   const saveBtn = document.getElementById('saveBtn');
   const cancelBtn = document.getElementById('cancelBtn');
   const progress = document.getElementById('progress');
@@ -378,6 +398,29 @@
   let lastTime = 0;
 
   function ext(name){ const p=(name||'').toLowerCase().split('.'); return p.length>1?p.pop():''; }
+  function showSelectedVideo(){
+    const file=videoInput.files && videoInput.files[0];
+    if(videoPreviewUrl){URL.revokeObjectURL(videoPreviewUrl);videoPreviewUrl='';}
+    videoPreview.pause();videoPreview.removeAttribute('src');videoPreview.load();
+    videoPreviewError.hidden=true;
+    if(!file){videoPreviewBox.classList.remove('show');videoPreviewMeta.textContent='';return;}
+    videoPreviewUrl=URL.createObjectURL(file);videoPreview.src=videoPreviewUrl;
+    videoPreviewMeta.textContent=file.name+' · '+bytes(file.size);
+    videoPreviewBox.classList.add('show');
+    videoPreview.onerror=()=>{videoPreviewError.hidden=false;};
+  }
+  function showSelectedPoster(){
+    const file=posterInput.files && posterInput.files[0];
+    if(posterPreviewUrl){URL.revokeObjectURL(posterPreviewUrl);posterPreviewUrl='';}
+    posterPreview.removeAttribute('src');
+    if(!file){posterPreviewBox.classList.remove('show');posterPreviewMeta.textContent='';return;}
+    posterPreviewUrl=URL.createObjectURL(file);posterPreview.src=posterPreviewUrl;
+    posterPreviewMeta.textContent=file.name+' · '+bytes(file.size);
+    posterPreviewBox.classList.add('show');
+  }
+  videoInput.addEventListener('change',showSelectedVideo);
+  posterInput.addEventListener('change',showSelectedPoster);
+  window.addEventListener('beforeunload',()=>{if(videoPreviewUrl)URL.revokeObjectURL(videoPreviewUrl);if(posterPreviewUrl)URL.revokeObjectURL(posterPreviewUrl);});
   function bytes(n){
     if (!Number.isFinite(n) || n <= 0) return '0 B';
     const u=['B','KB','MB','GB','TB']; let i=0, x=n;
