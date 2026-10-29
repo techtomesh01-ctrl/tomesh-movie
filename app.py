@@ -3798,6 +3798,9 @@ def cashfree_return():
             "error",
         )
 
+    if local_order["payment_type"] in {"creator_upload_video", "creator_upload_pass"}:
+        return redirect(url_for("creator_upload"))
+
     try:
         target_movie = int(movie_id)
     except Exception:
