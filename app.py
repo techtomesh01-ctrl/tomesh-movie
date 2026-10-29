@@ -708,6 +708,19 @@ def init_db():
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_creator_upload_issues_status_created ON creator_upload_issues(status, created_at DESC)")
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS creator_admin_stats_adjustments (
+                customer_id TEXT PRIMARY KEY,
+                extra_uploads INTEGER NOT NULL DEFAULT 0 CHECK (extra_uploads >= 0),
+                extra_published INTEGER NOT NULL DEFAULT 0 CHECK (extra_published >= 0),
+                extra_pending INTEGER NOT NULL DEFAULT 0 CHECK (extra_pending >= 0),
+                extra_views BIGINT NOT NULL DEFAULT 0 CHECK (extra_views >= 0),
+                extra_likes BIGINT NOT NULL DEFAULT 0 CHECK (extra_likes >= 0),
+                updated_by TEXT,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS creator_submission_audit (
                 id BIGSERIAL PRIMARY KEY,
                 submission_id INTEGER NOT NULL,
@@ -4365,6 +4378,13 @@ def creator_upload():
         total_earned = float(earnings.get("total") or 0)
         earnings["available"] = max(0.0, round(total_earned - reserved, 2))
         cur.execute("""
+            SELECT extra_uploads,extra_published,extra_pending,extra_views,extra_likes
+            FROM creator_admin_stats_adjustments WHERE customer_id=%s
+        """, (customer_id,))
+        admin_stats_row = dict(cur.fetchone() or {})
+        admin_stats = {key: int(admin_stats_row.get(key) or 0) for key in
+                       ("extra_uploads","extra_published","extra_pending","extra_views","extra_likes")}
+        cur.execute("""
             SELECT id,amount,payout_method,payout_details,status,admin_note,transaction_ref,created_at,paid_at,
                    bank_account_holder,bank_name,bank_account_number,bank_ifsc,bank_branch,bank_verified,bank_verified_at
             FROM creator_payout_requests WHERE customer_id=%s ORDER BY id DESC LIMIT 50
@@ -4373,7 +4393,7 @@ def creator_upload():
         cur.close()
     finally:
         conn.close()
-    return render_template("creator_upload.html", submissions=submissions, earnings=earnings, payouts=payouts,
+    return render_template("creator_upload.html", submissions=submissions, earnings=earnings, payouts=payouts, admin_stats=admin_stats,
         movie_rate=get_setting("creator_movie_rate_per_1000", "50"),
         drama_rate=get_setting("creator_drama_rate_per_1000", "30"),
         min_payout=get_setting("creator_min_payout", "100"))
@@ -4714,6 +4734,11 @@ def admin_creator_studio():
                    COALESCE(p.payout_count,0) AS payout_count,
                    COALESCE(p.pending_payout,0) AS pending_payout,
                    COALESCE(p.paid_payout,0) AS paid_payout,
+                   COALESCE(sa.extra_uploads,0) AS extra_uploads,
+                   COALESCE(sa.extra_published,0) AS extra_published,
+                   COALESCE(sa.extra_pending,0) AS extra_pending,
+                   COALESCE(sa.extra_views,0) AS extra_views,
+                   COALESCE(sa.extra_likes,0) AS extra_likes,
                    b.account_holder_name AS saved_bank_holder,
                    b.bank_name AS saved_bank_name,
                    b.account_number AS saved_bank_account,
@@ -4744,6 +4769,7 @@ def admin_creator_studio():
                        COALESCE(SUM(amount) FILTER (WHERE UPPER(COALESCE(status,''))='PAID'),0) AS paid_payout
                 FROM creator_payout_requests WHERE customer_id=u.customer_id
             ) p ON TRUE
+            LEFT JOIN creator_admin_stats_adjustments sa ON sa.customer_id=u.customer_id
             LEFT JOIN LATERAL (
                 SELECT account_holder_name,bank_name,account_number,ifsc,status
                 FROM customer_bank_accounts WHERE customer_id=u.customer_id
@@ -4768,6 +4794,67 @@ def admin_creator_studio():
         drama_rate=get_setting("creator_drama_rate_per_1000", "30"),
         min_payout=get_setting("creator_min_payout", "100"))
 
+
+
+@app.route("/admin/creator-stats/<customer_id>", methods=["POST"])
+@admin_required
+def admin_creator_stats_adjust(customer_id):
+    fields = {
+        "extra_uploads": "Total uploads",
+        "extra_published": "Published",
+        "extra_pending": "Pending review",
+        "extra_views": "Total views",
+        "extra_likes": "Total likes",
+    }
+    values = {}
+    try:
+        for key in fields:
+            raw = str(request.form.get(key, "0") or "0").strip()
+            if not raw.isdigit():
+                raise ValueError(fields[key] + " must be a non-negative whole number.")
+            number = int(raw)
+            if number > 1000000000:
+                raise ValueError(fields[key] + " is too large.")
+            values[key] = number
+    except ValueError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("admin_creator_studio"))
+    conn = get_db(dict_rows=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT customer_id FROM customer_users WHERE customer_id=%s LIMIT 1", (customer_id,))
+        if not cur.fetchone():
+            conn.rollback()
+            flash("Creator account not found.", "error")
+            return redirect(url_for("admin_creator_studio"))
+        cur.execute("""
+            INSERT INTO creator_admin_stats_adjustments
+                (customer_id,extra_uploads,extra_published,extra_pending,extra_views,extra_likes,updated_by,updated_at)
+            VALUES(%s,%s,%s,%s,%s,%s,%s,NOW())
+            ON CONFLICT(customer_id) DO UPDATE SET
+                extra_uploads=EXCLUDED.extra_uploads,
+                extra_published=EXCLUDED.extra_published,
+                extra_pending=EXCLUDED.extra_pending,
+                extra_views=EXCLUDED.extra_views,
+                extra_likes=EXCLUDED.extra_likes,
+                updated_by=EXCLUDED.updated_by,
+                updated_at=NOW()
+        """, (customer_id, values["extra_uploads"], values["extra_published"], values["extra_pending"],
+              values["extra_views"], values["extra_likes"], str(session.get("admin_user") or ADMIN_USER or "admin")[:200]))
+        cur.execute("""
+            INSERT INTO admin_action_audit(actor_id,action,target_type,target_id,reason)
+            VALUES(%s,'CREATOR_STATS_ADJUST','creator',%s,%s)
+        """, (str(session.get("admin_user") or ADMIN_USER or "admin")[:200], customer_id,
+              "Admin display-stat additions: " + ", ".join(f"{k}={v}" for k,v in values.items())))
+        conn.commit()
+        flash("Creator ke admin-added stats save ho gaye. Ye actual upload/review records ko change nahi karte.", "success")
+    except Exception:
+        conn.rollback()
+        app.logger.exception("Admin creator stats adjustment failed")
+        flash("Stats save nahi hue. Render logs check karein.", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_creator_studio"))
 
 
 @app.route("/admin/creator-payout/<int:payout_id>/<action>", methods=["POST"])
