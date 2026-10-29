@@ -653,6 +653,41 @@ body{
     overflow:hidden;
 }
 
+/* Public-facing status labels on every published movie poster. */
+.tm-poster-wrap::before,
+.tm-poster-wrap::after{
+    position:absolute;
+    top:10px;
+    z-index:5;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:24px;
+    padding:5px 8px;
+    border-radius:4px;
+    font-size:10px;
+    font-weight:900;
+    line-height:1;
+    letter-spacing:.45px;
+    pointer-events:none;
+    box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+.tm-poster-wrap::before{
+    content:"MOVIE";
+    left:10px;
+    color:#fff;
+    background:#050505;
+    border:1px solid rgba(255,255,255,.18);
+}
+.tm-poster-wrap::after{
+    content:"✓ APPROVED";
+    right:10px;
+    color:#fff;
+    background:#16803d;
+    border:1px solid #35c96b;
+}
+
+
 .tm-poster{
     width:100%;
     height:100%;
